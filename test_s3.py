@@ -185,6 +185,7 @@ def test_bucket_list_empty():
 
 
 # TODO rgw gives NoSuchKey instead of NoSuchBucket
+# http://tracker.newdream.net/issues/976
 @attr('fails_on_rgw')
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=prefix)
@@ -196,6 +197,7 @@ def test_bucket_notexist():
 
 
 # TODO rgw gives NoSuchKey instead of NoSuchBucket
+# http://tracker.newdream.net/issues/976
 @attr('fails_on_rgw')
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=prefix)
@@ -239,12 +241,14 @@ def check_bad_bucket_name(name):
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_starts_nonalpha():
     check_bad_bucket_name('_alphasoup')
 
 
 # TODO this seems to hang until timeout on rgw?
+# http://tracker.newdream.net/issues/983
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_empty():
     # bucket creates where name is empty look like PUTs to the parent
@@ -256,18 +260,21 @@ def test_bucket_create_naming_bad_short_empty():
 
 
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_one():
     check_bad_bucket_name('a')
 
 
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
 
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(256*'a')
@@ -300,6 +307,7 @@ def test_bucket_create_naming_good_long_250():
 
 # breaks nuke_prefixed_buckets in teardown, claims a bucket from
 # conn.get_all_buckets() suddenly does not exist
+# http://tracker.newdream.net/issues/985
 @attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_251():
     _test_bucket_create_naming_good_long(251)
@@ -307,6 +315,7 @@ def test_bucket_create_naming_good_long_251():
 
 # breaks nuke_prefixed_buckets in teardown, claims a bucket from
 # conn.get_all_buckets() suddenly does not exist
+# http://tracker.newdream.net/issues/985
 @attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_252():
     _test_bucket_create_naming_good_long(252)
@@ -314,6 +323,7 @@ def test_bucket_create_naming_good_long_252():
 
 # breaks nuke_prefixed_buckets in teardown, claims a bucket from
 # conn.get_all_buckets() suddenly does not exist
+# http://tracker.newdream.net/issues/985
 @attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_253():
     _test_bucket_create_naming_good_long(253)
@@ -321,28 +331,47 @@ def test_bucket_create_naming_good_long_253():
 
 # breaks nuke_prefixed_buckets in teardown, claims a bucket from
 # conn.get_all_buckets() suddenly does not exist
+# http://tracker.newdream.net/issues/985
 @attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_254():
     _test_bucket_create_naming_good_long(254)
 
 
-# breaks nuke_prefixed_buckets in teardown, claims a bucket from
+# TODO breaks nuke_prefixed_buckets in teardown, claims a bucket from
 # conn.get_all_buckets() suddenly does not exist
+# http://tracker.newdream.net/issues/985
 @attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_255():
     _test_bucket_create_naming_good_long(255)
+
+# TODO rgw bug makes the list(got) fail with NoSuchKey when length
+# >=251
+# http://tracker.newdream.net/issues/985
+@attr('fails_on_rgw')
+def test_bucket_list_long_name():
+    length = 251
+    num = length - len(prefix)
+    bucket = s3.main.create_bucket('{prefix}{name}'.format(
+            prefix=prefix,
+            name=num*'a',
+            ))
+    got = bucket.list()
+    got = list(got)
+    eq(got, [])
 
 
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
 
 
 # TODO rgw fails to provide error_code
+# http://tracker.newdream.net/issues/977
 @attr('fails_on_rgw')
 def test_bucket_create_naming_bad_punctuation():
     # characters other than [a-zA-Z0-9._-]
@@ -379,6 +408,7 @@ def test_bucket_create_naming_dns_dash_dot():
 
 # TODO rgw create_bucket() gives 409 Conflict even when owner matches;
 # AWS ignores double-PUT
+# http://tracker.newdream.net/issues/978
 @attr('fails_on_rgw')
 def test_bucket_create_exists():
     bucket = get_new_bucket()
@@ -402,6 +432,7 @@ def test_bucket_delete_nonowner():
 
 
 # TODO radosgw returns the access_key instead of user_id
+# http://tracker.newdream.net/issues/980
 @attr('fails_on_rgw')
 def test_bucket_acl_default():
     bucket = get_new_bucket()
@@ -420,6 +451,7 @@ def test_bucket_acl_default():
 
 
 # TODO rgw bucket.set_acl() gives 403 Forbidden
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_bucket_acl_canned():
     bucket = get_new_bucket()
@@ -455,6 +487,7 @@ def test_bucket_acl_canned():
 
 
 # TODO rgw bucket.set_acl() gives 403 Forbidden
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_bucket_acl_canned_private_to_private():
     bucket = get_new_bucket()
@@ -462,6 +495,7 @@ def test_bucket_acl_canned_private_to_private():
 
 
 # TODO rgw bucket.set_acl() gives 403 Forbidden
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_bucket_acl_grant_userid():
     bucket = get_new_bucket()
@@ -485,6 +519,7 @@ def test_bucket_acl_grant_userid():
 
 
 # TODO rgw bucket.set_acl() gives 403 Forbidden
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
@@ -508,6 +543,7 @@ def test_bucket_acl_grant_email():
 
 
 # TODO rgw gives 403 error
+# http://tracker.newdream.net/issues/982
 @attr('fails_on_rgw')
 def test_bucket_acl_grant_email_notexist():
     # behavior not documented by amazon
@@ -521,6 +557,7 @@ def test_bucket_acl_grant_email_notexist():
 
 
 # TODO rgw bucket.set_acl() gives 403 Forbidden
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_bucket_acl_revoke_all():
     # revoke all access, including the owner's access
@@ -533,6 +570,7 @@ def test_bucket_acl_revoke_all():
 
 
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
+# http://tracker.newdream.net/issues/984
 @attr('fails_on_rgw')
 def test_logging_toggle():
     bucket = get_new_bucket()
@@ -571,6 +609,7 @@ def get_bucket_key_names(bucket):
 
 
 # TODO bucket.set_acl('private') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_private():
     # all the test_access_* tests follow this template
@@ -590,6 +629,7 @@ def test_access_bucket_private_object_private():
 
 
 # TODO bucket.set_acl('private') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_publicread():
     obj = _setup_access(bucket_acl='private', object_acl='public-read')
@@ -602,6 +642,7 @@ def test_access_bucket_private_object_publicread():
 
 
 # TODO bucket.set_acl('private') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_publicreadwrite():
     obj = _setup_access(bucket_acl='private', object_acl='public-read-write')
@@ -619,6 +660,7 @@ def test_access_bucket_private_object_publicreadwrite():
 
 
 # TODO bucket.set_acl('public-read') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_private():
     obj = _setup_access(bucket_acl='public-read', object_acl='private')
@@ -634,6 +676,7 @@ def test_access_bucket_publicread_object_private():
 
 
 # TODO bucket.set_acl('public-read') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicread():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read')
@@ -649,6 +692,7 @@ def test_access_bucket_publicread_object_publicread():
 
 
 # TODO bucket.set_acl('public-read') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
@@ -669,6 +713,7 @@ def test_access_bucket_publicread_object_publicreadwrite():
 
 
 # TODO bucket.set_acl('public-read-write') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_private():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='private')
@@ -684,6 +729,7 @@ def test_access_bucket_publicreadwrite_object_private():
 
 
 # TODO bucket.set_acl('public-read-write') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicread():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read')
@@ -699,6 +745,7 @@ def test_access_bucket_publicreadwrite_object_publicread():
 
 
 # TODO bucket.set_acl('public-read-write') fails on rgw
+# http://tracker.newdream.net/issues/981
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read-write')
