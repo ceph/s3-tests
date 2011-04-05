@@ -186,6 +186,17 @@ def test_bucket_list_empty():
 
 # TODO rgw gives NoSuchKey instead of NoSuchBucket
 @attr('fails_on_rgw')
+def test_bucket_notexist():
+    name = '{prefix}foo'.format(prefix=prefix)
+    print 'Trying bucket {name!r}'.format(name=name)
+    e = assert_raises(boto.exception.S3ResponseError, s3.main.get_bucket, name)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
+
+# TODO rgw gives NoSuchKey instead of NoSuchBucket
+@attr('fails_on_rgw')
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=prefix)
     print 'Trying bucket {name!r}'.format(name=name)
