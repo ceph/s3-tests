@@ -240,9 +240,6 @@ def test_bucket_create_naming_bad_starts_nonalpha():
     check_bad_bucket_name('_alphasoup')
 
 
-# TODO this seems to hang until timeout on rgw?
-# http://tracker.newdream.net/issues/983
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_empty():
     # bucket creates where name is empty look like PUTs to the parent
     # resource (with slash), hence their error response is different
