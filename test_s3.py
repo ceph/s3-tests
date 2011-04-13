@@ -183,10 +183,6 @@ def test_bucket_list_empty():
     l = list(l)
     eq(l, [])
 
-
-# TODO rgw gives NoSuchKey instead of NoSuchBucket
-# http://tracker.newdream.net/issues/976
-@attr('fails_on_rgw')
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=prefix)
     print 'Trying bucket {name!r}'.format(name=name)
@@ -196,9 +192,6 @@ def test_bucket_notexist():
     eq(e.error_code, 'NoSuchBucket')
 
 
-# TODO rgw gives NoSuchKey instead of NoSuchBucket
-# http://tracker.newdream.net/issues/976
-@attr('fails_on_rgw')
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=prefix)
     print 'Trying bucket {name!r}'.format(name=name)
