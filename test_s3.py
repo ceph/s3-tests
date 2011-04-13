@@ -399,10 +399,6 @@ def test_bucket_create_naming_dns_dash_dot():
     check_good_bucket_name('foo-.bar')
 
 
-# TODO rgw create_bucket() gives 409 Conflict even when owner matches;
-# AWS ignores double-PUT
-# http://tracker.newdream.net/issues/978
-@attr('fails_on_rgw')
 def test_bucket_create_exists():
     bucket = get_new_bucket()
     # REST idempotency means this should be a nop
