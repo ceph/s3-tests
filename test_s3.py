@@ -436,9 +436,6 @@ def test_bucket_acl_default():
     eq(policy.acl.grants[0].type, 'CanonicalUser')
 
 
-# TODO rgw bucket.set_acl() gives 403 Forbidden
-# http://tracker.newdream.net/issues/981
-@attr('fails_on_rgw')
 def test_bucket_acl_canned():
     bucket = get_new_bucket()
     # Since it defaults to private, set it public-read first
@@ -472,16 +469,12 @@ def test_bucket_acl_canned():
     eq(policy.acl.grants[0].type, 'CanonicalUser')
 
 
-# TODO rgw bucket.set_acl() gives 403 Forbidden
-# http://tracker.newdream.net/issues/981
-@attr('fails_on_rgw')
 def test_bucket_acl_canned_private_to_private():
     bucket = get_new_bucket()
     bucket.set_acl('private')
 
 
-# TODO rgw bucket.set_acl() gives 403 Forbidden
-# http://tracker.newdream.net/issues/981
+# TODO only gives back one acl
 @attr('fails_on_rgw')
 def test_bucket_acl_grant_userid():
     bucket = get_new_bucket()
@@ -504,8 +497,7 @@ def test_bucket_acl_grant_userid():
     key.set_contents_from_string('bar')
 
 
-# TODO rgw bucket.set_acl() gives 403 Forbidden
-# http://tracker.newdream.net/issues/981
+# TODO uid/access_key confusion
 @attr('fails_on_rgw')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
@@ -542,9 +534,6 @@ def test_bucket_acl_grant_email_notexist():
     eq(e.error_code, 'UnresolvableGrantByEmailAddress')
 
 
-# TODO rgw bucket.set_acl() gives 403 Forbidden
-# http://tracker.newdream.net/issues/981
-@attr('fails_on_rgw')
 def test_bucket_acl_revoke_all():
     # revoke all access, including the owner's access
     bucket = get_new_bucket()
@@ -594,8 +583,7 @@ def get_bucket_key_names(bucket):
     return frozenset(k.name for k in bucket.list())
 
 
-# TODO bucket.set_acl('private') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_private():
     # all the test_access_* tests follow this template
@@ -614,8 +602,7 @@ def test_access_bucket_private_object_private():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('private') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_publicread():
     obj = _setup_access(bucket_acl='private', object_acl='public-read')
@@ -627,8 +614,7 @@ def test_access_bucket_private_object_publicread():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('private') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_private_object_publicreadwrite():
     obj = _setup_access(bucket_acl='private', object_acl='public-read-write')
@@ -645,8 +631,7 @@ def test_access_bucket_private_object_publicreadwrite():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('public-read') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_private():
     obj = _setup_access(bucket_acl='public-read', object_acl='private')
@@ -661,8 +646,7 @@ def test_access_bucket_publicread_object_private():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('public-read') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicread():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read')
@@ -677,8 +661,7 @@ def test_access_bucket_publicread_object_publicread():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('public-read') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
@@ -698,8 +681,7 @@ def test_access_bucket_publicread_object_publicreadwrite():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO bucket.set_acl('public-read-write') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_private():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='private')
@@ -714,8 +696,7 @@ def test_access_bucket_publicreadwrite_object_private():
     obj.new.set_contents_from_string('newcontent')
 
 
-# TODO bucket.set_acl('public-read-write') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicread():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read')
@@ -730,8 +711,7 @@ def test_access_bucket_publicreadwrite_object_publicread():
     obj.new.set_contents_from_string('newcontent')
 
 
-# TODO bucket.set_acl('public-read-write') fails on rgw
-# http://tracker.newdream.net/issues/981
+# TODO missing error code
 @attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read-write')
