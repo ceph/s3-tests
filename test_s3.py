@@ -233,9 +233,6 @@ def check_bad_bucket_name(name):
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_starts_nonalpha():
     check_bad_bucket_name('_alphasoup')
 
@@ -249,23 +246,14 @@ def test_bucket_create_naming_bad_short_empty():
     eq(e.error_code, 'MethodNotAllowed')
 
 
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_one():
     check_bad_bucket_name('a')
 
 
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
 
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(256*'a')
     check_bad_bucket_name(280*'a')
@@ -295,42 +283,22 @@ def test_bucket_create_naming_good_long_250():
     _test_bucket_create_naming_good_long(250)
 
 
-# breaks nuke_prefixed_buckets in teardown, claims a bucket from
-# conn.get_all_buckets() suddenly does not exist
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_251():
     _test_bucket_create_naming_good_long(251)
 
 
-# breaks nuke_prefixed_buckets in teardown, claims a bucket from
-# conn.get_all_buckets() suddenly does not exist
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_252():
     _test_bucket_create_naming_good_long(252)
 
 
-# breaks nuke_prefixed_buckets in teardown, claims a bucket from
-# conn.get_all_buckets() suddenly does not exist
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_253():
     _test_bucket_create_naming_good_long(253)
 
 
-# breaks nuke_prefixed_buckets in teardown, claims a bucket from
-# conn.get_all_buckets() suddenly does not exist
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_254():
     _test_bucket_create_naming_good_long(254)
 
 
-# TODO breaks nuke_prefixed_buckets in teardown, claims a bucket from
-# conn.get_all_buckets() suddenly does not exist
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_create_naming_good_long_255():
     _test_bucket_create_naming_good_long(255)
 
@@ -353,16 +321,10 @@ def test_bucket_list_long_name():
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
 
 
-# TODO rgw fails to provide error_code
-# http://tracker.newdream.net/issues/977
-@attr('fails_on_rgw')
 def test_bucket_create_naming_bad_punctuation():
     # characters other than [a-zA-Z0-9._-]
     check_bad_bucket_name('alpha!soup')
@@ -583,8 +545,6 @@ def get_bucket_key_names(bucket):
     return frozenset(k.name for k in bucket.list())
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_private_object_private():
     # all the test_access_* tests follow this template
     obj = _setup_access(bucket_acl='private', object_acl='private')
@@ -602,8 +562,6 @@ def test_access_bucket_private_object_private():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_private_object_publicread():
     obj = _setup_access(bucket_acl='private', object_acl='public-read')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
@@ -614,8 +572,6 @@ def test_access_bucket_private_object_publicread():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_private_object_publicreadwrite():
     obj = _setup_access(bucket_acl='private', object_acl='public-read-write')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
@@ -631,8 +587,6 @@ def test_access_bucket_private_object_publicreadwrite():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicread_object_private():
     obj = _setup_access(bucket_acl='public-read', object_acl='private')
     check_access_denied(obj.a2.get_contents_as_string)
@@ -646,8 +600,6 @@ def test_access_bucket_publicread_object_private():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicread():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
@@ -661,8 +613,6 @@ def test_access_bucket_publicread_object_publicread():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicread_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
@@ -681,8 +631,6 @@ def test_access_bucket_publicread_object_publicreadwrite():
     check_access_denied(obj.new.set_contents_from_string, 'newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_private():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='private')
     check_access_denied(obj.a2.get_contents_as_string)
@@ -696,8 +644,6 @@ def test_access_bucket_publicreadwrite_object_private():
     obj.new.set_contents_from_string('newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicread():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
@@ -711,8 +657,6 @@ def test_access_bucket_publicreadwrite_object_publicread():
     obj.new.set_contents_from_string('newcontent')
 
 
-# TODO missing error code
-@attr('fails_on_rgw')
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     obj = _setup_access(bucket_acl='public-read-write', object_acl='public-read-write')
     eq(obj.a2.get_contents_as_string(), 'foocontent')
