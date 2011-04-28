@@ -321,10 +321,6 @@ def test_bucket_create_naming_good_long_254():
 def test_bucket_create_naming_good_long_255():
     _test_bucket_create_naming_good_long(255)
 
-# TODO rgw bug makes the list(got) fail with NoSuchKey when length
-# >=251
-# http://tracker.newdream.net/issues/985
-@attr('fails_on_rgw')
 def test_bucket_list_long_name():
     length = 251
     num = length - len(prefix)
@@ -398,9 +394,6 @@ def test_bucket_delete_nonowner():
     check_access_denied(s3.alt.delete_bucket, bucket.name)
 
 
-# TODO radosgw returns the access_key instead of user_id
-# http://tracker.newdream.net/issues/980
-@attr('fails_on_rgw')
 def test_bucket_acl_default():
     bucket = get_new_bucket()
     policy = bucket.get_acl()
@@ -475,8 +468,6 @@ def test_bucket_acl_canned_private_to_private():
     bucket.set_acl('private')
 
 
-# TODO only gives back one acl
-@attr('fails_on_rgw')
 def test_bucket_acl_grant_userid():
     bucket = get_new_bucket()
     # add alt user
@@ -512,8 +503,6 @@ def test_bucket_acl_grant_userid():
     key.set_contents_from_string('bar')
 
 
-# TODO uid/access_key confusion
-@attr('fails_on_rgw')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
     # add alt user
@@ -549,9 +538,6 @@ def test_bucket_acl_grant_email():
     key.set_contents_from_string('bar')
 
 
-# TODO rgw gives 403 error
-# http://tracker.newdream.net/issues/982
-@attr('fails_on_rgw')
 def test_bucket_acl_grant_email_notexist():
     # behavior not documented by amazon
     bucket = get_new_bucket()
