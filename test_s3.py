@@ -242,6 +242,17 @@ def test_object_write_then_read():
     eq(got, 'bar')
 
 
+def test_object_set_get_metadata():
+    bucket = get_new_bucket()
+    key = boto.s3.key.Key(bucket)
+    key.key = ('foo')
+    key.set_metadata('meta1', 'mymeta')
+    key.set_contents_from_string('bar')
+    key2 = bucket.get_key('foo')
+    got = key2.get_metadata('meta1')
+    eq(got, 'mymeta')
+
+
 def check_bad_bucket_name(name):
     e = assert_raises(boto.exception.S3ResponseError, s3.main.create_bucket, name)
     eq(e.status, 400)
