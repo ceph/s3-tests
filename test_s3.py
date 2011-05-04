@@ -732,3 +732,27 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
     obj.b2.set_contents_from_string('baroverwrite')
     eq(get_bucket_key_names(obj.bucket2), frozenset(['foo', 'bar']))
     obj.new.set_contents_from_string('newcontent')
+
+def test_object_set_valid_acl():
+    XML_1 = "\
+<AccessControlPolicy xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">\n\
+  <Owner>\n\
+    <ID>bar</ID>\n\
+    <DisplayName></DisplayName>\n\
+  </Owner>\n\
+  <AccessControlList>\n\
+    <Grant>\n\
+      <Grantee xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \
+type=\"CanonicalUser\">\n\
+        <ID>" + config.main.user_id + "</ID>\n\
+        <DisplayName></DisplayName>\n\
+      </Grantee>\n\
+      <Permission>FULL_CONTROL</Permission>\n\
+    </Grant>\n\
+  </AccessControlList>\n\
+</AccessControlPolicy>\n\
+"""
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    key.set_xml_acl(XML_1)
