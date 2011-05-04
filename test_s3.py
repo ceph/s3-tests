@@ -734,24 +734,7 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
     obj.new.set_contents_from_string('newcontent')
 
 def test_object_set_valid_acl():
-    XML_1 = "\
-<AccessControlPolicy xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">\n\
-  <Owner>\n\
-    <ID>bar</ID>\n\
-    <DisplayName></DisplayName>\n\
-  </Owner>\n\
-  <AccessControlList>\n\
-    <Grant>\n\
-      <Grantee xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \
-type=\"CanonicalUser\">\n\
-        <ID>" + config.main.user_id + "</ID>\n\
-        <DisplayName></DisplayName>\n\
-      </Grantee>\n\
-      <Permission>FULL_CONTROL</Permission>\n\
-    </Grant>\n\
-  </AccessControlList>\n\
-</AccessControlPolicy>\n\
-"""
+    XML_1 = '<?xml version="1.0" encoding="UTF-8"?><AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>' + config.main.user_id + '</ID></Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser"><ID>' + config.main.user_id + '</ID></Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>'
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
     key.set_contents_from_string('bar')
