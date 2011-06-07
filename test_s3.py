@@ -1,3 +1,4 @@
+from cStringIO import StringIO
 import ConfigParser
 import boto.exception
 import boto.s3.connection
@@ -251,6 +252,18 @@ def test_object_set_get_metadata():
     key2 = bucket.get_key('foo')
     got = key2.get_metadata('meta1')
     eq(got, 'mymeta')
+
+
+def test_object_write_file():
+    # boto Key.set_contents_from_file / .send_file uses Expect:
+    # 100-Continue, so this test exercises that (though a bit too
+    # subtly)
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    data = StringIO('bar')
+    key.set_contents_from_file(fp=data)
+    got = key.get_contents_as_string()
+    eq(got, 'bar')
 
 
 def check_bad_bucket_name(name):
