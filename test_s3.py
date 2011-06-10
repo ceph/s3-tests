@@ -153,6 +153,21 @@ def teardown():
 bucket_counter = itertools.count(1)
 
 
+def get_new_bucket_name():
+    """
+    Get a bucket name that probably does not exist.
+
+    We make every attempt to use a unique random prefix, so if a
+    bucket by this name happens to exist, it's ok if tests give
+    false negatives.
+    """
+    name = '{prefix}{num}'.format(
+        prefix=prefix,
+        num=next(bucket_counter),
+        )
+    return name
+
+
 def get_new_bucket(connection=None):
     """
     Get a bucket that exists and is empty.
@@ -162,10 +177,7 @@ def get_new_bucket(connection=None):
     """
     if connection is None:
         connection = s3.main
-    name = '{prefix}{num}'.format(
-        prefix=prefix,
-        num=next(bucket_counter),
-        )
+    name = get_new_bucket_name()
     # the only way for this to fail with a pre-existing bucket is if
     # someone raced us between setup nuke_prefixed_buckets and here;
     # ignore that as astronomically unlikely
@@ -833,10 +845,7 @@ def test_bucket_create_naming_good_contains_hyphen():
         check_good_bucket_name('aaa-111')
 
 def test_bucket_delete_notexist():
-        name = '{prefix}{num}'.format(
-                prefix=prefix,
-                num=next(bucket_counter),
-                )
+        name = get_new_bucket_name()
         try:
                 bucket = s3.main.delete_bucket(name)
                 raise RuntimeError("S3 implementation allowed us to delete a bucket that shouldn't exist")
@@ -844,10 +853,7 @@ def test_bucket_delete_notexist():
                 pass
 
 def test_object_write_to_nonexist_bucket():
-        name = '{prefix}{num}'.format(
-                prefix=prefix,
-                num=next(bucket_counter),
-                )
+        name = get_new_bucket_name()
         bucket = s3.main.get_bucket(name, validate=False)
         key = bucket.new_key('foo123bar')
         try:
