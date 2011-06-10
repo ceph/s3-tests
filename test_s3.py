@@ -788,9 +788,10 @@ def test_object_giveaway():
 def test_buckets_create_then_list():
 	create_buckets = [get_new_bucket() for i in xrange(5)]
 	list_buckets = s3.main.get_all_buckets()
+        names = frozenset(bucket.name for bucket in list_buckets)
 	for bucket in create_buckets:
-		if not len([f for f in list_buckets if f.name == bucket.name]):
-			raise RuntimeError("S3 implementation's GET on Service did not return bucket we created")
+		if bucket.name not in names:
+			raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
 # Common code to create a connection object, which'll use bad authorization information
 def _create_connection_bad_auth():
