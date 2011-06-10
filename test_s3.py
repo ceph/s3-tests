@@ -337,9 +337,6 @@ def test_bucket_create_naming_bad_short_one():
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
-def test_bucket_create_naming_good_short_3():
-    check_good_bucket_name('aaa')
-
 def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(256*'a')
     check_bad_bucket_name(280*'a')
