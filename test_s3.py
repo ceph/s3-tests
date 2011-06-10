@@ -4,6 +4,7 @@ import boto.exception
 import boto.s3.connection
 import bunch
 import itertools
+import nose
 import operator
 import os
 import random
@@ -50,9 +51,12 @@ def choose_bucket_prefix(template, max_len=30):
         )
 
 
-def nuke_prefixed_buckets():
+def nuke_prefixed_buckets(prefix):
     for name, conn in s3.items():
-        print 'Cleaning buckets from connection {name}'.format(name=name)
+        print 'Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
+            name=name,
+            prefix=prefix,
+            )
         for bucket in conn.get_all_buckets():
             if bucket.name.startswith(prefix):
                 print 'Cleaning bucket {bucket}'.format(bucket=bucket)
@@ -136,12 +140,12 @@ def setup():
     # We also assume nobody else is going to use buckets with that
     # prefix. This is racy but given enough randomness, should not
     # really fail.
-    nuke_prefixed_buckets()
+    nuke_prefixed_buckets(prefix=prefix)
 
 
 def teardown():
     # remove our buckets here also, to avoid littering
-    nuke_prefixed_buckets()
+    nuke_prefixed_buckets(prefix=prefix)
 
 
 bucket_counter = itertools.count(1)
@@ -342,12 +346,19 @@ def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(3000*'a')
 
 
-def check_good_bucket_name(name):
-    # prefixing to make then unique; tests using this must *not* rely
-    # on being able to set the initial character, or exceed the max
-    # len
+def check_good_bucket_name(name, _prefix=None):
+    # prefixing to make then unique
+
+    # tests using this with the default prefix must *not* rely on
+    # being able to set the initial character, or exceed the max len
+
+    # tests using this with a custom prefix are responsible for doing
+    # their own setup/teardown nukes, with their custom prefix; this
+    # should be very rare
+    if _prefix is None:
+        _prefix = prefix
     s3.main.create_bucket('{prefix}{name}'.format(
-            prefix=prefix,
+            prefix=_prefix,
             name=name,
             ))
 
@@ -849,6 +860,26 @@ def test_list_buckets_bad_auth():
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
+
+# this test goes outside the user-configure prefix because it needs to
+# control the initial character of the bucket name
+@attr('fails_on_rgw')
+@nose.with_setup(
+    setup=lambda: nuke_prefixed_buckets(prefix='a'+prefix),
+    teardown=lambda: nuke_prefixed_buckets(prefix='a'+prefix),
+    )
+def test_bucket_create_naming_good_starts_alpha():
+    check_good_bucket_name('foo', _prefix='a'+prefix)
+
+# this test goes outside the user-configure prefix because it needs to
+# control the initial character of the bucket name
+@attr('fails_on_rgw')
+@nose.with_setup(
+    setup=lambda: nuke_prefixed_buckets(prefix='0'+prefix),
+    teardown=lambda: nuke_prefixed_buckets(prefix='0'+prefix),
+    )
+def test_bucket_create_naming_good_starts_digit():
+    check_good_bucket_name('foo', _prefix='0'+prefix)
 
 def test_bucket_create_naming_good_contains_period():
     check_good_bucket_name('aaa.111')
