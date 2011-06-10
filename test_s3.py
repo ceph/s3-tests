@@ -308,7 +308,7 @@ def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
 def test_bucket_create_naming_good_short_3():
-	check_good_bucket_name('aaa')
+    check_good_bucket_name('aaa')
 
 def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(256*'a')
@@ -542,7 +542,7 @@ def test_bucket_acl_grant_userid():
 
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
 # would violate the uniqueness requirement of a user's email. As such, DHO users are
-# created without an email. 
+# created without an email.
 @attr('fails_on_dho')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
@@ -786,88 +786,88 @@ def test_object_giveaway():
         pass
 
 def test_buckets_create_then_list():
-	create_buckets = [get_new_bucket() for i in xrange(5)]
-	list_buckets = s3.main.get_all_buckets()
+        create_buckets = [get_new_bucket() for i in xrange(5)]
+        list_buckets = s3.main.get_all_buckets()
         names = frozenset(bucket.name for bucket in list_buckets)
-	for bucket in create_buckets:
-		if bucket.name not in names:
-			raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
+        for bucket in create_buckets:
+                if bucket.name not in names:
+                        raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
 # Common code to create a connection object, which'll use bad authorization information
 def _create_connection_bad_auth():
-	# We're going to need to manually build a connection using bad authorization info.
-	# But to save the day, lets just hijack the settings from s3.main. :)
-	main = s3.main
-	conn = boto.s3.connection.S3Connection(
-		aws_access_key_id='badauth',
-		aws_secret_access_key='roflmao',
-		is_secure=main.is_secure,
-		port=main.port,
-		host=main.host,
-		calling_format=main.calling_format,
-		)
-	return conn
+        # We're going to need to manually build a connection using bad authorization info.
+        # But to save the day, lets just hijack the settings from s3.main. :)
+        main = s3.main
+        conn = boto.s3.connection.S3Connection(
+                aws_access_key_id='badauth',
+                aws_secret_access_key='roflmao',
+                is_secure=main.is_secure,
+                port=main.port,
+                host=main.host,
+                calling_format=main.calling_format,
+                )
+        return conn
 
 def test_list_buckets_anonymous():
-	# Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
-	# emulating standard HTTP access.
-	#
-	# While it may have been possible to use httplib directly, doing it this way takes care of also
-	# allowing us to vary the calling format in testing.
-	conn = _create_connection_bad_auth()
-	conn._auth_handler = AnonymousAuth.AnonymousAuthHandler(None, None, None) # Doesn't need this
-	buckets = conn.get_all_buckets()
-	eq(len(buckets), 0)
+        # Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
+        # emulating standard HTTP access.
+        #
+        # While it may have been possible to use httplib directly, doing it this way takes care of also
+        # allowing us to vary the calling format in testing.
+        conn = _create_connection_bad_auth()
+        conn._auth_handler = AnonymousAuth.AnonymousAuthHandler(None, None, None) # Doesn't need this
+        buckets = conn.get_all_buckets()
+        eq(len(buckets), 0)
 
 def test_list_buckets_bad_auth():
-	conn = _create_connection_bad_auth()
-	e = assert_raises(boto.exception.S3ResponseError, conn.get_all_buckets)
-	eq(e.status, 403)
-	eq(e.reason, 'Forbidden')
-	eq(e.error_code, 'AccessDenied')
+        conn = _create_connection_bad_auth()
+        e = assert_raises(boto.exception.S3ResponseError, conn.get_all_buckets)
+        eq(e.status, 403)
+        eq(e.reason, 'Forbidden')
+        eq(e.error_code, 'AccessDenied')
 
 def test_bucket_create_naming_good_contains_period():
-	check_good_bucket_name('aaa.111')
+        check_good_bucket_name('aaa.111')
 
 def test_bucket_create_naming_good_contains_hyphen():
-	check_good_bucket_name('aaa-111')
+        check_good_bucket_name('aaa-111')
 
 def test_bucket_delete_notexist():
-	name = '{prefix}{num}'.format(
-		prefix=prefix,
-		num=next(bucket_counter),
-		)
-	try:
-		bucket = s3.main.delete_bucket(name)
-		raise RuntimeError("S3 implementation allowed us to delete a bucket that shouldn't exist")
-	except boto.exception.S3ResponseError, e:
-		pass
+        name = '{prefix}{num}'.format(
+                prefix=prefix,
+                num=next(bucket_counter),
+                )
+        try:
+                bucket = s3.main.delete_bucket(name)
+                raise RuntimeError("S3 implementation allowed us to delete a bucket that shouldn't exist")
+        except boto.exception.S3ResponseError, e:
+                pass
 
 def test_object_write_to_nonexist_bucket():
-	name = '{prefix}{num}'.format(
-		prefix=prefix,
-		num=next(bucket_counter),
-		)
-	bucket = s3.main.get_bucket(name, validate=False)
-	key = bucket.new_key('foo123bar')
-	try:
-		key.set_contents_from_string('foo')
-		raise RuntimeError("S3 implementation allowed us to write a key to a bucket that shouldn't exist")
-	except boto.exception.S3ResponseError, e:
-		pass
+        name = '{prefix}{num}'.format(
+                prefix=prefix,
+                num=next(bucket_counter),
+                )
+        bucket = s3.main.get_bucket(name, validate=False)
+        key = bucket.new_key('foo123bar')
+        try:
+                key.set_contents_from_string('foo')
+                raise RuntimeError("S3 implementation allowed us to write a key to a bucket that shouldn't exist")
+        except boto.exception.S3ResponseError, e:
+                pass
 
 def test_object_copy_same_bucket():
-	bucket = get_new_bucket()
-	key = bucket.new_key('foo123bar')
-	key.set_contents_from_string('foo')
-	key.copy(bucket, 'bar321foo')
-	key2 = bucket.get_key('bar321foo')
-	eq(key2.get_contents_as_string(), 'foo')
+        bucket = get_new_bucket()
+        key = bucket.new_key('foo123bar')
+        key.set_contents_from_string('foo')
+        key.copy(bucket, 'bar321foo')
+        key2 = bucket.get_key('bar321foo')
+        eq(key2.get_contents_as_string(), 'foo')
 
 def test_object_copy_diff_bucket():
-	buckets = [get_new_bucket(), get_new_bucket()]
-	key = buckets[0].new_key('foo123bar')
-	key.set_contents_from_string('foo')
-	key.copy(buckets[1], 'bar321foo')
-	key2 = buckets[1].get_key('bar321foo')
-	eq(key2.get_contents_as_string(), 'foo')
+        buckets = [get_new_bucket(), get_new_bucket()]
+        key = buckets[0].new_key('foo123bar')
+        key.set_contents_from_string('foo')
+        key.copy(buckets[1], 'bar321foo')
+        key2 = buckets[1].get_key('bar321foo')
+        eq(key2.get_contents_as_string(), 'foo')
