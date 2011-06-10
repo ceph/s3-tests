@@ -225,6 +225,26 @@ def test_bucket_notexist():
     eq(e.error_code, 'NoSuchBucket')
 
 
+def test_bucket_delete_notexist():
+    name = '{prefix}foo'.format(prefix=prefix)
+    print 'Trying bucket {name!r}'.format(name=name)
+    e = assert_raises(boto.exception.S3ResponseError, s3.main.delete_bucket, name)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
+
+def test_object_write_to_nonexist_bucket():
+    name = '{prefix}foo'.format(prefix=prefix)
+    print 'Trying bucket {name!r}'.format(name=name)
+    bucket = s3.main.get_bucket(name, validate=False)
+    key = bucket.new_key('foo123bar')
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'foo')
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
+
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=prefix)
     print 'Trying bucket {name!r}'.format(name=name)
@@ -843,24 +863,6 @@ def test_bucket_create_naming_good_contains_period():
 
 def test_bucket_create_naming_good_contains_hyphen():
         check_good_bucket_name('aaa-111')
-
-def test_bucket_delete_notexist():
-        name = get_new_bucket_name()
-        try:
-                bucket = s3.main.delete_bucket(name)
-                raise RuntimeError("S3 implementation allowed us to delete a bucket that shouldn't exist")
-        except boto.exception.S3ResponseError, e:
-                pass
-
-def test_object_write_to_nonexist_bucket():
-        name = get_new_bucket_name()
-        bucket = s3.main.get_bucket(name, validate=False)
-        key = bucket.new_key('foo123bar')
-        try:
-                key.set_contents_from_string('foo')
-                raise RuntimeError("S3 implementation allowed us to write a key to a bucket that shouldn't exist")
-        except boto.exception.S3ResponseError, e:
-                pass
 
 def test_object_copy_same_bucket():
         bucket = get_new_bucket()
