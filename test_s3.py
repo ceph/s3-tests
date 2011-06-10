@@ -826,12 +826,6 @@ def test_list_buckets_bad_auth():
 	eq(e.reason, 'Forbidden')
 	eq(e.error_code, 'AccessDenied')
 
-def test_bucket_create_good_starts_alpha():
-	check_good_bucket_name('a'*10)
-
-def test_bucket_create_good_starts_number():
-	check_good_bucket_name('1'*10)
-
 def test_bucket_create_naming_good_contains_period():
 	check_good_bucket_name('aaa.111')
 
