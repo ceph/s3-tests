@@ -65,12 +65,6 @@ def nuke_prefixed_buckets():
                         key.delete()
                     bucket.delete()
                 except boto.exception.S3ResponseError as e:
-                    # TODO workaround for buggy rgw that fails to send
-                    # error_code, remove
-                    if (e.status == 403
-                        and e.error_code is None
-                        and e.body == ''):
-                        e.error_code = 'AccessDenied'
                     if e.error_code != 'AccessDenied':
                         print 'GOT UNWANTED ERROR', e.error_code
                         raise
