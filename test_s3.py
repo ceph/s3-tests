@@ -806,16 +806,14 @@ def test_object_giveaway():
     obj = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
     CORRECT_ACL = '<?xml version="1.0" encoding="UTF-8"?><AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>' + config.main.user_id + '</ID></Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser"><ID>' + config.main.user_id + '</ID></Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>'
     WRONG_ACL = '<?xml version="1.0" encoding="UTF-8"?><AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>' + config.alt.user_id + '</ID></Owner><AccessControlList><Grant><Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser"><ID>' + config.alt.user_id + '</ID></Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>'
-    #try:
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
     key.set_contents_from_string('bar')
     key.set_xml_acl(CORRECT_ACL)
-    try:
-        key.set_xml_acl(WRONG_ACL)
-        raise RuntimeError("S3 implementation allowed us to give away an object!")
-    except boto.exception.S3ResponseError, e:
-        pass
+    e = assert_raises(boto.exception.S3ResponseError, key.set_xml_acl, WRONG_ACL)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
 
 def test_buckets_create_then_list():
     create_buckets = [get_new_bucket() for i in xrange(5)]
