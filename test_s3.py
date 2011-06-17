@@ -899,3 +899,66 @@ def test_object_copy_diff_bucket():
     key.copy(buckets[1], 'bar321foo')
     key2 = buckets[1].get_key('bar321foo')
     eq(key2.get_contents_as_string(), 'foo')
+
+
+def transfer_part(bucket, mp_id, mp_keyname, i, part):
+    """Transfer a part of a multipart upload. Designed to be run in parallel.
+    """
+    mp = boto.s3.multipart.MultiPartUpload(bucket)
+    mp.key_name = mp_keyname
+    mp.id = mp_id
+    part_out = StringIO(part)
+    mp.upload_part_from_file(part_out, i+1)
+
+def generate_random(mb_size):
+    mb = 1024 * 1024
+    chunk = 1024
+    part_size_mb = 5
+    allowed = string.ascii_letters
+    for x in range(0, mb_size, part_size_mb):
+        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for x in xrange(chunk)])
+        s = ''
+        left = mb_size - x
+        this_part_size = min(left, part_size_mb)
+        for y in range(this_part_size  * mb / chunk):
+            s = s + strpart
+        yield s
+        if (x == mb_size):
+            return
+
+def _multipart_upload(bucket, s3_key_name, mb_size, do_list=None):
+    upload = bucket.initiate_multipart_upload(s3_key_name)
+    for i, part in enumerate(generate_random(mb_size)):
+        transfer_part(bucket, upload.id, upload.key_name, i, part)
+
+    if do_list is not None:
+        l = bucket.list_multipart_uploads()
+        l = list(l)
+
+    return upload
+
+def test_multipart_upload():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    upload = _multipart_upload(bucket, key, 30)
+    upload.complete_upload()
+
+def test_abort_multipart_upload():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    upload = _multipart_upload(bucket, key, 10)
+    upload.cancel_upload()
+
+
+def test_list_multipart_upload():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    upload1 = _multipart_upload(bucket, key, 5, 1)
+    upload2 = _multipart_upload(bucket, key, 5, 1)
+
+    key2="mymultipart2"
+    upload3 = _multipart_upload(bucket, key2, 5, 1)
+
+    upload1.cancel_upload()
+    upload2.cancel_upload()
+    upload3.cancel_upload()
