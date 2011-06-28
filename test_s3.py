@@ -10,6 +10,7 @@ import os
 import random
 import string
 import time
+import socket
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
@@ -962,3 +963,40 @@ def test_list_multipart_upload():
     upload1.cancel_upload()
     upload2.cancel_upload()
     upload3.cancel_upload()
+
+def _simple_http_req_100_cont(host, port, method, resource):
+    req = '{method} {resource} HTTP/1.1\r\nHost: {host}\r\nAccept-Encoding: identity\r\nContent-Length: 123\r\nExpect: 100-continue\r\n\r\n'.format(
+            method = method,
+            resource = resource,
+            host = host)
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(5)
+    s.connect((host, port))
+    s.send(req)
+
+    try:
+        data = s.recv(1024)
+    except socket.error, msg:
+        print 'got response: ', msg
+        print 'most likely server doesn\'t support 100-continue'
+
+    s.close()
+    l = data.split(' ')
+
+    assert l[0].startswith('HTTP')
+
+    return l[1]
+
+def test_100_continue():
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    resource = '/{bucket}/{obj}'.format(bucket = bucket.name, obj = objname)
+
+    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
+    eq(status, '403')
+
+    bucket.set_acl('public-read-write')
+
+    status = _simple_http_req(s3.main.host, s3.main.port, 'PUT', resource)
+    eq(status, '100')
