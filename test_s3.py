@@ -998,5 +998,5 @@ def test_100_continue():
 
     bucket.set_acl('public-read-write')
 
-    status = _simple_http_req(s3.main.host, s3.main.port, 'PUT', resource)
+    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
     eq(status, '100')
