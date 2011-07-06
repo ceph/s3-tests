@@ -62,11 +62,13 @@ def nuke_prefixed_buckets(prefix):
             if bucket.name.startswith(prefix):
                 print 'Cleaning bucket {bucket}'.format(bucket=bucket)
                 try:
+                    bucket.set_canned_acl('private')
                     for key in bucket.list():
                         print 'Cleaning bucket {bucket} key {key}'.format(
                             bucket=bucket,
                             key=key,
                             )
+                        key.set_canned_acl('private')
                         key.delete()
                     bucket.delete()
                 except boto.exception.S3ResponseError as e:
