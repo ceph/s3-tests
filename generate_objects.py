@@ -91,6 +91,18 @@ def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False):
 
 
 def main():
+    '''To run the static content load test:
+          ./generate_objects.py -a S3_ACCESS_KEY -s S3_SECRET_KEY -O urls.txt --seed 1234 generate_objects.conf && siege -rc ./siege.conf -r 5
+
+        This creates a bucket with your S3 credentials and fills it with
+        garbage objects as described in generate_objects.conf. It writes a
+        list of URLS to those objects to ./urls.txt.  siege then reads the
+        ./siege.conf config file which tells it to read from ./urls.txt and
+        log to ./siege.log and hammers each url in urls.txt 5 times (-r flag).
+       
+        Results are printed to the terminal and written in CSV format to
+        ./siege.log
+    '''
     (options, args) = parse_opts();
 
     #SETUP
