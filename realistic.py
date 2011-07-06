@@ -1,12 +1,14 @@
 import hashlib
 import random
 import string
+import struct
 
 class RandomContentFile(object):
     def __init__(self, size, seed):
         self.seed = seed
         self.random = random.Random(self.seed)
         self.offset = 0
+        self.buffer = ''
         self.size = size
         self.hash = hashlib.md5()
         self.digest_size = self.hash.digest_size
@@ -16,9 +18,18 @@ class RandomContentFile(object):
         assert offset == 0
         self.random.seed(self.seed)
         self.offset = offset
+        self.buffer = ''
 
     def tell(self):
         return self.offset
+
+    def _generate(self):
+        # generate and return a chunk of pseudorandom data
+        # 256 bits = 32 bytes at a time
+        size = 1*1024*1024
+        l = [self.random.getrandbits(64) for _ in xrange(size/8)]
+        s = struct.pack((size/8)*'Q', *l)
+        return s
 
     def read(self, size=-1):
         if size < 0:
@@ -28,9 +39,11 @@ class RandomContentFile(object):
 
         random_count = min(size, self.size - self.offset - self.digest_size)
         if random_count > 0:
+            while len(self.buffer) < random_count:
+                self.buffer += self._generate()
             self.offset += random_count
             size -= random_count
-            data = ''.join(chr(self.random.getrandbits(8)) for _ in xrange(random_count))
+            data, self.buffer = self.buffer[:random_count], self.buffer[random_count:]
             if self.hash is not None:
                 self.hash.update(data)
             r.append(data)
