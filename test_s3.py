@@ -1001,68 +1001,70 @@ def test_100_continue():
     status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
     eq(status, '100')
 
+class FakeFile(object):
+    def __init__(self, size, char='A', interrupt=None):
+        self.offset = 0
+        self.size = size
+        self.char = char
+        self.interrupt = interrupt
+
+    def seek(self, offset):
+        self.offset = offset
+
+    def tell(self):
+        return self.offset
+
+    def read(self, size=-1):
+        if size < 0:
+            size = self.size - self.offset
+        count = min(size, self.size - self.offset)
+        self.offset += count
+
+        # Sneaky! do stuff before we return (the last time)
+        if self.interrupt != None and self.offset == self.size and count > 0:
+            self.interrupt()
+
+        return self.char*count
+
+class FakeFileVerifier(object):
+    def __init__(self, char=None):
+        self.char = char
+        self.size = 0
+
+    def write(self, data):
+        size = len(data)
+        if self.char == None:
+            self.char = data[0]
+        self.size += size
+        eq(data, self.char*size)
+
+def _verify_atomic_key_data(key, size=-1, char=None):
+    fp_verify = FakeFileVerifier(char)
+    key.get_contents_to_file(fp_verify)
+    if size >= 0:
+        eq(fp_verify.size, size)
+
 def _test_atomic_write(file_size):
     bucket = get_new_bucket()
     objname = 'testobj'
     key = bucket.new_key(objname)
 
-    class FakeFile(object):
-        def __init__(self, size, char='A', interrupt=None):
-            self.offset = 0
-            self.size = size
-            self.char = char
-            self.interrupt = interrupt
-
-        def seek(self, offset):
-            self.offset = offset
-
-        def tell(self):
-            return self.offset
-
-        def read(self, size=-1):
-            if size < 0:
-                size = self.size - self.offset
-            count = min(size, self.size - self.offset)
-            self.offset += count
-
-            # Sneaky! do stuff before we return (the last time)
-            if self.interrupt != None and self.offset == self.size and count > 0:
-                self.interrupt()
-
-            return self.char*count
-
-    class FakeFileVerifier(object):
-        def __init__(self, char=None):
-            self.char = char
-            self.size = 0
-
-        def write(self, data):
-            size = len(data)
-            if self.char == None:
-                self.char = data[0]
-            self.size += size
-            eq(data, self.char*size)
-   
     # create <file_size> file of A's
     fp_a = FakeFile(file_size, 'A')
     key.set_contents_from_file(fp_a)
     
     # verify A's
-    fp_a_verify = FakeFileVerifier('A')
-    key.get_contents_to_file(fp_a_verify)
-    eq(fp_a_verify.size, file_size)
+    _verify_atomic_key_data(key, file_size, 'A')
 
     # create <file_size> file of B's
     # but try to verify the file before we finish writing all the B's
     fp_b = FakeFile(file_size, 'B',
-        lambda: key.get_contents_to_file(FakeFileVerifier())
+        lambda: _verify_atomic_key_data(key, file_size)
         )
     key.set_contents_from_file(fp_b)
 
     # verify B's
-    fp_b_verify = FakeFileVerifier('B')
-    key.get_contents_to_file(fp_b_verify)
-    eq(fp_b_verify.size, file_size)
+    _verify_atomic_key_data(key, file_size, 'B')
 
 def test_atomic_write_1mb():
     _test_atomic_write(1024*1024)
@@ -1073,3 +1075,31 @@ def test_atomic_write_4mb():
 def test_atomic_write_8mb():
     _test_atomic_write(1024*1024*8)
 
+def _test_atomic_dual_write(file_size):
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    key = bucket.new_key(objname)
+    
+    # get a second key object (for the same key)
+    # so both can be writing without interfering
+    key2 = bucket.new_key(objname)
+
+    # write <file_size> file of B's
+    # but before we're done, try to write all A's
+    fp_a = FakeFile(file_size, 'A')
+    fp_b = FakeFile(file_size, 'B',
+        lambda: key2.set_contents_from_file(fp_a)
+        )
+    key.set_contents_from_file(fp_b)
+
+    # verify the file
+    _verify_atomic_key_data(key, file_size)
+
+def test_atomic_dual_write_1mb():
+    _test_atomic_dual_write(1024*1024)
+
+def test_atomic_dual_write_4mb():
+    _test_atomic_dual_write(1024*1024*4)
+
+def test_atomic_dual_write_8mb():
+    _test_atomic_dual_write(1024*1024*8)
