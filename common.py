@@ -157,6 +157,6 @@ def get_new_bucket(connection=None):
     bucket = connection.create_bucket(name)
     return bucket
 
+def teardown():
+	nuke_prefixed_buckets()
 
-if __name__ == '__main__':
-    setup()
