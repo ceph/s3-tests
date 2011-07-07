@@ -657,6 +657,208 @@ def test_bucket_acl_canned():
         )
 
 
+def test_bucket_acl_canned_publicreadwrite():
+    bucket = get_new_bucket()
+    bucket.set_acl('public-read-write')
+    policy = bucket.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            dict(
+                permission='WRITE',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+
+def test_bucket_acl_canned_authenticatedread():
+    bucket = get_new_bucket()
+    bucket.set_acl('authenticated-read')
+    policy = bucket.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+
+def test_object_acl_default():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+
+def test_object_acl_canned():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    # Since it defaults to private, set it public-read first
+    key.set_acl('public-read')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+    # Then back to private.
+    key.set_acl('private')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+
+def test_object_acl_canned_publicreadwrite():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    key.set_acl('public-read-write')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            dict(
+                permission='WRITE',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+
+def test_object_acl_canned_authenticatedread():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    key.set_acl('authenticated-read')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+
 def test_bucket_acl_canned_private_to_private():
     bucket = get_new_bucket()
     bucket.set_acl('private')
