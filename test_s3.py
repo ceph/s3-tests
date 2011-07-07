@@ -1026,7 +1026,7 @@ def _test_atomic_write(file_size):
             self.offset += count
 
             # Sneaky! do stuff before we return (the last time)
-            if self.interrupt != None and self.offset == self.size:
+            if self.interrupt != None and self.offset == self.size and count > 0:
                 self.interrupt()
 
             return self.char*count
