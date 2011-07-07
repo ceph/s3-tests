@@ -69,7 +69,7 @@ def main():
         It writes a list of URLS to those objects to ./urls.txt.
 
         Once you have objcts in your bucket, run the siege benchmarking program:
-            siege -rc ./siege.conf -r 5
+            siege --rc ./siege.conf -r 5
 
         This tells siege to read the ./siege.conf config file which tells it to
         use the urls in ./urls.txt and log to ./siege.log. It hits each url in
