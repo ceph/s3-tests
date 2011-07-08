@@ -296,6 +296,29 @@ def test_object_set_get_metadata():
     eq(got, 'mymeta')
 
 
+# UTF-8 encoded data should pass straight through
+def test_object_set_get_unicode_metadata():
+    bucket = get_new_bucket()
+    key = boto.s3.key.Key(bucket)
+    key.key = (u'foo')
+    key.set_metadata('meta1', u"Hello World\xe9")
+    key.set_contents_from_string('bar')
+    key2 = bucket.get_key('foo')
+    got = key2.get_metadata('meta1')
+    eq(got, u"Hello World\xe9")
+
+
+def test_object_set_get_non_utf8_metadata():
+    bucket = get_new_bucket()
+    key = boto.s3.key.Key(bucket)
+    key.key = ('foo')
+    key.set_metadata('meta1', '\x04mymeta')
+    key.set_contents_from_string('bar')
+    key2 = bucket.get_key('foo')
+    got = key2.get_metadata('meta1')
+    eq(got, '=?UTF-8?Q?=04mymeta?=')
+
+
 def test_object_write_file():
     # boto Key.set_contents_from_file / .send_file uses Expect:
     # 100-Continue, so this test exercises that (though a bit too
