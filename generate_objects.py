@@ -6,12 +6,13 @@ from boto.s3.key import Key
 from optparse import OptionParser
 from realistic import RandomContentFile
 import realistic
+import traceback
 import random
+import common
 import yaml
 import boto
 import sys
 
-DHO_HOST = 'objects.dreamhost.com'
 
 def parse_opts():
     parser = OptionParser();
@@ -23,28 +24,7 @@ def parse_opts():
     parser.add_option('--host', dest='host', help='use S3 gateway at HOST', metavar='HOST')
     parser.add_option('--seed', dest='seed', help='optional seed for the random number generator')
 
-    parser.set_defaults(host=DHO_HOST)
-
     return parser.parse_args()
-
-
-def parse_config(config_files):
-    configurations = []
-    for file in config_files:
-        FILE = open(file, 'r')
-        configurations = configurations + yaml.load(FILE.read())
-        FILE.close()
-    return configurations
-
-
-def get_bucket(conn, existing_bucket):
-    if existing_bucket:
-        return conn.get_bucket(existing_bucket)
-    else:
-        goop = '%x' % random.getrandbits(64)
-        bucket = conn.create_bucket(goop)
-        bucket.set_acl('public-read')
-        return bucket
 
 
 def connect_s3(host, access_key, secret_key):
@@ -82,7 +62,7 @@ def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False):
         key = Key(bucket)
         key.key = name_generator.next()
         key.set_contents_from_file(fp)
-        url = key.generate_url(3600) #valid for 1 hour
+        url = key.generate_url(30758400) #valid for 1 year
         if checksum:
             url += ' %s' % key.md5
         urls.append(url)
@@ -91,8 +71,9 @@ def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False):
 
 
 def main():
-    '''To run the static content load test:
-          ./generate_objects.py -a S3_ACCESS_KEY -s S3_SECRET_KEY -O urls.txt --seed 1234 generate_objects.conf && siege -rc ./siege.conf -r 5
+    '''To run the static content load test, make sure you've bootstrapped your
+       test environment and set up your config.yml file, then run the following:
+          S3TEST_CONF=config.yml virtualenv/bin/python generate_objects.py -a S3_ACCESS_KEY -s S3_SECRET_KEY -O urls.txt --seed 1234 && siege -rc ./siege.conf -r 5
 
         This creates a bucket with your S3 credentials and fills it with
         garbage objects as described in generate_objects.conf. It writes a
@@ -102,6 +83,9 @@ def main():
        
         Results are printed to the terminal and written in CSV format to
         ./siege.log
+
+        S3 credentials and output file may also be specified in config.yml
+        under s3.main and file_generation.url_file
     '''
     (options, args) = parse_opts();
 
@@ -109,19 +93,30 @@ def main():
     random.seed(options.seed if options.seed else None)
     if options.outfile:
         OUTFILE = open(options.outfile, 'w')
+    elif common.config.file_generation.url_file:
+        OUTFILE = open(common.config.file_generation.url_file, 'w')
     else:
         OUTFILE = sys.stdout
 
-    conn = connect_s3(options.host, options.access_key, options.secret_key)
-    bucket = get_bucket(conn, options.bucket)
+    if options.access_key and options.secret_key:
+        host = options.host if options.host else common.config.s3.defaults.host
+        conn = connect_s3(host, options.access_key, options.secret_key)
+    else:
+        conn = common.s3.main
+
+    if options.bucket:
+        bucket = get_bucket(conn, options.bucket)
+    else:
+        bucket = common.get_new_bucket()
+
     urls = []
 
     print >> OUTFILE, 'bucket: %s' % bucket.name
     print >> sys.stderr, 'setup complete, generating files'
-    for profile in parse_config(args):
+    for profile in common.config.file_generation.groups:
         seed = random.random()
         urls += generate_objects(bucket, profile[0], profile[1], profile[2], seed, options.checksum)
-    print >> sys.stderr, 'finished sending files. Saving urls to S3'
+    print >> sys.stderr, 'finished sending files. generating  urls and sending to S3'
 
     url_string = '\n'.join(urls)
     url_key = Key(bucket)
@@ -132,5 +127,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    common.setup()
+    try:
+        main()
+    except Exception as e:
+        traceback.print_exc()
+        common.teardown()
 
