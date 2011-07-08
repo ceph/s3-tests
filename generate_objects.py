@@ -23,17 +23,6 @@ def parse_opts():
     return parser.parse_args()
 
 
-def connect_s3(host, access_key, secret_key):
-    conn = S3Connection(
-        calling_format = OrdinaryCallingFormat(),
-        is_secure = False,
-        host = host,
-        aws_access_key_id = access_key,
-        aws_secret_access_key = secret_key)
-
-    return conn
-
-
 def get_random_files(quantity, mean, stddev, seed):
     """Create file-like objects with pseudorandom contents.
        IN:
