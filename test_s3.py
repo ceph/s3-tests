@@ -2,6 +2,7 @@ from cStringIO import StringIO
 import ConfigParser
 import boto.exception
 import boto.s3.connection
+import boto.s3.acl
 import bunch
 import itertools
 import nose
@@ -838,6 +839,98 @@ def test_object_acl_canned_authenticatedread():
 def test_bucket_acl_canned_private_to_private():
     bucket = get_new_bucket()
     bucket.set_acl('private')
+
+
+def _make_acl_xml(acl):
+    return '<?xml version="1.0" encoding="UTF-8"?><AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>' + config.main.user_id + '</ID></Owner>' + acl.to_xml() + '</AccessControlPolicy>'
+
+
+def _build_bucket_acl_xml(permission):
+    acl = boto.s3.acl.ACL()
+    acl.add_user_grant(permission=permission, user_id=config.main.user_id)
+    XML = _make_acl_xml(acl)
+    bucket = get_new_bucket()
+    bucket.set_xml_acl(XML)
+    policy = bucket.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission=permission,
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+
+def test_bucket_acl_xml_fullcontrol():
+    _build_bucket_acl_xml('FULL_CONTROL')
+
+
+def test_bucket_acl_xml_write():
+    _build_bucket_acl_xml('WRITE')
+
+
+def test_bucket_acl_xml_writeacp():
+    _build_bucket_acl_xml('WRITE_ACP')
+
+
+def test_bucket_acl_xml_read():
+    _build_bucket_acl_xml('READ')
+
+
+def test_bucket_acl_xml_readacp():
+    _build_bucket_acl_xml('READ_ACP')
+
+
+def _build_object_acl_xml(permission):
+    acl = boto.s3.acl.ACL()
+    acl.add_user_grant(permission=permission, user_id=config.main.user_id)
+    XML = _make_acl_xml(acl)
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    key.set_xml_acl(XML)
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission=permission,
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+
+def test_object_acl_xml():
+    _build_object_acl_xml('FULL_CONTROL')
+
+
+def test_object_acl_xml_write():
+    _build_object_acl_xml('WRITE')
+
+
+def test_object_acl_xml_writeacp():
+    _build_object_acl_xml('WRITE_ACP')
+
+
+def test_object_acl_xml_read():
+    _build_object_acl_xml('READ')
+
+
+def test_object_acl_xml_readacp():
+    _build_object_acl_xml('READ_ACP')
 
 
 def test_bucket_acl_grant_userid():
