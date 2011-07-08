@@ -67,18 +67,22 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
     with gevent.Timeout(seconds, False):
         while (1):
             r = random.randint(0, 65535)
+            r2 = r
+            if file_name_seed != None:
+                r2 = file_name_seed
+
+            files = generate_objects.get_random_files(quantity, 1024*file_size, 1024*file_stddev, r)
+
             start = time.clock()
-            generate_objects.generate_objects(bucket, quantity, 1024*file_size, 1024*file_stddev, r,
-                name_seed=file_name_seed
-                )
+            keys = generate_objects.upload_objects(bucket, files, r2)
             end = time.clock()
             elapsed = end - start
+
             if queue:
                 queue.put(Result(name, 
                     type=Result.TYPE_WRITER,
                     time=elapsed,
-                    size=file_size*quantity,
-                    details="stddev={stddev}".format(stddev=file_stddev)
+                    size=sum([(file.size/1024) for file in files]),
                     )
                 )
 
