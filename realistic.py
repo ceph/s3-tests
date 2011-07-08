@@ -47,6 +47,26 @@ class RandomContentFile(object):
 
         return ''.join(r)
 
+class FileVerifier(object):
+    def __init__(self):
+        self.size = 0
+        self.hash = hashlib.md5()
+        self.buf = ''
+
+    def write(self, data):
+        self.size += len(data)
+        self.buf += data
+        digsz = -1*self.hash.digest_size
+        new_data, self.buf = self.buf[0:digsz], self.buf[digsz:]
+        self.hash.update(new_data)
+
+    def valid(self):
+        """
+        Returns True if this file looks valid. The file is valid if the end
+        of the file has the md5 digest for the first part of the file.
+        """
+        return self.buf == self.hash.digest()
+
 def files(mean, stddev, seed=None):
     """
     Yields file-like objects with effectively random contents, where

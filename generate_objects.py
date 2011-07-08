@@ -38,7 +38,7 @@ def connect_s3(host, access_key, secret_key):
     return conn
 
 
-def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False):
+def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False, name_seed=None):
     """Generate random objects with sizes across a normal distribution
        specified by mean and standard deviation and write them to bucket.
        IN:
@@ -48,14 +48,18 @@ def generate_objects(bucket, quantity, mean, stddev, seed, checksum=False):
          standard deviation from mean file size
          seed for RNG
          flag to tell the method to append md5 checksums to the output
+         seed to use for the file names. defaults to use the other seed
        OUT:
          list of urls (strings) to objects valid for 1 hour.
          If "checksum" is true, each output string consists of the url
          followed by the md5 checksum.
     """
+    if name_seed == None:
+        name_seed = seed
+
     urls = []
     file_generator = realistic.files(mean, stddev, seed)
-    name_generator = realistic.names(15, 4,seed=seed)
+    name_generator = realistic.names(15, 4,seed=name_seed)
     for _ in xrange(quantity):
         fp = file_generator.next()
         print >> sys.stderr, 'sending file with size %dB' % fp.size
