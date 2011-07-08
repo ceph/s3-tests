@@ -1050,14 +1050,20 @@ class FakeFile(object):
         return self.char*count
 
 class FakeFileVerifier(object):
-    def __init__(self, char=None):
+    def __init__(self, char=None, interrupt=None):
         self.char = char
         self.size = 0
+        self.interrupt=interrupt
 
     def write(self, data):
         size = len(data)
         if self.char == None:
             self.char = data[0]
+        
+        # Sneaky! do stuff right after we get our first chunk of data
+        if self.interrupt != None and self.size == 0 and size > 0:
+            self.interrupt()
+
         self.size += size
         eq(data, self.char*size)
 
@@ -1126,3 +1132,37 @@ def test_atomic_dual_write_4mb():
 
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
+
+# This test seems hang when run on AWS
+def _test_atomic_read(file_size):
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    key = bucket.new_key(objname)
+    key2 = bucket.new_key(objname)
+
+    # wirte <file_size> file of A's
+    fp_a = FakeFile(file_size, 'A')
+    key.set_contents_from_file(fp_a)
+    
+    # verify the A's, but try overwriting with B's in the middle
+    fp_b = FakeFile(file_size, 'B')
+    fp_a_verify = FakeFileVerifier('A',
+        lambda: key2.set_contents_from_file(fp_b)
+        )
+    key.get_contents_to_file(fp_a_verify)
+    eq(fp_a_verify.size, file_size)
+
+    # finally, make sure the write of B's went through
+    _verify_atomic_key_data(key, file_size, 'B')
+
+@attr('fails_on_aws')
+def test_atomic_read_1mb():
+    _test_atomic_read(1024*1024)
+
+@attr('fails_on_aws')
+def test_atomic_read_4mb():
+    _test_atomic_read(1024*1024*4)
+
+@attr('fails_on_aws')
+def test_atomic_read_8mb():
+    _test_atomic_read(1024*1024*8)
