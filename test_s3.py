@@ -200,7 +200,7 @@ def check_grants(got, want):
     eq(len(got), len(want))
     got = sorted(got, key=operator.attrgetter('id'))
     want = sorted(want, key=operator.itemgetter('id'))
-    for g,w in zip(got, want):
+    for g, w in zip(got, want):
         w = dict(w)
         eq(g.permission, w.pop('permission'))
         eq(g.id, w.pop('id'))
@@ -944,7 +944,7 @@ def generate_random(mb_size):
         s = ''
         left = mb_size - x
         this_part_size = min(left, part_size_mb)
-        for y in range(this_part_size  * mb / chunk):
+        for y in range(this_part_size * mb / chunk):
             s = s + strpart
         yield s
         if (x == mb_size):
@@ -989,9 +989,10 @@ def test_list_multipart_upload():
 
 def _simple_http_req_100_cont(host, port, method, resource):
     req = '{method} {resource} HTTP/1.1\r\nHost: {host}\r\nAccept-Encoding: identity\r\nContent-Length: 123\r\nExpect: 100-continue\r\n\r\n'.format(
-            method = method,
-            resource = resource,
-            host = host)
+            method=method,
+            resource=resource,
+            host=host,
+            )
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(5)
@@ -1014,7 +1015,7 @@ def _simple_http_req_100_cont(host, port, method, resource):
 def test_100_continue():
     bucket = get_new_bucket()
     objname = 'testobj'
-    resource = '/{bucket}/{obj}'.format(bucket = bucket.name, obj = objname)
+    resource = '/{bucket}/{obj}'.format(bucket=bucket.name, obj=objname)
 
     status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
     eq(status, '403')
@@ -1075,7 +1076,7 @@ def _test_atomic_write(file_size):
     # create <file_size> file of A's
     fp_a = FakeFile(file_size, 'A')
     key.set_contents_from_file(fp_a)
-    
+
     # verify A's
     _verify_atomic_key_data(key, file_size, 'A')
 
@@ -1102,7 +1103,7 @@ def _test_atomic_dual_write(file_size):
     bucket = get_new_bucket()
     objname = 'testobj'
     key = bucket.new_key(objname)
-    
+
     # get a second key object (for the same key)
     # so both can be writing without interfering
     key2 = bucket.new_key(objname)

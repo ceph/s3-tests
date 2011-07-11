@@ -95,7 +95,7 @@ def files(mean, stddev, seed=None):
     re-download the object and place the contents into a file called
     ``foo``, the following should print two identical lines:
 
-	python -c 'import sys, hashlib; data=sys.stdin.read(); print hashlib.md5(data[:-16]).hexdigest(); print "".join("%02x" % ord(c) for c in data[-16:])' <foo
+      python -c 'import sys, hashlib; data=sys.stdin.read(); print hashlib.md5(data[:-16]).hexdigest(); print "".join("%02x" % ord(c) for c in data[-16:])' <foo
 
     Except for objects shorter than 16 bytes, where the second line
     will be proportionally shorter.

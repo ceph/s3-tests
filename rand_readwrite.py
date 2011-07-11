@@ -12,9 +12,10 @@ import realistic
 import common
 
 class Result:
-    TYPE_NONE   = 0
+    TYPE_NONE = 0
     TYPE_READER = 1
     TYPE_WRITER = 2
+
     def __init__(self, name, type=TYPE_NONE, time=0, success=True, size=0, details=''):
         self.name = name
         self.type = type
@@ -24,7 +25,7 @@ class Result:
         self.details = details
 
     def __repr__(self):
-        type_dict = {Result.TYPE_NONE : 'None', Result.TYPE_READER : 'Reader', Result.TYPE_WRITER : 'Writer'}
+        type_dict = {Result.TYPE_NONE: 'None', Result.TYPE_READER: 'Reader', Result.TYPE_WRITER: 'Writer'}
         type_s = type_dict[self.type]
         if self.success:
             status = 'Success'
@@ -37,7 +38,7 @@ class Result:
             name=self.name,
             size=self.size,
             time=self.time,
-            mbps=(self.size/self.time/1024.0),
+            mbps=self.size / self.time / 1024.0,
             details=self.details
             )
 
@@ -52,13 +53,15 @@ def reader(seconds, bucket, name=None, queue=None):
                 end = time.clock()
                 elapsed = end - start
                 if queue:
-                    queue.put(Result(name, 
-                        type=Result.TYPE_READER,
-                        time=elapsed,
-                        success=fp.valid(),
-                        size=(fp.size/1024)
+                    queue.put(
+                        Result(
+                            name,
+                            type=Result.TYPE_READER,
+                            time=elapsed,
+                            success=fp.valid(),
+                            size=fp.size / 1024,
+                            ),
                         )
-                    )
                 count += 1
             if count == 0:
                 gevent.sleep(1)
@@ -71,7 +74,12 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
             if file_name_seed != None:
                 r2 = file_name_seed
 
-            files = generate_objects.get_random_files(quantity, 1024*file_size, 1024*file_stddev, r)
+            files = generate_objects.get_random_files(
+                quantity=quantity,
+                mean=1024 * file_size,
+                stddev=1024 * file_stddev,
+                seed=r,
+                )
 
             start = time.clock()
             generate_objects.upload_objects(bucket, files, r2)
@@ -79,7 +87,7 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
             elapsed = end - start
 
             if queue:
-                queue.put(Result(name, 
+                queue.put(Result(name,
                     type=Result.TYPE_WRITER,
                     time=elapsed,
                     size=sum([(file.size/1024) for file in files]),
@@ -108,16 +116,16 @@ def parse_options():
     return parser.parse_args()
 
 def main():
-    # parse options 
+    # parse options
     (options, args) = parse_options()
-    
+
     try:
         # setup
         common.setup()
         bucket = common.get_new_bucket()
         print "Created bucket: {name}".format(name=bucket.name)
         r = None
-        if (options.rewrite): 
+        if (options.rewrite):
             r = random.randint(0, 65535)
         q = gevent.queue.Queue()
 
@@ -189,4 +197,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
