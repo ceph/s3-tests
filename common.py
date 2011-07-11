@@ -85,11 +85,11 @@ def setup():
             config.update(bunch.bunchify(new))
 
     # These 3 should always be present.
-    if not config.has_key('s3'):
+    if 's3' not in config:
         raise RuntimeError('Your config file is missing the s3 section!');
-    if not config.s3.has_key('defaults'):
+    if 'defaults' not in config.s3:
         raise RuntimeError('Your config file is missing the s3.defaults section!');
-    if not config.has_key('fixtures'):
+    if 'fixtures' not in config:
         raise RuntimeError('Your config file is missing the fixtures section!');
 
     if config.fixtures.has_key('bucket prefix'):
