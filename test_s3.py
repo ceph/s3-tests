@@ -310,6 +310,17 @@ def test_object_set_get_metadata():
     eq(got, 'mymeta')
 
 
+def test_object_set_get_metadata_empty():
+    bucket = get_new_bucket()
+    key = boto.s3.key.Key(bucket)
+    key.key = ('foo')
+    key.set_metadata('meta1', '')
+    key.set_contents_from_string('bar')
+    key2 = bucket.get_key('foo')
+    got = key2.get_metadata('meta1')
+    eq(got, '')
+
+
 # UTF-8 encoded data should pass straight through
 def test_object_set_get_unicode_metadata():
     bucket = get_new_bucket()
