@@ -1,16 +1,11 @@
 #! /usr/bin/python
 
-from boto.s3.connection import OrdinaryCallingFormat
-from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from optparse import OptionParser
-from realistic import RandomContentFile
 import realistic
 import traceback
 import random
 import common
-import yaml
-import boto
 import sys
 
 

@@ -74,7 +74,7 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
             files = generate_objects.get_random_files(quantity, 1024*file_size, 1024*file_stddev, r)
 
             start = time.clock()
-            keys = generate_objects.upload_objects(bucket, files, r2)
+            generate_objects.upload_objects(bucket, files, r2)
             end = time.clock()
             elapsed = end - start
 
