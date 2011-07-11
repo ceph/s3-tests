@@ -90,7 +90,7 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
                 queue.put(Result(name,
                     type=Result.TYPE_WRITER,
                     time=elapsed,
-                    size=sum((f.size/1024) for f in files),
+                    size=sum(f.size/1024 for f in files),
                     )
                 )
 
