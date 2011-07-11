@@ -10,7 +10,7 @@ import sys
 
 
 def parse_opts():
-    parser = OptionParser();
+    parser = OptionParser()
     parser.add_option('-O', '--outfile', help='write output to FILE. Defaults to STDOUT', metavar='FILE')
     parser.add_option('-b', '--bucket', dest='bucket', help='push objects to BUCKET', metavar='BUCKET')
     parser.add_option('--seed', dest='seed', help='optional seed for the random number generator')
@@ -73,7 +73,7 @@ def main():
         Results are printed to the terminal and written in CSV format to
         ./siege.log
     '''
-    (options, args) = parse_opts();
+    (options, args) = parse_opts()
 
     #SETUP
     random.seed(options.seed if options.seed else None)

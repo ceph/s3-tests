@@ -86,11 +86,11 @@ def setup():
 
     # These 3 should always be present.
     if 's3' not in config:
-        raise RuntimeError('Your config file is missing the s3 section!');
+        raise RuntimeError('Your config file is missing the s3 section!')
     if 'defaults' not in config.s3:
-        raise RuntimeError('Your config file is missing the s3.defaults section!');
+        raise RuntimeError('Your config file is missing the s3.defaults section!')
     if 'fixtures' not in config:
-        raise RuntimeError('Your config file is missing the fixtures section!');
+        raise RuntimeError('Your config file is missing the fixtures section!')
 
     if config.fixtures.has_key('bucket prefix'):
         template = config.fixtures['bucket prefix']
