@@ -123,7 +123,7 @@ def names(mean, stddev, charset=None, seed=None):
     while True:
         while True:
             length = int(rand.normalvariate(mean, stddev))
-            if length >= 0:
+            if length > 0:
                 break
         name = ''.join(rand.choice(charset) for _ in xrange(length))
         yield name
