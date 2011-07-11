@@ -232,6 +232,19 @@ def test_bucket_delete_notexist():
     eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
+def test_bucket_delete_nonempty():
+    bucket = get_new_bucket()
+
+    # fill up bucket
+    obj = bunch.Bunch()
+    obj.a = bucket.new_key('foo')
+    obj.a.set_contents_from_string('foocontent')
+
+    # try to delete
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete)
+    eq(e.status, 409)
+    eq(e.reason, 'Conflict')
+    eq(e.error_code, 'BucketNotEmpty')
 
 def test_object_write_to_nonexist_bucket():
     name = '{prefix}foo'.format(prefix=prefix)
