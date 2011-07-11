@@ -98,7 +98,7 @@ def setup():
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
     if prefix == '':
-        raise RuntimeError, "Empty Prefix! Aborting!"
+        raise RuntimeError("Empty Prefix! Aborting!")
 
     defaults = config.s3.defaults
     for section in config.s3.keys():
