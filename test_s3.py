@@ -914,6 +914,18 @@ def test_object_copy_diff_bucket():
     key2 = buckets[1].get_key('bar321foo')
     eq(key2.get_contents_as_string(), 'foo')
 
+# is this a necessary check? a NoneType object is being touched here
+# it doesn't get to the S3 level
+def test_object_copy_not_owned_bucket():
+    buckets = [get_new_bucket(), get_new_bucket(s3.alt)]
+    print repr(buckets[1])
+    key = buckets[0].new_key('foo123bar')
+    key.set_contents_from_string('foo')
+
+    try:
+        key.copy(buckets[1], 'bar321foo')
+    except AttributeError:
+        pass
 
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
