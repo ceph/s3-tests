@@ -1,3 +1,4 @@
+PyYAML
 nose >=1.0.0
 boto >=2.0b4
 bunch >=1.0.0

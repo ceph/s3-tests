@@ -9,3 +9,5 @@
 *.pyo
 
 /virtualenv
+
+config.yml
