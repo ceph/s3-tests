@@ -92,10 +92,7 @@ def setup():
     if 'fixtures' not in config:
         raise RuntimeError('Your config file is missing the fixtures section!')
 
-    if config.fixtures.has_key('bucket prefix'):
-        template = config.fixtures['bucket prefix']
-    else:
-        template = 'test-{random}-'
+    template = config.fixtures.get('bucket prefix', 'test-{random}-')
     prefix = choose_bucket_prefix(template=template)
     if prefix == '':
         raise RuntimeError("Empty Prefix! Aborting!")
