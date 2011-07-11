@@ -18,6 +18,8 @@ from nose.plugins.attrib import attr
 from utils import assert_raises
 import AnonymousAuth
 
+from email.header import decode_header
+
 NONEXISTENT_EMAIL = 'doesnotexist@dreamhost.com.invalid'
 
 s3 = bunch.Bunch()
@@ -298,26 +300,98 @@ def test_object_write_read_update_read_delete():
     key.delete()
 
 
-def test_object_set_get_metadata():
-    bucket = get_new_bucket()
+def _set_get_metadata(metadata, bucket=None):
+    if bucket is None:
+        bucket = get_new_bucket()
     key = boto.s3.key.Key(bucket)
     key.key = ('foo')
-    key.set_metadata('meta1', 'mymeta')
+    key.set_metadata('meta1', metadata)
     key.set_contents_from_string('bar')
     key2 = bucket.get_key('foo')
-    got = key2.get_metadata('meta1')
+    return key2.get_metadata('meta1')
+ 
+
+def test_object_set_get_metadata_none_to_good():
+    got = _set_get_metadata('mymeta')
     eq(got, 'mymeta')
 
 
-def test_object_set_get_metadata_empty():
-    bucket = get_new_bucket()
-    key = boto.s3.key.Key(bucket)
-    key.key = ('foo')
-    key.set_metadata('meta1', '')
-    key.set_contents_from_string('bar')
-    key2 = bucket.get_key('foo')
-    got = key2.get_metadata('meta1')
+def test_object_set_get_metadata_none_to_empty():
+    got = _set_get_metadata('')
     eq(got, '')
+
+
+def test_object_set_get_metadata_overwrite_to_good():
+    bucket = get_new_bucket()
+    got = _set_get_metadata('oldmeta', bucket)
+    eq(got, 'oldmeta')
+    got = _set_get_metadata('newmeta', bucket)
+    eq(got, 'newmeta')
+
+
+def test_object_set_get_metadata_overwrite_to_empty():
+    bucket = get_new_bucket()
+    got = _set_get_metadata('oldmeta', bucket)
+    eq(got, 'oldmeta')
+    got = _set_get_metadata('', bucket)
+    eq(got, '')
+
+
+def _set_get_metadata_unreadable(metadata, bucket=None):
+    got = _set_get_metadata(metadata, bucket)
+    got = decode_header(got)
+    return got
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_empty_to_unreadable_prefix():
+    metadata = '\x04w'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_empty_to_unreadable_suffix():
+    metadata = 'h\x04'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_empty_to_unreadable_infix():
+    metadata = 'h\x04w'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_overwrite_to_unreadable_prefix():
+    metadata = '\x04w'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+    metadata2 = '\x05w'
+    got2 = _set_get_metadata_unreadable(metadata2)
+    eq(got2, [(metadata2, 'utf-8')])
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_overwrite_to_unreadable_suffix():
+    metadata = 'h\x04'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+    metadata2 = 'h\x05'
+    got2 = _set_get_metadata_unreadable(metadata2)
+    eq(got2, [(metadata2, 'utf-8')])
+
+
+@attr('fails_on_dho')
+def test_object_set_get_metadata_overwrite_to_unreadable_infix():
+    metadata = 'h\x04w'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
+    metadata2 = 'h\x05w'
+    got2 = _set_get_metadata_unreadable(metadata2)
+    eq(got2, [(metadata2, 'utf-8')])
 
 
 def test_object_write_file():
