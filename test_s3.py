@@ -240,9 +240,8 @@ def test_bucket_delete_nonempty():
     bucket = get_new_bucket()
 
     # fill up bucket
-    obj = bunch.Bunch()
-    obj.a = bucket.new_key('foo')
-    obj.a.set_contents_from_string('foocontent')
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('foocontent')
 
     # try to delete
     e = assert_raises(boto.exception.S3ResponseError, bucket.delete)
