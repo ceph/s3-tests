@@ -54,27 +54,28 @@ def main():
     else:
         OUTFILE = sys.stdout
 
-    try:
-        bucket = conn.get_bucket(args[0])
-    except S3ResponseError as e:
-        print >> sys.stderr, "S3 claims %s isn't a valid bucket...maybe the user you specified in config.yml doesn't have access to it?" %args[0]
-        common.teardown()
-        return
+    for bucket_name in args:
+        try:
+            bucket = conn.get_bucket(bucket_name)
+        except S3ResponseError as e:
+            print >> sys.stderr, "S3 claims %s isn't a valid bucket...maybe the user you specified in config.yml doesn't have access to it?" %bucket_name
+            common.teardown()
+            return
 
-    (name, grants) = get_bucket_properties(bucket)
-    print >> OUTFILE, "Bucket Name: %s" % name
-    for grant in grants:
-        print >> OUTFILE, "\tgrant %s %s" %(grant)
-
-    for key in bucket.list():
-        full_key = bucket.get_key(key.name)
-        (name, size, grants, metadata) = get_key_properties(full_key)
-        print >> OUTFILE, name
-        print >> OUTFILE, "\tsize:  %s" %size
+        (name, grants) = get_bucket_properties(bucket)
+        print >> OUTFILE, "Bucket Name: %s" % name
         for grant in grants:
             print >> OUTFILE, "\tgrant %s %s" %(grant)
-        for metadata_key in metadata:
-            print >> OUTFILE, "\tmetadata %s: %s" %(metadata_key, metadata[metadata_key])
+
+        for key in bucket.list():
+            full_key = bucket.get_key(key.name)
+            (name, size, grants, metadata) = get_key_properties(full_key)
+            print >> OUTFILE, name
+            print >> OUTFILE, "\tsize:  %s" %size
+            for grant in grants:
+                print >> OUTFILE, "\tgrant %s %s" %(grant)
+            for metadata_key in metadata:
+                print >> OUTFILE, "\tmetadata %s: %s" %(metadata_key, metadata[metadata_key])
 
 
 
