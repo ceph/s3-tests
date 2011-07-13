@@ -194,6 +194,3 @@ def main():
         # cleanup
         if options.cleanup:
             common.teardown()
-
-if __name__ == "__main__":
-    main()

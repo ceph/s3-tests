@@ -2,10 +2,10 @@
 
 from boto.s3.key import Key
 from optparse import OptionParser
-import realistic
+from . import realistic
 import traceback
 import random
-import common
+from . import common
 import sys
 
 
@@ -54,7 +54,7 @@ def upload_objects(bucket, files, seed):
     return keys
 
 
-def main():
+def _main():
     '''To run the static content load test, make sure you've bootstrapped your
        test environment and set up your config.yml file, then run the following:
           S3TEST_CONF=config.yml virtualenv/bin/python generate_objects.py -O urls.txt --seed 1234
@@ -106,10 +106,10 @@ def main():
     print >> sys.stderr, 'done'
 
 
-if __name__ == '__main__':
+def main():
     common.setup()
     try:
-        main()
+        _main()
     except Exception as e:
         traceback.print_exc()
         common.teardown()

@@ -8,6 +8,7 @@
 *.pyc
 *.pyo
 
+/*.egg-info
 /virtualenv
 
 config.yml
