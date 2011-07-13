@@ -22,7 +22,7 @@ from . import (
     get_new_bucket,
     s3,
     config,
-    prefix,
+    get_prefix,
     )
 
 
@@ -61,7 +61,7 @@ def test_bucket_list_empty():
     eq(l, [])
 
 def test_bucket_notexist():
-    name = '{prefix}foo'.format(prefix=prefix)
+    name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
     e = assert_raises(boto.exception.S3ResponseError, s3.main.get_bucket, name)
     eq(e.status, 404)
@@ -70,7 +70,7 @@ def test_bucket_notexist():
 
 
 def test_bucket_delete_notexist():
-    name = '{prefix}foo'.format(prefix=prefix)
+    name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
     e = assert_raises(boto.exception.S3ResponseError, s3.main.delete_bucket, name)
     eq(e.status, 404)
@@ -91,7 +91,7 @@ def test_bucket_delete_nonempty():
     eq(e.error_code, 'BucketNotEmpty')
 
 def test_object_write_to_nonexist_bucket():
-    name = '{prefix}foo'.format(prefix=prefix)
+    name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
     bucket = s3.main.get_bucket(name, validate=False)
     key = bucket.new_key('foo123bar')
@@ -102,7 +102,7 @@ def test_object_write_to_nonexist_bucket():
 
 
 def test_bucket_create_delete():
-    name = '{prefix}foo'.format(prefix=prefix)
+    name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
     bucket = s3.main.create_bucket(name)
     # make sure it's actually there
@@ -317,7 +317,7 @@ def check_good_bucket_name(name, _prefix=None):
     # their own setup/teardown nukes, with their custom prefix; this
     # should be very rare
     if _prefix is None:
-        _prefix = prefix
+        _prefix = get_prefix()
     s3.main.create_bucket('{prefix}{name}'.format(
             prefix=_prefix,
             name=name,
@@ -325,6 +325,7 @@ def check_good_bucket_name(name, _prefix=None):
 
 
 def _test_bucket_create_naming_good_long(length):
+    prefix = get_prefix()
     assert len(prefix) < 255
     num = length - len(prefix)
     s3.main.create_bucket('{prefix}{name}'.format(
@@ -357,6 +358,7 @@ def test_bucket_create_naming_good_long_255():
     _test_bucket_create_naming_good_long(255)
 
 def test_bucket_list_long_name():
+    prefix = get_prefix()
     length = 251
     num = length - len(prefix)
     bucket = s3.main.create_bucket('{prefix}{name}'.format(
@@ -387,6 +389,7 @@ def test_bucket_create_naming_dns_underscore():
 
 
 def test_bucket_create_naming_dns_long():
+    prefix = get_prefix()
     assert len(prefix) < 50
     num = 100 - len(prefix)
     check_good_bucket_name(num * 'a')
@@ -1119,21 +1122,21 @@ def test_list_buckets_bad_auth():
 # control the initial character of the bucket name
 @attr('fails_on_rgw')
 @nose.with_setup(
-    setup=lambda: nuke_prefixed_buckets(prefix='a'+prefix),
-    teardown=lambda: nuke_prefixed_buckets(prefix='a'+prefix),
+    setup=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
+    teardown=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
     )
 def test_bucket_create_naming_good_starts_alpha():
-    check_good_bucket_name('foo', _prefix='a'+prefix)
+    check_good_bucket_name('foo', _prefix='a'+get_prefix())
 
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
 @attr('fails_on_rgw')
 @nose.with_setup(
-    setup=lambda: nuke_prefixed_buckets(prefix='0'+prefix),
-    teardown=lambda: nuke_prefixed_buckets(prefix='0'+prefix),
+    setup=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
+    teardown=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
     )
 def test_bucket_create_naming_good_starts_digit():
-    check_good_bucket_name('foo', _prefix='0'+prefix)
+    check_good_bucket_name('foo', _prefix='0'+get_prefix())
 
 def test_bucket_create_naming_good_contains_period():
     check_good_bucket_name('aaa.111')

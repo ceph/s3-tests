@@ -13,6 +13,9 @@ config = bunch.Bunch()
 # this will be assigned by setup()
 prefix = None
 
+def get_prefix():
+    assert prefix is not None
+    return prefix
 
 def choose_bucket_prefix(template, max_len=30):
     """
