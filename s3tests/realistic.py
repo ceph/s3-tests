@@ -78,6 +78,9 @@ class FileVerifier(object):
         Returns True if this file looks valid. The file is valid if the end
         of the file has the md5 digest for the first part of the file.
         """
+        if self.size < self.hash.digest_size:
+            return self.hash.digest().startswith(self.buf)
+
         return self.buf == self.hash.digest()
 
 def files(mean, stddev, seed=None):
