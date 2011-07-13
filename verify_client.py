@@ -2,12 +2,8 @@
 
 from boto.s3.key import Key
 from optparse import OptionParser
-import realistic
 import traceback
-import random
 import common
-import yaml
-import boto
 import sys
 
 
@@ -38,12 +34,14 @@ def get_key_properties(key):
 
 
 def main():
-    '''To run the static content load test, make sure you've bootstrapped your
-       test environment and set up your config.yml file, then run the following:
+    """Client results validation tool make sure you've bootstrapped your
+       test environment and set up your config.yml file, then run the
+       following:
           S3TEST_CONF=config.yml virtualenv/bin/python verify_client.py -O output.txt test-bucket-name
 
-       S3 authentication information for the bucket's owner must be in config.yml to create the connection.
-    '''
+       S3 authentication information for the bucket's owner must be in
+       config.yml to create the connection.
+    """
     (options, args) = parse_opts();
 
     #SETUP
