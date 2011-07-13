@@ -1,0 +1,26 @@
+- name: foo
+  perms:
+    null: READ
+    kylmar4: FULL_CONTROL
+  objects:
+  - name: bar
+    content: asdf
+    metadata: 
+      a: b
+      c: d
+    perms:
+      kylmar4: FULL_CONTROL
+- name: baz
+  perms:
+    null: WRITE
+    kylmar4: FULL_CONTROL
+  objects:
+  - content: aoeu
+    metadata: 
+      x: y
+      z: w
+    name: oof
+    perms:
+      null: FULL_CONTROL
+      kylmar4: FULL_CONTROL
+

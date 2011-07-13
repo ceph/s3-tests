@@ -4,12 +4,15 @@ from boto.s3.key import Key
 from optparse import OptionParser
 import traceback
 import common
+import bunch
+import yaml
 import sys
 
 
 def parse_opts():
     parser = OptionParser();
     parser.add_option('-O' , '--outfile', help='write output to FILE. Defaults to STDOUT', metavar='FILE')
+    parser.add_option('-b' , '--blueprint', help='populate buckets according to blueprint file BLUEPRINT.  Used to get baseline results to compare client results against.', metavar='BLUEPRINT')
     return parser.parse_args()
 
 
@@ -33,6 +36,43 @@ def get_key_properties(key):
     return (key.name, key.size, grants, key.metadata)
 
 
+def read_blueprint(infile):
+    """Takes a filename as input and returns a "bunch" describing buckets
+       and objects to upload to an S3-like object store.  This can be used
+       to confirm that buckets created by another client match those created
+       by boto.
+    """
+    try:
+        INFILE = open(infile, 'r')
+        blueprint = bunch.bunchify(yaml.safe_load(INFILE))
+    except Exception as e:
+        print >> sys.stderr, "There was an error reading the blueprint file, %s:" %infile
+        print >> sys.stderr, traceback.print_exc()
+
+    return blueprint
+
+
+def populate_from_blueprint(conn, blueprint, prefix=''):
+    """Take a connection and a blueprint.  Create buckets and upload objects
+       according to the blueprint.  Prefix will be added to each bucket name.
+    """
+    buckets = []
+    for bucket in blueprint:
+        b = conn.create_bucket(prefix + bucket.name)
+        for user in bucket.perms:
+            b.add_user_grant(bucket.perms[user], user)
+        for key in bucket.objects:
+            k = Key(b)
+            k.key = key.name
+            k.metadata = bunch.unbunchify(key.metadata)
+            k.set_contents_from_string(key.content)
+            for user in key.perms:
+                k.add_user_grant(key.perms[user], user)
+        buckets.append(b)
+    return buckets
+
+
+
 def main():
     """Client results validation tool make sure you've bootstrapped your
        test environment and set up your config.yml file, then run the
@@ -42,7 +82,7 @@ def main():
        S3 authentication information for the bucket's owner must be in
        config.yml to create the connection.
     """
-    (options, args) = parse_opts();
+    (options, args) = parse_opts()
 
     #SETUP
     conn = common.s3.main
@@ -51,6 +91,12 @@ def main():
         OUTFILE = open(options.outfile, 'w')
     else:
         OUTFILE = sys.stdout
+
+    blueprint = None
+    if options.blueprint:
+        blueprint = read_blueprint(options.blueprint)
+    if blueprint:
+        populate_from_blueprint(conn, blueprint, common.prefix)
 
     for bucket_name in args:
         try:
