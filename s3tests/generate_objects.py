@@ -49,6 +49,7 @@ def upload_objects(bucket, files, seed):
         key = Key(bucket)
         key.key = name_generator.next()
         key.set_contents_from_file(fp)
+        key.set_acl('public-read')
         keys.append(key)
 
     return keys
@@ -91,6 +92,7 @@ def _main():
     else:
         bucket = common.get_new_bucket()
 
+    bucket.set_acl('public-read')
     keys = []
     print >> OUTFILE, 'bucket: %s' % bucket.name
     print >> sys.stderr, 'setup complete, generating files'
@@ -101,7 +103,7 @@ def _main():
 
     print >> sys.stderr, 'finished sending files. generating urls'
     for key in keys:
-        print >> OUTFILE, key.generate_url(30758400) #valid for 1 year
+        print >> OUTFILE, key.generate_url(0, query_auth=False)
 
     print >> sys.stderr, 'done'
 
