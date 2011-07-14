@@ -53,9 +53,9 @@ def reader(seconds, bucket, name=None, queue=None):
             count = 0
             for key in bucket.list():
                 fp = realistic.FileVerifier()
-                start = time.clock()
+                start = time.time()
                 key.get_contents_to_file(fp)
-                end = time.clock()
+                end = time.time()
                 elapsed = end - start
                 if queue:
                     queue.put(
@@ -86,9 +86,9 @@ def writer(seconds, bucket, name=None, queue=None, quantity=1, file_size=1, file
                 seed=r,
                 )
 
-            start = time.clock()
+            start = time.time()
             generate_objects.upload_objects(bucket, files, r2)
-            end = time.clock()
+            end = time.time()
             elapsed = end - start
 
             if queue:
