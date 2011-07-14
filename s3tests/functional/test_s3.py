@@ -8,6 +8,7 @@ import operator
 import random
 import string
 import socket
+import ssl
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
@@ -1235,7 +1236,7 @@ def test_list_multipart_upload():
     upload2.cancel_upload()
     upload3.cancel_upload()
 
-def _simple_http_req_100_cont(host, port, method, resource):
+def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     req = '{method} {resource} HTTP/1.1\r\nHost: {host}\r\nAccept-Encoding: identity\r\nContent-Length: 123\r\nExpect: 100-continue\r\n\r\n'.format(
             method=method,
             resource=resource,
@@ -1243,6 +1244,8 @@ def _simple_http_req_100_cont(host, port, method, resource):
             )
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if is_secure:
+        s = ssl.wrap_socket(s);
     s.settimeout(5)
     s.connect((host, port))
     s.send(req)
@@ -1265,12 +1268,12 @@ def test_100_continue():
     objname = 'testobj'
     resource = '/{bucket}/{obj}'.format(bucket=bucket.name, obj=objname)
 
-    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
+    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, s3.main.is_secure, 'PUT', resource)
     eq(status, '403')
 
     bucket.set_acl('public-read-write')
 
-    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, 'PUT', resource)
+    status = _simple_http_req_100_cont(s3.main.host, s3.main.port, s3.main.is_secure, 'PUT', resource)
     eq(status, '100')
 
 class FakeFile(object):
