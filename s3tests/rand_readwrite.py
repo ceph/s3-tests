@@ -32,13 +32,18 @@ class Result:
         else:
             status = 'FAILURE'
 
+        if (self.time == 0):
+            mbps = '?'
+        else:
+            mbps = self.size / self.time / 1024.0
+
         return "<Result: [{success}] {type}{name} -- {size} KB in {time}s = {mbps} MB/s {details}>".format(
             success=status,
             type=type_s,
             name=self.name,
             size=self.size,
             time=self.time,
-            mbps=self.size / self.time / 1024.0,
+            mbps=mbps,
             details=self.details
             )
 
