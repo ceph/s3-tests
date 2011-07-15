@@ -38,8 +38,8 @@ class SafeTransferGreenlet(gevent.Greenlet):
     def _real_run(self):
         """ Return True if we need to retry, False otherwise. """
         result = self.result = TransferGreenletResult(self.type)
-        result.start_time = time.time()
-        
+        result.markStarted()
+
         try:
             with gevent.Timeout(self.timeout, False):
                 result.success = self._doit()
@@ -52,13 +52,11 @@ class SafeTransferGreenlet(gevent.Greenlet):
             if e.args[0].startswith('This event is already used by another greenlet'):
                 return True # retry
             # Different assertion error, so fail normally.
-            result.comment = traceback.format_exc()
+            result.setError(show_traceback=True)
         except Exception:
-            result.comment = traceback.format_exc()
+            result.setError(show_traceback=True)
 
-        result.finish_time = time.time()
-        result.duration = result.finish_time - result.start_time
-        result.queue_finished()
+        result.markFinished()
         return False # don't retry
 
 
@@ -74,21 +72,22 @@ class ReaderGreenlet(SafeTransferGreenlet):
             key = random.choice(context.all_keys)
         else:
             time.sleep(1)
-            self.result.comment = 'No available keys to test with reader. Try again later.'
-            return False
+            return self.result.setError('No available keys to test with reader. Try again later.')
 
         self.key = key
-        fp = FileVerifier()
-        self.result.name = key.name
+        self.result.setKey(key)
 
-        request_start = time.time()
+        fp = FileVerifier()
+
         key.get_contents_to_file(fp)
+
+        self.result.request_finish = time.time()
+        self.result.request_start = fp.created_at
+        self.result.chunks = fp.chunks
         self.result.size = fp.size
-        self.result.latency = fp.first_write - request_start
 
         if not fp.valid():
-            self.result.comment = 'Failed to validate key {name!s}'.format(name=key.name)
-            return False
+            return self.result.setError('Failed to validate key {name!s}'.format(name=key.name))
 
         return True
 
@@ -100,14 +99,19 @@ class WriterGreenlet(SafeTransferGreenlet):
         if self.key:
             key = self.key
         else:
-            key = self.key = get_next_key(context.bucket)
+            key = get_next_key(context.bucket)
+
+        self.key = key
+        self.result.setKey(key)
 
         fp = next(context.files_iter)
-        self.result.name = key.name
         self.result.size = fp.size
 
         key.set_contents_from_file(fp)
-        self.result.latency = time.time() - fp.last_read
+
+        self.result.request_finish = time.time()
+        self.result.request_start = fp.start_time
+        self.result.chunks = fp.last_chunks
 
         # And at the end, add to neads_first_read and shuffle
         context.neads_first_read.append(key)

@@ -20,7 +20,7 @@ from common.results import ResultsLogger
 context.update(bunch.Bunch(
     # Set to False when it's time to exit main loop.
     running = True,
-    
+
     # The pools our tasks run in.
     greenlet_pools = bunch.Bunch(
         writer=None,

@@ -7,26 +7,43 @@ import time
 
 class RandomContentFile(object):
     def __init__(self, size, seed):
+        self.size = size
         self.seed = seed
         self.random = random.Random(self.seed)
-        self.offset = 0
-        self.buffer = ''
-        self.size = size
-        self.hash = hashlib.md5()
-        self.digest_size = self.hash.digest_size
-        self.digest = None
-        self.last_read = 0
 
-        assert self.size >= self.digest_size, "Can not create RandomContentFile: size ({size}) must be >= digest_size ({digest_size})".format(
+        # Boto likes to seek once more after it's done reading, so we need to save the last chunks/seek value.
+        self.last_chunks = self.chunks = None
+        self.last_seek = self.start_time = None
+
+        # Let seek initialize the rest of it, rather than dup code
+        self.seek(0)
+
+        assert self.size >= self.digest_size, \
+            "Can not create RandomContentFile: size ({size}) must be >= digest_size ({digest_size})".format(
             size=self.size,
             digest_size=self.digest_size
             )
+
+    def _mark_chunk(self):
+        ctime = time.time()
+        self.chunks.append([self.offset, (ctime - self.last_seek) * 1000000000, ctime])
 
     def seek(self, offset):
         assert offset == 0
         self.random.seed(self.seed)
         self.offset = offset
         self.buffer = ''
+
+        self.hash = hashlib.md5()
+        self.digest_size = self.hash.digest_size
+        self.digest = None
+		
+		# Save the last seek time as our start time, and the last chunks
+        self.start_time = self.last_seek
+        self.last_chunks = self.chunks
+        # Before emptying.
+        self.last_seek = time.time()
+        self.chunks = []
 
     def tell(self):
         return self.offset
@@ -65,7 +82,8 @@ class RandomContentFile(object):
             size -= digest_count
             data = self.digest[:digest_count]
             r.append(data)
-            self.last_read = time.time()
+
+        self._mark_chunk()
 
         return ''.join(r)
 
@@ -74,16 +92,20 @@ class FileVerifier(object):
         self.size = 0
         self.hash = hashlib.md5()
         self.buf = ''
-        self.first_write = 0
+        self.created_at = time.time()
+        self.chunks = []
+
+    def _mark_chunk(self):
+        ctime = time.time()
+        self.chunks.append([self.size, (ctime - self.created_at) * 1000000000, ctime])
 
     def write(self, data):
-        if self.size == 0:
-            self.first_write = time.time()
         self.size += len(data)
         self.buf += data
         digsz = -1*self.hash.digest_size
         new_data, self.buf = self.buf[0:digsz], self.buf[digsz:]
         self.hash.update(new_data)
+        self._mark_chunk()
 
     def valid(self):
         """
