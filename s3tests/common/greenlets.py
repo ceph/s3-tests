@@ -28,14 +28,14 @@ class SafeTransferGreenlet(gevent.Greenlet):
         do the same op (reading, for ex), it raises an AssertionError rather than just switching
         contexts again. Oh joy.
 
-        To combat this, we've put the main work to do in _call_doit, which handles detecting the
-        gevent quirk, and we'll retry as long as _call_doit requests that we retry, as indicated
-         by _call_doit returning True.
+        To combat this, we've put the main work to do in _real_run, which handles detecting the
+        gevent quirk, and we'll retry as long as _real_run requests that we retry, as indicated
+         by _real_run returning True.
         """
-        while self._call_doit():
+        while self._real_run():
             time.sleep(0.1)
 
-    def _call_doit(self):
+    def _real_run(self):
         """ Return True if we need to retry, False otherwise. """
         result = self.result = TransferGreenletResult(self.type)
         result.start_time = time.time()
