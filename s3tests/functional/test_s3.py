@@ -888,13 +888,14 @@ def test_bucket_acl_grant_userid_write():
 def test_bucket_acl_grant_nonexist_user():
     bucket = get_new_bucket()
     # add alt user
-    bad_user_id = 'foo'
+    bad_user_id = '_foo'
     policy = bucket.get_acl()
     policy.acl.add_user_grant('FULL_CONTROL', bad_user_id)
     print policy.to_xml()
     e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
 
 
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
