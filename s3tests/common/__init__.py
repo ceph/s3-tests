@@ -50,13 +50,19 @@ def nuke_prefixed_buckets():
                 print 'Cleaning bucket {bucket}'.format(bucket=bucket)
                 try:
                     bucket.set_canned_acl('private')
-                    for key in bucket.list():
-                        print 'Cleaning bucket {bucket} key {key}'.format(
-                            bucket=bucket,
-                            key=key,
-                            )
-                        key.set_canned_acl('private')
-                        key.delete()
+                    # TODO: deleted_cnt and the while loop is a work around for rgw
+                    # not sending the 
+                    deleted_cnt = 1
+                    while deleted_cnt:
+                        deleted_cnt = 0
+                        for key in bucket.list():
+                            print 'Cleaning bucket {bucket} key {key}'.format(
+                                bucket=bucket,
+                                key=key,
+                                )
+                            key.set_canned_acl('private')
+                            key.delete()
+                            deleted_cnt += 1
                     bucket.delete()
                 except boto.exception.S3ResponseError as e:
                     # TODO workaround for buggy rgw that fails to send
