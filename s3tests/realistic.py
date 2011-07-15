@@ -1,7 +1,9 @@
+import bunch
 import hashlib
 import random
 import string
 import struct
+import time
 
 class RandomContentFile(object):
     def __init__(self, size, seed):
@@ -127,3 +129,49 @@ def names(mean, stddev, charset=None, seed=None):
                 break
         name = ''.join(rand.choice(charset) for _ in xrange(length))
         yield name
+
+def files_varied(groups):
+    """ Yields a weighted-random selection of file-like objects. """
+    # Quick data type sanity.
+    assert groups and isinstance(groups, (list, tuple))
+
+    total_num = 0
+    file_sets = []
+    rand = random.Random(time.time())
+
+    # Build the sets for our yield
+    for num, size, stddev in groups:
+        assert num and size
+
+        file_sets.append(bunch.Bunch(
+            num    = num,
+            size   = size,
+            stddev = stddev,
+            files  = files(size, stddev, time.time())
+        ))
+        total_num += num
+
+    while True:
+        if not total_num:
+            raise StopIteration
+
+        num = rand.randrange(total_num)
+
+        ok = 0
+        for file_set in file_sets:
+            if num > file_set.num:
+                num -= file_set.num
+                continue
+
+            total_num -= 1
+            file_set.num   -= 1
+
+            # None left in this set!
+            if file_set.num == 0:
+                file_sets.remove(file_set)
+
+            ok = 1
+            yield next(file_set.files)
+
+        if not ok:
+            raise RuntimeError, "Couldn't find a match."
