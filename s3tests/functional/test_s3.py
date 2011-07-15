@@ -801,11 +801,11 @@ def test_object_acl_xml_readacp():
     _build_object_acl_xml('READ_ACP')
 
 
-def test_bucket_acl_grant_userid():
+def _bucket_acl_grant_userid(permission):
     bucket = get_new_bucket()
     # add alt user
     policy = bucket.get_acl()
-    policy.acl.add_user_grant('FULL_CONTROL', config.alt.user_id)
+    policy.acl.add_user_grant(permission, config.alt.user_id)
     bucket.set_acl(policy)
     policy = bucket.get_acl()
     check_grants(
@@ -820,7 +820,7 @@ def test_bucket_acl_grant_userid():
                 type='CanonicalUser',
                 ),
             dict(
-                permission='FULL_CONTROL',
+                permission=permission,
                 id=config.alt.user_id,
                 display_name=config.alt.display_name,
                 uri=None,
@@ -830,10 +830,71 @@ def test_bucket_acl_grant_userid():
             ],
         )
 
+    return bucket
+
+
+def test_bucket_acl_grant_userid_fullcontrol():
+    bucket = _bucket_acl_grant_userid('FULL_CONTROL')
+
     # alt user can write
     bucket2 = s3.alt.get_bucket(bucket.name)
     key = bucket2.new_key('foo')
     key.set_contents_from_string('bar')
+
+
+def test_bucket_acl_grant_userid_read():
+    bucket = _bucket_acl_grant_userid('READ')
+
+    # alt user can read but not write
+    bucket2 = s3.alt.get_bucket(bucket.name)
+
+    # can't read acl
+    check_access_denied(bucket2.get_acl)
+
+    # can't write
+    key = bucket2.new_key('foo')
+    check_access_denied(key.set_contents_from_string, 'bar')
+
+
+def test_bucket_acl_grant_userid_readacp():
+    bucket = _bucket_acl_grant_userid('READ_ACP')
+
+    # alt user can read the acl
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    bucket2.get_acl()
+
+    # can't write
+    key = bucket2.new_key('foo')
+    check_access_denied(key.set_contents_from_string, 'bar')
+
+
+def test_bucket_acl_grant_userid_write():
+    bucket = _bucket_acl_grant_userid('WRITE')
+
+    # alt user shouldn't have read access
+    check_access_denied(s3.alt.get_bucket, bucket.name)
+
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    key = bucket2.new_key('foo')
+
+    # can't modify acl
+    check_access_denied(key.set_acl, 'public-read')
+
+    # can write
+    key.set_contents_from_string('bar')
+
+
+@attr('fails_on_dho')
+def test_bucket_acl_grant_nonexist_user():
+    bucket = get_new_bucket()
+    # add alt user
+    bad_user_id = 'foo'
+    policy = bucket.get_acl()
+    policy.acl.add_user_grant('FULL_CONTROL', bad_user_id)
+    print policy.to_xml()
+    e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
 
 
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
