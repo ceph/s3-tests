@@ -15,6 +15,7 @@ class RandomContentFile(object):
         self.hash = hashlib.md5()
         self.digest_size = self.hash.digest_size
         self.digest = None
+        self.last_read = 0
 
     def seek(self, offset):
         assert offset == 0
@@ -59,6 +60,7 @@ class RandomContentFile(object):
             size -= digest_count
             data = self.digest[:digest_count]
             r.append(data)
+            self.last_read = time.time()
 
         return ''.join(r)
 
@@ -67,8 +69,11 @@ class FileVerifier(object):
         self.size = 0
         self.hash = hashlib.md5()
         self.buf = ''
+        self.first_write = 0
 
     def write(self, data):
+        if self.size == 0:
+            self.first_write = time.time()
         self.size += len(data)
         self.buf += data
         digsz = -1*self.hash.digest_size
