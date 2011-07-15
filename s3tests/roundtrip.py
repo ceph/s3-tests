@@ -65,7 +65,7 @@ def _main():
     # Main work loop.
     print "Starting main work loop..."
     while context.running:
-        common.fill_pools(context.greenlet_pools.writer, context.greenlet_pools.reader)
+        common.fill_pools(*context.greenlet_pools.values())
         time.sleep(0.1)
 
     print "We've hit duration. Time to stop!"
