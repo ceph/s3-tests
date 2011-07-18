@@ -160,7 +160,7 @@ def names(mean, stddev, charset=None, seed=None):
         name = ''.join(rand.choice(charset) for _ in xrange(length))
         yield name
 
-def files_varied(groups):
+def files_varied(groups, unlimited=False):
     """ Yields a weighted-random selection of file-like objects. """
     # Quick data type sanity.
     assert groups and isinstance(groups, (list, tuple))
@@ -193,12 +193,13 @@ def files_varied(groups):
                 num -= file_set.num
                 continue
 
-            total_num -= 1
-            file_set.num   -= 1
+            if not unlimited:
+                total_num -= 1
+                file_set.num -= 1
 
-            # None left in this set!
-            if file_set.num == 0:
-                file_sets.remove(file_set)
+                # None left in this set!
+                if file_set.num == 0:
+                    file_sets.remove(file_set)
 
             ok = 1
             yield next(file_set.files)
