@@ -49,13 +49,7 @@ class SafeTransferGreenlet(gevent.Greenlet):
             # We don't want to retry, as it's time to exit, but we also don't want to count
             # this as a failure.
             return False
-        except AssertionError as e:
-            # If we've raised this damn gevent error, we simply need to retry.
-            if e.args[0].startswith('This event is already used by another greenlet'):
-                return True # retry
-            # Different assertion error, so fail normally.
-            result.setError(show_traceback=True)
-        except Exception:
+        except:
             result.setError(show_traceback=True)
 
         result.markFinished()
@@ -76,6 +70,8 @@ class ReaderGreenlet(SafeTransferGreenlet):
             time.sleep(1)
             return self.result.setError('No available keys to test with reader. Try again later.')
 
+        # Copynew the key object
+        key = key.bucket.new_key(key.name)
         self.key = key
         self.result.setKey(key)
 
