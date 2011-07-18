@@ -9,12 +9,14 @@ from ..common import context, get_next_key
 from ..common.results import TransferGreenletResult
 from ..realistic import FileVerifier
 
+
 # Make sure context has somewhere to store what we need
 context.update(bunch.Bunch(
     neads_first_read = collections.deque(),
     all_keys = [],
     files_iter = None,
 ))
+
 
 class SafeTransferGreenlet(gevent.Greenlet):
     def __init__(self, timeout=120):

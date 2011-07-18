@@ -25,8 +25,7 @@ class RandomContentFile(object):
             )
 
     def _mark_chunk(self):
-        ctime = time.time()
-        self.chunks.append([self.offset, (ctime - self.last_seek) * 1000000000, ctime])
+        self.chunks.append([self.offset, (time.time() - self.last_seek) * 1000000000])
 
     def seek(self, offset):
         assert offset == 0
@@ -37,8 +36,8 @@ class RandomContentFile(object):
         self.hash = hashlib.md5()
         self.digest_size = self.hash.digest_size
         self.digest = None
-		
-		# Save the last seek time as our start time, and the last chunks
+
+        # Save the last seek time as our start time, and the last chunks
         self.start_time = self.last_seek
         self.last_chunks = self.chunks
         # Before emptying.
@@ -96,8 +95,7 @@ class FileVerifier(object):
         self.chunks = []
 
     def _mark_chunk(self):
-        ctime = time.time()
-        self.chunks.append([self.size, (ctime - self.created_at) * 1000000000, ctime])
+        self.chunks.append([self.size, (time.time() - self.created_at) * 1000000000])
 
     def write(self, data):
         self.size += len(data)
