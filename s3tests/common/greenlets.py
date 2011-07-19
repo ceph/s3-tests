@@ -11,9 +11,9 @@ from ..realistic import FileVerifier
 
 # Make sure context has somewhere to store what we need
 context.update(bunch.Bunch(
-    needs_first_read = collections.deque(),
-    all_keys = [],
-    files_iter = None,
+    needs_first_read=collections.deque(),
+    all_keys=[],
+    files_iter=None,
 ))
 
 

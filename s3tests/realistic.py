@@ -165,13 +165,13 @@ def files_varied(groups, unlimited=False):
 
     # Build the sets for our yield
     for num, size, stddev in groups:
-        assert num and size
+        assert num and size #TODO
 
         file_sets.append(bunch.Bunch(
             num    = num,
             size   = size,
             stddev = stddev,
-            files  = files(size, stddev, time.time())
+            files  = files(size, stddev, time.time()),
         ))
         total_num += num
 
@@ -199,4 +199,4 @@ def files_varied(groups, unlimited=False):
             yield next(file_set.files)
 
         if not ok:
-            raise RuntimeError, "Couldn't find a match."
+            raise RuntimeError("Couldn't find a match.")

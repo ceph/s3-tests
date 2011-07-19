@@ -44,7 +44,7 @@ class Result:
             size=self.size,
             time=self.time,
             mbps=mbps,
-            details=self.details
+            details=self.details,
             )
 
 def reader(seconds, bucket, name=None, queue=None):
@@ -144,11 +144,11 @@ def main():
             file_size=options.file_size,
             file_stddev=options.stddev,
             quantity=options.quantity,
-            file_name_seed=r
+            file_name_seed=r,
             ) for x in xrange(options.num_writers)]
         greenlets += [gevent.spawn(reader, options.duration, bucket,
                 name=x,
-                queue=q
+                queue=q,
                 ) for x in xrange(options.num_readers)]
         gevent.spawn_later(options.duration, lambda: q.put(StopIteration))
 
@@ -177,19 +177,19 @@ def main():
         print "--- Stats ---"
         print "Total Read:  {read} MB ({mbps} MB/s)".format(
             read=(total_read/1024.0),
-            mbps=(total_read/1024.0/options.duration)
+            mbps=(total_read/1024.0/options.duration),
             )
         print "Total Write: {write} MB ({mbps} MB/s)".format(
             write=(total_write/1024.0),
-            mbps=(total_write/1024.0/options.duration)
+            mbps=(total_write/1024.0/options.duration),
             )
         print "Read filures: {num} ({percent}%)".format(
             num=read_failure,
-            percent=(100.0*read_failure/max(read_failure+read_success, 1))
+            percent=(100.0*read_failure/max(read_failure+read_success, 1)),
             )
         print "Write failures: {num} ({percent}%)".format(
             num=write_failure,
-            percent=(100.0*write_failure/max(write_failure+write_success, 1))
+            percent=(100.0*write_failure/max(write_failure+write_success, 1)),
             )
 
         gevent.joinall(greenlets, timeout=1)

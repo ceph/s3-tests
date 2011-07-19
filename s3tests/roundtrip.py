@@ -17,16 +17,16 @@ from common.results import ResultsLogger
 # Set up the common context to use our information. Wee.
 context.update(bunch.Bunch(
     # Set to False when it's time to exit main loop.
-    running = True,
+    running=True,
 
     # The pools our tasks run in.
-    greenlet_pools = bunch.Bunch(
+    greenlet_pools=bunch.Bunch(
         writer=None,
         reader=None,
         ),
 
     # The greenlet that keeps logs going.
-    results_logger = None,
+    results_logger=None,
 ))
 
 

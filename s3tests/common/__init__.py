@@ -13,11 +13,11 @@ prefix = ''
 
 # For those scripts that use a context, these are pretty univerally needed.
 context = bunch.Bunch(
-    bucket = None,
+    bucket=None,
 
     # Save stdout/stderr in case they get fudged with.
-    real_stdout = sys.stdout,
-    real_stderr = sys.stderr,
+    real_stdout=sys.stdout,
+    real_stderr=sys.stderr,
 )
 
 bucket_counter = itertools.count(1)
@@ -56,7 +56,7 @@ def nuke_prefixed_buckets():
                 try:
                     bucket.set_canned_acl('private')
                     # TODO: deleted_cnt and the while loop is a work around for rgw
-                    # not sending the 
+                    # not sending the
                     deleted_cnt = 1
                     while deleted_cnt:
                         deleted_cnt = 0
@@ -181,4 +181,3 @@ def fill_pools(*args):
 
 def get_next_key(bucket=None):
     return bucket.new_key("seqkey-{num}".format(num=next(key_counter)))
-

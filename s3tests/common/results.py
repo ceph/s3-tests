@@ -8,7 +8,7 @@ import yaml
 from ..common import context
 
 context.update(bunch.Bunch(
-    result_queue = collections.deque(),
+    result_queue=collections.deque(),
 ))
 
 
@@ -108,4 +108,3 @@ class ResultsLogger(gevent.Greenlet):
             result = context.result_queue.popleft()
             yrep = yaml.dump(result)
             self.outfile.write(yrep + "---\n")
-
