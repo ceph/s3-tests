@@ -18,12 +18,6 @@ class RandomContentFile(object):
         # Let seek initialize the rest of it, rather than dup code
         self.seek(0)
 
-        assert self.size >= self.digest_size, \
-            "Can not create RandomContentFile: size ({size}) must be >= digest_size ({digest_size})".format(
-            size=self.size,
-            digest_size=self.digest_size
-            )
-
     def _mark_chunk(self):
         self.chunks.append([self.offset, (time.time() - self.last_seek) * 1000000000])
 
