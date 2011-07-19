@@ -2,11 +2,8 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 import bunch
-import collections
 import gevent
 import gevent.pool
-import itertools
-import random
 import realistic
 import time
 import traceback

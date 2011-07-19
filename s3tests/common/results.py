@@ -1,7 +1,6 @@
 import bunch
 import collections
 import gevent
-import sys
 import time
 import traceback
 import yaml

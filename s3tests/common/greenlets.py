@@ -3,7 +3,6 @@ import collections
 import gevent
 import random
 import time
-import traceback
 
 from ..common import context, get_next_key
 from ..common.results import TransferGreenletResult
