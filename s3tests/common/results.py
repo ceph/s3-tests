@@ -93,7 +93,7 @@ class ResultsLogger(gevent.Greenlet):
     """ A quick little greenlet to always run and dump results. """
     def __init__(self):
         gevent.Greenlet.__init__(self)
-        self.outfile = sys.stderr
+        self.outfile = context.real_stdout
 
     def _run(self):
         while True:

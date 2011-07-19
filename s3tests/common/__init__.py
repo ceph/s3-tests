@@ -4,6 +4,7 @@ import itertools
 import os
 import random
 import string
+import sys
 import yaml
 
 s3 = bunch.Bunch()
@@ -13,6 +14,10 @@ prefix = ''
 # For those scripts that use a context, these are pretty univerally needed.
 context = bunch.Bunch(
     bucket = None,
+
+    # Save stdout/stderr in case they get fudged with.
+    real_stdout = sys.stdout,
+    real_stderr = sys.stderr,
 )
 
 bucket_counter = itertools.count(1)

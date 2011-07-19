@@ -10,6 +10,7 @@ import random
 import realistic
 import time
 import traceback
+import sys
 
 import common
 from common import context, config
@@ -86,6 +87,7 @@ def _main():
 
 
 def main():
+    sys.stdout = sys.stderr # Original steam already saved by common
     common.setup()
     setup()
 
