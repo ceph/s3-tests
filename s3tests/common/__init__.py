@@ -4,13 +4,24 @@ import itertools
 import os
 import random
 import string
+import sys
 import yaml
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
 prefix = ''
 
+# For those scripts that use a context, these are pretty univerally needed.
+context = bunch.Bunch(
+    bucket = None,
+
+    # Save stdout/stderr in case they get fudged with.
+    real_stdout = sys.stdout,
+    real_stderr = sys.stderr,
+)
+
 bucket_counter = itertools.count(1)
+key_counter = itertools.count(1)
 
 def choose_bucket_prefix(template, max_len=30):
     """
@@ -44,13 +55,19 @@ def nuke_prefixed_buckets():
                 print 'Cleaning bucket {bucket}'.format(bucket=bucket)
                 try:
                     bucket.set_canned_acl('private')
-                    for key in bucket.list():
-                        print 'Cleaning bucket {bucket} key {key}'.format(
-                            bucket=bucket,
-                            key=key,
-                            )
-                        key.set_canned_acl('private')
-                        key.delete()
+                    # TODO: deleted_cnt and the while loop is a work around for rgw
+                    # not sending the 
+                    deleted_cnt = 1
+                    while deleted_cnt:
+                        deleted_cnt = 0
+                        for key in bucket.list():
+                            print 'Cleaning bucket {bucket} key {key}'.format(
+                                bucket=bucket,
+                                key=key,
+                                )
+                            key.set_canned_acl('private')
+                            key.delete()
+                            deleted_cnt += 1
                     bucket.delete()
                 except boto.exception.S3ResponseError as e:
                     # TODO workaround for buggy rgw that fails to send
@@ -156,3 +173,12 @@ def get_new_bucket(connection=None):
 
 def teardown():
     nuke_prefixed_buckets()
+
+def fill_pools(*args):
+    for pool in args:
+        while not pool.full():
+            pool.spawn()
+
+def get_next_key(bucket=None):
+    return bucket.new_key("seqkey-{num}".format(num=next(key_counter)))
+

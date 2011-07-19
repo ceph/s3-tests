@@ -1,24 +1,42 @@
+import bunch
 import hashlib
 import random
 import string
 import struct
+import time
 
 class RandomContentFile(object):
     def __init__(self, size, seed):
+        self.size = size
         self.seed = seed
         self.random = random.Random(self.seed)
-        self.offset = 0
-        self.buffer = ''
-        self.size = size
-        self.hash = hashlib.md5()
-        self.digest_size = self.hash.digest_size
-        self.digest = None
+
+        # Boto likes to seek once more after it's done reading, so we need to save the last chunks/seek value.
+        self.last_chunks = self.chunks = None
+        self.last_seek = self.start_time = None
+
+        # Let seek initialize the rest of it, rather than dup code
+        self.seek(0)
+
+    def _mark_chunk(self):
+        self.chunks.append([self.offset, (time.time() - self.last_seek) * 1000000000])
 
     def seek(self, offset):
         assert offset == 0
         self.random.seed(self.seed)
         self.offset = offset
         self.buffer = ''
+
+        self.hash = hashlib.md5()
+        self.digest_size = self.hash.digest_size
+        self.digest = None
+
+        # Save the last seek time as our start time, and the last chunks
+        self.start_time = self.last_seek
+        self.last_chunks = self.chunks
+        # Before emptying.
+        self.last_seek = time.time()
+        self.chunks = []
 
     def tell(self):
         return self.offset
@@ -58,6 +76,8 @@ class RandomContentFile(object):
             data = self.digest[:digest_count]
             r.append(data)
 
+        self._mark_chunk()
+
         return ''.join(r)
 
 class FileVerifier(object):
@@ -65,6 +85,11 @@ class FileVerifier(object):
         self.size = 0
         self.hash = hashlib.md5()
         self.buf = ''
+        self.created_at = time.time()
+        self.chunks = []
+
+    def _mark_chunk(self):
+        self.chunks.append([self.size, (time.time() - self.created_at) * 1000000000])
 
     def write(self, data):
         self.size += len(data)
@@ -72,6 +97,7 @@ class FileVerifier(object):
         digsz = -1*self.hash.digest_size
         new_data, self.buf = self.buf[0:digsz], self.buf[digsz:]
         self.hash.update(new_data)
+        self._mark_chunk()
 
     def valid(self):
         """
@@ -123,7 +149,54 @@ def names(mean, stddev, charset=None, seed=None):
     while True:
         while True:
             length = int(rand.normalvariate(mean, stddev))
-            if length >= 0:
+            if length > 0:
                 break
         name = ''.join(rand.choice(charset) for _ in xrange(length))
         yield name
+
+def files_varied(groups, unlimited=False):
+    """ Yields a weighted-random selection of file-like objects. """
+    # Quick data type sanity.
+    assert groups and isinstance(groups, (list, tuple))
+
+    total_num = 0
+    file_sets = []
+    rand = random.Random(time.time())
+
+    # Build the sets for our yield
+    for num, size, stddev in groups:
+        assert num and size
+
+        file_sets.append(bunch.Bunch(
+            num    = num,
+            size   = size,
+            stddev = stddev,
+            files  = files(size, stddev, time.time())
+        ))
+        total_num += num
+
+    while True:
+        if not total_num:
+            raise StopIteration
+
+        num = rand.randrange(total_num)
+
+        ok = 0
+        for file_set in file_sets:
+            if num > file_set.num:
+                num -= file_set.num
+                continue
+
+            if not unlimited:
+                total_num -= 1
+                file_set.num -= 1
+
+                # None left in this set!
+                if file_set.num == 0:
+                    file_sets.remove(file_set)
+
+            ok = 1
+            yield next(file_set.files)
+
+        if not ok:
+            raise RuntimeError, "Couldn't find a match."
