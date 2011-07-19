@@ -42,7 +42,6 @@ def setup():
     context.greenlet_pools.reader = gevent.pool.Pool(config_rt.pool_sizes.reader, ReaderGreenlet)
     context.greenlet_pools.writer = gevent.pool.Pool(config_rt.pool_sizes.writer, WriterGreenlet)
 
-    context.key_iter = itertools.count(1)
     context.files_iter = realistic.files_varied(config_rt.create_objects)
 
 
