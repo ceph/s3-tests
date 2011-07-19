@@ -833,55 +833,109 @@ def _bucket_acl_grant_userid(permission):
     return bucket
 
 
+def _check_bucket_acl_grant_can_read(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name)
+
+
+def _check_bucket_acl_grant_cant_read(bucket):
+    check_access_denied(s3.alt.get_bucket, bucket.name)
+
+
+def _check_bucket_acl_grant_can_readacp(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    bucket2.get_acl()
+
+
+def _check_bucket_acl_grant_cant_readacp(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    check_access_denied(bucket2.get_acl)
+
+
+def _check_bucket_acl_grant_can_write(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    key = bucket2.new_key('foo-write')
+    key.set_contents_from_string('bar')
+
+
+def _check_bucket_acl_grant_cant_write(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    key = bucket2.new_key('foo-write')
+    check_access_denied(key.set_contents_from_string, 'bar')
+
+
+def _check_bucket_acl_grant_can_writeacp(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    bucket2.set_acl('public-read')
+
+
+def _check_bucket_acl_grant_cant_writeacp(bucket):
+    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
+    check_access_denied(bucket2.set_acl, 'public-read')
+
+
 def test_bucket_acl_grant_userid_fullcontrol():
     bucket = _bucket_acl_grant_userid('FULL_CONTROL')
 
-    # alt user can write
-    bucket2 = s3.alt.get_bucket(bucket.name)
-    key = bucket2.new_key('foo')
-    key.set_contents_from_string('bar')
+    # alt user can read
+    _check_bucket_acl_grant_can_read(bucket)
+    # can read acl
+    _check_bucket_acl_grant_can_readacp(bucket)
+    # can write
+    _check_bucket_acl_grant_can_write(bucket)
+    # can write acl
+    _check_bucket_acl_grant_can_writeacp(bucket)
 
 
 def test_bucket_acl_grant_userid_read():
     bucket = _bucket_acl_grant_userid('READ')
 
-    # alt user can read but not write
-    bucket2 = s3.alt.get_bucket(bucket.name)
-
+    # alt user can read
+    _check_bucket_acl_grant_can_read(bucket)
     # can't read acl
-    check_access_denied(bucket2.get_acl)
-
+    _check_bucket_acl_grant_cant_readacp(bucket)
     # can't write
-    key = bucket2.new_key('foo')
-    check_access_denied(key.set_contents_from_string, 'bar')
+    _check_bucket_acl_grant_cant_write(bucket)
+    # can't write acl
+    _check_bucket_acl_grant_cant_writeacp(bucket)
 
 
 def test_bucket_acl_grant_userid_readacp():
     bucket = _bucket_acl_grant_userid('READ_ACP')
 
-    # alt user can read the acl
-    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
-    bucket2.get_acl()
-
+    # alt user can't read
+    _check_bucket_acl_grant_cant_read(bucket)
+    # can read acl
+    _check_bucket_acl_grant_can_readacp(bucket)
     # can't write
-    key = bucket2.new_key('foo')
-    check_access_denied(key.set_contents_from_string, 'bar')
-
+    _check_bucket_acl_grant_cant_write(bucket)
+    # can't write acp
+    #_check_bucket_acl_grant_cant_writeacp_can_readacp(bucket)
+    _check_bucket_acl_grant_cant_writeacp(bucket)
 
 def test_bucket_acl_grant_userid_write():
     bucket = _bucket_acl_grant_userid('WRITE')
 
-    # alt user shouldn't have read access
-    check_access_denied(s3.alt.get_bucket, bucket.name)
-
-    bucket2 = s3.alt.get_bucket(bucket.name, validate=False)
-    key = bucket2.new_key('foo')
-
-    # can't modify acl
-    check_access_denied(key.set_acl, 'public-read')
-
+    # alt user can't read
+    _check_bucket_acl_grant_cant_read(bucket)
+    # can't read acl
+    _check_bucket_acl_grant_cant_readacp(bucket)
     # can write
-    key.set_contents_from_string('bar')
+    _check_bucket_acl_grant_can_write(bucket)
+    # can't write acl
+    _check_bucket_acl_grant_cant_writeacp(bucket)
+
+
+def test_bucket_acl_grant_userid_writeacp():
+    bucket = _bucket_acl_grant_userid('WRITE_ACP')
+
+    # alt user can't read
+    _check_bucket_acl_grant_cant_read(bucket)
+    # can't read acl
+    _check_bucket_acl_grant_cant_readacp(bucket)
+    # can't write
+    _check_bucket_acl_grant_cant_write(bucket)
+    # can write acl
+    _check_bucket_acl_grant_can_writeacp(bucket)
 
 
 @attr('fails_on_dho')
