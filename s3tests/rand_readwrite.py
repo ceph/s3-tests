@@ -16,7 +16,7 @@ import common
 
 NANOSECOND = int(1e9)
 
-def reader(bucket, name, queue):
+def reader(bucket, worker_id, queue):
     while True:
         count = 0
         for key in bucket.list():
@@ -34,14 +34,14 @@ def reader(bucket, name, queue):
                     start=start,
                     duration=int(round(elapsed * NANOSECOND)),
                     #TODO error, fp.valid()
-                    #TODO name
+                    worker=worker_id,
                     ),
                 )
             count += 1
         if count == 0:
             gevent.sleep(1)
 
-def writer(bucket, name, queue, file_size=1, file_stddev=0, file_name_seed=None):
+def writer(bucket, worker_id, queue, file_size=1, file_stddev=0, file_name_seed=None):
     r = random.randint(0, 65535)
     r2 = r
     if file_name_seed != None:
@@ -78,6 +78,7 @@ def writer(bucket, name, queue, file_size=1, file_stddev=0, file_name_seed=None)
                 start=start,
                 duration=int(round(elapsed * NANOSECOND)),
                 #TODO error
+                worker=worker_id,
                 ),
             )
 
@@ -122,7 +123,7 @@ def main():
             group.spawn_link_exception(
                 writer,
                 bucket=bucket,
-                name=x,
+                worker_id=x,
                 queue=q,
                 file_size=options.file_size,
                 file_stddev=options.stddev,
@@ -132,7 +133,7 @@ def main():
             group.spawn_link_exception(
                 reader,
                 bucket=bucket,
-                name=x,
+                worker_id=x,
                 queue=q,
                 )
         def stop():
