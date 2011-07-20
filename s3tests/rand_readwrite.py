@@ -48,7 +48,7 @@ class Result:
             details=self.details,
             )
 
-def reader(bucket, name=None, queue=None):
+def reader(bucket, name, queue):
     while (1):
         count = 0
         for key in bucket.list():
@@ -57,21 +57,20 @@ def reader(bucket, name=None, queue=None):
             key.get_contents_to_file(fp)
             end = time.time()
             elapsed = end - start
-            if queue:
-                queue.put(
-                    Result(
-                        name,
-                        type=Result.TYPE_READER,
-                        time=elapsed,
-                        success=fp.valid(),
-                        size=fp.size / 1024,
-                        ),
-                    )
+            queue.put(
+                Result(
+                    name,
+                    type=Result.TYPE_READER,
+                    time=elapsed,
+                    success=fp.valid(),
+                    size=fp.size / 1024,
+                    ),
+                )
             count += 1
         if count == 0:
             gevent.sleep(1)
 
-def writer(bucket, name=None, queue=None, quantity=1, file_size=1, file_stddev=0, file_name_seed=None):
+def writer(bucket, name, queue, quantity=1, file_size=1, file_stddev=0, file_name_seed=None):
     while (1):
         r = random.randint(0, 65535)
         r2 = r
@@ -90,13 +89,12 @@ def writer(bucket, name=None, queue=None, quantity=1, file_size=1, file_stddev=0
         end = time.time()
         elapsed = end - start
 
-        if queue:
-            queue.put(Result(name,
-                type=Result.TYPE_WRITER,
-                time=elapsed,
-                size=sum(f.size/1024 for f in files),
-                )
+        queue.put(Result(name,
+            type=Result.TYPE_WRITER,
+            time=elapsed,
+            size=sum(f.size/1024 for f in files),
             )
+        )
 
 def parse_options():
     parser = optparse.OptionParser()
