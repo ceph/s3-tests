@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import gevent
+import gevent.pool
 import gevent.queue
 import gevent.monkey; gevent.monkey.patch_all()
 import optparse
@@ -137,19 +138,21 @@ def main():
         # main work
         print "Using file size: {size} +- {stddev}".format(size=options.file_size, stddev=options.stddev)
         print "Spawning {r} readers and {w} writers...".format(r=options.num_readers, w=options.num_writers)
-        greenlets = []
-        greenlets += [gevent.spawn(writer, options.duration, bucket,
-            name=x,
-            queue=q,
-            file_size=options.file_size,
-            file_stddev=options.stddev,
-            quantity=options.quantity,
-            file_name_seed=r,
-            ) for x in xrange(options.num_writers)]
-        greenlets += [gevent.spawn(reader, options.duration, bucket,
-                name=x,
-                queue=q,
-                ) for x in xrange(options.num_readers)]
+        group = gevent.pool.Group()
+        for x in xrange(options.num_writers):
+            group.spawn(writer, options.duration, bucket,
+                        name=x,
+                        queue=q,
+                        file_size=options.file_size,
+                        file_stddev=options.stddev,
+                        quantity=options.quantity,
+                        file_name_seed=r,
+                        )
+        for x in xrange(options.num_readers):
+            group.spawn(reader, options.duration, bucket,
+                        name=x,
+                        queue=q,
+                        )
         gevent.spawn_later(options.duration, lambda: q.put(StopIteration))
 
         total_read = 0
@@ -192,7 +195,7 @@ def main():
             percent=(100.0*write_failure/max(write_failure+write_success, 1)),
             )
 
-        gevent.joinall(greenlets, timeout=1)
+        group.join(timeout=1)
     except Exception as e:
         print e
     finally:
