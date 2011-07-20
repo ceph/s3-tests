@@ -119,7 +119,7 @@ def main():
         print "Spawning {r} readers and {w} writers...".format(r=options.num_readers, w=options.num_writers)
         group = gevent.pool.Group()
         for x in xrange(options.num_writers):
-            group.spawn(
+            group.spawn_link_exception(
                 writer,
                 bucket=bucket,
                 name=x,
@@ -129,7 +129,7 @@ def main():
                 file_name_seed=r,
                 )
         for x in xrange(options.num_readers):
-            group.spawn(
+            group.spawn_link_exception(
                 reader,
                 bucket=bucket,
                 name=x,
