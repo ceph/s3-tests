@@ -119,18 +119,22 @@ def main():
         print "Spawning {r} readers and {w} writers...".format(r=options.num_readers, w=options.num_writers)
         group = gevent.pool.Group()
         for x in xrange(options.num_writers):
-            group.spawn(writer, bucket,
-                        name=x,
-                        queue=q,
-                        file_size=options.file_size,
-                        file_stddev=options.stddev,
-                        file_name_seed=r,
-                        )
+            group.spawn(
+                writer,
+                bucket=bucket,
+                name=x,
+                queue=q,
+                file_size=options.file_size,
+                file_stddev=options.stddev,
+                file_name_seed=r,
+                )
         for x in xrange(options.num_readers):
-            group.spawn(reader, bucket,
-                        name=x,
-                        queue=q,
-                        )
+            group.spawn(
+                reader,
+                bucket=bucket,
+                name=x,
+                queue=q,
+                )
         def stop():
             group.kill(block=True)
             q.put(StopIteration)
