@@ -41,22 +41,22 @@ def reader(bucket, name, queue):
         if count == 0:
             gevent.sleep(1)
 
-def writer(bucket, name, queue, quantity=1, file_size=1, file_stddev=0, file_name_seed=None):
+def writer(bucket, name, queue, file_size=1, file_stddev=0, file_name_seed=None):
+    r = random.randint(0, 65535)
+    r2 = r
+    if file_name_seed != None:
+        r2 = file_name_seed
+
+    files = realistic.files(
+        mean=1024 * file_size,
+        stddev=1024 * file_stddev,
+        seed=r,
+        )
+
     while True:
-        r = random.randint(0, 65535)
-        r2 = r
-        if file_name_seed != None:
-            r2 = file_name_seed
-
-        files = generate_objects.get_random_files(
-            quantity=quantity,
-            mean=1024 * file_size,
-            stddev=1024 * file_stddev,
-            seed=r,
-            )
-
+        fp = next(files)
         start = time.time()
-        generate_objects.upload_objects(bucket, files, r2)
+        generate_objects.upload_objects(bucket, [fp], r2)
         end = time.time()
         elapsed = end - start
 
@@ -82,8 +82,6 @@ def parse_options():
         help="number of writer threads", default=2, metavar="NUM")
     parser.add_option("-s", "--size", dest="file_size", type="float",
         help="file size to use, in kb", default=1024, metavar="KB")
-    parser.add_option("-q", "--quantity", dest="quantity", type="int",
-        help="number of files per batch", default=1, metavar="NUM")
     parser.add_option("-d", "--stddev", dest="stddev", type="float",
         help="stddev of file size", default=0, metavar="KB")
     parser.add_option("-W", "--rewrite", dest="rewrite", action="store_true",
@@ -117,7 +115,6 @@ def main():
                         queue=q,
                         file_size=options.file_size,
                         file_stddev=options.stddev,
-                        quantity=options.quantity,
                         file_name_seed=r,
                         )
         for x in xrange(options.num_readers):
