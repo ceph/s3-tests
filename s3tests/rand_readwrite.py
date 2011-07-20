@@ -53,10 +53,19 @@ def writer(bucket, name, queue, file_size=1, file_stddev=0, file_name_seed=None)
         seed=r,
         )
 
+    names = realistic.names(
+        mean=15,
+        stddev=4,
+        seed=r2,
+        )
+
     while True:
         fp = next(files)
+        objname = next(names)
+        key = bucket.new_key(objname)
+
         start = time.time()
-        generate_objects.upload_objects(bucket, [fp], r2)
+        key.set_contents_from_file(fp)
         end = time.time()
         elapsed = end - start
 
@@ -64,7 +73,7 @@ def writer(bucket, name, queue, file_size=1, file_stddev=0, file_name_seed=None)
             dict(
                 type='w',
                 bucket=bucket.name,
-                #TODO this current combines stats for multiple files? key=key.name,
+                key=key.name,
                 #TODO chunks
                 start=start,
                 duration=int(round(elapsed * NANOSECOND)),
