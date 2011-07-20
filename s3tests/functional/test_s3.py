@@ -952,6 +952,34 @@ def test_bucket_acl_grant_nonexist_user():
     eq(e.error_code, 'InvalidArgument')
 
 
+def test_bucket_acl_no_grants():
+    bucket = get_new_bucket()
+
+    # write content to the bucket
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    # clear grants
+    policy = bucket.get_acl()
+    policy.acl.grants = []
+
+    # remove read/write permission
+    bucket.set_acl(policy)
+
+    # can read
+    bucket.get_key('foo')
+
+    # can't write
+    key = bucket.new_key('baz')
+    check_access_denied(key.set_contents_from_string, 'bar')
+
+    # can read acl
+    bucket.get_acl()
+
+    # can write acl
+    bucket.set_acl('private')
+
+
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
 # would violate the uniqueness requirement of a user's email. As such, DHO users are
 # created without an email.
