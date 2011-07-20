@@ -132,8 +132,6 @@ def main():
 
         yaml.safe_dump_all(q, stream=sys.stdout, default_flow_style=False)
 
-    except Exception as e:
-        print e
     finally:
         # cleanup
         if options.cleanup:
