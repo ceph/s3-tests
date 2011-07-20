@@ -5,48 +5,16 @@ import gevent.pool
 import gevent.queue
 import gevent.monkey; gevent.monkey.patch_all()
 import optparse
+import sys
 import time
 import random
+import yaml
 
 import generate_objects
 import realistic
 import common
 
-class Result:
-    TYPE_NONE = 0
-    TYPE_READER = 1
-    TYPE_WRITER = 2
-
-    def __init__(self, name, type=TYPE_NONE, time=0, success=True, size=0, details=''):
-        self.name = name
-        self.type = type
-        self.time = time
-        self.success = success
-        self.size = size
-        self.details = details
-
-    def __repr__(self):
-        type_dict = {Result.TYPE_NONE: 'None', Result.TYPE_READER: 'Reader', Result.TYPE_WRITER: 'Writer'}
-        type_s = type_dict[self.type]
-        if self.success:
-            status = 'Success'
-        else:
-            status = 'FAILURE'
-
-        if (self.time == 0):
-            mbps = '?'
-        else:
-            mbps = self.size / self.time / 1024.0
-
-        return "<Result: [{success}] {type}{name} -- {size} KB in {time}s = {mbps} MB/s {details}>".format(
-            success=status,
-            type=type_s,
-            name=self.name,
-            size=self.size,
-            time=self.time,
-            mbps=mbps,
-            details=self.details,
-            )
+NANOSECOND = int(1e9)
 
 def reader(bucket, name, queue):
     while True:
@@ -58,12 +26,15 @@ def reader(bucket, name, queue):
             end = time.time()
             elapsed = end - start
             queue.put(
-                Result(
-                    name,
-                    type=Result.TYPE_READER,
-                    time=elapsed,
-                    success=fp.valid(),
-                    size=fp.size / 1024,
+                dict(
+                    type='r',
+                    bucket=bucket.name,
+                    key=key.name,
+                    #TODO chunks
+                    start=start,
+                    duration=int(round(elapsed * NANOSECOND)),
+                    #TODO error, fp.valid()
+                    #TODO name
                     ),
                 )
             count += 1
@@ -89,12 +60,17 @@ def writer(bucket, name, queue, quantity=1, file_size=1, file_stddev=0, file_nam
         end = time.time()
         elapsed = end - start
 
-        queue.put(Result(name,
-            type=Result.TYPE_WRITER,
-            time=elapsed,
-            size=sum(f.size/1024 for f in files),
+        queue.put(
+            dict(
+                type='w',
+                bucket=bucket.name,
+                #TODO this current combines stats for multiple files? key=key.name,
+                #TODO chunks
+                start=start,
+                duration=int(round(elapsed * NANOSECOND)),
+                #TODO error
+                ),
             )
-        )
 
 def parse_options():
     parser = optparse.OptionParser()
@@ -154,45 +130,7 @@ def main():
             q.put(StopIteration)
         gevent.spawn_later(options.duration, stop)
 
-        total_read = 0
-        total_write = 0
-        read_success = 0
-        read_failure = 0
-        write_success = 0
-        write_failure = 0
-        for item in q:
-            print item
-            if item.type == Result.TYPE_READER:
-                if item.success:
-                    read_success += 1
-                    total_read += item.size
-                else:
-                    read_failure += 1
-            elif item.type == Result.TYPE_WRITER:
-                if item.success:
-                    write_success += 1
-                    total_write += item.size
-                else:
-                    write_failure += 1
-
-        # overall stats
-        print "--- Stats ---"
-        print "Total Read:  {read} MB ({mbps} MB/s)".format(
-            read=(total_read/1024.0),
-            mbps=(total_read/1024.0/options.duration),
-            )
-        print "Total Write: {write} MB ({mbps} MB/s)".format(
-            write=(total_write/1024.0),
-            mbps=(total_write/1024.0/options.duration),
-            )
-        print "Read filures: {num} ({percent}%)".format(
-            num=read_failure,
-            percent=(100.0*read_failure/max(read_failure+read_success, 1)),
-            )
-        print "Write failures: {num} ({percent}%)".format(
-            num=write_failure,
-            percent=(100.0*write_failure/max(write_failure+write_success, 1)),
-            )
+        yaml.safe_dump_all(q, stream=sys.stdout, default_flow_style=False)
 
     except Exception as e:
         print e
