@@ -49,7 +49,7 @@ class Result:
             )
 
 def reader(bucket, name, queue):
-    while (1):
+    while True:
         count = 0
         for key in bucket.list():
             fp = realistic.FileVerifier()
@@ -71,7 +71,7 @@ def reader(bucket, name, queue):
             gevent.sleep(1)
 
 def writer(bucket, name, queue, quantity=1, file_size=1, file_stddev=0, file_name_seed=None):
-    while (1):
+    while True:
         r = random.randint(0, 65535)
         r2 = r
         if file_name_seed != None:
