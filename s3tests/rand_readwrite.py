@@ -7,6 +7,7 @@ import gevent.monkey; gevent.monkey.patch_all()
 import optparse
 import sys
 import time
+import traceback
 import random
 import yaml
 
@@ -21,22 +22,47 @@ def reader(bucket, worker_id, queue):
         count = 0
         for key in bucket.list():
             fp = realistic.FileVerifier()
-            start = time.time()
-            key.get_contents_to_file(fp)
-            end = time.time()
-            elapsed = end - start
-            queue.put(
-                dict(
+            result = dict(
                     type='r',
                     bucket=bucket.name,
                     key=key.name,
                     #TODO chunks
-                    start=start,
-                    duration=int(round(elapsed * NANOSECOND)),
-                    #TODO error, fp.valid()
                     worker=worker_id,
-                    ),
+                    )
+
+            start = time.time()
+            try:
+                key.get_contents_to_file(fp)
+            except gevent.GreenletExit:
+                raise
+            except Exception as e:
+                # stop timer ASAP, even on errors
+                end = time.time()
+                result.update(
+                    error=dict(
+                        msg=str(e),
+                        traceback=traceback.format_exc(),
+                        ),
+                    )
+                # certain kinds of programmer errors make this a busy
+                # loop; let parent greenlet get some time too
+                time.sleep(0)
+            else:
+                end = time.time()
+
+                if not fp.valid():
+                    result.update(
+                        error=dict(
+                            msg='md5sum check failed',
+                            ),
+                        )
+
+            elapsed = end - start
+            result.update(
+                start=start,
+                duration=int(round(elapsed * NANOSECOND)),
                 )
+            queue.put(result)
             count += 1
         if count == 0:
             gevent.sleep(1)
@@ -64,23 +90,40 @@ def writer(bucket, worker_id, queue, file_size=1, file_stddev=0, file_name_seed=
         objname = next(names)
         key = bucket.new_key(objname)
 
-        start = time.time()
-        key.set_contents_from_file(fp)
-        end = time.time()
-        elapsed = end - start
-
-        queue.put(
-            dict(
-                type='w',
-                bucket=bucket.name,
-                key=key.name,
-                #TODO chunks
-                start=start,
-                duration=int(round(elapsed * NANOSECOND)),
-                #TODO error
-                worker=worker_id,
-                ),
+        result = dict(
+            type='w',
+            bucket=bucket.name,
+            key=key.name,
+            #TODO chunks
+            worker=worker_id,
             )
+
+        start = time.time()
+        try:
+            key.set_contents_from_file(fp)
+        except gevent.GreenletExit:
+            raise
+        except Exception as e:
+            # stop timer ASAP, even on errors
+            end = time.time()
+            result.update(
+                error=dict(
+                    msg=str(e),
+                    traceback=traceback.format_exc(),
+                    ),
+                )
+            # certain kinds of programmer errors make this a busy
+            # loop; let parent greenlet get some time too
+            time.sleep(0)
+        else:
+            end = time.time()
+
+        elapsed = end - start
+        result.update(
+            start=start,
+            duration=int(round(elapsed * NANOSECOND)),
+            )
+        queue.put(result)
 
 def parse_options():
     parser = optparse.OptionParser()
