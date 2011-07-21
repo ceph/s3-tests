@@ -713,11 +713,12 @@ def _make_acl_xml(acl):
     return '<?xml version="1.0" encoding="UTF-8"?><AccessControlPolicy xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Owner><ID>' + config.main.user_id + '</ID></Owner>' + acl.to_xml() + '</AccessControlPolicy>'
 
 
-def _build_bucket_acl_xml(permission):
+def _build_bucket_acl_xml(permission, bucket=None):
     acl = boto.s3.acl.ACL()
     acl.add_user_grant(permission=permission, user_id=config.main.user_id)
     XML = _make_acl_xml(acl)
-    bucket = get_new_bucket()
+    if bucket is None:
+        bucket = get_new_bucket()
     bucket.set_xml_acl(XML)
     policy = bucket.get_acl()
     print repr(policy)
@@ -1419,6 +1420,20 @@ def test_100_continue():
 
     status = _simple_http_req_100_cont(s3.main.host, s3.main.port, s3.main.is_secure, 'PUT', resource)
     eq(status, '100')
+
+def _test_bucket_acls_changes_persistent(bucket):
+    perms = ('FULL_CONTROL', 'WRITE', 'WRITE_ACP', 'READ', 'READ_ACP')
+    for p in perms:
+        _build_bucket_acl_xml(p, bucket)
+
+def test_bucket_acls_changes_persistent():
+    bucket = get_new_bucket()
+    _test_bucket_acls_changes_persistent(bucket);
+
+def test_stress_bucket_acls_changes():
+    bucket = get_new_bucket()
+    for i in xrange(10):
+        _test_bucket_acls_changes_persistent(bucket);
 
 class FakeFile(object):
     def __init__(self, size, char='A', interrupt=None):
