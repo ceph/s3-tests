@@ -22,7 +22,7 @@ rand_readwrite:
 ## files will be read and written concurrently.
   readers: 2
   writers: 2
-## The duration to run tests in seconds. Doesn't count setup/warmup time
+## The duration to run in seconds. Doesn't count setup/warmup time
   duration: 15
 
   files:
