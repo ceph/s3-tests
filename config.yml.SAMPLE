@@ -12,6 +12,29 @@ file_generation:
     - [1, 2, 3]
     - [4, 5, 6]
 
+## Config for the readwrite tool.
+## The readwrite tool concurrently reads and writes to files in a
+## single bucket for a set duration.
+## Note: the readwrite tool does not need the s3.alt connection info.
+## only s3.main is used.
+rand_readwrite:
+## The number of reader and writer worker threads. This sets how many
+## files will be read and written concurrently.
+  readers: 2
+  writers: 2
+## The duration to run tests in seconds. Doesn't count setup/warmup time
+  duration: 15
+
+  files:
+## The number of files to use. This number of files is created during the
+## "warmup" phase. After the warmup, readers will randomly pick a file to
+## read, and writers will randomly pick a file to overwrite
+    num: 3
+## The file size to use, in KB
+    size: 1024
+## The stddev for the file size, in KB
+    stddev: 0
+
 s3:
 ## This section contains all the connection information
 
