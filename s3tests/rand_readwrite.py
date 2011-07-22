@@ -27,7 +27,6 @@ def reader(bucket, worker_id, file_names, queue):
                 type='r',
                 bucket=bucket.name,
                 key=key.name,
-                #TODO chunks
                 worker=worker_id,
                 )
 
@@ -62,6 +61,7 @@ def reader(bucket, worker_id, file_names, queue):
         result.update(
             start=start,
             duration=int(round(elapsed * NANOSECOND)),
+            chunks=fp.chunks,
             )
         queue.put(result)
 
@@ -103,6 +103,7 @@ def writer(bucket, worker_id, file_names, files, queue):
         result.update(
             start=start,
             duration=int(round(elapsed * NANOSECOND)),
+            chunks=fp.last_chunks,
             )
         queue.put(result)
 
