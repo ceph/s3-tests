@@ -151,8 +151,8 @@ def main():
             max_amount=options.num_files
             ))
         files = realistic.files(
-            mean=options.file_size,
-            stddev=options.stddev,
+            mean=1024 * options.file_size,
+            stddev=1024 * options.stddev,
             seed=options.seed,
             )
         q = gevent.queue.Queue()
