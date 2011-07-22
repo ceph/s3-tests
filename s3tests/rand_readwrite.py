@@ -142,6 +142,8 @@ def main():
 
     try:
         # setup
+        real_stdout = sys.stdout
+        sys.stdout = sys.stderr
         common.setup()
         bucket = common.get_new_bucket()
         print "Created bucket: {name}".format(name=bucket.name)
@@ -198,7 +200,7 @@ def main():
             q.put(StopIteration)
         gevent.spawn_later(options.duration, stop)
 
-        yaml.safe_dump_all(q, stream=sys.stdout)
+        yaml.safe_dump_all(q, stream=real_stdout)
 
     finally:
         # cleanup
