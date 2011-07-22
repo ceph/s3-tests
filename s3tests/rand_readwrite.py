@@ -75,7 +75,6 @@ def writer(bucket, worker_id, file_names, files, queue):
             type='w',
             bucket=bucket.name,
             key=key.name,
-            #TODO chunks
             worker=worker_id,
             )
 
