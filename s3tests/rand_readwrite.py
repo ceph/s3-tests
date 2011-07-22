@@ -108,18 +108,6 @@ def writer(bucket, worker_id, file_names, files, queue):
 
 def parse_options():
     parser = optparse.OptionParser()
-    parser.add_option("-t", "--time", dest="duration", type="float",
-        help="duration to run tests (seconds)", default=5, metavar="SECS")
-    parser.add_option("-r", "--read", dest="num_readers", type="int",
-        help="number of reader threads", default=0, metavar="NUM")
-    parser.add_option("-w", "--write", dest="num_writers", type="int",
-        help="number of writer threads", default=2, metavar="NUM")
-    parser.add_option("-s", "--size", dest="file_size", type="float",
-        help="file size to use, in kb", default=1024, metavar="KB")
-    parser.add_option("-d", "--stddev", dest="stddev", type="float",
-        help="stddev of file size", default=0, metavar="KB")
-    parser.add_option("-n", "--numfiles", dest="num_files", type="int",
-        help="total number of files to write", default=1, metavar="NUM")
     parser.add_option("--seed", dest="seed", type="int",
         help="seed to use for random number generator", metavar="NUM")
     parser.add_option("--no-cleanup", dest="cleanup", action="store_false",
@@ -144,23 +132,36 @@ def main():
         real_stdout = sys.stdout
         sys.stdout = sys.stderr
         common.setup()
+
+        # verify all required config items are present
+        if 'rand_readwrite' not in common.config:
+            raise RuntimeError('rand_readwrite section not found in config')
+        config = common.config.rand_readwrite
+        for item in ['readers', 'writers', 'duration', 'files']:
+            if item not in config:
+                raise RuntimeError("Missing rand_readwrite config item: {item}".format(item=item))
+        for item in ['num', 'size', 'stddev']:
+            if item not in config.files:
+                raise RuntimeError("Missing rand_readwrite config item: files.{item}".format(item=item))
+
+        # setup bucket and other objects
         bucket = common.get_new_bucket()
         print "Created bucket: {name}".format(name=bucket.name)
         file_names = list(realistic.names(
             mean=15,
             stddev=4,
             seed=options.seed,
-            max_amount=options.num_files
+            max_amount=config.files.num
             ))
         files = realistic.files(
-            mean=1024 * options.file_size,
-            stddev=1024 * options.stddev,
+            mean=1024 * config.files.size,
+            stddev=1024 * config.files.stddev,
             seed=options.seed,
             )
         q = gevent.queue.Queue()
 
         # warmup - get initial set of files uploaded
-        print "Uploading initial set of {num} files".format(num=options.num_files)
+        print "Uploading initial set of {num} files".format(num=config.files.num)
         warmup_pool = gevent.pool.Pool(size=100)
         for file_name in file_names:
             file = next(files)
@@ -174,10 +175,10 @@ def main():
 
         # main work
         print "Starting main worker loop."
-        print "Using file size: {size} +- {stddev}".format(size=options.file_size, stddev=options.stddev)
-        print "Spawning {w} writers and {r} readers...".format(r=options.num_readers, w=options.num_writers)
+        print "Using file size: {size} +- {stddev}".format(size=config.files.size, stddev=config.files.stddev)
+        print "Spawning {w} writers and {r} readers...".format(w=config.writers, r=config.readers)
         group = gevent.pool.Group()
-        for x in xrange(options.num_writers):
+        for x in xrange(config.writers):
             group.spawn_link_exception(
                 writer,
                 bucket=bucket,
@@ -186,7 +187,7 @@ def main():
                 files=files,
                 queue=q,
                 )
-        for x in xrange(options.num_readers):
+        for x in xrange(config.readers):
             group.spawn_link_exception(
                 reader,
                 bucket=bucket,
@@ -197,7 +198,7 @@ def main():
         def stop():
             group.kill(block=True)
             q.put(StopIteration)
-        gevent.spawn_later(options.duration, stop)
+        gevent.spawn_later(config.duration, stop)
 
         yaml.safe_dump_all(q, stream=real_stdout)
 
