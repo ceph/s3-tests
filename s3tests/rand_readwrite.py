@@ -198,7 +198,7 @@ def main():
             q.put(StopIteration)
         gevent.spawn_later(options.duration, stop)
 
-        yaml.safe_dump_all(q, stream=sys.stdout, default_flow_style=False)
+        yaml.safe_dump_all(q, stream=sys.stdout)
 
     finally:
         # cleanup
