@@ -125,6 +125,14 @@ def test_object_read_notexist():
     eq(e.error_code, 'NoSuchKey')
 
 
+# While the test itself passes, there's a SAX parser error during teardown. It
+# seems to be a boto bug.  It happens with both amazon and dho.
+def test_object_create_unreadable():
+    bucket = get_new_bucket()
+    key = bucket.new_key('\x07')
+    key.set_contents_from_string('bar')
+
+
 # This should test the basic lifecycle of the key
 def test_object_write_read_update_read_delete():
     bucket = get_new_bucket()
