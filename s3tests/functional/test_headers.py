@@ -30,6 +30,7 @@ from . import (
 
 _orig_merge_meta = None
 _custom_headers = None
+_remove_headers = None
 
 def setup():
 
@@ -58,31 +59,39 @@ def _our_merge_meta(*args, **kwargs):
     sure we can overload whichever headers we need to.
     """
 
-    global _orig_merge_meta, _custom_headers
+    global _orig_merge_meta, _custom_headers, _remove_headers
     final_headers = _orig_merge_meta(*args, **kwargs)
     final_headers.update(_custom_headers)
+
+    print _remove_headers
+    for header in _remove_headers:
+        del final_headers[header]
 
     print final_headers
     return final_headers
 
 
 def _clear_custom_headers():
-    global _custom_headers
+    global _custom_headers, _remove_headers
     _custom_headers = {}
+    _remove_headers = []
 
 
-def _add_custom_headers(headers):
-    global _custom_headers
+def _add_custom_headers(headers=None, remove=None):
+    global _custom_headers, _remove_headers
     if not _custom_headers:
         _custom_headers = {}
 
-    _custom_headers.update(headers)
+    if headers is not None:
+        _custom_headers.update(headers)
+    if remove is not None:
+        _remove_headers.extend(remove)
 
 
-def _setup_bad_object(headers):
+def _setup_bad_object(headers=None, remove=None):
     bucket = get_new_bucket()
 
-    _add_custom_headers(headers)
+    _add_custom_headers(headers=headers, remove=remove)
     return bucket.new_key('foo')
  
 
@@ -171,3 +180,31 @@ def test_object_create_bad_contentlength_mismatch_below():
     # dho is 'Bad request', which doesn't match the http response code
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'BadDigest')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contenttype_invalid():
+    key = _setup_bad_object({'Content-Type': 'text/plain'})
+    key.set_contents_from_string('bar')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contenttype_empty():
+    key = _setup_bad_object({'Content-Type': ''})
+    key.set_contents_from_string('bar')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contenttype_none():
+    key = _setup_bad_object(remove=('Content-Type',))
+    key.set_contents_from_string('bar')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contenttype_unreadable():
+    key = _setup_bad_object({'Content-Type': '\x08'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
