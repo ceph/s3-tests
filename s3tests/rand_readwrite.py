@@ -12,7 +12,6 @@ import traceback
 import random
 import yaml
 
-import generate_objects
 import realistic
 import common
 
