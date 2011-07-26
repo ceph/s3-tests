@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import gevent
 import gevent.pool
 import gevent.queue

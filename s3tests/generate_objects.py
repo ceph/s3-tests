@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 from boto.s3.key import Key
 from optparse import OptionParser
 from . import realistic
