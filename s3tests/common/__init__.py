@@ -84,6 +84,13 @@ def nuke_prefixed_buckets():
 
     print 'Done with cleanup of test buckets.'
 
+def read_config(fp):
+    config = bunch.Bunch()
+    g = yaml.safe_load_all(fp)
+    for new in g:
+        config.update(bunch.bunchify(new))
+    return config
+
 def setup():
     global s3, config, prefix
     s3.clear()
@@ -97,9 +104,7 @@ def setup():
             + 'variable S3TEST_CONF to a config file.',
             )
     with file(path) as f:
-        g = yaml.safe_load_all(f)
-        for new in g:
-            config.update(bunch.bunchify(new))
+        config.update(read_config(f))
 
     # These 3 should always be present.
     if 's3' not in config:
