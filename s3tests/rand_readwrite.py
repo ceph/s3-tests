@@ -116,13 +116,13 @@ def parse_options():
 
     return parser.parse_args()
 
-def write_file(bucket, file_name, file):
+def write_file(bucket, file_name, fp):
     """
     Write a single file to the bucket using the file_name.
     This is used during the warmup to initialize the files.
     """
     key = bucket.new_key(file_name)
-    key.set_contents_from_file(file)
+    key.set_contents_from_file(fp)
 
 def main():
     # parse options
@@ -166,12 +166,12 @@ def main():
         print "Uploading initial set of {num} files".format(num=config.files.num)
         warmup_pool = gevent.pool.Pool(size=100)
         for file_name in file_names:
-            file = next(files)
+            fp = next(files)
             warmup_pool.spawn_link_exception(
                 write_file,
                 bucket=bucket,
                 file_name=file_name,
-                file=file,
+                fp=fp,
                 )
         warmup_pool.join()
 
