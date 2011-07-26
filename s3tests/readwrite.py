@@ -16,9 +16,9 @@ import common
 
 NANOSECOND = int(1e9)
 
-def reader(bucket, worker_id, file_names, queue):
+def reader(bucket, worker_id, file_names, queue, rand):
     while True:
-        objname = random.choice(file_names)
+        objname = rand.choice(file_names)
         key = bucket.new_key(objname)
 
         fp = realistic.FileVerifier()
@@ -64,10 +64,10 @@ def reader(bucket, worker_id, file_names, queue):
             )
         queue.put(result)
 
-def writer(bucket, worker_id, file_names, files, queue):
+def writer(bucket, worker_id, file_names, files, queue, rand):
     while True:
         fp = next(files)
-        objname = random.choice(file_names)
+        objname = rand.choice(file_names)
         key = bucket.new_key(objname)
 
         result = dict(
@@ -109,8 +109,6 @@ def parse_options():
     parser = optparse.OptionParser(
         usage='%prog [OPTS] <CONFIG_YAML',
         )
-    parser.add_option("--seed", dest="seed", type="int",
-        help="seed to use for random number generator", metavar="NUM")
     parser.add_option("--no-cleanup", dest="cleanup", action="store_false",
         help="skip cleaning up all created buckets", default=True)
 
@@ -149,6 +147,16 @@ def main():
             if item not in config.readwrite.files:
                 raise RuntimeError("Missing readwrite config item: files.{item}".format(item=item))
 
+        seeds = dict(config.readwrite.get('random_seed', {}))
+        seeds.setdefault('main', random.randrange(2**32))
+
+        rand = random.Random(seeds['main'])
+
+        for name in ['names', 'contents', 'writer', 'reader']:
+            seeds.setdefault(name, rand.randrange(2**32))
+
+        print 'Using random seeds: {seeds}'.format(seeds=seeds)
+
         # setup bucket and other objects
         bucket_name = common.choose_bucket_prefix(config.readwrite.bucket, max_len=30)
         bucket = conn.create_bucket(bucket_name)
@@ -156,14 +164,14 @@ def main():
         file_names = realistic.names(
             mean=15,
             stddev=4,
-            seed=options.seed,
+            seed=seeds['names'],
             )
         file_names = itertools.islice(file_names, config.readwrite.files.num)
         file_names = list(file_names)
         files = realistic.files(
             mean=1024 * config.readwrite.files.size,
             stddev=1024 * config.readwrite.files.stddev,
-            seed=options.seed,
+            seed=seeds['contents'],
             )
         q = gevent.queue.Queue()
 
@@ -185,7 +193,9 @@ def main():
         print "Using file size: {size} +- {stddev}".format(size=config.readwrite.files.size, stddev=config.readwrite.files.stddev)
         print "Spawning {w} writers and {r} readers...".format(w=config.readwrite.writers, r=config.readwrite.readers)
         group = gevent.pool.Group()
+        rand_writer = random.Random(seeds['writer'])
         for x in xrange(config.readwrite.writers):
+            this_rand = random.Random(rand_writer.randrange(2**32))
             group.spawn_link_exception(
                 writer,
                 bucket=bucket,
@@ -193,14 +203,18 @@ def main():
                 file_names=file_names,
                 files=files,
                 queue=q,
+                rand=this_rand,
                 )
+        rand_reader = random.Random(seeds['reader'])
         for x in xrange(config.readwrite.readers):
+            this_rand = random.Random(rand_reader.randrange(2**32))
             group.spawn_link_exception(
                 reader,
                 bucket=bucket,
                 worker_id=x,
                 file_names=file_names,
                 queue=q,
+                rand=this_rand,
                 )
         def stop():
             group.kill(block=True)
