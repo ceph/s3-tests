@@ -4,6 +4,7 @@ import gevent
 import gevent.pool
 import gevent.queue
 import gevent.monkey; gevent.monkey.patch_all()
+import itertools
 import optparse
 import sys
 import time
@@ -147,12 +148,13 @@ def main():
         # setup bucket and other objects
         bucket = common.get_new_bucket()
         print "Created bucket: {name}".format(name=bucket.name)
-        file_names = list(realistic.names(
+        file_names = realistic.names(
             mean=15,
             stddev=4,
             seed=options.seed,
-            max_amount=config.files.num
-            ))
+            )
+        file_names = itertools.islice(file_names, config.files.num)
+        file_names = list(file_names)
         files = realistic.files(
             mean=1024 * config.files.size,
             stddev=1024 * config.files.stddev,
