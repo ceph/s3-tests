@@ -47,40 +47,43 @@ def choose_bucket_prefix(template, max_len=30):
             ),
         )
 
+def nuke_bucket(bucket):
+    try:
+        bucket.set_canned_acl('private')
+        # TODO: deleted_cnt and the while loop is a work around for rgw
+        # not sending the
+        deleted_cnt = 1
+        while deleted_cnt:
+            deleted_cnt = 0
+            for key in bucket.list():
+                print 'Cleaning bucket {bucket} key {key}'.format(
+                    bucket=bucket,
+                    key=key,
+                    )
+                key.set_canned_acl('private')
+                key.delete()
+                deleted_cnt += 1
+        bucket.delete()
+    except boto.exception.S3ResponseError as e:
+        # TODO workaround for buggy rgw that fails to send
+        # error_code, remove
+        if (e.status == 403
+            and e.error_code is None
+            and e.body == ''):
+            e.error_code = 'AccessDenied'
+        if e.error_code != 'AccessDenied':
+            print 'GOT UNWANTED ERROR', e.error_code
+            raise
+        # seems like we're not the owner of the bucket; ignore
+        pass
+
 def nuke_prefixed_buckets():
     for name, conn in s3.items():
         print 'Cleaning buckets from connection {name}'.format(name=name)
         for bucket in conn.get_all_buckets():
             if bucket.name.startswith(prefix):
                 print 'Cleaning bucket {bucket}'.format(bucket=bucket)
-                try:
-                    bucket.set_canned_acl('private')
-                    # TODO: deleted_cnt and the while loop is a work around for rgw
-                    # not sending the
-                    deleted_cnt = 1
-                    while deleted_cnt:
-                        deleted_cnt = 0
-                        for key in bucket.list():
-                            print 'Cleaning bucket {bucket} key {key}'.format(
-                                bucket=bucket,
-                                key=key,
-                                )
-                            key.set_canned_acl('private')
-                            key.delete()
-                            deleted_cnt += 1
-                    bucket.delete()
-                except boto.exception.S3ResponseError as e:
-                    # TODO workaround for buggy rgw that fails to send
-                    # error_code, remove
-                    if (e.status == 403
-                        and e.error_code is None
-                        and e.body == ''):
-                        e.error_code = 'AccessDenied'
-                    if e.error_code != 'AccessDenied':
-                        print 'GOT UNWANTED ERROR', e.error_code
-                        raise
-                    # seems like we're not the owner of the bucket; ignore
-                    pass
+                nuke_bucket(bucket)
 
     print 'Done with cleanup of test buckets.'
 
