@@ -5,6 +5,10 @@ import string
 import struct
 import time
 
+
+NANOSECOND = int(1e9)
+
+
 class RandomContentFile(object):
     def __init__(self, size, seed):
         self.size = size
@@ -19,7 +23,7 @@ class RandomContentFile(object):
         self.seek(0)
 
     def _mark_chunk(self):
-        self.chunks.append([self.offset, (time.time() - self.last_seek) * 1000000000])
+        self.chunks.append([self.offset, (time.time() - self.last_seek) * NANOSECOND])
 
     def seek(self, offset):
         assert offset == 0
@@ -89,7 +93,7 @@ class FileVerifier(object):
         self.chunks = []
 
     def _mark_chunk(self):
-        self.chunks.append([self.size, (time.time() - self.created_at) * 1000000000])
+        self.chunks.append([self.size, (time.time() - self.created_at) * NANOSECOND])
 
     def write(self, data):
         self.size += len(data)
