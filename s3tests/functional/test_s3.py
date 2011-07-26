@@ -1545,3 +1545,21 @@ def test_atomic_dual_write_4mb():
 
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
+
+def test_ranged_request_response_code():
+    content = 'testcontent'
+
+    bucket = get_new_bucket()
+    key = bucket.new_key('testobj')
+    key.set_contents_from_string(content)
+
+    key.open('r', headers={'Range': 'bytes=4-7'})
+    status = key.resp.status
+    fetched_content = ''
+    for data in key:
+        fetched_content += data;
+    key.close()
+
+    eq(fetched_content, content[4:8])
+    eq(status, 206)
+
