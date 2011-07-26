@@ -22,7 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             's3tests-generate-objects = s3tests.generate_objects:main',
-            's3tests-test-readwrite = s3tests.rand_readwrite:main',
+            's3tests-test-readwrite = s3tests.readwrite:main',
             's3tests-test-roundtrip = s3tests.roundtrip:main',
             ],
         },

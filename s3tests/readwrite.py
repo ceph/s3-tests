@@ -134,15 +134,15 @@ def main():
         common.setup()
 
         # verify all required config items are present
-        if 'rand_readwrite' not in common.config:
-            raise RuntimeError('rand_readwrite section not found in config')
-        config = common.config.rand_readwrite
+        if 'readwrite' not in common.config:
+            raise RuntimeError('readwrite section not found in config')
+        config = common.config.readwrite
         for item in ['readers', 'writers', 'duration', 'files']:
             if item not in config:
-                raise RuntimeError("Missing rand_readwrite config item: {item}".format(item=item))
+                raise RuntimeError("Missing readwrite config item: {item}".format(item=item))
         for item in ['num', 'size', 'stddev']:
             if item not in config.files:
-                raise RuntimeError("Missing rand_readwrite config item: files.{item}".format(item=item))
+                raise RuntimeError("Missing readwrite config item: files.{item}".format(item=item))
 
         # setup bucket and other objects
         bucket = common.get_new_bucket()

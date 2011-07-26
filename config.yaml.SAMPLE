@@ -17,7 +17,7 @@ file_generation:
 ## single bucket for a set duration.
 ## Note: the readwrite tool does not need the s3.alt connection info.
 ## only s3.main is used.
-rand_readwrite:
+readwrite:
 ## The number of reader and writer worker threads. This sets how many
 ## files will be read and written concurrently.
   readers: 2
