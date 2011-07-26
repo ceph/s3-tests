@@ -11,6 +11,8 @@ import string
 import socket
 import ssl
 
+from boto.s3.connection import S3Connection
+
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 
@@ -28,47 +30,62 @@ from . import (
     )
 
 
-_orig_merge_meta = None
-_custom_headers = None
-_remove_headers = None
+_orig_conn = {}
+_custom_headers = {}
+_remove_headers = []
+
+
+# fill_in_auth does not exist in boto master, so if we update boto, this will
+# need to be changed to handle make_request's changes. Likely, at authorize
+class HeaderS3Connection(S3Connection):
+    def fill_in_auth(self, http_request, **kwargs):
+        global _custom_headers, _remove_headers
+
+        # do our header magic
+        final_headers = http_request.headers
+        final_headers.update(_custom_headers)
+
+        for header in _remove_headers:
+            try:
+                del final_headers[header]
+            except KeyError:
+                pass
+
+        S3Connection.fill_in_auth(self, http_request, **kwargs)
+
+        final_headers = http_request.headers
+        final_headers.update(_custom_headers)
+
+        for header in _remove_headers:
+            try:
+                del final_headers[header]
+            except KeyError:
+                pass
+
+        return http_request
+
 
 def setup():
+    global _orig_conn
 
-    # Replace boto.utils.merge_data
-    global _orig_merge_meta
-    assert _orig_merge_meta is None
+    for conn in s3:
+        _orig_conn[conn] = s3[conn]
+        header_conn = HeaderS3Connection(
+            aws_access_key_id=s3[conn].aws_access_key_id,
+            aws_secret_access_key=s3[conn].aws_secret_access_key,
+            is_secure=s3[conn].is_secure,
+            port=s3[conn].port,
+            host=s3[conn].host,
+            calling_format=s3[conn].calling_format
+            )
 
-    _orig_merge_meta = boto.utils.merge_meta
-    boto.utils.merge_meta = _our_merge_meta
+        s3[conn] = header_conn
 
-    _clear_custom_headers()
 
 def teardown():
-
-    # Restore boto.utils.merge_data
-    global _orig_merge_meta
-    assert _orig_merge_meta is not None
-
-    boto.utils.merge_meta = _orig_merge_meta
-    _orig_merge_meta = None
-
-
-def _our_merge_meta(*args, **kwargs):
-    """
-    Our implementation of boto.utils.merge_meta. The intent here is to make
-    sure we can overload whichever headers we need to.
-    """
-
-    global _orig_merge_meta, _custom_headers, _remove_headers
-    final_headers = _orig_merge_meta(*args, **kwargs)
-    final_headers.update(_custom_headers)
-
-    print _remove_headers
-    for header in _remove_headers:
-        del final_headers[header]
-
-    print final_headers
-    return final_headers
+    global _orig_auth_handler
+    for conn in s3:
+        s3[conn] = _orig_conn[conn]
 
 
 def _clear_custom_headers():
