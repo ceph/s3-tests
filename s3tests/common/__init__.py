@@ -91,6 +91,22 @@ def read_config(fp):
         config.update(bunch.bunchify(new))
     return config
 
+def connect(conf):
+    mapping = dict(
+        port='port',
+        host='host',
+        is_secure='is_secure',
+        access_key='aws_access_key_id',
+        secret_key='aws_secret_access_key',
+        )
+    kwargs = dict((mapping[k],v) for (k,v) in conf.iteritems() if k in mapping)
+    conn = boto.s3.connection.S3Connection(
+        # TODO support & test all variations
+        calling_format=boto.s3.connection.OrdinaryCallingFormat(),
+        **kwargs
+        )
+    return conn
+
 def setup():
     global s3, config, prefix
     s3.clear()
@@ -123,29 +139,11 @@ def setup():
     for section in config.s3.keys():
         if section == 'defaults':
             continue
-        section_config = config.s3[section]
 
-        kwargs = bunch.Bunch()
-        conn_args = bunch.Bunch(
-            port='port',
-            host='host',
-            is_secure='is_secure',
-            access_key='aws_access_key_id',
-            secret_key='aws_secret_access_key',
-            )
-        for cfg_key in conn_args.keys():
-            conn_key = conn_args[cfg_key]
-
-            if section_config.has_key(cfg_key):
-                kwargs[conn_key] = section_config[cfg_key]
-            elif defaults.has_key(cfg_key):
-                kwargs[conn_key] = defaults[cfg_key]
-
-        conn = boto.s3.connection.S3Connection(
-            # TODO support & test all variations
-            calling_format=boto.s3.connection.OrdinaryCallingFormat(),
-            **kwargs
-            )
+        conf = {}
+        conf.update(defaults)
+        conf.update(config.s3[section])
+        conn = connect(conf)
         s3[section] = conn
 
     # WARNING! we actively delete all buckets we see with the prefix
