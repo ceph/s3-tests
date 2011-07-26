@@ -23,7 +23,7 @@ class RandomContentFile(object):
         self.seek(0)
 
     def _mark_chunk(self):
-        self.chunks.append([self.offset, (time.time() - self.last_seek) * NANOSECOND])
+        self.chunks.append([self.offset, int(round((time.time() - self.last_seek) * NANOSECOND))])
 
     def seek(self, offset):
         assert offset == 0
@@ -93,7 +93,7 @@ class FileVerifier(object):
         self.chunks = []
 
     def _mark_chunk(self):
-        self.chunks.append([self.size, (time.time() - self.created_at) * NANOSECOND])
+        self.chunks.append([self.size, int(round((time.time() - self.created_at) * NANOSECOND))])
 
     def write(self, data):
         self.size += len(data)
