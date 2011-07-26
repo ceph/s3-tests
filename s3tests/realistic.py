@@ -137,13 +137,12 @@ def files(mean, stddev, seed=None):
                 break
         yield RandomContentFile(size=size, seed=rand.getrandbits(32))
 
-def names(mean, stddev, charset=None, seed=None, max_amount=None):
+def names(mean, stddev, charset=None, seed=None):
     """
     Yields strings that are somewhat plausible as file names, where
     the lenght of each filename follows the normal distribution with
     `mean` and `stddev`.
     """
-    count = 0
     if charset is None:
         charset = string.ascii_lowercase
     rand = random.Random(seed)
@@ -154,11 +153,6 @@ def names(mean, stddev, charset=None, seed=None, max_amount=None):
                 break
         name = ''.join(rand.choice(charset) for _ in xrange(length))
         yield name
-
-        count += 1
-        if count == max_amount:
-            return
-
 
 def files_varied(groups, unlimited=False):
     """ Yields a weighted-random selection of file-like objects. """
