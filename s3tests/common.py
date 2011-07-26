@@ -4,21 +4,11 @@ import itertools
 import os
 import random
 import string
-import sys
 import yaml
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
 prefix = ''
-
-# For those scripts that use a context, these are pretty univerally needed.
-context = bunch.Bunch(
-    bucket=None,
-
-    # Save stdout/stderr in case they get fudged with.
-    real_stdout=sys.stdout,
-    real_stderr=sys.stderr,
-)
 
 bucket_counter = itertools.count(1)
 key_counter = itertools.count(1)
@@ -179,11 +169,3 @@ def get_new_bucket(connection=None):
 
 def teardown():
     nuke_prefixed_buckets()
-
-def fill_pools(*args):
-    for pool in args:
-        while not pool.full():
-            pool.spawn()
-
-def get_next_key(bucket=None):
-    return bucket.new_key("seqkey-{num}".format(num=next(key_counter)))
