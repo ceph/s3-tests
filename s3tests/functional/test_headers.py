@@ -320,3 +320,87 @@ def test_object_create_bad_ua_unreadable():
 def test_object_create_bad_ua_none():
     key = _setup_bad_object(remove=('User-Agent',))
     key.set_contents_from_string('bar')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_date_invalid():
+    key = _setup_bad_object({'Date': 'Bad Date'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_date_empty():
+    key = _setup_bad_object({'Date': ''})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_date_unreadable():
+    key = _setup_bad_object({'Date': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_date_none():
+    key = _setup_bad_object(remove=('Date',))
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_today():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_today():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_epoch():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_end():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
