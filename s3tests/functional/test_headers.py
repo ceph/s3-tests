@@ -293,6 +293,12 @@ def test_object_create_bad_contenttype_unreadable():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contenttype_none():
+    key = _setup_bad_object(remove=('Content-Type',))
+    key.set_contents_from_string('bar')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_invalid():
     key = _setup_bad_object({'User-Agent': ''})
     key.set_contents_from_string('bar')
