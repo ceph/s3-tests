@@ -168,6 +168,12 @@ def test_object_create_bad_expect_empty():
     key.set_contents_from_string('bar')
 
 
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_expect_none():
+    key = _setup_bad_object(remove=('Expect',))
+    key.set_contents_from_string('bar')
+
+
 # this is a really long test..
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
