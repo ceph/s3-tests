@@ -195,6 +195,17 @@ def test_object_create_bad_contentlength_empty():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+def test_object_create_bad_contentlength_negative():
+    key = _setup_bad_object({'Content-Length': -1})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, None)
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_object_create_bad_contentlength_zero():
     key = _setup_bad_object({'Content-Length': 0})
 
@@ -202,6 +213,27 @@ def test_object_create_bad_contentlength_zero():
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'BadDigest')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contentlength_none():
+    key = _setup_bad_object(remove=('Content-Length',))
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 411)
+    eq(e.reason, 'Length Required')
+    eq(e.error_code,'MissingContentLength')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_contentlength_utf8():
+    key = _setup_bad_object({'Content-Length': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, None)
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
