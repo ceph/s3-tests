@@ -168,6 +168,7 @@ def main():
             w=config.roundtrip.writers,
             )
         pool = gevent.pool.Pool(size=config.roundtrip.writers)
+        start = time.time()
         for objname in objnames:
             fp = next(files)
             pool.spawn_link_exception(
@@ -178,6 +179,12 @@ def main():
                 queue=q,
                 )
         pool.join()
+        stop = time.time()
+        elapsed = stop - start
+        q.put(dict(
+                type='write_done',
+                duration=int(round(elapsed * NANOSECOND)),
+                ))
 
         print "Reading {num} objects with {w} workers...".format(
             num=config.roundtrip.files.num,
@@ -186,6 +193,7 @@ def main():
         # avoid accessing them in the same order as the writing
         rand.shuffle(objnames)
         pool = gevent.pool.Pool(size=config.roundtrip.readers)
+        start = time.time()
         for objname in objnames:
             pool.spawn_link_exception(
                 reader,
@@ -194,6 +202,12 @@ def main():
                 queue=q,
                 )
         pool.join()
+        stop = time.time()
+        elapsed = stop - start
+        q.put(dict(
+                type='read_done',
+                duration=int(round(elapsed * NANOSECOND)),
+                ))
 
         q.put(StopIteration)
         logger_g.get()
