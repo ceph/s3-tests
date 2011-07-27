@@ -114,13 +114,40 @@ def _setup_bad_object(headers=None, remove=None):
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
-def test_object_create_bad_md5():
+def test_object_create_bad_md5_invalid():
     key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidDigest')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_object_create_bad_md5_empty():
+    key = _setup_bad_object({'Content-MD5': ''})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidDigest')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_md5_unreadable():
+    key = _setup_bad_object({'Content-MD5': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_md5_none():
+    key = _setup_bad_object(remove=('Content-MD5',))
+    key.set_contents_from_string('bar')
 
 
 # strangely, amazon doesn't report an error with a non-expect 100 also, our
