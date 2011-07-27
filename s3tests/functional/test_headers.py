@@ -360,6 +360,59 @@ def test_object_create_bad_ua_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+def test_object_create_bad_authorization_invalid():
+    key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+# the teardown is really messed up here. check it out
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_unreadable():
+    key = _setup_bad_object({'Authorization': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_empty():
+    key = _setup_bad_object({'Authorization': ''})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+# the teardown is really messed up here. check it out
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_none():
+    key = _setup_bad_object(remove=('Authorization',))
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_incorrect():
+    key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUA:FWeDfwojDSdS2Ztmpfeubhd9isU='})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_object_create_bad_date_invalid():
     key = _setup_bad_object({'Date': 'Bad Date'})
 
