@@ -177,7 +177,7 @@ def test_object_create_bad_expect_none():
 # this is a really long test..
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
-def test_object_create_bad_expect_utf8():
+def test_object_create_bad_expect_unreadable():
     key = _setup_bad_object({'Expect': '\x07'})
     key.set_contents_from_string('bar')
 
@@ -227,7 +227,7 @@ def test_object_create_bad_contentlength_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
-def test_object_create_bad_contentlength_utf8():
+def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
