@@ -16,7 +16,7 @@ class RandomContentFile(object):
 
         # Boto likes to seek once more after it's done reading, so we need to save the last chunks/seek value.
         self.last_chunks = self.chunks = None
-        self.last_seek = self.start_time = None
+        self.last_seek = None
 
         # Let seek initialize the rest of it, rather than dup code
         self.seek(0)
@@ -35,7 +35,6 @@ class RandomContentFile(object):
         self.digest = None
 
         # Save the last seek time as our start time, and the last chunks
-        self.start_time = self.last_seek
         self.last_chunks = self.chunks
         # Before emptying.
         self.last_seek = time.time()
