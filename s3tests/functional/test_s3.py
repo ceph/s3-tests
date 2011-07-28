@@ -61,6 +61,30 @@ def test_bucket_list_empty():
     l = list(l)
     eq(l, [])
 
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_many():
+    bucket = get_new_bucket()
+    keys = ['foo', 'bar', 'baz']
+    for s in keys:
+        key = bucket.new_key(s)
+        key.set_contents_from_string(s)
+    # bucket.list() is high-level and will not set us set max-keys,
+    # using it would require using >1000 keys to test, and that would
+    # be too slow; use the lower-level call bucket.get_all_keys()
+    # instead
+    l = bucket.get_all_keys(max_keys=2)
+    eq(len(l), 2)
+    eq(l.is_truncated, True)
+    names = [e.name for e in l]
+    eq(names, ['bar', 'baz'])
+
+    l = bucket.get_all_keys(max_keys=2, marker=names[-1])
+    eq(len(l), 1)
+    eq(l.is_truncated, False)
+    names = [e.name for e in l]
+    eq(names, ['foo'])
+
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
