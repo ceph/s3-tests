@@ -41,57 +41,36 @@ boto_type = None
 # HeaderS3Connection and _our_authorize are necessary to be able to arbitrarily
 # overwrite headers. Depending on the version of boto, one or the other is
 # necessary. We later determine in setup what needs to be used.
+
+def _update_headers(headers):
+    global _custom_headers, _remove_headers
+
+    headers.update(_custom_headers)
+
+    for header in _remove_headers:
+        try:
+            del headers[header]
+        except KeyError:
+            pass
+
+
+# Note: We need to update the headers twice. The first time so the
+# authentication signing is done correctly. The second time to overwrite any
+# headers modified or created in the authentication step.
+
 class HeaderS3Connection(S3Connection):
     def fill_in_auth(self, http_request, **kwargs):
-        global _custom_headers, _remove_headers
-
-        # do our header magic
-        final_headers = http_request.headers
-        final_headers.update(_custom_headers)
-
-        for header in _remove_headers:
-            try:
-                del final_headers[header]
-            except KeyError:
-                pass
-
+        _update_headers(http_request.headers)
         S3Connection.fill_in_auth(self, http_request, **kwargs)
-
-        final_headers = http_request.headers
-        final_headers.update(_custom_headers)
-
-        for header in _remove_headers:
-            try:
-                del final_headers[header]
-            except KeyError:
-                pass
+        _update_headers(http_request.headers)
 
         return http_request
 
 
 def _our_authorize(self, connection, **kwargs):
-    global _custom_headers, _remove_headers
-
-    # do our header magic
-    final_headers = self.headers
-    final_headers.update(_custom_headers)
-
-    for header in _remove_headers:
-        try:
-            del final_headers[header]
-        except KeyError:
-            pass
-
+    _update_headers(self.headers)
     _orig_authorize(self, connection, **kwargs)
-
-    final_headers = self.headers
-    final_headers.update(_custom_headers)
-
-    for header in _remove_headers:
-        try:
-            del final_headers[header]
-        except KeyError:
-            pass
+    _update_headers(self.headers)
 
 
 def setup():
