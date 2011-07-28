@@ -1,4 +1,5 @@
 from cStringIO import StringIO
+import boto.connection
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
@@ -31,12 +32,15 @@ from . import (
 
 
 _orig_conn = {}
+_orig_authorize = None
 _custom_headers = {}
 _remove_headers = []
+boto_type = None
 
 
-# fill_in_auth does not exist in boto master, so if we update boto, this will
-# need to be changed to handle make_request's changes. Likely, at authorize
+# HeaderS3Connection and _our_authorize are necessary to be able to arbitrarily
+# overwrite headers. Depending on the version of boto, one or the other is
+# necessary. We later determine in setup what needs to be used.
 class HeaderS3Connection(S3Connection):
     def fill_in_auth(self, http_request, **kwargs):
         global _custom_headers, _remove_headers
@@ -65,27 +69,80 @@ class HeaderS3Connection(S3Connection):
         return http_request
 
 
+def _our_authorize(self, connection, **kwargs):
+    global _custom_headers, _remove_headers
+
+    # do our header magic
+    final_headers = self.headers
+    final_headers.update(_custom_headers)
+
+    for header in _remove_headers:
+        try:
+            del final_headers[header]
+        except KeyError:
+            pass
+
+    _orig_authorize(self, connection, **kwargs)
+
+    final_headers = self.headers
+    final_headers.update(_custom_headers)
+
+    for header in _remove_headers:
+        try:
+            del final_headers[header]
+        except KeyError:
+            pass
+
+
 def setup():
-    global _orig_conn
+    global boto_type
 
-    for conn in s3:
-        _orig_conn[conn] = s3[conn]
-        header_conn = HeaderS3Connection(
-            aws_access_key_id=s3[conn].aws_access_key_id,
-            aws_secret_access_key=s3[conn].aws_secret_access_key,
-            is_secure=s3[conn].is_secure,
-            port=s3[conn].port,
-            host=s3[conn].host,
-            calling_format=s3[conn].calling_format
-            )
+    # we determine what we need to replace by the existence of particular
+    # attributes. boto 2.0rc1 as fill_in_auth for S3Connection, while boto 2.0
+    # has authorize for HTTPRequest.
+    if hasattr(S3Connection, 'fill_in_auth'):
+        global _orig_conn
 
-        s3[conn] = header_conn
+        boto_type = 'S3Connection'
+        for conn in s3:
+            _orig_conn[conn] = s3[conn]
+            header_conn = HeaderS3Connection(
+                aws_access_key_id=s3[conn].aws_access_key_id,
+                aws_secret_access_key=s3[conn].aws_secret_access_key,
+                is_secure=s3[conn].is_secure,
+                port=s3[conn].port,
+                host=s3[conn].host,
+                calling_format=s3[conn].calling_format
+                )
+
+            s3[conn] = header_conn
+    elif hasattr(boto.connection.HTTPRequest, 'authorize'):
+        global _orig_authorize
+
+        boto_type = 'HTTPRequest'
+
+        _orig_authorize = boto.connection.HTTPRequest.authorize
+        boto.connection.HTTPRequest.authorize = _our_authorize
+    else:
+        raise RuntimeError
 
 
 def teardown():
-    global _orig_auth_handler
-    for conn in s3:
-        s3[conn] = _orig_conn[conn]
+    global boto_type
+
+    # replace original functionality depending on the boto version
+    if boto_type is 'S3Connection':
+        global _orig_conn
+        for conn in s3:
+            s3[conn] = _orig_conn[conn]
+        _orig_conn = {}
+    elif boto_type is 'HTTPRequest':
+        global _orig_authorize
+
+        boto.connection.HTTPRequest.authorize = _orig_authorize
+        _orig_authorize = None
+    else:
+        raise RuntimeError
 
 
 def _clear_custom_headers():
