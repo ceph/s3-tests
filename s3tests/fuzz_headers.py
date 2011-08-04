@@ -1,4 +1,4 @@
-from boto.s3 import S3Connection
+from boto.s3.connection import S3Connection
 from optparse import OptionParser
 from . import common
 
@@ -9,23 +9,70 @@ import sys
 
 
 class FuzzyRequest(object):
+    """ FuzzyRequests are initialized with a random seed and generate data to
+        get sent as valid or valid-esque HTTP requests for targeted fuzz testing
+    """
     # Initialized with a seed to be reproducible.
-    # string repr needs to look like:
-    # METHOD PATH HTTP/1.1
-    # HEADER_KEY: HEADER_VALUE[, HEADER_VALUE...]
-    # [	: HEADER_VALUE[, HEADER_VALUE...]
-    # <additional headers>
-    #
-    # BODY
-    pass
+
+    def __init__(self, seed):
+        self.random = random.Random()
+        self.seed = seed
+        self.random.seed(self.seed)
+
+        self._generate_method()
+        self._generate_path()
+        self._generate_body()
+        self._generate_headers()
+
+
+    def __str__(self):
+        s = '%s %s HTTP/1.1\n' % (self.method, self.path)
+        for header, value in self.headers.iteritems():
+            s += '%s: ' %header
+            if isinstance(value, list):
+                for val in value:
+                    s += '%s ' %val
+            else:
+                s += value
+            s += '\n'
+        s += '\n' # Blank line after headers are done.
+        s += '%s\r\n\r\n' %self.body
+        return s
+
+
+    def _generate_method(self):
+        METHODS = ['GET', 'POST', 'HEAD', 'PUT']
+        self.method = self.random.choice(METHODS)
+
+
+    def _generate_path(self):
+        path_charset = string.letters + string.digits
+        path_len = self.random.randint(0,1000)
+        self.path = ''
+        for _ in xrange(path_len):
+            self.path += self.random.choice(path_charset)
+
+
+    def _generate_body(self):
+        body_charset = string.printable
+        body_len = self.random.randint(0, 1000)
+        self.body = ''
+        for _ in xrange(body_len):
+            self.body += self.random.choice(body_charset)
+
+
+    def _generate_headers(self):
+        self.headers = {'Foo': 'bar', 'baz': ['a', 'b', 'c']} #FIXME
+
 
 def parse_options():
     parser = OptionParser()
     parser.add_option('-O', '--outfile', help='write output to FILE. Defaults to STDOUT', metavar='FILE')
-    parser.add_option('--seed', dest='seed', help='initial seed for the random number generator', metavar='SEED')
+    parser.add_option('--seed', dest='seed', type='int',  help='initial seed for the random number generator', metavar='SEED')
     parser.add_option('--seed-file', dest='seedfile', help='read seeds for specific requests from FILE', metavar='FILE')
-    parser.add_option('-n', dest='num_requests', help='issue NUM requests before stopping', metavar='NUM')
+    parser.add_option('-n', dest='num_requests', type='int',  help='issue NUM requests before stopping', metavar='NUM')
 
+    parser.set_defaults(num_requests=5)
     return parser.parse_args()
 
 
@@ -43,24 +90,26 @@ def _main():
     """
     (options, args) = parse_options()
     random.seed(options.seed if options.seed else None)
-    s3_connection = config.s3.main
+    s3_connection = common.s3.main
 
-    request_seeds
+    request_seeds = None
     if options.seedfile:
         FH = open(options.seedfile, 'r')
         request_seeds = FH.readlines()
     else:
         request_seeds = randomlist(options.num_requests, options.seed)
 
-    for i in request_seeds:
+    for request_seed in request_seeds:
         fuzzy = FuzzyRequest(request_seed)
 
-        http_connection = s3_connection.get_http_connection(s3_connection.host, s3_connection.is_secure)
-        http_connection.request(fuzzy.method, fuzzy.path, body=fuzzy.body, headers=fuzzy.headers)
+        print fuzzy.seed, fuzzy
+        #TODO: Authenticated requests
+        #http_connection = s3_connection.get_http_connection(s3_connection.host, s3_connection.is_secure)
+        #http_connection.request(fuzzy.method, fuzzy.path, body=fuzzy.body, headers=fuzzy.headers)
 
-        response = http_connection.getresponse()
-        if response.status == 500 or response.status == 503:
-            print 'Request generated with seed %d failed:\n%s' % (request_seed, fuzzy)
+        #response = http_connection.getresponse()
+        #if response.status == 500 or response.status == 503:
+            #print 'Request generated with seed %d failed:\n%s' % (fuzzy.seed, fuzzy)
 
 
 def main():
