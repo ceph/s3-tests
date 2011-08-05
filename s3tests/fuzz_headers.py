@@ -1,5 +1,6 @@
 from boto.s3.connection import S3Connection
 from optparse import OptionParser
+from boto import UserAgent
 from . import common
 
 import traceback
@@ -12,8 +13,6 @@ class FuzzyRequest(object):
     """ FuzzyRequests are initialized with a random seed and generate data to
         get sent as valid or valid-esque HTTP requests for targeted fuzz testing
     """
-    # Initialized with a seed to be reproducible.
-
     def __init__(self, seed):
         self.random = random.Random()
         self.seed = seed
@@ -47,10 +46,11 @@ class FuzzyRequest(object):
 
     def _generate_path(self):
         path_charset = string.letters + string.digits
-        path_len = self.random.randint(0,1000)
+        path_len = self.random.randint(0,100)
         self.path = ''
         for _ in xrange(path_len):
             self.path += self.random.choice(path_charset)
+        self.auth_path = self.path # Not sure how important this is for these tests
 
 
     def _generate_body(self):
@@ -63,6 +63,14 @@ class FuzzyRequest(object):
 
     def _generate_headers(self):
         self.headers = {'Foo': 'bar', 'baz': ['a', 'b', 'c']} #FIXME
+
+
+    def authorize(self, connection):
+        #Stolen shamelessly from boto's connection.py
+        connection._auth_handler.add_auth(self)
+        self.headers['User-Agent'] = UserAgent
+        if not self.headers.has_key('Content-Length'):
+            self.headers['Content-Length'] = str(len(self.body))
 
 
 def parse_options():
@@ -101,9 +109,8 @@ def _main():
 
     for request_seed in request_seeds:
         fuzzy = FuzzyRequest(request_seed)
-
+        fuzzy.authorize(s3_connection)
         print fuzzy.seed, fuzzy
-        #TODO: Authenticated requests
         #http_connection = s3_connection.get_http_connection(s3_connection.host, s3_connection.is_secure)
         #http_connection.request(fuzzy.method, fuzzy.path, body=fuzzy.body, headers=fuzzy.headers)
 
