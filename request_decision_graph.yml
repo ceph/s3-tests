@@ -1,0 +1,36 @@
+start:
+    set: null
+    choice:
+        - bucket
+
+bucket:
+    set:
+        urlpath: '/{bucket}'
+    choice:
+        - bucket_get
+        - bucket_put
+        - bucket_delete
+
+bucket_delete:
+    set:
+        method: 'DELETE'
+    choice:
+        - delete_bucket
+        - delete_bucket_policy
+        - delete_bucket_website
+
+delete_bucket:
+    set:
+        query: null
+    choice: null
+
+delete_bucket_policy:
+    set:
+        query: 'policy'
+    choice: null
+
+delete_bucket_website:
+    set:
+        query: 'website'
+    choice: null
+

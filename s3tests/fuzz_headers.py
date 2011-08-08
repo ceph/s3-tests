@@ -6,71 +6,23 @@ from . import common
 import traceback
 import random
 import string
+import yaml
 import sys
 
 
-class FuzzyRequest(object):
-    """ FuzzyRequests are initialized with a random seed and generate data to
-        get sent as valid or valid-esque HTTP requests for targeted fuzz testing
+def assemble_decision(decision_graph, prng):
+    """ Take in a graph describing the possible decision space and a random
+        number generator and traverse the graph to build a decision
     """
-    def __init__(self, seed):
-        self.random = random.Random()
-        self.seed = seed
-        self.random.seed(self.seed)
-
-        self._generate_method()
-        self._generate_path()
-        self._generate_body()
-        self._generate_headers()
+    raise NotImplementedError
 
 
-    def __str__(self):
-        s = '%s %s HTTP/1.1\n' % (self.method, self.path)
-        for header, value in self.headers.iteritems():
-            s += '%s: ' %header
-            if isinstance(value, list):
-                for val in value:
-                    s += '%s ' %val
-            else:
-                s += value
-            s += '\n'
-        s += '\n' # Blank line after headers are done.
-        s += '%s\r\n\r\n' %self.body
-        return s
-
-
-    def _generate_method(self):
-        METHODS = ['GET', 'POST', 'HEAD', 'PUT']
-        self.method = self.random.choice(METHODS)
-
-
-    def _generate_path(self):
-        path_charset = string.letters + string.digits
-        path_len = self.random.randint(0,100)
-        self.path = ''
-        for _ in xrange(path_len):
-            self.path += self.random.choice(path_charset)
-        self.auth_path = self.path # Not sure how important this is for these tests
-
-
-    def _generate_body(self):
-        body_charset = string.printable
-        body_len = self.random.randint(0, 1000)
-        self.body = ''
-        for _ in xrange(body_len):
-            self.body += self.random.choice(body_charset)
-
-
-    def _generate_headers(self):
-        self.headers = {'Foo': 'bar', 'baz': ['a', 'b', 'c']} #FIXME
-
-
-    def authorize(self, connection):
-        #Stolen shamelessly from boto's connection.py
-        connection._auth_handler.add_auth(self)
-        self.headers['User-Agent'] = UserAgent
-        if not self.headers.has_key('Content-Length'):
-            self.headers['Content-Length'] = str(len(self.body))
+def expand_decision(decision, prng):
+    """ Take in a decision and a random number generator.  Expand variables in
+        decision's values and headers until all values are fully expanded and
+        build a request out of the information
+    """
+    raise NotImplementedError
 
 
 def parse_options():
@@ -79,8 +31,10 @@ def parse_options():
     parser.add_option('--seed', dest='seed', type='int',  help='initial seed for the random number generator', metavar='SEED')
     parser.add_option('--seed-file', dest='seedfile', help='read seeds for specific requests from FILE', metavar='FILE')
     parser.add_option('-n', dest='num_requests', type='int',  help='issue NUM requests before stopping', metavar='NUM')
+    parser.add_option('--decision-graph', dest='graph_filename',  help='file in which to find the request decision graph', metavar='NUM')
 
     parser.set_defaults(num_requests=5)
+    parser.set_defaults(graph_filename='request_decision_graph.yml')
     return parser.parse_args()
 
 
@@ -107,16 +61,29 @@ def _main():
     else:
         request_seeds = randomlist(options.num_requests, options.seed)
 
-    for request_seed in request_seeds:
-        fuzzy = FuzzyRequest(request_seed)
-        fuzzy.authorize(s3_connection)
-        print fuzzy.seed, fuzzy
-        #http_connection = s3_connection.get_http_connection(s3_connection.host, s3_connection.is_secure)
-        #http_connection.request(fuzzy.method, fuzzy.path, body=fuzzy.body, headers=fuzzy.headers)
+    graph_file = open(options.graph_filename, 'r')
+    decision_graph = yaml.safe_load(graph_file)
 
-        #response = http_connection.getresponse()
-        #if response.status == 500 or response.status == 503:
-            #print 'Request generated with seed %d failed:\n%s' % (fuzzy.seed, fuzzy)
+    constants = {
+        'bucket_readable': 'TODO',
+        'bucket_writable' : 'TODO',
+        'bucket_nonexistant' : 'TODO',
+        'object_readable' : 'TODO',
+        'object_writable' : 'TODO',
+        'object_nonexistant' : 'TODO'
+    }
+
+    for request_seed in request_seeds:
+        prng = random.Random(request_seed)
+        decision = assemble_decision(decision_graph, prng)
+        decision.update(constants)
+        request = expand_decision(decision, prng) 
+
+        response = s3_connection.make_request(request['method'], request['path'], data=request['body'], headers=request['headers'], override_num_retries=0)
+
+        if response.status == 500 or response.status == 503:
+            print 'Request generated with seed %d failed:\n%s' % (request_seed, request)
+        pass
 
 
 def main():
