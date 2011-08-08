@@ -61,14 +61,23 @@ def test_bucket_list_empty():
     l = list(l)
     eq(l, [])
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
-def test_bucket_list_many():
-    bucket = get_new_bucket()
-    keys = ['foo', 'bar', 'baz']
+
+def _create_keys(bucket=None, keys=[]):
+    if bucket is None:
+        bucket = get_new_bucket()
+
     for s in keys:
         key = bucket.new_key(s)
         key.set_contents_from_string(s)
+
+    return bucket
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_many():
+    bucket = _create_keys(keys=['foo', 'bar', 'baz'])
+
     # bucket.list() is high-level and will not set us set max-keys,
     # using it would require using >1000 keys to test, and that would
     # be too slow; use the lower-level call bucket.get_all_keys()
@@ -84,6 +93,54 @@ def test_bucket_list_many():
     eq(l.is_truncated, False)
     names = [e.name for e in l]
     eq(names, ['foo'])
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_delimiter():
+    bucket = _create_keys(keys=['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf'])
+
+    li = bucket.list(prefix='foo/', delimiter='/')
+    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    (prefix,) = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    names = [e.name for e in l1]
+    eq(names, ['foo/bar'])
+    eq(prefix.name, 'foo/baz/')
+
+    li = bucket.list(delimiter='/')
+    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
+
+    # In Amazon, you will have two CommonPrefixes elements, each with a single
+    # prefix. According to Amazon documentation
+    # (http://docs.amazonwebservices.com/AmazonS3/latest/API/RESTBucketGET.html),
+    # the response's CommonPrefixes should contain all the prefixes, which DHO
+    # does.
+    #
+    # Unfortunately, boto considers a CommonPrefixes element as a prefix, and
+    # will store the last Prefix element within a CommonPrefixes element,
+    # effectively overwriting any other prefixes.
+    (prefix, prefix2) = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    names = [e.name for e in l1]
+    prefixes = [e.name for e in (prefix, prefix2)]
+    eq(names, ['asdf'])
+    eq(prefixes, ['foo/', 'quux/'])
+
+
+# just testing that we can do the delimeter and prefix logic on non-slashes
+def test_bucket_delimiter_alt():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo'])
+
+    li = bucket.list(prefix='ba', delimiter='a')
+    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    eq(len(prefixes), 0)
+
+    names = [e.name for e in l1]
+    eq(names, ['bar', 'baz'])
+
 
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
