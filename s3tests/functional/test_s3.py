@@ -73,8 +73,6 @@ def _create_keys(bucket=None, keys=[]):
     return bucket
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_many():
     bucket = _create_keys(keys=['foo', 'bar', 'baz'])
 
