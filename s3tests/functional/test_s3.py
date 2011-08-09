@@ -158,6 +158,22 @@ def test_bucket_list_prefix_none():
     bucket = _create_keys(keys=key_names)
 
     li = bucket.list()
+    eq(li.prefix, '')
+
+    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    eq(prefixes, [])
+
+    names = [e.name for e in keys]
+    eq(names, key_names)
+
+
+def test_bucket_list_prefix_none_is_delimiter():
+    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list(delimiter='/')
     keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
     prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
 
