@@ -23,7 +23,7 @@ def build_graph():
     graph = {}
     graph['start'] = {
         'set': {},
-        'choices': ['node1']
+        'choices': ['node2']
     }
     graph['leaf'] = {
         'set': {
@@ -35,6 +35,14 @@ def build_graph():
     graph['node1'] = {
         'set': {
             'key3': 'value3'
+        },
+        'choices': ['leaf']
+    }
+    graph['node2'] = {
+        'set': {
+            'randkey': 'value-{random 10-15 printable}',
+            'path': '/{bucket_readable}',
+            'indirect_key1': '{key1}'
         },
         'choices': ['leaf']
     }
@@ -62,6 +70,7 @@ def test_descend_leaf_node():
     eq(decision['key2'], 'value2')
     e = assert_raises(KeyError, lambda x: decision[x], 'key3')
 
+
 def test_descend_node():
     graph = build_graph()
     prng = random.Random(1)
@@ -71,8 +80,45 @@ def test_descend_node():
     eq(decision['key2'], 'value2')
     eq(decision['key3'], 'value3')
 
+
 def test_descend_bad_node():
     graph = build_graph()
     prng = random.Random(1)
     assert_raises(KeyError, descend_graph, graph, 'bad_node', prng)
+
+
+def test_SpecialVariables_dict():
+    prng = random.Random(1)
+    testdict = {'foo': 'bar'}
+    tester = SpecialVariables(testdict, prng)
+
+    eq(tester['foo'], 'bar')
+    eq(tester['random 10-15 printable'], '[/pNI$;92@') #FIXME: how should I test pseudorandom content?
+
+def test_assemble_decision():
+    graph = build_graph()
+    prng = random.Random(1)
+    decision = assemble_decision(graph, prng)
+
+    eq(decision['key1'], 'value1')
+    eq(decision['key2'], 'value2')
+    eq(decision['randkey'], 'value-{random 10-15 printable}')
+    eq(decision['indirect_key1'], '{key1}')
+    eq(decision['path'], '/{bucket_readable}')
+    assert_raises(KeyError, lambda x: decision[x], 'key3')
+
+def test_expand_decision():
+    graph = build_graph()
+    prng = random.Random(1)
+
+    decision = assemble_decision(graph, prng)
+    decision.update({'bucket_readable': 'my-readable-bucket'})
+
+    request = expand_decision(decision, prng)
+
+    eq(request['key1'], 'value1')
+    eq(request['indirect_key1'], 'value1')
+    eq(request['path'], '/my-readable-bucket')
+    eq(request['randkey'], 'value-?') #FIXME: again, how to handle the pseudorandom content?
+    assert_raises(KeyError, lambda x: decision[x], 'key3')
 

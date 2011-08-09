@@ -22,14 +22,16 @@ def descend_graph(decision_graph, node_name, prng):
         the node's "set" list, pick a choice from the "choice" list, and
         recurse.  Finally, return dictionary of values
     """
+    node = decision_graph[node_name]
+
     try:
-        choice = prng.choice(decision_graph[node_name]['choices'])
+        #TODO: Give weights to each choice
+        choice = prng.choice(node['choices'])
         decision = descend_graph(decision_graph, choice, prng)
     except IndexError:
         decision = {}
 
-    node = decision_graph[node_name]
-
+    #TODO: Add in headers
     for key in node['set']:
         if decision.has_key(key):
             raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
@@ -43,6 +45,46 @@ def expand_decision(decision, prng):
         build a request out of the information
     """
     raise NotImplementedError
+
+
+class SpecialVariables(dict):
+    charsets = {
+        'printable': string.printable,
+        'punctuation': string.punctuation,
+        'whitespace': string.whitespace
+    }
+
+    def __init__(self, orig_dict, prng):
+        self.update(orig_dict)
+        self.prng = prng
+
+
+    def __getitem__(self, key):
+        fields = key.split(None, 1)
+        fn = getattr(self, 'special_{name}'.format(name=fields[0]), None)
+        if fn is None:
+            return super(SpecialVariables, self).__getitem__(key)
+
+        if len(fields) == 1:
+            fields.apppend('')
+        return fn(fields[1])
+
+
+    def special_random(self, args):
+        arg_list = args.split()
+        try:
+            size_min, size_max = [int(x) for x in arg_list[0].split('-')]
+        except IndexError:
+            size_min = 0
+            size_max = 1000
+        try:
+            charset = self.charsets[arg_list[1]]
+        except IndexError:
+            charset = self.charsets['printable']
+
+        length = self.prng.randint(size_min, size_max)
+        return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
+
 
 
 def parse_options():
