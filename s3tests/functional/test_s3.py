@@ -140,6 +140,19 @@ def test_bucket_delimiter_alt():
     eq(names, ['bar', 'baz'])
 
 
+def test_bucket_list_prefix_not_exist():
+    bucket = _create_keys(keys=['b/a/r', 'b/a/c', 'b/a/g', 'g'])
+
+    li = bucket.list(prefix='d', delimiter='/')
+    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    eq(prefixes, [])
+
+    names = [e.name for e in keys]
+    eq(names, [])
+
+
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
