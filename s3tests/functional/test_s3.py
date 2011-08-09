@@ -153,6 +153,20 @@ def test_bucket_list_prefix_not_exist():
     eq(names, [])
 
 
+def test_bucket_list_prefix_none():
+    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list()
+    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+
+    eq(prefixes, [])
+
+    names = [e.name for e in keys]
+    eq(names, key_names)
+
+
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
