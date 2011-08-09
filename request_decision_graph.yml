@@ -1,5 +1,5 @@
 start:
-    set: null
+    set: {}
     choice:
         - bucket
 
@@ -22,15 +22,15 @@ bucket_delete:
 delete_bucket:
     set:
         query: null
-    choice: null
+    choice: []
 
 delete_bucket_policy:
     set:
         query: 'policy'
-    choice: null
+    choice: []
 
 delete_bucket_website:
     set:
         query: 'website'
-    choice: null
+    choice: []
 

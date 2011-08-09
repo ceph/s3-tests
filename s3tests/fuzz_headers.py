@@ -14,7 +14,27 @@ def assemble_decision(decision_graph, prng):
     """ Take in a graph describing the possible decision space and a random
         number generator and traverse the graph to build a decision
     """
-    raise NotImplementedError
+    return descend_graph(decision_graph, 'start', prng)
+
+
+def descend_graph(decision_graph, node_name, prng):
+    """ Given a graph and a particular node in that graph, set the values in
+        the node's "set" list, pick a choice from the "choice" list, and
+        recurse.  Finally, return dictionary of values
+    """
+    try:
+        choice = prng.choice(decision_graph[node_name]['choices'])
+        decision = descend_graph(decision_graph, choice, prng)
+    except IndexError:
+        decision = {}
+
+    node = decision_graph[node_name]
+
+    for key in node['set']:
+        if decision.has_key(key):
+            raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
+        decision[key] = node['set'][key]
+    return decision
 
 
 def expand_decision(decision, prng):
