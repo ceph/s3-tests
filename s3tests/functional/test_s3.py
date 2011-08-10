@@ -73,6 +73,12 @@ def _create_keys(bucket=None, keys=[]):
     return bucket
 
 
+def _get_keys_prefixes(li):
+    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+    return (keys, prefixes)
+
+
 def test_bucket_list_many():
     bucket = _create_keys(keys=['foo', 'bar', 'baz'])
 
@@ -95,19 +101,15 @@ def test_bucket_list_many():
 
 @attr('fails_on_rgw')
 @attr('fails_on_dho')
-def test_bucket_delimiter():
+def test_bucket_list_delimiter_basic():
     bucket = _create_keys(keys=['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf'])
 
-    li = bucket.list(prefix='foo/', delimiter='/')
-    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
-    (prefix,) = [x for x in li if not isinstance(x, boto.s3.key.Key)]
-
-    names = [e.name for e in l1]
-    eq(names, ['foo/bar'])
-    eq(prefix.name, 'foo/baz/')
-
     li = bucket.list(delimiter='/')
-    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
+    eq(li.delimiter, '/')
+
+    (keys,prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['asdf'])
 
     # In Amazon, you will have two CommonPrefixes elements, each with a single
     # prefix. According to Amazon documentation
@@ -118,69 +120,223 @@ def test_bucket_delimiter():
     # Unfortunately, boto considers a CommonPrefixes element as a prefix, and
     # will store the last Prefix element within a CommonPrefixes element,
     # effectively overwriting any other prefixes.
-    (prefix, prefix2) = [x for x in li if not isinstance(x, boto.s3.key.Key)]
-
-    names = [e.name for e in l1]
-    prefixes = [e.name for e in (prefix, prefix2)]
-    eq(names, ['asdf'])
-    eq(prefixes, ['foo/', 'quux/'])
+    prefix_names = [e.name for e in prefixes]
+    eq(len(prefixes), 2)
+    eq(prefix_names, ['foo/', 'quux/'])
 
 
 # just testing that we can do the delimeter and prefix logic on non-slashes
-def test_bucket_delimiter_alt():
-    bucket = _create_keys(keys=['bar', 'baz', 'foo'])
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_delimiter_alt():
+    bucket = _create_keys(keys=['bar', 'baz', 'cab', 'foo'])
 
-    li = bucket.list(prefix='ba', delimiter='a')
-    l1 = [x for x in li if isinstance(x, boto.s3.key.Key)]
-    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+    li = bucket.list(delimiter='a')
+    eq(li.delimiter, 'a')
 
-    eq(len(prefixes), 0)
+    (keys,prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['foo'])
 
-    names = [e.name for e in l1]
-    eq(names, ['bar', 'baz'])
+    prefix_names = [e.name for e in prefixes]
+    eq(len(prefixes), 2)
+    eq(prefix_names, ['ba', 'ca'])
 
 
-def test_bucket_list_prefix_not_exist():
-    bucket = _create_keys(keys=['b/a/r', 'b/a/c', 'b/a/g', 'g'])
+# SAX parser error for all.
+@attr('fails_on_amazon')
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_delimiter_unreadable():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket = _create_keys(keys=key_names)
 
-    li = bucket.list(prefix='d', delimiter='/')
-    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
-    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
+    li = bucket.list(delimiter='\x07')
+    eq(li.delimiter, '\x07')
 
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, key_names)
     eq(prefixes, [])
 
+
+def test_bucket_list_delimiter_empty():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list(delimiter='')
+    eq(li.delimiter, '')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
     names = [e.name for e in keys]
-    eq(names, [])
+    eq(names, key_names)
+    eq(prefixes, [])
+
+
+def test_bucket_list_delimiter_none():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list()
+    eq(li.delimiter, '')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, key_names)
+    eq(prefixes, [])
+
+
+def test_bucket_list_delimiter_not_exist():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list(delimiter='/')
+    eq(li.delimiter, '/')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, key_names)
+    eq(prefixes, [])
+
+
+def test_bucket_list_prefix_basic():
+    bucket = _create_keys(keys=['foo/bar', 'foo/baz', 'quux'])
+
+    li = bucket.list(prefix='foo/')
+    eq(li.prefix, 'foo/')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['foo/bar', 'foo/baz'])
+    eq(prefixes, [])
+
+
+# just testing that we can do the delimeter and prefix logic on non-slashes
+def test_bucket_list_prefix_alt():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo'])
+
+    li = bucket.list(prefix='ba')
+    eq(li.prefix, 'ba')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['bar', 'baz'])
+    eq(prefixes, [])
+
+
+def test_bucket_list_prefix_empty():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list(prefix='')
+    eq(li.prefix, '')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, key_names)
+    eq(prefixes, [])
 
 
 def test_bucket_list_prefix_none():
-    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
+    key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket = _create_keys(keys=key_names)
 
     li = bucket.list()
     eq(li.prefix, '')
 
-    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
-    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
-
-    eq(prefixes, [])
-
+    (keys, prefixes) = _get_keys_prefixes(li)
     names = [e.name for e in keys]
     eq(names, key_names)
-
-
-def test_bucket_list_prefix_none_is_delimiter():
-    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
-    bucket = _create_keys(keys=key_names)
-
-    li = bucket.list(delimiter='/')
-    keys = [x for x in li if isinstance(x, boto.s3.key.Key)]
-    prefixes = [x for x in li if not isinstance(x, boto.s3.key.Key)]
-
     eq(prefixes, [])
 
+
+def test_bucket_list_prefix_not_exist():
+    bucket = _create_keys(keys=['foo/bar', 'foo/baz', 'quux'])
+
+    li = bucket.list(prefix='d')
+    eq(li.prefix, 'd')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    eq(keys, [])
+    eq(prefixes, [])
+
+
+# SAX parser error for all.
+@attr('fails_on_amazon')
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_prefix_unreadable():
+    bucket = _create_keys(keys=['foo/bar', 'foo/baz', 'quux'])
+
+    li = bucket.list(prefix='\x07')
+    eq(li.prefix, '\x07')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    eq(keys, [])
+    eq(prefixes, [])
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_prefix_delimiter_basic():
+    bucket = _create_keys(keys=['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf'])
+
+    li = bucket.list(prefix='foo/', delimiter='/')
+    eq(li.prefix, 'foo/')
+    eq(li.delimiter, '/')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
     names = [e.name for e in keys]
-    eq(names, key_names)
+    eq(names, ['foo/bar'])
+
+    prefix_names = [e.name for e in prefixes]
+    eq(prefix_names, ['foo/baz/'])
+
+
+def test_bucket_list_prefix_delimiter_alt():
+    bucket = _create_keys(keys=['bar', 'bazar', 'cab', 'foo'])
+
+    li = bucket.list(prefix='ba', delimiter='a')
+    eq(li.prefix, 'ba')
+    eq(li.delimiter, 'a')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['bar'])
+
+    prefix_names = [e.name for e in prefixes]
+    eq(prefix_names, ['baza'])
+
+
+def test_bucket_list_prefix_delimiter_prefix_not_exist():
+    bucket = _create_keys(keys=['b/a/r', 'b/a/c', 'b/a/g', 'g'])
+
+    li = bucket.list(prefix='d', delimiter='/')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    eq(keys, [])
+    eq(prefixes, [])
+
+
+def test_bucket_list_prefix_delimiter_delimiter_not_exist():
+    bucket = _create_keys(keys=['b/a/c', 'b/a/g', 'b/a/r', 'g'])
+
+    li = bucket.list(prefix='b', delimiter='z')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['b/a/c', 'b/a/g', 'b/a/r'])
+    eq(prefixes, [])
+
+
+def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
+    bucket = _create_keys(keys=['b/a/c', 'b/a/g', 'b/a/r', 'g'])
+
+    li = bucket.list(prefix='y', delimiter='z')
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+    eq(keys, [])
+    eq(prefixes, [])
 
 
 def test_bucket_list_maxkeys_one():
