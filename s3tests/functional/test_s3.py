@@ -246,6 +246,73 @@ def test_bucket_list_maxkeys_unreadable():
     eq(e.error_code, None)
 
 
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_marker_none():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys()
+    eq(li.marker, '')
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_marker_empty():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys(marker='')
+    eq(li.marker, '')
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, key_names)
+
+
+# Amazon gives a SAX parser error.
+@attr('fails_on_amazon')
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_bucket_list_marker_unreadable():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys(marker='\x07')
+    eq(li.marker, '\x07')
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, key_names)
+
+
+def test_bucket_list_marker_not_in_list():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
+
+    li = bucket.get_all_keys(marker='blah')
+    eq(li.marker, 'blah')
+    names = [e.name for e in li]
+    eq(names, ['foo', 'quxx'])
+
+
+def test_bucket_list_marker_after_list():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
+
+    li = bucket.get_all_keys(marker='zzz')
+    eq(li.marker, 'zzz')
+    eq(li.is_truncated, False)
+    eq(li, [])
+
+
+def test_bucket_list_marker_before_list():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys(marker='aaa')
+    eq(li.marker, 'aaa')
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, key_names)
+
+
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
