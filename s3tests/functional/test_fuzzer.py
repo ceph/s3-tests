@@ -101,7 +101,13 @@ def test_SpecialVariables_dict():
     tester = SpecialVariables(testdict, prng)
 
     eq(tester['foo'], 'bar')
-    eq(tester['random 10-15 printable'], '[/pNI$;92@') #FIXME: how should I test pseudorandom content?
+    eq(tester['random 10-15 printable'], '[/pNI$;92@')
+
+def test_SpecialVariables_binary():
+    prng = random.Random(1)
+    tester = SpecialVariables({}, prng)
+
+    eq(tester['random 10-15 binary'], '\xdfj\xf1\xd80>a\xcd\xc4\xbb')
 
 def test_assemble_decision():
     graph = build_graph()
@@ -154,7 +160,7 @@ def test_expand_decision():
     eq(request['key1'], 'value1')
     eq(request['indirect_key1'], 'value1')
     eq(request['path'], '/my-readable-bucket')
-    eq(request['randkey'], 'value-NI$;92@H/0I') #FIXME: again, how to handle the pseudorandom content?
+    eq(request['randkey'], 'value-NI$;92@H/0I')
     assert_raises(KeyError, lambda x: decision[x], 'key3')
 
 def test_weighted_choices():

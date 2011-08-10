@@ -7,6 +7,7 @@ import traceback
 import itertools
 import random
 import string
+import struct
 import yaml
 import sys
 
@@ -82,6 +83,7 @@ def expand_key(decision, key):
 
 class SpecialVariables(dict):
     charsets = {
+        'binary': 'binary',
         'printable': string.printable,
         'punctuation': string.punctuation,
         'whitespace': string.whitespace
@@ -116,7 +118,13 @@ class SpecialVariables(dict):
             charset = self.charsets['printable']
 
         length = self.prng.randint(size_min, size_max)
-        return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
+        if charset is 'binary':
+            num_bytes = length + 8
+            tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
+            tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
+            return tmpstring[0:length]
+        else:
+            return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely; won't do binary
 
 
 
