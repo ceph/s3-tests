@@ -26,8 +26,7 @@ def descend_graph(decision_graph, node_name, prng):
     node = decision_graph[node_name]
 
     try:
-        #TODO: Give weights to each choice
-        choice = prng.choice(node['choices'])
+        choice = make_choice(node['choices'], prng)
         decision = descend_graph(decision_graph, choice, prng)
     except IndexError:
         decision = {}
@@ -38,6 +37,22 @@ def descend_graph(decision_graph, node_name, prng):
             raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
         decision[key] = node['set'][key]
     return decision
+
+
+def make_choice(choices, prng):
+    weighted_choices = []
+    for option in choices:
+        fields = option.split(None, 1)
+        if len(fields) == 1:
+            weight = 1
+            value = fields[0]
+        else:
+            weight = int(fields[0])
+            value = fields[1]
+        for _ in xrange(weight):
+            weighted_choices.append(value)
+
+    return prng.choice(weighted_choices)
 
 
 def expand_decision(decision, prng):
