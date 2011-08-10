@@ -52,8 +52,14 @@ def build_graph():
         },
         'choices': ['leaf']
     }
-    graph['weighted_choices'] = {
-        'set': {},
+    graph['weighted_node'] = {
+        'set': {
+            'k1': [
+                'foo',
+                '2 bar',
+                '1 baz'
+            ]
+        },
         'choices': [
             'foo',
             '2 bar',
@@ -169,7 +175,26 @@ def test_weighted_choices():
 
     choices_made = {}
     for _ in xrange(1000):
-        choice = make_choice(graph['weighted_choices']['choices'], prng)
+        choice = make_choice(graph['weighted_node']['choices'], prng)
+        if choices_made.has_key(choice):
+            choices_made[choice] += 1
+        else:
+            choices_made[choice] = 1
+
+    foo_percentage = choices_made['foo'] / 1000.0
+    bar_percentage = choices_made['bar'] / 1000.0
+    baz_percentage = choices_made['baz'] / 1000.0
+    nose.tools.assert_almost_equal(foo_percentage, 0.25, 1)
+    nose.tools.assert_almost_equal(bar_percentage, 0.50, 1)
+    nose.tools.assert_almost_equal(baz_percentage, 0.25, 1)
+
+def test_weighted_set():
+    graph = build_graph()
+    prng = random.Random(1)
+
+    choices_made = {}
+    for _ in xrange(1000):
+        choice = make_choice(graph['weighted_node']['set']['k1'], prng)
         if choices_made.has_key(choice):
             choices_made[choice] += 1
         else:

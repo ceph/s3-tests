@@ -36,11 +36,13 @@ def descend_graph(decision_graph, node_name, prng):
     for key in node['set']:
         if decision.has_key(key):
             raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
-        decision[key] = node['set'][key]
+        decision[key] = make_choice(node['set'][key], prng)
     return decision
 
 
 def make_choice(choices, prng):
+    if isinstance(choices, str):
+        return choices
     weighted_choices = []
     for option in choices:
         fields = option.split(None, 1)
