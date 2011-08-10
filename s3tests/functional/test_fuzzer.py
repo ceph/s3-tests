@@ -107,6 +107,33 @@ def test_assemble_decision():
     eq(decision['path'], '/{bucket_readable}')
     assert_raises(KeyError, lambda x: decision[x], 'key3')
 
+def test_expand_key():
+    prng = random.Random(1)
+    test_decision = {
+        'key1': 'value1',
+        'randkey': 'value-{random 10-15 printable}',
+        'indirect': '{key1}',
+        'dbl_indirect': '{indirect}'
+    }
+    decision = SpecialVariables(test_decision, prng)
+
+    randkey = expand_key(decision, 'randkey')
+    indirect = expand_key(decision, 'indirect')
+    dbl_indirect = expand_key(decision, 'dbl_indirect')
+
+    eq(indirect, 'value1')
+    eq(dbl_indirect, 'value1')
+    eq(randkey, 'value-[/pNI$;92@')
+
+def test_expand_loop():
+    prng = random.Random(1)
+    test_decision = {
+        'key1': '{key2}',
+        'key2': '{key1}',
+    }
+    decision = SpecialVariables(test_decision, prng)
+    assert_raises(RuntimeError, expand_key, decision, 'key1')
+
 def test_expand_decision():
     graph = build_graph()
     prng = random.Random(1)
@@ -119,6 +146,6 @@ def test_expand_decision():
     eq(request['key1'], 'value1')
     eq(request['indirect_key1'], 'value1')
     eq(request['path'], '/my-readable-bucket')
-    eq(request['randkey'], 'value-?') #FIXME: again, how to handle the pseudorandom content?
+    eq(request['randkey'], 'value-NI$;92@H/0I') #FIXME: again, how to handle the pseudorandom content?
     assert_raises(KeyError, lambda x: decision[x], 'key3')
 

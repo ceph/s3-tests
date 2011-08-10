@@ -4,6 +4,7 @@ from boto import UserAgent
 from . import common
 
 import traceback
+import itertools
 import random
 import string
 import yaml
@@ -44,7 +45,24 @@ def expand_decision(decision, prng):
         decision's values and headers until all values are fully expanded and
         build a request out of the information
     """
-    raise NotImplementedError
+    special_decision = SpecialVariables(decision, prng)
+    for key in special_decision:
+        decision[key] = expand_key(special_decision, key)
+
+    return decision
+
+
+def expand_key(decision, key):
+    c = itertools.count()
+    fmt = string.Formatter()
+    old = decision[key]
+    while True:
+        new = fmt.vformat(old, [], decision)
+        if new == old:
+            return old
+        if next(c) > 5:
+            raise RuntimeError
+        old = new
 
 
 class SpecialVariables(dict):
