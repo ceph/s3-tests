@@ -676,6 +676,24 @@ def test_object_set_get_metadata_overwrite_to_unreadable_infix():
     eq(got2, [(metadata2, 'utf-8')])
 
 
+def test_object_metadata_replaced_on_put():
+    bucket = get_new_bucket()
+
+    # create object with metadata
+    key = bucket.new_key('foo')
+    key.set_metadata('meta1', 'bar')
+    key.set_contents_from_string('bar')
+
+    # overwrite previous object, no metadata
+    key2 = bucket.new_key('foo')
+    key2.set_contents_from_string('bar')
+
+    # should see no metadata, as per 2nd write
+    key3 = bucket.get_key('foo')
+    got = key3.get_metadata('meta1')
+    assert got is None, "did not expect to see metadata: %r" % got
+
+
 def test_object_write_file():
     # boto Key.set_contents_from_file / .send_file uses Expect:
     # 100-Continue, so this test exercises that (though a bit too
