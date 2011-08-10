@@ -183,6 +183,69 @@ def test_bucket_list_prefix_none_is_delimiter():
     eq(names, key_names)
 
 
+def test_bucket_list_maxkeys_one():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys(max_keys=1)
+    eq(len(li), 1)
+    eq(li.is_truncated, True)
+    names = [e.name for e in li]
+    eq(names, key_names[0:1])
+
+    li = bucket.get_all_keys(marker=key_names[0])
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, key_names[1:])
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_maxkeys_zero():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
+
+    li = bucket.get_all_keys(max_keys=0)
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, [])
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_maxkeys_none():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys()
+    eq(li.is_truncated, False)
+    names = [e.name for e in li]
+    eq(names, key_names)
+    eq(li.MaxKeys, '1000')
+
+
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_list_maxkeys_invalid():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='blah')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+def test_bucket_list_maxkeys_unreadable():
+    bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='\x07')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    # Weird because you can clearly see an InvalidArgument error code. What's
+    # also funny is the Amazon tells us that it's not an interger or within an
+    # integer range. Is 'blah' in the integer range?
+    eq(e.error_code, None)
+
+
 def test_bucket_notexist():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
