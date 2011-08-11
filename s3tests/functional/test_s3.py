@@ -143,16 +143,12 @@ def test_bucket_list_delimiter_alt():
     eq(prefix_names, ['ba', 'ca'])
 
 
-# SAX parser error for all.
-@attr('fails_on_amazon')
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_delimiter_unreadable():
     key_names = ['bar', 'baz', 'cab', 'foo']
     bucket = _create_keys(keys=key_names)
 
-    li = bucket.list(delimiter='\x07')
-    eq(li.delimiter, '\x07')
+    li = bucket.list(delimiter='\x0a')
+    eq(li.delimiter, '\x0a')
 
     (keys, prefixes) = _get_keys_prefixes(li)
     names = [e.name for e in keys]
@@ -261,15 +257,11 @@ def test_bucket_list_prefix_not_exist():
     eq(prefixes, [])
 
 
-# SAX parser error for all.
-@attr('fails_on_amazon')
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_prefix_unreadable():
     bucket = _create_keys(keys=['foo/bar', 'foo/baz', 'quux'])
 
-    li = bucket.list(prefix='\x07')
-    eq(li.prefix, '\x07')
+    li = bucket.list(prefix='\x0a')
+    eq(li.prefix, '\x0a')
 
     (keys, prefixes) = _get_keys_prefixes(li)
     eq(keys, [])
@@ -427,16 +419,14 @@ def test_bucket_list_marker_empty():
     eq(names, key_names)
 
 
-# Amazon gives a SAX parser error.
-@attr('fails_on_amazon')
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_bucket_list_marker_unreadable():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket = _create_keys(keys=key_names)
 
-    li = bucket.get_all_keys(marker='\x07')
-    eq(li.marker, '\x07')
+    li = bucket.get_all_keys(marker='\x0a')
+    eq(li.marker, '\x0a')
     eq(li.is_truncated, False)
     names = [e.name for e in li]
     eq(names, key_names)
