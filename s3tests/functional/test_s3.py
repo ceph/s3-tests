@@ -387,13 +387,13 @@ def test_bucket_list_maxkeys_invalid():
 def test_bucket_list_maxkeys_unreadable():
     bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
 
-    e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='\x07')
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='\x0a')
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     # Weird because you can clearly see an InvalidArgument error code. What's
     # also funny is the Amazon tells us that it's not an interger or within an
     # integer range. Is 'blah' in the integer range?
-    eq(e.error_code, None)
+    eq(e.error_code, 'InvalidArgument')
 
 
 @attr('fails_on_rgw')
