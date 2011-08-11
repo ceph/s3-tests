@@ -1481,6 +1481,7 @@ def test_bucket_acl_revoke_all():
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
 @attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_logging_toggle():
     bucket = get_new_bucket()
     log_bucket = s3.main.create_bucket(bucket.name + '-log')
