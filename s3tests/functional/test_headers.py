@@ -201,6 +201,7 @@ def test_object_create_bad_md5_none():
 # error comes back as html, and not xml as I normally expect
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_expect_mismatch():
     key = _setup_bad_object({'Expect': 200})
     key.set_contents_from_string('bar')
@@ -224,6 +225,7 @@ def test_object_create_bad_expect_none():
 # this is a really long test..
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_expect_unreadable():
     key = _setup_bad_object({'Expect': '\x07'})
     key.set_contents_from_string('bar')
@@ -231,6 +233,7 @@ def test_object_create_bad_expect_unreadable():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_empty():
     key = _setup_bad_object({'Content-Length': ''})
 
@@ -242,6 +245,7 @@ def test_object_create_bad_contentlength_empty():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_negative():
     key = _setup_bad_object({'Content-Length': -1})
 
@@ -274,6 +278,7 @@ def test_object_create_bad_contentlength_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
 
@@ -285,6 +290,7 @@ def test_object_create_bad_contentlength_unreadable():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_mismatch_above():
     content = 'bar'
     length = len(content) + 1
@@ -371,6 +377,7 @@ def test_object_create_bad_ua_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
+@attr('fails_on_rgw')
 def test_object_create_bad_authorization_invalid():
     key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
 
