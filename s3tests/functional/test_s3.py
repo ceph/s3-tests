@@ -354,8 +354,7 @@ def test_bucket_list_maxkeys_zero():
 
     li = bucket.get_all_keys(max_keys=0)
     eq(li.is_truncated, False)
-    names = [e.name for e in li]
-    eq(names, [])
+    eq(li, [])
 
 
 @attr('fails_on_rgw')
