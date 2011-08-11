@@ -3,6 +3,9 @@ import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 import bunch
+import datetime
+import email.utils
+import isodate
 import nose
 import operator
 import random
@@ -458,6 +461,80 @@ def test_bucket_list_marker_before_list():
     eq(li.is_truncated, False)
     names = [e.name for e in li]
     eq(names, key_names)
+
+
+def _compare_dates(iso_datetime, http_datetime):
+    date = isodate.parse_datetime(iso_datetime)
+
+    pd = email.utils.parsedate_tz(http_datetime)
+    tz = isodate.tzinfo.FixedOffset(0, pd[-1]/60, 'who cares')
+    date2 = datetime.datetime(*pd[:6], tzinfo=tz)
+
+    # our tolerance
+    minutes = 5
+    acceptable_delta = datetime.timedelta(minutes=minutes)
+    assert abs(date - date2) < acceptable_delta, \
+            ("Times are not within {minutes} minutes of each other: "
+             + "{date1!r}, {date2!r}"
+             ).format(
+                minutes=minutes,
+                date1=iso_datetime,
+                date2=http_datetime,
+                )
+
+
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_bucket_list_return_data():
+    key_names = ['bar', 'baz', 'foo']
+    bucket = _create_keys(keys=key_names)
+
+    # grab the data from each key individually
+    data = {}
+    for key_name in key_names:
+        key = bucket.get_key(key_name)
+        acl = key.get_acl()
+        data.update({
+            key_name: {
+                'user_id': acl.owner.id,
+                'display_name': acl.owner.display_name,
+                'etag': key.etag,
+                'last_modified': key.last_modified,
+                'size': key.size,
+                'md5': key.md5,
+                'content_encoding': key.content_encoding,
+                }
+            })
+
+    # now grab the data from each key through list
+    li = bucket.list()
+    for key in li:
+        key_data = data[key.name]
+        eq(key.content_encoding, key_data['content_encoding'])
+        eq(key.owner.display_name, key_data['display_name'])
+        eq(key.etag, key_data['etag'])
+        eq(key.md5, key_data['md5'])
+        eq(key.size, key_data['size'])
+        eq(key.owner.id, key_data['user_id'])
+        _compare_dates(key.last_modified, key_data['last_modified'])
+
+
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_bucket_list_object_time():
+    bucket = _create_keys(keys=['foo'])
+
+    # Wed, 10 Aug 2011 21:58:25 GMT'
+    key = bucket.get_key('foo')
+    http_datetime = key.last_modified
+
+    # ISO-6801 formatted datetime
+    # there should be only one element, but list doesn't have a __getitem__
+    # only an __iter__
+    for key in bucket.list():
+        iso_datetime = key.last_modified
+
+    _compare_dates(iso_datetime, http_datetime)
 
 
 def test_bucket_notexist():
