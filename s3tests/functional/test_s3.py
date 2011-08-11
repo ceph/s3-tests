@@ -537,9 +537,10 @@ def test_object_read_notexist():
 
 # While the test itself passes, there's a SAX parser error during teardown. It
 # seems to be a boto bug.  It happens with both amazon and dho.
+# http://code.google.com/p/boto/issues/detail?id=501
 def test_object_create_unreadable():
     bucket = get_new_bucket()
-    key = bucket.new_key('\x07')
+    key = bucket.new_key('\x0a')
     key.set_contents_from_string('bar')
 
 
