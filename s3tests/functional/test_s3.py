@@ -618,28 +618,24 @@ def _set_get_metadata_unreadable(metadata, bucket=None):
     return got
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_empty_to_unreadable_prefix():
     metadata = '\x04w'
     got = _set_get_metadata_unreadable(metadata)
     eq(got, [(metadata, 'utf-8')])
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_empty_to_unreadable_suffix():
     metadata = 'h\x04'
     got = _set_get_metadata_unreadable(metadata)
     eq(got, [(metadata, 'utf-8')])
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_empty_to_unreadable_infix():
     metadata = 'h\x04w'
     got = _set_get_metadata_unreadable(metadata)
     eq(got, [(metadata, 'utf-8')])
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_overwrite_to_unreadable_prefix():
     metadata = '\x04w'
     got = _set_get_metadata_unreadable(metadata)
@@ -649,7 +645,6 @@ def test_object_set_get_metadata_overwrite_to_unreadable_prefix():
     eq(got2, [(metadata2, 'utf-8')])
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_overwrite_to_unreadable_suffix():
     metadata = 'h\x04'
     got = _set_get_metadata_unreadable(metadata)
@@ -659,7 +654,6 @@ def test_object_set_get_metadata_overwrite_to_unreadable_suffix():
     eq(got2, [(metadata2, 'utf-8')])
 
 
-@attr('fails_on_dho')
 def test_object_set_get_metadata_overwrite_to_unreadable_infix():
     metadata = 'h\x04w'
     got = _set_get_metadata_unreadable(metadata)
