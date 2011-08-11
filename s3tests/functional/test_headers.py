@@ -336,6 +336,8 @@ def test_object_create_bad_contenttype_none():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_object_create_bad_contenttype_unreadable():
     key = _setup_bad_object({'Content-Type': '\x08'})
 
