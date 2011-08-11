@@ -390,6 +390,8 @@ def test_bucket_list_maxkeys_invalid():
     eq(e.error_code, 'InvalidArgument')
 
 
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_bucket_list_maxkeys_unreadable():
     bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
 
