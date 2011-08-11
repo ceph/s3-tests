@@ -5,7 +5,7 @@ start:
 
 bucket:
     set:
-        urlpath: '/{bucket}'
+        urlpath: /{bucket}
     choice:
         - bucket_get
         - bucket_put
@@ -13,24 +13,10 @@ bucket:
 
 bucket_delete:
     set:
-        method: 'DELETE'
-    choice:
-        - delete_bucket
-        - delete_bucket_policy
-        - delete_bucket_website
-
-delete_bucket:
-    set:
-        query: null
-    choice: []
-
-delete_bucket_policy:
-    set:
-        query: 'policy'
-    choice: []
-
-delete_bucket_website:
-    set:
-        query: 'website'
+        method: DELETE
+        query:
+            - null
+            - policy
+            - website
     choice: []
 

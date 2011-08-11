@@ -65,6 +65,10 @@ def build_graph():
         },
         'choices': ['leaf']
     }
+    graph['nonexistant_child_node'] = {
+        'set': {},
+        'choices': ['leafy_greens']
+    }
     graph['weighted_node'] = {
         'set': {
             'k1': [
@@ -78,6 +82,14 @@ def build_graph():
             '2 bar',
             '1 baz'
         ]
+    }
+    graph['null_choice_node'] = {
+        'set': {},
+        'choices': [None]
+    }
+    graph['weighted_null_choice_node'] = {
+        'set': {},
+        'choices': ['3 null']
     }
     return graph
 
@@ -114,6 +126,12 @@ def test_descend_bad_node():
     assert_raises(KeyError, descend_graph, graph, 'bad_node', prng)
 
 
+def test_descend_nonexistant_child():
+    graph = build_graph()
+    prng = random.Random(1)
+    assert_raises(KeyError, descend_graph, graph, 'nonexistant_child_node', prng)
+
+
 def test_SpecialVariables_dict():
     prng = random.Random(1)
     testdict = {'foo': 'bar'}
@@ -128,6 +146,7 @@ def test_SpecialVariables_binary():
 
     eq(tester['random 10-15 binary'], '\xdfj\xf1\xd80>a\xcd\xc4\xbb')
 
+
 def test_assemble_decision():
     graph = build_graph()
     prng = random.Random(1)
@@ -139,6 +158,7 @@ def test_assemble_decision():
     eq(decision['indirect_key1'], '{key1}')
     eq(decision['path'], '/{bucket_readable}')
     assert_raises(KeyError, lambda x: decision[x], 'key3')
+
 
 def test_expand_key():
     prng = random.Random(1)
@@ -158,6 +178,7 @@ def test_expand_key():
     eq(dbl_indirect, 'value1')
     eq(randkey, 'value-[/pNI$;92@')
 
+
 def test_expand_loop():
     prng = random.Random(1)
     test_decision = {
@@ -166,6 +187,7 @@ def test_expand_loop():
     }
     decision = SpecialVariables(test_decision, prng)
     assert_raises(RuntimeError, expand_key, decision, test_decision['key1'])
+
 
 def test_expand_decision():
     graph = build_graph()
@@ -181,6 +203,7 @@ def test_expand_decision():
     eq(request['path'], '/my-readable-bucket')
     eq(request['randkey'], 'value-cx+*~G@&uW_[OW3')
     assert_raises(KeyError, lambda x: decision[x], 'key3')
+
 
 def test_weighted_choices():
     graph = build_graph()
@@ -201,6 +224,31 @@ def test_weighted_choices():
     nose.tools.assert_almost_equal(bar_percentage, 0.50, 1)
     nose.tools.assert_almost_equal(baz_percentage, 0.25, 1)
 
+
+def test_null_choices():
+    graph = build_graph()
+    prng = random.Random(1)
+    choice = make_choice(graph['null_choice_node']['choices'], prng)
+
+    eq(choice, '')
+
+
+def test_weighted_null_choices():
+    graph = build_graph()
+    prng = random.Random(1)
+    choice = make_choice(graph['weighted_null_choice_node']['choices'], prng)
+
+    eq(choice, '')
+
+
+def test_null_child():
+    graph = build_graph()
+    prng = random.Random(1)
+    decision = descend_graph(graph, 'null_choice_node', prng)
+
+    eq(decision, {})
+
+
 def test_weighted_set():
     graph = build_graph()
     prng = random.Random(1)
@@ -219,6 +267,7 @@ def test_weighted_set():
     nose.tools.assert_almost_equal(foo_percentage, 0.25, 1)
     nose.tools.assert_almost_equal(bar_percentage, 0.50, 1)
     nose.tools.assert_almost_equal(baz_percentage, 0.25, 1)
+
 
 def test_header_presence():
     graph = build_graph()
@@ -239,7 +288,6 @@ def test_header_presence():
 
     nose.tools.assert_true(next(c1))
     nose.tools.assert_true(next(c2))
-
 
 
 def test_header_expansion():

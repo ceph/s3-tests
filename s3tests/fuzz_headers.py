@@ -29,7 +29,10 @@ def descend_graph(decision_graph, node_name, prng):
 
     try:
         choice = make_choice(node['choices'], prng)
-        decision = descend_graph(decision_graph, choice, prng)
+        if choice == '':
+            decision = {}
+        else:
+            decision = descend_graph(decision_graph, choice, prng)
     except IndexError:
         decision = {}
 
@@ -72,6 +75,9 @@ def make_choice(choices, prng):
         return choices
     weighted_choices = []
     for option in choices:
+        if option is None:
+            weighted_choices.append('')
+            continue
         fields = option.split(None, 1)
         if len(fields) == 1:
             weight = 1
@@ -79,6 +85,8 @@ def make_choice(choices, prng):
         else:
             weight = int(fields[0])
             value = fields[1]
+            if value == 'null' or value == 'None':
+                value = ''
         for _ in xrange(weight):
             weighted_choices.append(value)
 
