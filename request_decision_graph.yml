@@ -1,22 +1,133 @@
 start:
     set: {}
-    choice:
+    choices:
         - bucket
 
 bucket:
     set:
         urlpath: /{bucket}
-    choice:
-        - bucket_get
-        - bucket_put
-        - bucket_delete
+    choices:
+        - 13 bucket_get
+        - 8 bucket_put
+        - 5 bucket_delete
+        - bucket_garbage
+
+garbage_method:
+    set:
+        method:
+            - {random 1-100 printable}
+            - {random 10-100 binary}
+        urlpath:
+            - /{bucket}
+            - /{bucket}/{object}
+            - {random 10-1000 binary}
+    choices:
+        - bucket_get_simple
+        - bucket_get_filtered
+        - bucket_get_uploads
+        - bucket_put_create
+        - bucket_put_versioning
+        - bucket_put_simple
 
 bucket_delete:
     set:
         method: DELETE
+        bucket:
+            - {bucket_writable}
+            - {bucket_not_writable}
+            - {random 10-3000 printable}
+            - {random 10-1000 binary}
         query:
             - null
             - policy
             - website
-    choice: []
+            - {random 2-20 printable}
+            - {random 10-1000 binary}
+    choices: []
+
+bucket_get:
+    set:
+        method: GET
+        bucket:
+            - {bucket_readable}
+            - {bucket_not_readable}
+            - {random 10-3000 printable}
+            - {random 10-1000 binary}
+    choices:
+        - 11 bucket_get_simple
+        - bucket_get_filtered
+        - bucket_get_uploads
+
+bucket_get_simple:
+    set:
+        query:
+            - acl
+            - policy
+            - location
+            - logging
+            - notification
+            - versions
+            - requestPayment
+            - versioning
+            - website
+            - {random 2-20 printable}
+            - {random 10-1000 binary}
+    choices: []
+
+bucket_get_uploads:
+    set:
+        query:
+            -
+    choices: []
+
+bucket_get_filtered:
+    set:
+        delimiter:
+            - 'delimiter={random 10-50 binary}'
+            - 'delimiter={random 1000-3000 printable}'
+        prefix:
+            - 'prefix={random 10-50 binary}'
+            - 'prefix={random 100-3000 printable}'
+        marker:
+            - 'marker={object_readable}'
+            - 'marker={object_not_readable}'
+            - 'marker={invalid_key}'
+            - 'marker={random 100-1000 printable}'
+        max_keys:
+            - 'max-keys={random 1-5 binary}'
+            - 'max-keys={random 1-1000 digits}'
+        query:
+            - null
+            - '{delimiter}&{prefix}'
+            - '{max-keys}&{marker}'
+            - {random 10-1000 printable}
+            - {random 10-1000 binary}
+    choices: []
+
+bucket_put:
+    set:
+        bucket:
+            - {bucket_writable}
+            - {bucket_not_writable}
+            - {random 10-3000 printable}
+            - {random 10-1000 binary}
+        method: PUT
+    choices:
+        - bucket_put_simple
+        - bucket_put_create
+        - bucket_put_versioning
+
+bucket_put_create:
+    set:
+        body:
+            - {random 3000 printable}
+            - {random 10-3000 binary}
+            - '<CreateBucketConfiguration><LocationConstraint>{random 2-10 binary}</LocationConstraint></CreateBucketConfiguration>'
+        acl:
+            - private
+            - {random 3000 letters}
+            - {random 100-1000 binary}
+    headers:
+        - ['0-1', 'x-amz-acl', '{acl}']
+    choices: []
 

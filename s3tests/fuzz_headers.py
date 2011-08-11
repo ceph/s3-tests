@@ -126,7 +126,8 @@ class SpecialVariables(dict):
         'binary': 'binary',
         'printable': string.printable,
         'punctuation': string.punctuation,
-        'whitespace': string.whitespace
+        'whitespace': string.whitespace,
+        'digits': string.digits
     }
 
     def __init__(self, orig_dict, prng):
@@ -166,7 +167,6 @@ class SpecialVariables(dict):
         else:
             tmpstring = ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely; won't do binary
             return tmpstring.replace('{', '{{').replace('}', '}}')
-
 
 
 def parse_options():
@@ -210,11 +210,13 @@ def _main():
 
     constants = {
         'bucket_readable': 'TODO',
+        'bucket_not_readable': 'TODO',
         'bucket_writable' : 'TODO',
-        'bucket_nonexistant' : 'TODO',
+        'bucket_not_writable' : 'TODO',
         'object_readable' : 'TODO',
+        'object_not_readable' : 'TODO',
         'object_writable' : 'TODO',
-        'object_nonexistant' : 'TODO'
+        'object_not_writable' : 'TODO',
     }
 
     for request_seed in request_seeds:

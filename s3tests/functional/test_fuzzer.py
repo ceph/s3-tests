@@ -140,6 +140,7 @@ def test_SpecialVariables_dict():
     eq(tester['foo'], 'bar')
     eq(tester['random 10-15 printable'], '[/pNI$;92@')
 
+
 def test_SpecialVariables_binary():
     prng = random.Random(1)
     tester = SpecialVariables({}, prng)
