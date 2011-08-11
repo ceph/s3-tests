@@ -1,3 +1,5 @@
+import sys
+import itertools
 import nose
 import random
 import string
@@ -30,12 +32,23 @@ def build_graph():
             'key1': 'value1',
             'key2': 'value2'
         },
+        'headers': [
+            ['1-2', 'random-header-{random 5-10 printable}', '{random 20-30 punctuation}']
+        ],
         'choices': []
     }
     graph['node1'] = {
         'set': {
-            'key3': 'value3'
+            'key3': 'value3',
+            'header_val': [
+                '3 h1',
+                '2 h2',
+                'h3'
+            ]
         },
+        'headers': [
+            ['1-1', 'my-header', '{header_val}'],
+        ],
         'choices': ['leaf']
     }
     graph['node2'] = {
@@ -137,9 +150,9 @@ def test_expand_key():
     }
     decision = SpecialVariables(test_decision, prng)
 
-    randkey = expand_key(decision, 'randkey')
-    indirect = expand_key(decision, 'indirect')
-    dbl_indirect = expand_key(decision, 'dbl_indirect')
+    randkey = expand_key(decision, test_decision['randkey'])
+    indirect = expand_key(decision, test_decision['indirect'])
+    dbl_indirect = expand_key(decision, test_decision['dbl_indirect'])
 
     eq(indirect, 'value1')
     eq(dbl_indirect, 'value1')
@@ -152,7 +165,7 @@ def test_expand_loop():
         'key2': '{key1}',
     }
     decision = SpecialVariables(test_decision, prng)
-    assert_raises(RuntimeError, expand_key, decision, 'key1')
+    assert_raises(RuntimeError, expand_key, decision, test_decision['key1'])
 
 def test_expand_decision():
     graph = build_graph()
@@ -166,7 +179,7 @@ def test_expand_decision():
     eq(request['key1'], 'value1')
     eq(request['indirect_key1'], 'value1')
     eq(request['path'], '/my-readable-bucket')
-    eq(request['randkey'], 'value-NI$;92@H/0I')
+    eq(request['randkey'], 'value-cx+*~G@&uW_[OW3')
     assert_raises(KeyError, lambda x: decision[x], 'key3')
 
 def test_weighted_choices():
@@ -206,4 +219,41 @@ def test_weighted_set():
     nose.tools.assert_almost_equal(foo_percentage, 0.25, 1)
     nose.tools.assert_almost_equal(bar_percentage, 0.50, 1)
     nose.tools.assert_almost_equal(baz_percentage, 0.25, 1)
+
+def test_header_presence():
+    graph = build_graph()
+    prng = random.Random(1)
+    decision = descend_graph(graph, 'node1', prng)
+
+    c1 = itertools.count()
+    c2 = itertools.count()
+    for header, value in decision['headers']:
+        if header == 'my-header':
+            eq(value, '{header_val}')
+            nose.tools.assert_true(next(c1) < 1)
+        elif header == 'random-header-{random 5-10 printable}':
+            eq(value, '{random 20-30 punctuation}')
+            nose.tools.assert_true(next(c2) < 2)
+        else:
+            raise KeyError('unexpected header found: %s' % header)
+
+    nose.tools.assert_true(next(c1))
+    nose.tools.assert_true(next(c2))
+
+
+
+def test_header_expansion():
+    graph = build_graph()
+    prng = random.Random(1)
+    decision = descend_graph(graph, 'node1', prng)
+    expanded_decision = expand_decision(decision, prng)
+
+    for header, value in expanded_decision['headers']:
+        if header == 'my-header':
+            nose.tools.assert_true(value in ['h1', 'h2', 'h3'])
+        elif header.startswith('random-header-'):
+            nose.tools.assert_true(20 <= len(value) <= 30)
+            nose.tools.assert_true(string.strip(value, SpecialVariables.charsets['punctuation']) is '')
+        else:
+            raise KeyError('unexpected header found: "%s"' % header)
 

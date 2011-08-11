@@ -10,6 +10,7 @@ import string
 import struct
 import yaml
 import sys
+import re
 
 
 def assemble_decision(decision_graph, prng):
@@ -32,15 +33,41 @@ def descend_graph(decision_graph, node_name, prng):
     except IndexError:
         decision = {}
 
-    #TODO: Add in headers
     for key in node['set']:
         if decision.has_key(key):
             raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
         decision[key] = make_choice(node['set'][key], prng)
+
+    if node.has_key('headers'):
+        if not decision.has_key('headers'):
+            decision['headers'] = []
+
+        for desc in node['headers']:
+            if len(desc) == 3:
+                repetition_range = desc.pop(0)
+                try:
+                    size_min, size_max = [int(x) for x in repetition_range.split('-')]
+                except IndexError:
+                    size_min = size_max = int(repetition_range)
+            else:
+                size_min = size_max = 1
+            num_reps = prng.randint(size_min, size_max)
+            for _ in xrange(num_reps):
+                header = desc[0]
+                value = desc[1]
+                if header in [h for h, v in decision['headers']]:
+                    if not re.search('{[a-zA-Z_0-9 -]+}', header):
+                        raise KeyError("Node %s tried to add header '%s', but that header already exists!" %(node_name, header))
+                decision['headers'].append([header, value])
+
     return decision
 
 
 def make_choice(choices, prng):
+    """ Given a list of (possibly weighted) options or just a single option!,
+        choose one of the options taking weights into account and return the
+        choice
+    """
     if isinstance(choices, str):
         return choices
     weighted_choices = []
@@ -65,23 +92,26 @@ def expand_decision(decision, prng):
     """
     special_decision = SpecialVariables(decision, prng)
     for key in special_decision:
-        decision[key] = expand_key(special_decision, key)
-
+        if not key == 'headers':
+            decision[key] = expand_key(special_decision, decision[key])
+        else:
+            for header in special_decision[key]:
+                header[0] = expand_key(special_decision, header[0])
+                header[1] = expand_key(special_decision, header[1])
     return decision
 
 
-def expand_key(decision, key):
+def expand_key(decision, value):
     c = itertools.count()
     fmt = string.Formatter()
-    old = decision[key]
+    old = value
     while True:
         new = fmt.vformat(old, [], decision)
-        if new == old:
+        if new == old.replace('{{', '{').replace('}}', '}'):
             return old
         if next(c) > 5:
             raise RuntimeError
         old = new
-
 
 class SpecialVariables(dict):
     charsets = {
@@ -126,7 +156,8 @@ class SpecialVariables(dict):
             tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
             return tmpstring[0:length]
         else:
-            return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely; won't do binary
+            tmpstring = ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely; won't do binary
+            return tmpstring.replace('{', '{{').replace('}', '}}')
 
 
 
