@@ -17,6 +17,7 @@ setup(
         'PyYAML',
         'bunch >=1.0.0',
         'gevent ==0.13.6',
+        'isodate >=0.4.4',
         ],
 
     entry_points={
