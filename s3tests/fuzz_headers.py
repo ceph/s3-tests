@@ -13,6 +13,27 @@ import sys
 import re
 
 
+class DecisionGraphError(Exception):
+    """ Raised when a node in a graph tries to set a header or
+        key that was previously set by another node
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
+class RecursionError(Exception):
+    """Runaway recursion in string formatting"""
+
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return '{0.__doc__}: {0.msg!r}'.format(self)
+
+
 def assemble_decision(decision_graph, prng):
     """ Take in a graph describing the possible decision space and a random
         number generator and traverse the graph to build a decision
@@ -36,31 +57,33 @@ def descend_graph(decision_graph, node_name, prng):
     except IndexError:
         decision = {}
 
-    for key in node['set']:
-        if decision.has_key(key):
-            raise KeyError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
-        decision[key] = make_choice(node['set'][key], prng)
+    for key, choices in node['set'].iteritems():
+        if key in decision:
+            raise DecisionGraphError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
+        decision[key] = make_choice(choices, prng)
 
-    if node.has_key('headers'):
-        if not decision.has_key('headers'):
-            decision['headers'] = []
+    if 'headers' in node:
+        decision.setdefault('headers', [])
 
         for desc in node['headers']:
-            if len(desc) == 3:
-                repetition_range = desc.pop(0)
-                try:
-                    size_min, size_max = [int(x) for x in repetition_range.split('-')]
-                except IndexError:
-                    size_min = size_max = int(repetition_range)
-            else:
-                size_min = size_max = 1
+            try:
+                (repetition_range, header, value) = desc
+            except ValueError:
+                (header, value) = desc
+                repetition_range = '1'
+
+            try:
+                size_min, size_max = repetition_range.split('-', 1)
+            except ValueError:
+                size_min = size_max = repetition_range
+
+            size_min = int(size_min)
+            size_max = int(size_max)
+
             num_reps = prng.randint(size_min, size_max)
+            if header in [h for h, v in decision['headers']]:
+                    raise DecisionGraphError("Node %s tried to add header '%s', but that header already exists!" %(node_name, header))
             for _ in xrange(num_reps):
-                header = desc[0]
-                value = desc[1]
-                if header in [h for h, v in decision['headers']]:
-                    if not re.search('{[a-zA-Z_0-9 -]+}', header):
-                        raise KeyError("Node %s tried to add header '%s', but that header already exists!" %(node_name, header))
                 decision['headers'].append([header, value])
 
     return decision
@@ -78,52 +101,59 @@ def make_choice(choices, prng):
         if option is None:
             weighted_choices.append('')
             continue
-        fields = option.split(None, 1)
-        if len(fields) == 1:
-            weight = 1
-            value = fields[0]
-        else:
-            weight = int(fields[0])
-            value = fields[1]
-            if value == 'null' or value == 'None':
-                value = ''
+        try:
+            (weight, value) = option.split(None, 1)
+        except ValueError:
+            weight = '1'
+            value = option
+
+        weight = int(weight)
+        if value == 'null' or value == 'None':
+            value = ''
+
         for _ in xrange(weight):
             weighted_choices.append(value)
 
     return prng.choice(weighted_choices)
 
 
-def expand_decision(decision, prng):
-    """ Take in a decision and a random number generator.  Expand variables in
-        decision's values and headers until all values are fully expanded and
-        build a request out of the information
-    """
-    special_decision = SpecialVariables(decision, prng)
-    for key in special_decision:
-        if not key == 'headers':
-            decision[key] = expand_key(special_decision, decision[key])
-        else:
-            for header in special_decision[key]:
-                header[0] = expand_key(special_decision, header[0])
-                header[1] = expand_key(special_decision, header[1])
-    return decision
+def expand_headers(decision):
+    expanded_headers = []
+    for header in decision['headers']:
+        h = expand(decision, header[0])
+        v = expand(decision, header[1])
+        expanded_headers.append([h, v])
+    return expanded_headers
 
 
-def expand_key(decision, value):
+def expand(decision, value):
     c = itertools.count()
-    fmt = string.Formatter()
-    old = value
-    while True:
-        new = fmt.vformat(old, [], decision)
-        if new == old.replace('{{', '{').replace('}}', '}'):
-            return old
-        if next(c) > 5:
-            raise RuntimeError
-        old = new
+    fmt = RepeatExpandingFormatter()
+    new = fmt.vformat(value, [], decision)
+    return new
+
+
+class RepeatExpandingFormatter(string.Formatter):
+
+    def __init__(self, _recursion=0):
+        super(RepeatExpandingFormatter, self).__init__()
+        # this class assumes it is always instantiated once per
+        # formatting; use that to detect runaway recursion
+        self._recursion = _recursion
+
+    def get_value(self, key, args, kwargs):
+        val = super(RepeatExpandingFormatter, self).get_value(key, args, kwargs)
+        if self._recursion > 5:
+            raise RecursionError(key)
+        fmt = self.__class__(_recursion=self._recursion+1)
+        # must use vformat not **kwargs so our SpecialVariables is not
+        # downgraded to just a dict
+        n = fmt.vformat(val, args, kwargs)
+        return n
+
 
 class SpecialVariables(dict):
     charsets = {
-        'binary': 'binary',
         'printable': string.printable,
         'punctuation': string.punctuation,
         'whitespace': string.whitespace,
@@ -131,7 +161,7 @@ class SpecialVariables(dict):
     }
 
     def __init__(self, orig_dict, prng):
-        self.update(orig_dict)
+        super(SpecialVariables, self).__init__(orig_dict)
         self.prng = prng
 
 
@@ -142,31 +172,39 @@ class SpecialVariables(dict):
             return super(SpecialVariables, self).__getitem__(key)
 
         if len(fields) == 1:
-            fields.apppend('')
+            fields.append('')
         return fn(fields[1])
 
 
     def special_random(self, args):
         arg_list = args.split()
         try:
-            size_min, size_max = [int(x) for x in arg_list[0].split('-')]
+            size_min, size_max = arg_list[0].split('-', 1)
+        except ValueError:
+            size_min = size_max = arg_list[0]
         except IndexError:
-            size_min = 0
-            size_max = 1000
-        try:
-            charset = self.charsets[arg_list[1]]
-        except IndexError:
-            charset = self.charsets['printable']
+            size_min = '0'
+            size_max = '1000'
 
+        size_min = int(size_min)
+        size_max = int(size_max)
         length = self.prng.randint(size_min, size_max)
-        if charset is 'binary':
+
+        try:
+            charset_arg = arg_list[1]
+        except IndexError:
+            charset_arg = 'printable'
+
+        if charset_arg == 'binary':
             num_bytes = length + 8
             tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
             tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
-            return tmpstring[0:length]
+            tmpstring = tmpstring[0:length]
         else:
-            tmpstring = ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely; won't do binary
-            return tmpstring.replace('{', '{{').replace('}', '}}')
+            charset = self.charsets[charset_arg]
+            tmpstring = ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
+
+        return tmpstring.replace('{', '{{').replace('}', '}}')
 
 
 def parse_options():
@@ -182,12 +220,11 @@ def parse_options():
     return parser.parse_args()
 
 
-def randomlist(n, seed=None):
-    """ Returns a generator function that spits out a list of random numbers n elements long.
+def randomlist(seed=None):
+    """ Returns an infinite generator of random numbers
     """
-    rng = random.Random()
-    rng.seed(seed if seed else None)
-    for _ in xrange(n):
+    rng = random.Random(seed)
+    while True:
         yield rng.random()
 
 
@@ -203,7 +240,9 @@ def _main():
         FH = open(options.seedfile, 'r')
         request_seeds = FH.readlines()
     else:
-        request_seeds = randomlist(options.num_requests, options.seed)
+        random_list = randomlist(options.seed)
+        request_seeds = itertools.islice(random_list, options.num_requests)
+
 
     graph_file = open(options.graph_filename, 'r')
     decision_graph = yaml.safe_load(graph_file)

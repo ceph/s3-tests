@@ -8,6 +8,7 @@ import yaml
 from s3tests.fuzz_headers import *
 
 from nose.tools import eq_ as eq
+from nose.tools import assert_true
 from nose.plugins.attrib import attr
 
 from .utils import assert_raises
@@ -87,6 +88,13 @@ def build_graph():
         'set': {},
         'choices': [None]
     }
+    graph['repeated_headers_node'] = {
+        'set': {},
+        'headers': [
+            ['1-2', 'random-header-{random 5-10 printable}', '{random 20-30 punctuation}']
+        ],
+        'choices': ['leaf']
+    }
     graph['weighted_null_choice_node'] = {
         'set': {},
         'choices': ['3 null']
@@ -123,7 +131,7 @@ def test_descend_node():
 def test_descend_bad_node():
     graph = build_graph()
     prng = random.Random(1)
-    assert_raises(KeyError, descend_graph, graph, 'bad_node', prng)
+    assert_raises(DecisionGraphError, descend_graph, graph, 'bad_node', prng)
 
 
 def test_descend_nonexistant_child():
@@ -148,6 +156,46 @@ def test_SpecialVariables_binary():
     eq(tester['random 10-15 binary'], '\xdfj\xf1\xd80>a\xcd\xc4\xbb')
 
 
+def test_SpeicalVariables_random_no_args():
+    prng = random.Random(1)
+    tester = SpecialVariables({}, prng)
+
+    for _ in xrange(1000):
+        val = tester['random']
+        val = val.replace('{{', '{').replace('}}','}')
+        assert_true(0 <= len(val) <= 1000)
+        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in val]))
+
+
+def test_SpeicalVariables_random_no_charset():
+    prng = random.Random(1)
+    tester = SpecialVariables({}, prng)
+
+    for _ in xrange(1000):
+        val = tester['random 10-30']
+        val = val.replace('{{', '{').replace('}}','}')
+        assert_true(10 <= len(val) <= 30)
+        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in val]))
+
+
+def test_SpeicalVariables_random_exact_length():
+    prng = random.Random(1)
+    tester = SpecialVariables({}, prng)
+
+    for _ in xrange(1000):
+        val = tester['random 10 digits']
+        assert_true(len(val) == 10)
+        assert_true(reduce(lambda x, y: x and y, [x in string.digits for x in val]))
+
+
+def test_SpecialVariables_random_errors():
+    prng = random.Random(1)
+    tester = SpecialVariables({}, prng)
+
+    assert_raises(KeyError, lambda x: tester[x], 'random 10-30 foo')
+    assert_raises(ValueError, lambda x: tester[x], 'random printable')
+
+
 def test_assemble_decision():
     graph = build_graph()
     prng = random.Random(1)
@@ -161,49 +209,56 @@ def test_assemble_decision():
     assert_raises(KeyError, lambda x: decision[x], 'key3')
 
 
-def test_expand_key():
-    prng = random.Random(1)
-    test_decision = {
-        'key1': 'value1',
-        'randkey': 'value-{random 10-15 printable}',
-        'indirect': '{key1}',
-        'dbl_indirect': '{indirect}'
-    }
-    decision = SpecialVariables(test_decision, prng)
-
-    randkey = expand_key(decision, test_decision['randkey'])
-    indirect = expand_key(decision, test_decision['indirect'])
-    dbl_indirect = expand_key(decision, test_decision['dbl_indirect'])
-
-    eq(indirect, 'value1')
-    eq(dbl_indirect, 'value1')
-    eq(randkey, 'value-[/pNI$;92@')
+def test_expand_escape():
+    decision = dict(
+        foo='{{bar}}',
+        )
+    got = expand(decision, '{foo}')
+    eq(got, '{bar}')
 
 
-def test_expand_loop():
-    prng = random.Random(1)
-    test_decision = {
-        'key1': '{key2}',
-        'key2': '{key1}',
-    }
-    decision = SpecialVariables(test_decision, prng)
-    assert_raises(RuntimeError, expand_key, decision, test_decision['key1'])
+def test_expand_indirect():
+    decision = dict(
+        foo='{bar}',
+        bar='quux',
+        )
+    got = expand(decision, '{foo}')
+    eq(got, 'quux')
 
 
-def test_expand_decision():
-    graph = build_graph()
-    prng = random.Random(1)
+def test_expand_indirect_double():
+    decision = dict(
+        foo='{bar}',
+        bar='{quux}',
+        quux='thud',
+        )
+    got = expand(decision, '{foo}')
+    eq(got, 'thud')
 
-    decision = assemble_decision(graph, prng)
-    decision.update({'bucket_readable': 'my-readable-bucket'})
 
-    request = expand_decision(decision, prng)
+def test_expand_recursive():
+    decision = dict(
+        foo='{foo}',
+        )
+    e = assert_raises(RecursionError, expand, decision, '{foo}')
+    eq(str(e), "Runaway recursion in string formatting: 'foo'")
 
-    eq(request['key1'], 'value1')
-    eq(request['indirect_key1'], 'value1')
-    eq(request['path'], '/my-readable-bucket')
-    eq(request['randkey'], 'value-cx+*~G@&uW_[OW3')
-    assert_raises(KeyError, lambda x: decision[x], 'key3')
+
+def test_expand_recursive_mutual():
+    decision = dict(
+        foo='{bar}',
+        bar='{foo}',
+        )
+    e = assert_raises(RecursionError, expand, decision, '{foo}')
+    eq(str(e), "Runaway recursion in string formatting: 'foo'")
+
+
+def test_expand_recursive_not_too_eager():
+    decision = dict(
+        foo='bar',
+        )
+    got = expand(decision, 100*'{foo}')
+    eq(got, 100*'bar')
 
 
 def test_weighted_choices():
@@ -280,29 +335,36 @@ def test_header_presence():
     for header, value in decision['headers']:
         if header == 'my-header':
             eq(value, '{header_val}')
-            nose.tools.assert_true(next(c1) < 1)
+            assert_true(next(c1) < 1)
         elif header == 'random-header-{random 5-10 printable}':
             eq(value, '{random 20-30 punctuation}')
-            nose.tools.assert_true(next(c2) < 2)
+            assert_true(next(c2) < 2)
         else:
             raise KeyError('unexpected header found: %s' % header)
 
-    nose.tools.assert_true(next(c1))
-    nose.tools.assert_true(next(c2))
+    assert_true(next(c1))
+    assert_true(next(c2))
 
 
-def test_header_expansion():
+def test_duplicate_header():
+    graph = build_graph()
+    prng = random.Random(1)
+    assert_raises(DecisionGraphError, descend_graph, graph, 'repeated_headers_node', prng)
+
+
+def test_expand_headers():
     graph = build_graph()
     prng = random.Random(1)
     decision = descend_graph(graph, 'node1', prng)
-    expanded_decision = expand_decision(decision, prng)
+    special_decision = SpecialVariables(decision, prng)
+    expanded_headers = expand_headers(special_decision)
 
-    for header, value in expanded_decision['headers']:
+    for header, value in expanded_headers:
         if header == 'my-header':
-            nose.tools.assert_true(value in ['h1', 'h2', 'h3'])
+            assert_true(value in ['h1', 'h2', 'h3'])
         elif header.startswith('random-header-'):
-            nose.tools.assert_true(20 <= len(value) <= 30)
-            nose.tools.assert_true(string.strip(value, SpecialVariables.charsets['punctuation']) is '')
+            assert_true(20 <= len(value) <= 30)
+            assert_true(string.strip(value, SpecialVariables.charsets['punctuation']) is '')
         else:
-            raise KeyError('unexpected header found: "%s"' % header)
+            raise DecisionGraphError('unexpected header found: "%s"' % header)
 
