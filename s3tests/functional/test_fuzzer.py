@@ -140,60 +140,50 @@ def test_descend_nonexistant_child():
     assert_raises(KeyError, descend_graph, graph, 'nonexistant_child_node', prng)
 
 
-def test_SpecialVariables_dict():
+def test_expand_random_printable():
     prng = random.Random(1)
-    testdict = {'foo': 'bar'}
-    tester = SpecialVariables(testdict, prng)
-
-    eq(tester['foo'], 'bar')
-    eq(tester['random 10-15 printable'], '[/pNI$;92@')
+    got = expand({}, '{random 10-15 printable}', prng)
+    eq(got, '[/pNI$;92@')
 
 
-def test_SpecialVariables_binary():
+def test_expand_random_binary():
     prng = random.Random(1)
-    tester = SpecialVariables({}, prng)
+    got = expand({}, '{random 10-15 binary}', prng)
+    eq(got, '\xdfj\xf1\xd80>a\xcd\xc4\xbb')
 
-    eq(tester['random 10-15 binary'], '\xdfj\xf1\xd80>a\xcd\xc4\xbb')
 
-
-def test_SpeicalVariables_random_no_args():
+def test_expand_random_no_args():
     prng = random.Random(1)
-    tester = SpecialVariables({}, prng)
-
     for _ in xrange(1000):
-        val = tester['random']
-        val = val.replace('{{', '{').replace('}}','}')
-        assert_true(0 <= len(val) <= 1000)
-        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in val]))
+        got = expand({}, '{random}', prng)
+        assert_true(0 <= len(got) <= 1000)
+        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in got]))
 
 
-def test_SpeicalVariables_random_no_charset():
+def test_expand_random_no_charset():
     prng = random.Random(1)
-    tester = SpecialVariables({}, prng)
-
     for _ in xrange(1000):
-        val = tester['random 10-30']
-        val = val.replace('{{', '{').replace('}}','}')
-        assert_true(10 <= len(val) <= 30)
-        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in val]))
+        got = expand({}, '{random 10-30}', prng)
+        assert_true(10 <= len(got) <= 30)
+        assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in got]))
 
 
-def test_SpeicalVariables_random_exact_length():
+def test_expand_random_exact_length():
     prng = random.Random(1)
-    tester = SpecialVariables({}, prng)
-
     for _ in xrange(1000):
-        val = tester['random 10 digits']
-        assert_true(len(val) == 10)
-        assert_true(reduce(lambda x, y: x and y, [x in string.digits for x in val]))
+        got = expand({}, '{random 10 digits}', prng)
+        assert_true(len(got) == 10)
+        assert_true(reduce(lambda x, y: x and y, [x in string.digits for x in got]))
 
 
-def test_SpecialVariables_random_errors():
+def test_expand_random_bad_charset():
     prng = random.Random(1)
-    tester = SpecialVariables({}, prng)
+    assert_raises(KeyError, expand, {}, '{random 10-30 foo}', prng)
 
-    assert_raises(KeyError, lambda x: tester[x], 'random 10-30 foo')
-    assert_raises(ValueError, lambda x: tester[x], 'random printable')
+
+def test_expand_random_missing_length():
+    prng = random.Random(1)
+    assert_raises(ValueError, expand, {}, '{random printable}', prng)
 
 
 def test_assemble_decision():
@@ -210,54 +200,60 @@ def test_assemble_decision():
 
 
 def test_expand_escape():
+    prng = random.Random(1)
     decision = dict(
         foo='{{bar}}',
         )
-    got = expand(decision, '{foo}')
+    got = expand(decision, '{foo}', prng)
     eq(got, '{bar}')
 
 
 def test_expand_indirect():
+    prng = random.Random(1)
     decision = dict(
         foo='{bar}',
         bar='quux',
         )
-    got = expand(decision, '{foo}')
+    got = expand(decision, '{foo}', prng)
     eq(got, 'quux')
 
 
 def test_expand_indirect_double():
+    prng = random.Random(1)
     decision = dict(
         foo='{bar}',
         bar='{quux}',
         quux='thud',
         )
-    got = expand(decision, '{foo}')
+    got = expand(decision, '{foo}', prng)
     eq(got, 'thud')
 
 
 def test_expand_recursive():
+    prng = random.Random(1)
     decision = dict(
         foo='{foo}',
         )
-    e = assert_raises(RecursionError, expand, decision, '{foo}')
+    e = assert_raises(RecursionError, expand, decision, '{foo}', prng)
     eq(str(e), "Runaway recursion in string formatting: 'foo'")
 
 
 def test_expand_recursive_mutual():
+    prng = random.Random(1)
     decision = dict(
         foo='{bar}',
         bar='{foo}',
         )
-    e = assert_raises(RecursionError, expand, decision, '{foo}')
+    e = assert_raises(RecursionError, expand, decision, '{foo}', prng)
     eq(str(e), "Runaway recursion in string formatting: 'foo'")
 
 
 def test_expand_recursive_not_too_eager():
+    prng = random.Random(1)
     decision = dict(
         foo='bar',
         )
-    got = expand(decision, 100*'{foo}')
+    got = expand(decision, 100*'{foo}', prng)
     eq(got, 100*'bar')
 
 
@@ -356,15 +352,14 @@ def test_expand_headers():
     graph = build_graph()
     prng = random.Random(1)
     decision = descend_graph(graph, 'node1', prng)
-    special_decision = SpecialVariables(decision, prng)
-    expanded_headers = expand_headers(special_decision)
+    expanded_headers = expand_headers(decision, prng)
 
     for header, value in expanded_headers:
         if header == 'my-header':
             assert_true(value in ['h1', 'h2', 'h3'])
         elif header.startswith('random-header-'):
             assert_true(20 <= len(value) <= 30)
-            assert_true(string.strip(value, SpecialVariables.charsets['punctuation']) is '')
+            assert_true(string.strip(value, RepeatExpandingFormatter.charsets['punctuation']) is '')
         else:
             raise DecisionGraphError('unexpected header found: "%s"' % header)
 

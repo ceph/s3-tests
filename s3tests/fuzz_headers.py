@@ -117,42 +117,23 @@ def make_choice(choices, prng):
     return prng.choice(weighted_choices)
 
 
-def expand_headers(decision):
+def expand_headers(decision, prng):
     expanded_headers = []
     for header in decision['headers']:
-        h = expand(decision, header[0])
-        v = expand(decision, header[1])
+        h = expand(decision, header[0], prng)
+        v = expand(decision, header[1], prng)
         expanded_headers.append([h, v])
     return expanded_headers
 
 
-def expand(decision, value):
+def expand(decision, value, prng):
     c = itertools.count()
-    fmt = RepeatExpandingFormatter()
+    fmt = RepeatExpandingFormatter(prng)
     new = fmt.vformat(value, [], decision)
     return new
 
 
 class RepeatExpandingFormatter(string.Formatter):
-
-    def __init__(self, _recursion=0):
-        super(RepeatExpandingFormatter, self).__init__()
-        # this class assumes it is always instantiated once per
-        # formatting; use that to detect runaway recursion
-        self._recursion = _recursion
-
-    def get_value(self, key, args, kwargs):
-        val = super(RepeatExpandingFormatter, self).get_value(key, args, kwargs)
-        if self._recursion > 5:
-            raise RecursionError(key)
-        fmt = self.__class__(_recursion=self._recursion+1)
-        # must use vformat not **kwargs so our SpecialVariables is not
-        # downgraded to just a dict
-        n = fmt.vformat(val, args, kwargs)
-        return n
-
-
-class SpecialVariables(dict):
     charsets = {
         'printable': string.printable,
         'punctuation': string.punctuation,
@@ -160,21 +141,29 @@ class SpecialVariables(dict):
         'digits': string.digits
     }
 
-    def __init__(self, orig_dict, prng):
-        super(SpecialVariables, self).__init__(orig_dict)
+    def __init__(self, prng, _recursion=0):
+        super(RepeatExpandingFormatter, self).__init__()
+        # this class assumes it is always instantiated once per
+        # formatting; use that to detect runaway recursion
         self.prng = prng
+        self._recursion = _recursion
 
-
-    def __getitem__(self, key):
+    def get_value(self, key, args, kwargs):
         fields = key.split(None, 1)
         fn = getattr(self, 'special_{name}'.format(name=fields[0]), None)
-        if fn is None:
-            return super(SpecialVariables, self).__getitem__(key)
+        if fn is not None:
+            if len(fields) == 1:
+                fields.append('')
+            return fn(fields[1])
 
-        if len(fields) == 1:
-            fields.append('')
-        return fn(fields[1])
-
+        val = super(RepeatExpandingFormatter, self).get_value(key, args, kwargs)
+        if self._recursion > 5:
+            raise RecursionError(key)
+        fmt = self.__class__(self.prng, _recursion=self._recursion+1)
+        # must use vformat not **kwargs so our SpecialVariables is not
+        # downgraded to just a dict
+        n = fmt.vformat(val, args, kwargs)
+        return n
 
     def special_random(self, args):
         arg_list = args.split()
@@ -199,12 +188,10 @@ class SpecialVariables(dict):
             num_bytes = length + 8
             tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
             tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
-            tmpstring = tmpstring[0:length]
+            return tmpstring[0:length]
         else:
             charset = self.charsets[charset_arg]
-            tmpstring = ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
-
-        return tmpstring.replace('{', '{{').replace('}', '}}')
+            return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
 
 
 def parse_options():
@@ -262,9 +249,13 @@ def _main():
         prng = random.Random(request_seed)
         decision = assemble_decision(decision_graph, prng)
         decision.update(constants)
-        request = expand_decision(decision, prng) 
 
-        response = s3_connection.make_request(request['method'], request['path'], data=request['body'], headers=request['headers'], override_num_retries=0)
+        method = expand(decision, decision['method'], prng)
+        path = expand(decision, decision['path'], prng)
+        body = expand(decision, decision['body'], prng)
+        headers = expand_headers(decision, prng)
+
+        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
 
         if response.status == 500 or response.status == 503:
             print 'Request generated with seed %d failed:\n%s' % (request_seed, request)
