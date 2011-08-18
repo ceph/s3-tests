@@ -131,3 +131,70 @@ bucket_put_create:
         - ['0-1', 'x-amz-acl', '{acl}']
     choices: []
 
+bucket_put_versioning:
+    set:
+        body:
+            - {random 3000 printable}
+            - {random 10-3000 binary}
+            - 8 '<VersioningConfiguration>{versioning_status}{mfa_delete_body}</VersioningConfiguration>'
+        mfa_delete_body:
+            - null
+            - '<Status>{random 2-10 binary}</Status>'
+            - '<Status>{random 2000-3000 printable}</Status>'
+        versioning_status:
+            - null
+            - '<MfaDelete>{random 2-10 binary}</MfaDelete>'
+            - '<MfaDelete>{random 2000-3000 printable}</MfaDelete>'
+        mfa_header:
+            - {random 10-1000 printable} {random 10-1000 printable}
+    headers:
+        - ['0-1', 'x-amz-mfa', '{mfa_header}']
+    choices: []
+
+bucket_put_simple:
+    set:
+        body:
+            - {acl_body}
+            - {policy_body}
+            - {logging_body}
+            - {notification_body}
+            - {request_payment_body}
+            - {website_body}
+        acl_body:
+            - '<AccessControlPolicy>{owner}{acl}</AccessControlPolicy>'
+        owner:
+            - null
+            - 7 '<Owner>{id}{display_name}</Owner>'
+        id:
+            - null
+            - '<ID>{random 10-200 binary}</ID>'
+            - '<ID>{random 1000-3000 printable}</ID>'
+        display_name:
+            - null
+            - '<DisplayName>{random 10-200 binary}</DisplayName>'
+            - '<DisplayName>{random 1000-3000 printable}</DisplayName>'
+            - '<DisplayName>{random 10-300 letters}@{random 10-300 letters}.{random 2-4 letters}</DisplayName>'
+        acl:
+            - null
+            - 10 '<AccessControlList><Grant>{grantee}{permission}</Grant></AccessControlList>'
+        grantee:
+            - null
+            - 7 '<Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">{id}{display_name}</Grantee>'
+        permission:
+            - null
+            - 7 '<Permission>{permission_value}</Permission>'
+        permission_value:
+            - {random 10-100 binary}
+            - {random 1000-2000 printable}
+            - FULL_CONTROL
+            - WRITE
+            - WRITE_ACP
+            - READ
+            - READ_ACP
+        policy_body: TODO
+        logging_body: TODO
+        notification_body: TODO
+        request_payment_body: TODO
+        website_body: TODO
+    choices: []
+
