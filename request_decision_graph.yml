@@ -1,5 +1,8 @@
 start:
-    set: {}
+    set:
+        garbage:
+            - {random 10-3000 printable}
+            - {random 10-1000 binary}
     choices:
         - bucket
 
@@ -10,7 +13,7 @@ bucket:
         - 13 bucket_get
         - 8 bucket_put
         - 5 bucket_delete
-        - bucket_garbage
+        - garbage_method
 
 garbage_method:
     set:
@@ -35,14 +38,12 @@ bucket_delete:
         bucket:
             - {bucket_writable}
             - {bucket_not_writable}
-            - {random 10-3000 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
         query:
             - null
             - policy
             - website
-            - {random 2-20 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
     choices: []
 
 bucket_get:
@@ -51,8 +52,7 @@ bucket_get:
         bucket:
             - {bucket_readable}
             - {bucket_not_readable}
-            - {random 10-3000 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
     choices:
         - 11 bucket_get_simple
         - bucket_get_filtered
@@ -70,24 +70,43 @@ bucket_get_simple:
             - requestPayment
             - versioning
             - website
-            - {random 2-20 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
     choices: []
 
 bucket_get_uploads:
     set:
+        delimiter:
+            - null
+            - 3 'delimiter={garbage}'
+        prefix:
+            - null
+            - 3 'prefix={garbage}'
+        key_marker:
+            - null
+            - 'key-marker={object_readable}'
+            - 'key-marker={object_not_readable}'
+            - 'key-marker={invalid_key}'
+            - 'key-marker={random 100-1000 printable}'
+        max_uploads:
+            - null
+            - 'max-uploads={random 1-5 binary}'
+            - 'max-uploads={random 1-1000 digits}'
+        upload_id_marker:
+            - null
+            - 3 'upload-id-marker={random}'
         query:
-            -
+            - 'uploads'
+            - 'uploads&{delimiter}&{prefix}'
+            - 'uploads&{max_uploads}&{key_marker}&{upload_id_marker}'
+            - 2 {garbage}
     choices: []
 
 bucket_get_filtered:
     set:
         delimiter:
-            - 'delimiter={random 10-50 binary}'
-            - 'delimiter={random 1000-3000 printable}'
+            - 'delimiter={garbage}'
         prefix:
-            - 'prefix={random 10-50 binary}'
-            - 'prefix={random 100-3000 printable}'
+            - 'prefix={garbage}'
         marker:
             - 'marker={object_readable}'
             - 'marker={object_not_readable}'
@@ -100,8 +119,7 @@ bucket_get_filtered:
             - null
             - '{delimiter}&{prefix}'
             - '{max-keys}&{marker}'
-            - {random 10-1000 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
     choices: []
 
 bucket_put:
@@ -109,8 +127,7 @@ bucket_put:
         bucket:
             - {bucket_writable}
             - {bucket_not_writable}
-            - {random 10-3000 printable}
-            - {random 10-1000 binary}
+            - 2 {garbage}
         method: PUT
     choices:
         - bucket_put_simple
@@ -120,8 +137,7 @@ bucket_put:
 bucket_put_create:
     set:
         body:
-            - {random 3000 printable}
-            - {random 10-3000 binary}
+            - 2 {garbage}
             - '<CreateBucketConfiguration><LocationConstraint>{random 2-10 binary}</LocationConstraint></CreateBucketConfiguration>'
         acl:
             - private
@@ -134,9 +150,8 @@ bucket_put_create:
 bucket_put_versioning:
     set:
         body:
-            - {random 3000 printable}
-            - {random 10-3000 binary}
-            - 8 '<VersioningConfiguration>{versioning_status}{mfa_delete_body}</VersioningConfiguration>'
+            - {garbage}
+            - 4 '<VersioningConfiguration>{versioning_status}{mfa_delete_body}</VersioningConfiguration>'
         mfa_delete_body:
             - null
             - '<Status>{random 2-10 binary}</Status>'
@@ -146,7 +161,7 @@ bucket_put_versioning:
             - '<MfaDelete>{random 2-10 binary}</MfaDelete>'
             - '<MfaDelete>{random 2000-3000 printable}</MfaDelete>'
         mfa_header:
-            - {random 10-1000 printable} {random 10-1000 printable}
+            - '{random 10-1000 printable} {random 10-1000 printable}'
     headers:
         - ['0-1', 'x-amz-mfa', '{mfa_header}']
     choices: []
@@ -161,6 +176,7 @@ bucket_put_simple:
             - {request_payment_body}
             - {website_body}
         acl_body:
+            - null
             - '<AccessControlPolicy>{owner}{acl}</AccessControlPolicy>'
         owner:
             - null
@@ -171,9 +187,9 @@ bucket_put_simple:
             - '<ID>{random 1000-3000 printable}</ID>'
         display_name:
             - null
-            - '<DisplayName>{random 10-200 binary}</DisplayName>'
-            - '<DisplayName>{random 1000-3000 printable}</DisplayName>'
-            - '<DisplayName>{random 10-300 letters}@{random 10-300 letters}.{random 2-4 letters}</DisplayName>'
+            - 2 '<DisplayName>{random 10-200 binary}</DisplayName>'
+            - 2 '<DisplayName>{random 1000-3000 printable}</DisplayName>'
+            - 2 '<DisplayName>{random 10-300 letters}@{random 10-300 letters}.{random 2-4 letters}</DisplayName>'
         acl:
             - null
             - 10 '<AccessControlList><Grant>{grantee}{permission}</Grant></AccessControlList>'
@@ -184,17 +200,53 @@ bucket_put_simple:
             - null
             - 7 '<Permission>{permission_value}</Permission>'
         permission_value:
-            - {random 10-100 binary}
-            - {random 1000-2000 printable}
+            - 2 {garbage}
             - FULL_CONTROL
             - WRITE
             - WRITE_ACP
             - READ
             - READ_ACP
-        policy_body: TODO
-        logging_body: TODO
-        notification_body: TODO
-        request_payment_body: TODO
-        website_body: TODO
+        policy_body:
+            - null
+            - 2 {garbage}
+        logging_body:
+            - null
+            - '<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01" />'
+            - '<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01"><LoggingEnabled>{bucket}{target_prefix}{target_grants}</LoggingEnabled></BucketLoggingStatus>'
+        target_prefix:
+            - null
+            - '<TargetPrefix>{random 10-1000 printable}</TargetPrefix>'
+            - '<TargetPrefix>{random 10-1000 binary}</TargetPrefix>'
+        target_grants:
+            - null
+            - 10 '<TargetGrants><Grant>{grantee}{permission}</Grant></TargetGrants>'
+        notification_body:
+            - null
+            - '<NotificationConfiguration />'
+            - 2 '<NotificationConfiguration><TopicConfiguration>{topic}{event}</TopicConfiguration}</NotificationConfiguration>'
+        topic:
+            - null
+            - 2 '<Topic>{garbage}</Topic>'
+        event:
+            - null
+            - '<Event>s3:ReducedRedundancyLostObject</Event>'
+            - 2 '<Event>{garbage}</Event>'
+        request_payment_body:
+            - null
+            - '<RequestPaymentConfiguration xlmns="http://s3.amazonaws.com/doc/2006-03-01/"><Payer>{payer}</Payer></RequestPaymentConfiguration>'
+        payer:
+            - Requester
+            - BucketOwner
+            - 2 {garbage}
+        website_body:
+            - null
+            - '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IndexDocument><Suffix>{suffix}</Suffix><IndexDocument>{error_doc}<WebsiteConfiguration/>'
+        suffix:
+            - null
+            - 2 {garbage}
+            - '{random 2-10 printable}.html'
+        error_doc:
+            - null
+            - '<ErrorDocument><Key>{suffix}</Key></ErrorDocument>'
     choices: []
 

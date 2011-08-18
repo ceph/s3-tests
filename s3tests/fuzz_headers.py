@@ -234,16 +234,16 @@ def _main():
     graph_file = open(options.graph_filename, 'r')
     decision_graph = yaml.safe_load(graph_file)
 
-    constants = {
-        'bucket_readable': 'TODO',
-        'bucket_not_readable': 'TODO',
-        'bucket_writable' : 'TODO',
-        'bucket_not_writable' : 'TODO',
-        'object_readable' : 'TODO',
-        'object_not_readable' : 'TODO',
-        'object_writable' : 'TODO',
-        'object_not_writable' : 'TODO',
-    }
+    constants = dict(
+        bucket_readable='TODO-breadable',
+        bucket_not_readable='TODO-bnonreadable',
+        bucket_writable='TODO-bwritable',
+        bucket_not_writable='TODO-bnonwritable',
+        object_readable='TODO-oreadable',
+        object_not_readable='TODO-ononreadable',
+        object_writable='TODO-owritable',
+        object_not_writable='TODO-ononwritable',
+    )
 
     for request_seed in request_seeds:
         prng = random.Random(request_seed)
@@ -255,7 +255,12 @@ def _main():
         body = expand(decision, decision['body'], prng)
         headers = expand_headers(decision, prng)
 
-        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
+        print "Method: %s" % method
+        print "Path: %s" % path
+        print "Headers: %s" % headers
+        print ""
+        print "Body: %s" % body
+        #response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
 
         if response.status == 500 or response.status == 503:
             print 'Request generated with seed %d failed:\n%s' % (request_seed, request)
