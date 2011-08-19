@@ -102,6 +102,12 @@ def build_graph():
     return graph
 
 
+#def test_foo():
+    #graph_file = open('request_decision_graph.yml', 'r')
+    #graph = yaml.safe_load(graph_file)
+    #eq(graph['bucket_put_simple']['set']['grantee'], 0)
+
+
 def test_load_graph():
     graph_file = open('request_decision_graph.yml', 'r')
     graph = yaml.safe_load(graph_file)
@@ -257,6 +263,11 @@ def test_expand_recursive_not_too_eager():
     eq(got, 100*'bar')
 
 
+def test_make_choice_unweighted_with_space():
+    prng = random.Random(1)
+    choice = make_choice(['foo bar'], prng)
+    eq(choice, 'foo bar')
+
 def test_weighted_choices():
     graph = build_graph()
     prng = random.Random(1)
@@ -354,7 +365,7 @@ def test_expand_headers():
     decision = descend_graph(graph, 'node1', prng)
     expanded_headers = expand_headers(decision, prng)
 
-    for header, value in expanded_headers:
+    for header, value in expanded_headers.iteritems():
         if header == 'my-header':
             assert_true(value in ['h1', 'h2', 'h3'])
         elif header.startswith('random-header-'):

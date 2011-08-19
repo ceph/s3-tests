@@ -1,4 +1,5 @@
 from boto.s3.connection import S3Connection
+from boto.s3.key import Key
 from optparse import OptionParser
 from boto import UserAgent
 from . import common
@@ -103,11 +104,11 @@ def make_choice(choices, prng):
             continue
         try:
             (weight, value) = option.split(None, 1)
+            weight = int(weight)
         except ValueError:
-            weight = '1'
+            weight = 1
             value = option
 
-        weight = int(weight)
         if value == 'null' or value == 'None':
             value = ''
 
@@ -118,11 +119,11 @@ def make_choice(choices, prng):
 
 
 def expand_headers(decision, prng):
-    expanded_headers = []
+    expanded_headers = {} 
     for header in decision['headers']:
         h = expand(decision, header[0], prng)
         v = expand(decision, header[1], prng)
-        expanded_headers.append([h, v])
+        expanded_headers[h] = v
     return expanded_headers
 
 
@@ -200,6 +201,8 @@ def parse_options():
     parser.add_option('--seed', dest='seed', type='int',  help='initial seed for the random number generator', metavar='SEED')
     parser.add_option('--seed-file', dest='seedfile', help='read seeds for specific requests from FILE', metavar='FILE')
     parser.add_option('-n', dest='num_requests', type='int',  help='issue NUM requests before stopping', metavar='NUM')
+    parser.add_option('-v', '--verbose', dest='verbose', action="store_true",  help='turn on verbose output')
+    parser.add_option('-d', '--debug', dest='debug', action="store_true",  help='turn on debugging (very verbose) output')
     parser.add_option('--decision-graph', dest='graph_filename',  help='file in which to find the request decision graph', metavar='NUM')
 
     parser.set_defaults(num_requests=5)
@@ -215,56 +218,127 @@ def randomlist(seed=None):
         yield rng.random()
 
 
+def populate_buckets(conn, alt):
+    """ Creates buckets and keys for fuzz testing and sets appropriate
+        permissions. Returns a dictionary of the bucket and key names.
+    """
+    breadable = common.get_new_bucket(alt)
+    bwritable = common.get_new_bucket(alt)
+    bnonreadable = common.get_new_bucket(alt)
+
+    oreadable = Key(breadable)
+    owritable = Key(bwritable)
+    ononreadable = Key(breadable)
+    oreadable.set_contents_from_string('oreadable body')
+    owritable.set_contents_from_string('owritable body')
+    ononreadable.set_contents_from_string('ononreadable body')
+
+    breadable.set_acl('public-read')
+    bwritable.set_acl('public-read-write')
+    bnonreadable.set_acl('private')
+    oreadable.set_acl('public-read')
+    owritable.set_acl('public-read-write')
+    ononreadable.set_acl('private')
+
+    return dict(
+        bucket_readable=breadable.name,
+        bucket_writable=bwritable.name,
+        bucket_not_readable=bnonreadable.name,
+        bucket_not_writable=breadable.name,
+        object_readable=oreadable.key,
+        object_writable=owritable.key,
+        object_not_readable=ononreadable.key,
+        object_not_writable=oreadable.key,
+    )
+
+
 def _main():
     """ The main script
     """
     (options, args) = parse_options()
     random.seed(options.seed if options.seed else None)
     s3_connection = common.s3.main
+    alt_connection = common.s3.alt
+
+    if options.outfile:
+        OUT = open(options.outfile, 'w')
+    else:
+        OUT = sys.stderr
+
+    VERBOSE = DEBUG = open('/dev/null', 'w')
+    if options.verbose:
+        VERBOSE = OUT
+    if options.debug:
+        DEBUG = OUT
+        VERBOSE = OUT
 
     request_seeds = None
     if options.seedfile:
         FH = open(options.seedfile, 'r')
-        request_seeds = FH.readlines()
+        request_seeds = [float(line) for line in FH.readlines()]
+        print>>OUT, 'Seedfile: %s' %options.seedfile
+        print>>OUT, 'Number of requests: %d' %len(request_seeds)
     else:
+        if options.seed:
+            print>>OUT, 'Initial Seed: %d' %options.seed
+        print>>OUT, 'Number of requests: %d' %options.num_requests
         random_list = randomlist(options.seed)
         request_seeds = itertools.islice(random_list, options.num_requests)
 
+    print>>OUT, 'Decision Graph: %s' %options.graph_filename
 
     graph_file = open(options.graph_filename, 'r')
     decision_graph = yaml.safe_load(graph_file)
 
-    constants = dict(
-        bucket_readable='TODO-breadable',
-        bucket_not_readable='TODO-bnonreadable',
-        bucket_writable='TODO-bwritable',
-        bucket_not_writable='TODO-bnonwritable',
-        object_readable='TODO-oreadable',
-        object_not_readable='TODO-ononreadable',
-        object_writable='TODO-owritable',
-        object_not_writable='TODO-ononwritable',
-    )
+    constants = populate_buckets(s3_connection, alt_connection)
+    print>>VERBOSE, "Test Buckets/Objects:"
+    for key, value in constants.iteritems():
+        print>>VERBOSE, "\t%s: %s" %(key, value)
 
+    print>>OUT, "Begin Fuzzing..."
+    print>>VERBOSE, '='*80
     for request_seed in request_seeds:
+        print>>OUT, request_seed
+
         prng = random.Random(request_seed)
         decision = assemble_decision(decision_graph, prng)
         decision.update(constants)
 
         method = expand(decision, decision['method'], prng)
-        path = expand(decision, decision['path'], prng)
-        body = expand(decision, decision['body'], prng)
-        headers = expand_headers(decision, prng)
+        path = expand(decision, decision['urlpath'], prng)
 
-        print "Method: %s" % method
-        print "Path: %s" % path
-        print "Headers: %s" % headers
-        print ""
-        print "Body: %s" % body
-        #response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
+        try:
+            body = expand(decision, decision['body'], prng)
+        except KeyError:
+            body = ''
 
+        try:
+            headers = expand_headers(decision, prng)
+        except KeyError:
+            headers = {}
+
+        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
+
+        print>>VERBOSE, "%s %s" %(method[:100], path[:100])
+        for h, v in headers.iteritems():
+            print>>VERBOSE, "%s: %s" %(h[:50], v[:50])
+        print>>VERBOSE, "%s\n" % body[:100]
+
+        print>>DEBUG, 'FULL REQUEST'
+        print>>DEBUG, 'Method: %r' %method
+        print>>DEBUG, 'Path: %r' %path
+        print>>DEBUG, 'Headers:'
+        for h, v in headers.iteritems():
+            print>>DEBUG, "\t%r: %r" %(h, v)
+        print>>DEBUG, 'Body: %r' %body
+
+        print>>VERBOSE, 'Response status code: %d %s' %(response.status, response.reason)
+        print>>DEBUG, 'Body:\n%s' %response.read()
         if response.status == 500 or response.status == 503:
-            print 'Request generated with seed %d failed:\n%s' % (request_seed, request)
-        pass
+            print>>OUT, 'FAILED:\n%s' %request
+        print>>VERBOSE, '='*80
+    print>>OUT, '...done fuzzing'
+    common.teardown()
 
 
 def main():
