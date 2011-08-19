@@ -13,17 +13,19 @@ bucket:
         - 13 bucket_get
         - 8 bucket_put
         - 5 bucket_delete
-        - garbage_method
+        - bucket_garbage_method
 
-garbage_method:
+bucket_garbage_method:
     set:
         method:
             - '{random 1-100 printable}'
             - '{random 10-100 binary}'
-        urlpath:
-            - '/{bucket}'
-            - '/{bucket}/{object}'
-            - '{random 10-1000 binary}'
+        bucket:
+            - '{bucket_readable}'
+            - '{bucket_not_readable}'
+            - '{bucket_writable}'
+            - '{bucket_not_writable}'
+            - '2 {garbage}'
     choices:
         - bucket_get_simple
         - bucket_get_filtered

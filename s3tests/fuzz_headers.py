@@ -215,7 +215,7 @@ def randomlist(seed=None):
     """
     rng = random.Random(seed)
     while True:
-        yield rng.random()
+        yield rng.randint(0,100000) #100,000 seeds is enough, right?
 
 
 def populate_buckets(conn, alt):
@@ -275,7 +275,7 @@ def _main():
     request_seeds = None
     if options.seedfile:
         FH = open(options.seedfile, 'r')
-        request_seeds = [float(line) for line in FH.readlines()]
+        request_seeds = [int(line) for line in FH if line != '\n']
         print>>OUT, 'Seedfile: %s' %options.seedfile
         print>>OUT, 'Number of requests: %d' %len(request_seeds)
     else:
@@ -298,7 +298,7 @@ def _main():
     print>>OUT, "Begin Fuzzing..."
     print>>VERBOSE, '='*80
     for request_seed in request_seeds:
-        print>>OUT, request_seed
+        print>>OUT, '%r' %request_seed
 
         prng = random.Random(request_seed)
         decision = assemble_decision(decision_graph, prng)
@@ -317,12 +317,12 @@ def _main():
         except KeyError:
             headers = {}
 
-        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
-
         print>>VERBOSE, "%s %s" %(method[:100], path[:100])
         for h, v in headers.iteritems():
             print>>VERBOSE, "%s: %s" %(h[:50], v[:50])
         print>>VERBOSE, "%s\n" % body[:100]
+
+        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
 
         print>>DEBUG, 'FULL REQUEST'
         print>>DEBUG, 'Method: %r' %method
