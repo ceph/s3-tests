@@ -322,8 +322,6 @@ def _main():
             print>>VERBOSE, "%s: %s" %(h[:50], v[:50])
         print>>VERBOSE, "%s\n" % body[:100]
 
-        response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
-
         print>>DEBUG, 'FULL REQUEST'
         print>>DEBUG, 'Method: %r' %method
         print>>DEBUG, 'Path: %r' %path
@@ -331,6 +329,9 @@ def _main():
         for h, v in headers.iteritems():
             print>>DEBUG, "\t%r: %r" %(h, v)
         print>>DEBUG, 'Body: %r' %body
+
+        #response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
+        response = s3_connection.make_request(method, path, data=body, headers=headers)
 
         print>>VERBOSE, 'Response status code: %d %s' %(response.status, response.reason)
         print>>DEBUG, 'Body:\n%s' %response.read()
