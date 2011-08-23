@@ -136,6 +136,7 @@ def expand(decision, value, prng):
 
 class RepeatExpandingFormatter(string.Formatter):
     charsets = {
+        'printable_no_whitespace': string.printable.translate(None, string.whitespace),
         'printable': string.printable,
         'punctuation': string.punctuation,
         'whitespace': string.whitespace,
@@ -161,8 +162,7 @@ class RepeatExpandingFormatter(string.Formatter):
         if self._recursion > 5:
             raise RecursionError(key)
         fmt = self.__class__(self.prng, _recursion=self._recursion+1)
-        # must use vformat not **kwargs so our SpecialVariables is not
-        # downgraded to just a dict
+
         n = fmt.vformat(val, args, kwargs)
         return n
 
@@ -185,10 +185,12 @@ class RepeatExpandingFormatter(string.Formatter):
         except IndexError:
             charset_arg = 'printable'
 
-        if charset_arg == 'binary':
+        if charset_arg == 'binary' or charset_arg == 'binary_no_whitespace':
             num_bytes = length + 8
             tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
             tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
+            if charset_arg == 'binary_no_whitespace':
+                tmpstring = ''.join(c for c in tmpstring if c not in string.whitespace)
             return tmpstring[0:length]
         else:
             charset = self.charsets[charset_arg]
@@ -198,14 +200,16 @@ class RepeatExpandingFormatter(string.Formatter):
 def parse_options():
     parser = OptionParser()
     parser.add_option('-O', '--outfile', help='write output to FILE. Defaults to STDOUT', metavar='FILE')
-    parser.add_option('--seed', dest='seed', type='int',  help='initial seed for the random number generator', metavar='SEED')
+    parser.add_option('--seed', dest='seed', type='int',  help='initial seed for the random number generator')
     parser.add_option('--seed-file', dest='seedfile', help='read seeds for specific requests from FILE', metavar='FILE')
     parser.add_option('-n', dest='num_requests', type='int',  help='issue NUM requests before stopping', metavar='NUM')
     parser.add_option('-v', '--verbose', dest='verbose', action="store_true",  help='turn on verbose output')
     parser.add_option('-d', '--debug', dest='debug', action="store_true",  help='turn on debugging (very verbose) output')
-    parser.add_option('--decision-graph', dest='graph_filename',  help='file in which to find the request decision graph', metavar='NUM')
+    parser.add_option('--decision-graph', dest='graph_filename',  help='file in which to find the request decision graph')
+    parser.add_option('--no-cleanup', dest='cleanup', action="store_false", help='turn off teardown so you can peruse the state of buckets after testing')
 
     parser.set_defaults(num_requests=5)
+    parser.set_defaults(cleanup=True)
     parser.set_defaults(graph_filename='request_decision_graph.yml')
     return parser.parse_args()
 
@@ -317,10 +321,10 @@ def _main():
         except KeyError:
             headers = {}
 
-        print>>VERBOSE, "%s %s" %(method[:100], path[:100])
+        print>>VERBOSE, "%r %r" %(method[:100], path[:100])
         for h, v in headers.iteritems():
-            print>>VERBOSE, "%s: %s" %(h[:50], v[:50])
-        print>>VERBOSE, "%s\n" % body[:100]
+            print>>VERBOSE, "%r: %r" %(h[:50], v[:50])
+        print>>VERBOSE, "%r\n" % body[:100]
 
         print>>DEBUG, 'FULL REQUEST'
         print>>DEBUG, 'Method: %r' %method
@@ -333,13 +337,22 @@ def _main():
         #response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
         response = s3_connection.make_request(method, path, data=body, headers=headers)
 
+        failed = True if response.status in [500, 503] else False
+        if failed:
+            print>>OUT, 'FAILED:'
+            OLD_VERBOSE = VERBOSE
+            OLD_DEBUG = DEBUG
+            VERBOSE = DEBUG = OUT
         print>>VERBOSE, 'Response status code: %d %s' %(response.status, response.reason)
         print>>DEBUG, 'Body:\n%s' %response.read()
-        if response.status == 500 or response.status == 503:
-            print>>OUT, 'FAILED:\n%s' %request
         print>>VERBOSE, '='*80
+        if failed:
+            VERBOSE = OLD_VERBOSE
+            DEBUG = OLD_DEBUG
     print>>OUT, '...done fuzzing'
-    common.teardown()
+
+    if options.cleanup:
+        common.teardown()
 
 
 def main():

@@ -3,6 +3,9 @@ start:
         garbage:
             - '{random 10-3000 printable}'
             - '{random 10-1000 binary}'
+        garbage_no_whitespace:
+            - '{random 10-3000 printable_no_whitespace}'
+            - '{random 10-1000 binary_no_whitespace}'
     choices:
         - bucket
 
@@ -25,7 +28,7 @@ bucket_garbage_method:
             - '{bucket_not_readable}'
             - '{bucket_writable}'
             - '{bucket_not_writable}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices:
         - bucket_get_simple
         - bucket_get_filtered
@@ -40,12 +43,12 @@ bucket_delete:
         bucket:
             - '{bucket_writable}'
             - '{bucket_not_writable}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
         query:
             - null
             - policy
             - website
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices: []
 
 bucket_get:
@@ -54,7 +57,7 @@ bucket_get:
         bucket:
             - '{bucket_readable}'
             - '{bucket_not_readable}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices:
         - 11 bucket_get_simple
         - bucket_get_filtered
@@ -72,56 +75,56 @@ bucket_get_simple:
             - requestPayment
             - versioning
             - website
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices: []
 
 bucket_get_uploads:
     set:
         delimiter:
             - null
-            - '3 delimiter={garbage}'
+            - '3 delimiter={garbage_no_whitespace}'
         prefix:
             - null
-            - '3 prefix={garbage}'
+            - '3 prefix={garbage_no_whitespace}'
         key_marker:
             - null
             - 'key-marker={object_readable}'
             - 'key-marker={object_not_readable}'
             - 'key-marker={invalid_key}'
-            - 'key-marker={random 100-1000 printable}'
+            - 'key-marker={random 100-1000 printable_no_whitespace}'
         max_uploads:
             - null
-            - 'max-uploads={random 1-5 binary}'
+            - 'max-uploads={random 1-5 binary_no_whitespace}'
             - 'max-uploads={random 1-1000 digits}'
         upload_id_marker:
             - null
-            - '3 upload-id-marker={random}'
+            - '3 upload-id-marker={random 0-1000 printable_no_whitespace}'
         query:
             - 'uploads'
             - 'uploads&{delimiter}&{prefix}'
             - 'uploads&{max_uploads}&{key_marker}&{upload_id_marker}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices: []
 
 bucket_get_filtered:
     set:
         delimiter:
-            - 'delimiter={garbage}'
+            - 'delimiter={garbage_no_whitespace}'
         prefix:
-            - 'prefix={garbage}'
+            - 'prefix={garbage_no_whitespace}'
         marker:
             - 'marker={object_readable}'
             - 'marker={object_not_readable}'
             - 'marker={invalid_key}'
-            - 'marker={random 100-1000 printable}'
+            - 'marker={random 100-1000 printable_no_whitespace}'
         max_keys:
-            - 'max-keys={random 1-5 binary}'
+            - 'max-keys={random 1-5 binary_no_whitespace}'
             - 'max-keys={random 1-1000 digits}'
         query:
             - null
             - '{delimiter}&{prefix}'
             - '{max-keys}&{marker}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
     choices: []
 
 bucket_put:
@@ -129,7 +132,7 @@ bucket_put:
         bucket:
             - '{bucket_writable}'
             - '{bucket_not_writable}'
-            - '2 {garbage}'
+            - '2 {garbage_no_whitespace}'
         method: PUT
     choices:
         - bucket_put_simple
@@ -142,9 +145,14 @@ bucket_put_create:
             - '2 {garbage}'
             - '<CreateBucketConfiguration><LocationConstraint>{random 2-10 binary}</LocationConstraint></CreateBucketConfiguration>'
         acl:
-            - private
+            - 'private'
+            - 'public-read'
+            - 'public-read-write'
+            - 'authenticated-read'
+            - 'bucket-owner-read'
+            - 'bucket-owner-full-control'
             - '{random 3000 letters}'
-            - '{random 100-1000 binary}'
+            - '{random 100-1000 binary_no_whitespace}'
     headers:
         - ['0-1', 'x-amz-acl', '{acl}']
     choices: []
@@ -163,7 +171,7 @@ bucket_put_versioning:
             - '<MfaDelete>{random 2-10 binary}</MfaDelete>'
             - '<MfaDelete>{random 2000-3000 printable}</MfaDelete>'
         mfa_header:
-            - '{random 10-1000 printable} {random 10-1000 printable}'
+            - '{random 10-1000 printable_no_whitespace} {random 10-1000 printable_no_whitespace}'
     headers:
         - ['0-1', 'x-amz-mfa', '{mfa_header}']
     choices: []
@@ -225,7 +233,7 @@ bucket_put_simple:
         notification_body:
             - null
             - '<NotificationConfiguration />'
-            - '2 <NotificationConfiguration><TopicConfiguration>{topic}{event}</TopicConfiguration}</NotificationConfiguration>'
+            - '2 <NotificationConfiguration><TopicConfiguration>{topic}{event}</TopicConfiguration></NotificationConfiguration>'
         topic:
             - null
             - '2 <Topic>{garbage}</Topic>'
