@@ -1,7 +1,7 @@
 from boto.s3.connection import S3Connection
+from boto.exception import BotoServerError
 from boto.s3.key import Key
 from optparse import OptionParser
-from boto import UserAgent
 from . import common
 
 import traceback
@@ -302,8 +302,7 @@ def _main():
     print>>OUT, "Begin Fuzzing..."
     print>>VERBOSE, '='*80
     for request_seed in request_seeds:
-        print>>OUT, '%r' %request_seed
-
+        print>>VERBOSE, 'Seed is: %r' %request_seed
         prng = random.Random(request_seed)
         decision = assemble_decision(decision_graph, prng)
         decision.update(constants)
@@ -332,23 +331,30 @@ def _main():
         print>>DEBUG, 'Headers:'
         for h, v in headers.iteritems():
             print>>DEBUG, "\t%r: %r" %(h, v)
-        print>>DEBUG, 'Body: %r' %body
+        print>>DEBUG, 'Body: %r\n' %body
 
-        #response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=0)
-        response = s3_connection.make_request(method, path, data=body, headers=headers)
+        failed = False # Let's be optimistic, shall we?
+        try:
+            response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=1)
+            body = response.read()
+        except BotoServerError, e:
+            response = e
+            body = e.body
+            failed = True
 
-        failed = True if response.status in [500, 503] else False
         if failed:
             print>>OUT, 'FAILED:'
             OLD_VERBOSE = VERBOSE
             OLD_DEBUG = DEBUG
             VERBOSE = DEBUG = OUT
+        print>>VERBOSE, 'Seed was: %r' %request_seed
         print>>VERBOSE, 'Response status code: %d %s' %(response.status, response.reason)
-        print>>DEBUG, 'Body:\n%s' %response.read()
+        print>>DEBUG, 'Body:\n%s' %body
         print>>VERBOSE, '='*80
         if failed:
             VERBOSE = OLD_VERBOSE
             DEBUG = OLD_DEBUG
+
     print>>OUT, '...done fuzzing'
 
     if options.cleanup:
