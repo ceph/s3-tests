@@ -13,6 +13,9 @@ import string
 import socket
 import ssl
 
+from httplib import HTTPConnection, HTTPSConnection
+from urllib2 import urlopen, HTTPError
+
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 
@@ -767,6 +770,145 @@ def test_object_write_file():
     key.set_contents_from_file(fp=data)
     got = key.get_contents_as_string()
     eq(got, 'bar')
+
+
+def _setup_request(bucket_acl=None, object_acl=None):
+    bucket = _create_keys(keys=['foo'])
+    key = bucket.get_key('foo')
+
+    if bucket_acl is not None:
+        bucket.set_acl(bucket_acl)
+    if object_acl is not None:
+        key.set_acl(object_acl)
+
+    return (bucket, key)
+
+
+def _make_request(method, bucket, key):
+    if s3.main.is_secure:
+        class_ = HTTPSConnection
+    else:
+        class_ = HTTPConnection
+
+    c = class_(s3.main.host, s3.main.port, strict=True)
+
+    url = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+    print url
+    c.request(method, url)
+    res = c.getresponse()
+
+    print res.status, res.reason
+    return res
+
+
+def test_object_raw_get():
+    (bucket, key) = _setup_request('public-read', 'public-read')
+    res = _make_request('GET', bucket, key)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+def test_object_raw_get_bucket_gone():
+    (bucket, key) = _setup_request('public-read', 'public-read')
+    key.delete()
+    bucket.delete()
+
+    res = _make_request('GET', bucket, key)
+    eq(res.status, 404)
+    eq(res.reason, 'Not Found')
+
+
+def test_object_raw_get_object_gone():
+    (bucket, key) = _setup_request('public-read', 'public-read')
+    key.delete()
+
+    res = _make_request('GET', bucket, key)
+    eq(res.status, 404)
+    eq(res.reason, 'Not Found')
+
+
+# a private bucket should not affect reading or writing to a bucket
+def test_object_raw_get_bucket_acl():
+    (bucket, key) = _setup_request('private', 'public-read')
+    res = _make_request('GET', bucket, key)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+def test_object_raw_get_object_acl():
+    (bucket, key) = _setup_request('public-read', 'private')
+    res = _make_request('GET', bucket, key)
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
+
+
+def _make_request_authenticated(key):
+    url = key.generate_url(100000)
+    print url
+
+    try:
+        res = urlopen(url)
+        (code, msg) = (res.code, res.msg)
+    except HTTPError as e:
+        (code, msg) = (e.code, e.msg)
+
+    print code, msg
+    return (code, msg)
+
+
+# 403 TimeTooSkewed
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_authenticated():
+    (_, key) = _setup_request('public-read', 'public-read')
+    (code, msg) = _make_request_authenticated(key)
+    eq(code, 200)
+    eq(msg, 'OK')
+
+
+# 403 TimeTooSkewed
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_authenticated_bucket_acl():
+    (_, key) = _setup_request('private', 'public-read')
+    (code, msg) = _make_request_authenticated(key)
+    eq(code, 200)
+    eq(msg, 'OK')
+
+
+# 403 TimeTooSkewed
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_authenticated_object_acl():
+    (_, key) = _setup_request('public-read', 'private')
+    (code, msg) = _make_request_authenticated(key)
+    eq(code, 200)
+    eq(msg, 'OK')
+
+
+# 403 TimeTooSkewed
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_authenticated_bucket_gone():
+    (bucket, key) = _setup_request('public-read', 'public-read')
+    key.delete()
+    bucket.delete()
+
+    (code, msg) = _make_request_authenticated(key)
+    eq(code, 404)
+    eq(msg, 'Not Found')
+
+
+# 403 TimeTooSkewed
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_authenticated_object_gone():
+    (_, key) = _setup_request('public-read', 'public-read')
+    key.delete()
+
+    (code, msg) = _make_request_authenticated(key)
+    eq(code, 404)
+    eq(msg, 'Not Found')
 
 
 def check_bad_bucket_name(name):
