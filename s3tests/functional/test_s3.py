@@ -2101,9 +2101,8 @@ def test_stress_bucket_acls_changes():
         _test_bucket_acls_changes_persistent(bucket);
 
 class FakeFile(object):
-    def __init__(self, size, char='A', interrupt=None):
+    def __init__(self, char='A', interrupt=None):
         self.offset = 0
-        self.size = size
         self.char = char
         self.interrupt = interrupt
 
@@ -2112,6 +2111,11 @@ class FakeFile(object):
 
     def tell(self):
         return self.offset
+
+class FakeWriteFile(FakeFile):
+    def __init__(self, size, char='A', interrupt=None):
+        FakeFile.__init__(self, char, interrupt)
+        self.size = size
 
     def read(self, size=-1):
         if size < 0:
@@ -2124,6 +2128,27 @@ class FakeFile(object):
             self.interrupt()
 
         return self.char*count
+
+class FakeReadFile(FakeFile):
+    def __init__(self, size, char='A', interrupt=None):
+        FakeFile.__init__(self, char, interrupt)
+        self.interrupted = False
+        self.size = 0
+        self.expected_size = size
+
+    def write(self, chars):
+        eq(chars, self.char*len(chars))
+        self.offset += len(chars)
+        self.size += len(chars)
+
+        # Sneaky! do stuff on the second seek
+        if not self.interrupted and self.interrupt != None \
+                and self.offset > 0:
+            self.interrupt()
+            self.interrupted = True
+
+    def close(self):
+        eq(self.size, self.expected_size)
 
 class FakeFileVerifier(object):
     def __init__(self, char=None):
@@ -2143,13 +2168,52 @@ def _verify_atomic_key_data(key, size=-1, char=None):
     if size >= 0:
         eq(fp_verify.size, size)
 
+def _test_atomic_read(file_size):
+    bucket = get_new_bucket()
+    key = bucket.new_key('testobj')
+
+    # create object of <file_size> As
+    fp_a = FakeWriteFile(file_size, 'A')
+    key.set_contents_from_file(fp_a)
+
+    read_conn = boto.s3.connection.S3Connection(
+        aws_access_key_id=s3['main'].aws_access_key_id,
+        aws_secret_access_key=s3['main'].aws_secret_access_key,
+        is_secure=s3['main'].is_secure,
+        port=s3['main'].port,
+        host=s3['main'].host,
+        calling_format=s3['main'].calling_format,
+        )
+
+    read_bucket = read_conn.get_bucket(bucket.name)
+    read_key = read_bucket.get_key('testobj')
+    fp_b = FakeWriteFile(file_size, 'B')
+    fp_a2 = FakeReadFile(file_size, 'A',
+        lambda: key.set_contents_from_file(fp_b)
+        )
+
+    # read object while writing it to it
+    read_key.get_contents_to_file(fp_a2)
+    fp_a2.close()
+
+    _verify_atomic_key_data(key, file_size, 'B')
+
+def test_atomic_read_1mb():
+    _test_atomic_read(1024*1024)
+
+def test_atomic_read_4mb():
+    _test_atomic_read(1024*1024*4)
+
+def test_atomic_read_8mb():
+    _test_atomic_read(1024*1024*8)
+
 def _test_atomic_write(file_size):
     bucket = get_new_bucket()
     objname = 'testobj'
     key = bucket.new_key(objname)
 
     # create <file_size> file of A's
-    fp_a = FakeFile(file_size, 'A')
+    fp_a = FakeWriteFile(file_size, 'A')
     key.set_contents_from_file(fp_a)
 
     # verify A's
@@ -2157,7 +2221,7 @@ def _test_atomic_write(file_size):
 
     # create <file_size> file of B's
     # but try to verify the file before we finish writing all the B's
-    fp_b = FakeFile(file_size, 'B',
+    fp_b = FakeWriteFile(file_size, 'B',
         lambda: _verify_atomic_key_data(key, file_size)
         )
     key.set_contents_from_file(fp_b)
@@ -2185,8 +2249,8 @@ def _test_atomic_dual_write(file_size):
 
     # write <file_size> file of B's
     # but before we're done, try to write all A's
-    fp_a = FakeFile(file_size, 'A')
-    fp_b = FakeFile(file_size, 'B',
+    fp_a = FakeWriteFile(file_size, 'A')
+    fp_b = FakeWriteFile(file_size, 'B',
         lambda: key2.set_contents_from_file(fp_a)
         )
     key.set_contents_from_file(fp_b)
@@ -2214,7 +2278,7 @@ def test_atomic_write_bucket_gone():
     # create file of A's but delete the bucket it's in before we finish writing
     # all of them
     key = bucket.new_key('foo')
-    fp_a = FakeFile(1024*1024, 'A', remove_bucket)
+    fp_a = FakeWriteFile(1024*1024, 'A', remove_bucket)
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_a)
     eq(e.status, 404)
     eq(e.reason, 'Not Found')
