@@ -2076,9 +2076,8 @@ def test_stress_bucket_acls_changes():
         _test_bucket_acls_changes_persistent(bucket);
 
 class FakeFile(object):
-    def __init__(self, size, char='A', interrupt=None):
+    def __init__(self, char='A', interrupt=None):
         self.offset = 0
-        self.size = size
         self.char = char
         self.interrupt = interrupt
 
@@ -2089,6 +2088,10 @@ class FakeFile(object):
         return self.offset
 
 class FakeWriteFile(FakeFile):
+    def __init__(self, size, char='A', interrupt=None):
+        FakeFile.__init__(self, char, interrupt)
+        self.size = size
+
     def read(self, size=-1):
         if size < 0:
             size = self.size - self.offset
@@ -2103,18 +2106,24 @@ class FakeWriteFile(FakeFile):
 
 class FakeReadFile(FakeFile):
     def __init__(self, size, char='A', interrupt=None):
-        FakeFile.__init__(self, size, char, interrupt)
+        FakeFile.__init__(self, char, interrupt)
         self.interrupted = False
+        self.size = 0
+        self.expected_size = size
 
     def write(self, chars):
         eq(chars, self.char*len(chars))
         self.offset += len(chars)
+        self.size += len(chars)
 
         # Sneaky! do stuff on the second seek
         if not self.interrupted and self.interrupt != None \
                 and self.offset > 0:
             self.interrupt()
             self.interrupted = True
+
+    def close(self):
+        eq(self.size, self.expected_size)
 
 def _verify_atomic_key_data(key, size=-1, char=None):
     fp_verify = FakeFileVerifier(char)
@@ -2137,6 +2146,7 @@ def _test_atomic_read(file_size):
 
     # read object while writing it to it
     key.get_contents_to_file(fp_a2)
+    fp_a2.close()
 
     _verify_atomic_key_data(key, file_size, 'B')
 
