@@ -2088,6 +2088,7 @@ class FakeFile(object):
     def tell(self):
         return self.offset
 
+class FakeWriteFile(FakeFile):
     def read(self, size=-1):
         if size < 0:
             size = self.size - self.offset
@@ -2099,6 +2100,54 @@ class FakeFile(object):
             self.interrupt()
 
         return self.char*count
+
+class FakeReadFile(FakeFile):
+    def __init__(self, size, char='A', interrupt=None):
+        FakeFile.__init__(self, size, char, interrupt)
+        self.interrupted = False
+
+    def write(self, chars):
+        eq(chars, self.char*len(chars))
+        self.offset += len(chars)
+
+        # Sneaky! do stuff on the second seek
+        if not self.interrupted and self.interrupt != None \
+                and self.offset > 0:
+            self.interrupt()
+            self.interrupted = True
+
+def _verify_atomic_key_data(key, size=-1, char=None):
+    fp_verify = FakeFileVerifier(char)
+    key.get_contents_to_file(fp_verify)
+    if size >= 0:
+        eq(fp_verify.size, size)
+
+def _test_atomic_read(file_size):
+    bucket = get_new_bucket()
+    key = bucket.new_key('testobj')
+
+    # create object of <file_size> As
+    fp_a = FakeWriteFile(file_size, 'A')
+    key.set_contents_from_file(fp_a)
+
+    fp_b = FakeWriteFile(file_size, 'B')
+    fp_a2 = FakeReadFile(file_size, 'A',
+        lambda: key.set_contents_from_file(fp_b)
+        )
+
+    # read object while writing it to it
+    key.get_contents_to_file(fp_a2)
+
+    _verify_atomic_key_data(key, file_size, 'B')
+
+def test_atomic_read_1mb():
+    _test_atomic_read(1024*1024)
+
+def test_atomic_read_4mb():
+    _test_atomic_read(1024*1024*4)
+
+def test_atomic_read_8mb():
+    _test_atomic_read(1024*1024*8)
 
 class FakeFileVerifier(object):
     def __init__(self, char=None):
@@ -2112,19 +2161,13 @@ class FakeFileVerifier(object):
         self.size += size
         eq(data, self.char*size)
 
-def _verify_atomic_key_data(key, size=-1, char=None):
-    fp_verify = FakeFileVerifier(char)
-    key.get_contents_to_file(fp_verify)
-    if size >= 0:
-        eq(fp_verify.size, size)
-
 def _test_atomic_write(file_size):
     bucket = get_new_bucket()
     objname = 'testobj'
     key = bucket.new_key(objname)
 
     # create <file_size> file of A's
-    fp_a = FakeFile(file_size, 'A')
+    fp_a = FakeWriteFile(file_size, 'A')
     key.set_contents_from_file(fp_a)
 
     # verify A's
@@ -2132,7 +2175,7 @@ def _test_atomic_write(file_size):
 
     # create <file_size> file of B's
     # but try to verify the file before we finish writing all the B's
-    fp_b = FakeFile(file_size, 'B',
+    fp_b = FakeWriteFile(file_size, 'B',
         lambda: _verify_atomic_key_data(key, file_size)
         )
     key.set_contents_from_file(fp_b)
@@ -2160,8 +2203,8 @@ def _test_atomic_dual_write(file_size):
 
     # write <file_size> file of B's
     # but before we're done, try to write all A's
-    fp_a = FakeFile(file_size, 'A')
-    fp_b = FakeFile(file_size, 'B',
+    fp_a = FakeWriteFile(file_size, 'A')
+    fp_b = FakeWriteFile(file_size, 'B',
         lambda: key2.set_contents_from_file(fp_a)
         )
     key.set_contents_from_file(fp_b)
