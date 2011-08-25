@@ -2178,6 +2178,23 @@ def test_atomic_dual_write_4mb():
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
 
+@attr('fails_on_aws')
+def test_atomic_write_bucket_gone():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+
+    def remove_bucket():
+        key.delete()
+        bucket.delete()
+
+    # create file of A's but delete the bucket it's in before we finish writing
+    # all of them
+    fp_a = FakeFile(1024*1024, 'A', remove_bucket)
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_a)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
 def test_ranged_request_response_code():
     content = 'testcontent'
 
