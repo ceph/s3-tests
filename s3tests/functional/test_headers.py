@@ -502,3 +502,11 @@ def test_object_create_bad_date_after_end():
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_bucket_create_contentlength_none():
+    _add_custom_headers(remove=('Content-Length',))
+    get_new_bucket()
