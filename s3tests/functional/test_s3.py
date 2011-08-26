@@ -906,6 +906,37 @@ def test_object_raw_authenticated_object_gone():
     eq(res.reason, 'Not Found')
 
 
+# test for unsigned PUT
+def test_object_raw_put():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+
+    res = _make_request('PUT', bucket, key, body='foo')
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
+
+
+def test_object_raw_put_write_access():
+    bucket = get_new_bucket()
+    bucket.set_acl('public-read-write')
+    key = bucket.new_key('foo')
+
+    res = _make_request('PUT', bucket, key, body='foo')
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_put_authenticated():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+
+    res = _make_request('PUT', bucket, key, body='foo', authenticated=True)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
 def check_bad_bucket_name(name):
     e = assert_raises(boto.exception.S3ResponseError, s3.main.create_bucket, name)
     eq(e.status, 400)
