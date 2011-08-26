@@ -14,7 +14,7 @@ import socket
 import ssl
 
 from httplib import HTTPConnection, HTTPSConnection
-from urllib2 import urlopen, HTTPError
+from urlparse import urlparse
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
@@ -784,17 +784,21 @@ def _setup_request(bucket_acl=None, object_acl=None):
     return (bucket, key)
 
 
-def _make_request(method, bucket, key):
+def _make_request(method, bucket, key, body=None, authenticated=False):
+    if authenticated:
+        url = key.generate_url(100000, method=method)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+
     if s3.main.is_secure:
         class_ = HTTPSConnection
     else:
         class_ = HTTPConnection
 
     c = class_(s3.main.host, s3.main.port, strict=True)
-
-    url = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
-    print url
-    c.request(method, url)
+    c.request(method, path, body=body)
     res = c.getresponse()
 
     print res.status, res.reason
@@ -830,6 +834,7 @@ def test_object_raw_get_object_gone():
 # a private bucket should not affect reading or writing to a bucket
 def test_object_raw_get_bucket_acl():
     (bucket, key) = _setup_request('private', 'public-read')
+
     res = _make_request('GET', bucket, key)
     eq(res.status, 200)
     eq(res.reason, 'OK')
@@ -837,53 +842,43 @@ def test_object_raw_get_bucket_acl():
 
 def test_object_raw_get_object_acl():
     (bucket, key) = _setup_request('public-read', 'private')
+
     res = _make_request('GET', bucket, key)
     eq(res.status, 403)
     eq(res.reason, 'Forbidden')
-
-
-def _make_request_authenticated(key):
-    url = key.generate_url(100000)
-    print url
-
-    try:
-        res = urlopen(url)
-        (code, msg) = (res.code, res.msg)
-    except HTTPError as e:
-        (code, msg) = (e.code, e.msg)
-
-    print code, msg
-    return (code, msg)
 
 
 # 403 TimeTooSkewed
 @attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_authenticated():
-    (_, key) = _setup_request('public-read', 'public-read')
-    (code, msg) = _make_request_authenticated(key)
-    eq(code, 200)
-    eq(msg, 'OK')
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
 
 
 # 403 TimeTooSkewed
 @attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_authenticated_bucket_acl():
-    (_, key) = _setup_request('private', 'public-read')
-    (code, msg) = _make_request_authenticated(key)
-    eq(code, 200)
-    eq(msg, 'OK')
+    (bucket, key) = _setup_request('private', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
 
 
 # 403 TimeTooSkewed
 @attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_authenticated_object_acl():
-    (_, key) = _setup_request('public-read', 'private')
-    (code, msg) = _make_request_authenticated(key)
-    eq(code, 200)
-    eq(msg, 'OK')
+    (bucket, key) = _setup_request('public-read', 'private')
+
+    res = _make_request('GET', bucket, key, authenticated=True)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
 
 
 # 403 TimeTooSkewed
@@ -894,21 +889,21 @@ def test_object_raw_authenticated_bucket_gone():
     key.delete()
     bucket.delete()
 
-    (code, msg) = _make_request_authenticated(key)
-    eq(code, 404)
-    eq(msg, 'Not Found')
+    res = _make_request('GET', bucket, key, authenticated=True)
+    eq(res.status, 404)
+    eq(res.reason, 'Not Found')
 
 
 # 403 TimeTooSkewed
 @attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_authenticated_object_gone():
-    (_, key) = _setup_request('public-read', 'public-read')
+    (bucket, key) = _setup_request('public-read', 'public-read')
     key.delete()
 
-    (code, msg) = _make_request_authenticated(key)
-    eq(code, 404)
-    eq(msg, 'Not Found')
+    res = _make_request('GET', bucket, key, authenticated=True)
+    eq(res.status, 404)
+    eq(res.reason, 'Not Found')
 
 
 def check_bad_bucket_name(name):
