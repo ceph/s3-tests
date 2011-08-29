@@ -926,7 +926,6 @@ def test_object_raw_put_write_access():
     eq(res.reason, 'OK')
 
 
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_put_authenticated():
     bucket = get_new_bucket()
@@ -2205,6 +2204,7 @@ def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
 
 @attr('fails_on_aws')
+@attr('fails_on_dho')
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()
 
