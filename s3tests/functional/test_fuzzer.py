@@ -1,4 +1,4 @@
-import sys
+mport sys
 import itertools
 import nose
 import random

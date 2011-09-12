@@ -1,6 +1,7 @@
 from boto.s3.connection import S3Connection
 from boto.exception import BotoServerError
 from boto.s3.key import Key
+from httplib import BadStatusLine
 from optparse import OptionParser
 from . import common
 
@@ -341,6 +342,10 @@ def _main():
             response = e
             body = e.body
             failed = True
+        except BadStatusLine, e:
+            print>>OUT, 'FAILED: failed to parse response (BadStatusLine); probably a NUL byte in your request?'
+            print>>VERBOSE, '='*80
+            continue
 
         if failed:
             print>>OUT, 'FAILED:'
