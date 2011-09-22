@@ -514,7 +514,7 @@ def test_bucket_create_contentlength_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
-def test_acl_create_contentlength_none():
+def test_object_acl_create_contentlength_none():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
     key.set_contents_from_string('blah')
