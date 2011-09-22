@@ -510,3 +510,14 @@ def test_object_create_bad_date_after_end():
 def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
+def test_acl_create_contentlength_none():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('blah')
+
+    _add_custom_headers(remove=('Content-Length',))
+    key.set_acl('public-read')
