@@ -380,6 +380,7 @@ def test_object_create_bad_authorization_invalid():
 
 # the teardown is really messed up here. check it out
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
 def test_object_create_bad_authorization_unreadable():
     key = _setup_bad_object({'Authorization': '\x07'})
 
