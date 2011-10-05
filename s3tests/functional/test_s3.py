@@ -67,6 +67,14 @@ def test_bucket_list_empty():
     l = list(l)
     eq(l, [])
 
+def test_bucket_list_distinct():
+    bucket1 = get_new_bucket()
+    bucket2 = get_new_bucket()
+    key = bucket1.new_key('asdf')
+    key.set_contents_from_string('asdf')
+    l = bucket2.list()
+    l = list(l)
+    eq(l, [])
 
 def _create_keys(bucket=None, keys=[]):
     if bucket is None:
