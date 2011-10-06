@@ -149,7 +149,6 @@ def _setup_bad_object(headers=None, remove=None):
  
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_md5_invalid():
     key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
 
@@ -160,7 +159,6 @@ def test_object_create_bad_md5_invalid():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_md5_wrong():
     key = _setup_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
 
@@ -171,7 +169,6 @@ def test_object_create_bad_md5_wrong():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_md5_empty():
     key = _setup_bad_object({'Content-MD5': ''})
 
@@ -200,7 +197,6 @@ def test_object_create_bad_md5_none():
 # strangely, amazon doesn't report an error with a non-expect 100 also, our
 # error comes back as html, and not xml as I normally expect
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_create_bad_expect_mismatch():
     key = _setup_bad_object({'Expect': 200})
@@ -210,7 +206,6 @@ def test_object_create_bad_expect_mismatch():
 # this is a really long test, and I don't know if it's valid...
 # again, accepts this with no troubles
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_expect_empty():
     key = _setup_bad_object({'Expect': ''})
     key.set_contents_from_string('bar')
@@ -224,7 +219,6 @@ def test_object_create_bad_expect_none():
 
 # this is a really long test..
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_create_bad_expect_unreadable():
     key = _setup_bad_object({'Expect': '\x07'})
@@ -245,7 +239,6 @@ def test_object_create_bad_contentlength_empty():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_negative():
     key = _setup_bad_object({'Content-Length': -1})
 
@@ -267,7 +260,6 @@ def test_object_create_bad_contentlength_none():
 
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
 
@@ -278,7 +270,6 @@ def test_object_create_bad_contentlength_unreadable():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_create_bad_contentlength_mismatch_above():
     content = 'bar'
@@ -293,7 +284,6 @@ def test_object_create_bad_contentlength_mismatch_above():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_contentlength_mismatch_below():
     content = 'bar'
     length = len(content) - 1
@@ -367,8 +357,6 @@ def test_object_create_bad_ua_none():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_create_bad_authorization_invalid():
     key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
 
@@ -423,7 +411,6 @@ def test_object_create_bad_authorization_incorrect():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_date_invalid():
     key = _setup_bad_object({'Date': 'Bad Date'})
 
@@ -434,7 +421,6 @@ def test_object_create_bad_date_invalid():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_date_empty():
     key = _setup_bad_object({'Date': ''})
 
@@ -445,7 +431,6 @@ def test_object_create_bad_date_empty():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_date_unreadable():
     key = _setup_bad_object({'Date': '\x07'})
 
@@ -456,7 +441,6 @@ def test_object_create_bad_date_unreadable():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
 def test_object_create_bad_date_none():
     key = _setup_bad_object(remove=('Date',))
 
@@ -507,15 +491,12 @@ def test_object_create_bad_date_after_end():
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     get_new_bucket()
 
 
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_rgw')
 def test_object_acl_create_contentlength_none():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')

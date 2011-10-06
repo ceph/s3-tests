@@ -113,8 +113,6 @@ def test_bucket_list_many():
     eq(names, ['foo'])
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_delimiter_basic():
     bucket = _create_keys(keys=['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf'])
 
@@ -140,8 +138,6 @@ def test_bucket_list_delimiter_basic():
 
 
 # just testing that we can do the delimeter and prefix logic on non-slashes
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_delimiter_alt():
     bucket = _create_keys(keys=['bar', 'baz', 'cab', 'foo'])
 
@@ -282,8 +278,6 @@ def test_bucket_list_prefix_unreadable():
     eq(prefixes, [])
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_prefix_delimiter_basic():
     bucket = _create_keys(keys=['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf'])
 
@@ -361,8 +355,6 @@ def test_bucket_list_maxkeys_one():
     eq(names, key_names[1:])
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_maxkeys_zero():
     bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
 
@@ -371,8 +363,6 @@ def test_bucket_list_maxkeys_zero():
     eq(li, [])
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_maxkeys_none():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket = _create_keys(keys=key_names)
@@ -384,8 +374,6 @@ def test_bucket_list_maxkeys_none():
     eq(li.MaxKeys, '1000')
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_maxkeys_invalid():
     bucket = _create_keys(keys=['bar', 'baz', 'foo', 'quxx'])
 
@@ -409,8 +397,6 @@ def test_bucket_list_maxkeys_unreadable():
     eq(e.error_code, 'InvalidArgument')
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_marker_none():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket = _create_keys(keys=key_names)
@@ -419,8 +405,6 @@ def test_bucket_list_marker_none():
     eq(li.marker, '')
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_marker_empty():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket = _create_keys(keys=key_names)
@@ -432,8 +416,6 @@ def test_bucket_list_marker_empty():
     eq(names, key_names)
 
 
-@attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_bucket_list_marker_unreadable():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket = _create_keys(keys=key_names)
@@ -494,8 +476,6 @@ def _compare_dates(iso_datetime, http_datetime):
                 )
 
 
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_bucket_list_return_data():
     key_names = ['bar', 'baz', 'foo']
     bucket = _create_keys(keys=key_names)
@@ -530,8 +510,6 @@ def test_bucket_list_return_data():
         _compare_dates(key.last_modified, key_data['last_modified'])
 
 
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_bucket_list_object_time():
     bucket = _create_keys(keys=['foo'])
 
@@ -856,9 +834,6 @@ def test_object_raw_get_object_acl():
     eq(res.reason, 'Forbidden')
 
 
-# 403 TimeTooSkewed
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_authenticated():
     (bucket, key) = _setup_request('public-read', 'public-read')
 
@@ -867,9 +842,6 @@ def test_object_raw_authenticated():
     eq(res.reason, 'OK')
 
 
-# 403 TimeTooSkewed
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_authenticated_bucket_acl():
     (bucket, key) = _setup_request('private', 'public-read')
 
@@ -878,9 +850,6 @@ def test_object_raw_authenticated_bucket_acl():
     eq(res.reason, 'OK')
 
 
-# 403 TimeTooSkewed
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_authenticated_object_acl():
     (bucket, key) = _setup_request('public-read', 'private')
 
@@ -889,9 +858,6 @@ def test_object_raw_authenticated_object_acl():
     eq(res.reason, 'OK')
 
 
-# 403 TimeTooSkewed
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_authenticated_bucket_gone():
     (bucket, key) = _setup_request('public-read', 'public-read')
     key.delete()
@@ -902,9 +868,6 @@ def test_object_raw_authenticated_bucket_gone():
     eq(res.reason, 'Not Found')
 
 
-# 403 TimeTooSkewed
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_authenticated_object_gone():
     (bucket, key) = _setup_request('public-read', 'public-read')
     key.delete()
@@ -934,7 +897,6 @@ def test_object_raw_put_write_access():
     eq(res.reason, 'OK')
 
 
-@attr('fails_on_rgw')
 def test_object_raw_put_authenticated():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -1611,7 +1573,6 @@ def test_bucket_acl_grant_userid_writeacp():
     _check_bucket_acl_grant_can_writeacp(bucket)
 
 
-@attr('fails_on_dho')
 def test_bucket_acl_grant_nonexist_user():
     bucket = get_new_bucket()
     # add alt user
@@ -1653,10 +1614,6 @@ def test_bucket_acl_no_grants():
     bucket.set_acl('private')
 
 
-# This test will fail on DH Objects. DHO allows multiple users with one account, which
-# would violate the uniqueness requirement of a user's email. As such, DHO users are
-# created without an email.
-@attr('fails_on_dho')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
     # add alt user
@@ -1939,7 +1896,6 @@ def test_list_buckets_bad_auth():
 
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
-@attr('fails_on_rgw')
 @nose.with_setup(
     setup=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
     teardown=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
@@ -1949,7 +1905,6 @@ def test_bucket_create_naming_good_starts_alpha():
 
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
-@attr('fails_on_rgw')
 @nose.with_setup(
     setup=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
     teardown=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
