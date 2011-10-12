@@ -25,6 +25,7 @@ setup(
             's3tests-generate-objects = s3tests.generate_objects:main',
             's3tests-test-readwrite = s3tests.readwrite:main',
             's3tests-test-roundtrip = s3tests.roundtrip:main',
+            's3tests-fuzz-headers = s3tests.fuzz_headers:main',
             ],
         },
 
