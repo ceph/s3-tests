@@ -1,17 +1,17 @@
-mport sys
+import sys
 import itertools
 import nose
 import random
 import string
 import yaml
 
-from s3tests.fuzz_headers import *
+from ..headers import *
 
 from nose.tools import eq_ as eq
 from nose.tools import assert_true
 from nose.plugins.attrib import attr
 
-from .utils import assert_raises
+from ...functional.utils import assert_raises
 
 _decision_graph = {}
 

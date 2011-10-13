@@ -3,7 +3,7 @@ from boto.exception import BotoServerError
 from boto.s3.key import Key
 from httplib import BadStatusLine
 from optparse import OptionParser
-from . import common
+from .. import common
 
 import traceback
 import itertools
