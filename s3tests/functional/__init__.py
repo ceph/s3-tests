@@ -71,6 +71,9 @@ def nuke_prefixed_buckets(prefix):
     print 'Done with cleanup of test buckets.'
 
 
+# nosetests --processes=N with N>1 is safe
+_multiprocess_can_split_ = True
+
 def setup():
 
     cfg = ConfigParser.RawConfigParser()
