@@ -56,11 +56,13 @@ def upload_objects(bucket, files, seed):
 def _main():
     '''To run the static content load test, make sure you've bootstrapped your
        test environment and set up your config.yaml file, then run the following:
-          S3TEST_CONF=config.yaml virtualenv/bin/python generate_objects.py -O urls.txt --seed 1234
+          S3TEST_CONF=config.yaml virtualenv/bin/s3tests-generate-objects.py --seed 1234
 
         This creates a bucket with your S3 credentials (from config.yaml) and
-        fills it with garbage objects as described in generate_objects.conf.
-        It writes a list of URLS to those objects to ./urls.txt.
+        fills it with garbage objects as described in the
+        file_generation.groups section of config.yaml.  It writes a list of
+        URLS to those objects to the file listed in file_generation.url_file
+        in config.yaml.
 
         Once you have objcts in your bucket, run the siege benchmarking program:
             siege --rc ./siege.conf -r 5
