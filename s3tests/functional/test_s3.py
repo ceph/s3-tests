@@ -1614,6 +1614,10 @@ def test_bucket_acl_no_grants():
     bucket.set_acl('private')
 
 
+# This test will fail on DH Objects. DHO allows multiple users with one account, which
+# would violate the uniqueness requirement of a user's email. As such, DHO users are
+# created without an email.
+@attr('fails_on_dho')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
     # add alt user
