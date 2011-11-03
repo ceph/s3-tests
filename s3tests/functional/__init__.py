@@ -96,6 +96,11 @@ def setup():
 
     s3.clear()
     config.clear()
+    calling_formats = dict(
+        ordinary=boto.s3.connection.OrdinaryCallingFormat(),
+        subdomain=boto.s3.connection.SubdomainCallingFormat(),
+        vhost=boto.s3.connection.VHostCallingFormat(),
+        )
     for section in cfg.sections():
         try:
             (type_, name) = section.split(None, 1)
@@ -107,6 +112,18 @@ def setup():
             port = cfg.getint(section, 'port')
         except ConfigParser.NoOptionError:
             port = None
+
+        try:
+            raw_calling_format = cfg.get(section, 'calling_format')
+        except ConfigParser.NoOptionError:
+            raw_calling_format = 'ordinary'
+
+        try:
+            calling_format = calling_formats[raw_calling_format]
+        except KeyError:
+            raise RuntimeError(
+                'calling_format unknown: %r' % raw_calling_format
+                )
 
         config[name] = bunch.Bunch()
         for var in [
@@ -124,8 +141,8 @@ def setup():
             is_secure=cfg.getboolean(section, 'is_secure'),
             port=port,
             host=cfg.get(section, 'host'),
-            # TODO support & test all variations
-            calling_format=boto.s3.connection.OrdinaryCallingFormat(),
+            # TODO test vhost calling format
+            calling_format=calling_format,
             )
         s3[name] = conn
 

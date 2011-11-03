@@ -93,11 +93,23 @@ def connect(conf):
         secret_key='aws_secret_access_key',
         )
     kwargs = dict((mapping[k],v) for (k,v) in conf.iteritems() if k in mapping)
-    conn = boto.s3.connection.S3Connection(
-        # TODO support & test all variations
-        calling_format=boto.s3.connection.OrdinaryCallingFormat(),
-        **kwargs
+    #process calling_format argument
+    calling_formats = dict(
+        ordinary=boto.s3.connection.OrdinaryCallingFormat(),
+        subdomain=boto.s3.connection.SubdomainCallingFormat(),
+        vhost=boto.s3.connection.VHostCallingFormat(),
         )
+    kwargs['calling_format'] = calling_formats['ordinary']
+    if conf.has_key('calling_format'):
+        raw_calling_format = conf['calling_format']
+        try:
+            kwargs['calling_format'] = calling_formats[raw_calling_format]
+        except KeyError:
+            raise RuntimeError(
+                'calling_format unknown: %r' % raw_calling_format
+                )
+    # TODO test vhost calling format
+    conn = boto.s3.connection.S3Connection(**kwargs)
     return conn
 
 def setup():
