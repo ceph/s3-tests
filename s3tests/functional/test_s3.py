@@ -916,6 +916,8 @@ def check_bad_bucket_name(name):
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_bad_starts_nonalpha():
     check_bad_bucket_name('_alphasoup')
 
@@ -936,6 +938,8 @@ def test_bucket_create_naming_bad_short_one():
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_bad_long():
     check_bad_bucket_name(256*'a')
     check_bad_bucket_name(280*'a')
@@ -969,29 +973,43 @@ def _test_bucket_create_naming_good_long(length):
             ))
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_250():
     _test_bucket_create_naming_good_long(250)
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_251():
     _test_bucket_create_naming_good_long(251)
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_252():
     _test_bucket_create_naming_good_long(252)
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_253():
     _test_bucket_create_naming_good_long(253)
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_254():
     _test_bucket_create_naming_good_long(254)
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_good_long_255():
     _test_bucket_create_naming_good_long(255)
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_list_long_name():
     prefix = get_prefix()
     length = 251
@@ -1012,6 +1030,8 @@ def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_bad_punctuation():
     # characters other than [a-zA-Z0-9._-]
     check_bad_bucket_name('alpha!soup')
@@ -1023,6 +1043,8 @@ def test_bucket_create_naming_dns_underscore():
     check_good_bucket_name('foo_bar')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_dns_long():
     prefix = get_prefix()
     assert len(prefix) < 50
@@ -1030,18 +1052,26 @@ def test_bucket_create_naming_dns_long():
     check_good_bucket_name(num * 'a')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_dns_dash_at_end():
     check_good_bucket_name('foo-')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_dns_dot_dot():
     check_good_bucket_name('foo..bar')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_dns_dot_dash():
     check_good_bucket_name('foo.-bar')
 
 
+# Breaks DNS with SubdomainCallingFormat
+@attr('fails_with_subdomain')
 def test_bucket_create_naming_dns_dash_dot():
     check_good_bucket_name('foo-.bar')
 
