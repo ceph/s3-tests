@@ -539,12 +539,28 @@ def test_bucket_create_bad_expect_unreadable():
     bucket = get_new_bucket()
 
 
+def _create_new_connection():
+    # We're going to need to manually build a connection using bad authorization info.
+    # But to save the day, lets just hijack the settings from s3.main. :)
+    main = s3.main
+    conn = HeaderS3Connection(
+        aws_access_key_id=main.aws_access_key_id,
+        aws_secret_access_key=main.aws_secret_access_key,
+        is_secure=main.is_secure,
+        port=main.port,
+        host=main.host,
+        calling_format=main.calling_format,
+        )
+    return conn
+
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_bucket_create_bad_contentlength_empty():
+    conn = _create_new_connection()
     _add_custom_headers({'Content-Length': ''})
-    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, conn)
+
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, None)
