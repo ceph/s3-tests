@@ -504,3 +504,205 @@ def test_object_acl_create_contentlength_none():
 
     _add_custom_headers(remove=('Content-Length',))
     key.set_acl('public-read')
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_put_bad_canned_acl():
+    bucket = get_new_bucket()
+
+    _add_custom_headers({'x-amz-acl': 'public-ready'})
+    e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, 'public-read')
+
+    eq(e.status, 400)
+
+
+# strangely, amazon doesn't report an error with a non-expect 100 also, our
+# error comes back as html, and not xml as I normally expect
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
+def test_bucket_create_bad_expect_mismatch():
+    _add_custom_headers({'Expect':200})
+    bucket = get_new_bucket()
+
+
+# this is a really long test, and I don't know if it's valid...
+# again, accepts this with no troubles
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_expect_empty():
+    _add_custom_headers({'Expect': ''})
+    bucket = get_new_bucket()
+
+# this is a really long test..
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
+def test_bucket_create_bad_expect_unreadable():
+    _add_custom_headers({'Expect': '\x07'})
+    bucket = get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_bucket_create_bad_contentlength_empty():
+    _add_custom_headers({'Content-Length': ''})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, None)
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_bucket_create_bad_contentlength_negative():
+    _add_custom_headers({'Content-Length': -1})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, None)
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_contentlength_none():
+    _add_custom_headers(remove=('Content-Length',))
+    bucket = get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
+def test_bucket_create_bad_contentlength_unreadable():
+    _add_custom_headers({'Content-Length': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, None)
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_empty():
+    _add_custom_headers({'User-Agent': ''})
+    bucket = get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_unreadable():
+    _add_custom_headers({'User-Agent': '\x07'})
+    bucket = get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_none():
+    _add_custom_headers(remove=('User-Agent',))
+    bucket = get_new_bucket()
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_authorization_invalid():
+    _add_custom_headers({'Authorization': 'AWS HAHAHA'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+# the teardown is really messed up here. check it out
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_rgw')
+@attr('fails_on_dho')
+def test_bucket_create_bad_authorization_unreadable():
+    _add_custom_headers({'Authorization': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_authorization_empty():
+    _add_custom_headers({'Authorization': ''})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+# the teardown is really messed up here. check it out
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_authorization_none():
+    _add_custom_headers(remove=('Authorization',))
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_invalid():
+    _add_custom_headers({'Date': 'Bad Date'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_empty():
+    _add_custom_headers({'Date': ''})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_unreadable():
+    _add_custom_headers({'Date': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_none():
+    _add_custom_headers({'Date': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_before_today():
+    _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_after_today():
+    _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_before_epoch():
+    _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
