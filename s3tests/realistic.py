@@ -3,6 +3,7 @@ import random
 import string
 import struct
 import time
+import math
 
 
 NANOSECOND = int(1e9)
@@ -45,10 +46,11 @@ class RandomContentFile(object):
 
     def _generate(self):
         # generate and return a chunk of pseudorandom data
-        # 256 bits = 32 bytes at a time
-        size = 1*1024*1024
-        l = [self.random.getrandbits(64) for _ in xrange(size/8)]
-        s = struct.pack((size/8)*'Q', *l)
+        size = min(self.size, 1*1024*1024) # generate at most 1 MB at a time
+        chunks = int(math.ceil(size/8.0))  # number of 8-byte chunks to create
+
+        l = [self.random.getrandbits(64) for _ in xrange(chunks)]
+        s = struct.pack(chunks*'Q', *l)
         return s
 
     def read(self, size=-1):
