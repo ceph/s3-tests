@@ -1,3 +1,16 @@
+"""
+Unit-test suite for the S3 fuzzer
+
+The fuzzer is a grammar-based random S3 operation generator
+that produces random operation sequences in an effort to
+crash the server.  This unit-test suite does not test
+S3 servers, but rather the fuzzer infrastructure.
+
+It works by running the fuzzer off of a simple grammar,
+and checking the producted requests to ensure that they
+include the expected sorts of operations in the expected
+proportions.
+"""
 import sys
 import itertools
 import nose

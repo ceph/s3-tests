@@ -1,3 +1,21 @@
+#
+# FUZZ testing uses a probabalistic grammar to generate
+# pseudo-random requests which will be sent to a server
+# over long periods of time, with the goal of turning up 
+# garbage-input and buffer-overflow sensitivities.
+#
+# Each state ...
+#       generates/chooses contents for variables
+#       chooses a next state (from a weighted set of options)
+#
+# A terminal state is one from which there are no successors,
+# at which point a message is generated (from the variables)
+# and sent to the server.  
+#
+# The test program doesn't actually know (or care) what 
+# response should be returned ... since the goal is to
+# crash the server.
+#
 start:
     set:
         garbage:
