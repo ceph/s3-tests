@@ -4,6 +4,8 @@ import string
 import struct
 import time
 import math
+import tempfile
+import shutil
 
 
 NANOSECOND = int(1e9)
@@ -84,6 +86,37 @@ class RandomContentFile(object):
 
         return ''.join(r)
 
+class PrecomputedContentFile(object):
+    def __init__(self, f):
+        self._file = tempfile.SpooledTemporaryFile()
+        f.seek(0)
+        shutil.copyfileobj(f, self._file)
+        
+        self.last_chunks = self.chunks = None
+        self.seek(0)
+
+    def seek(self, offset):
+        self._file.seek(offset)
+
+        if offset == 0:
+            # only reset the chunks when seeking to the beginning
+            self.last_chunks = self.chunks
+            self.last_seek = time.time()
+            self.chunks = []
+
+    def tell(self):
+        return self._file.tell()
+
+    def read(self, size=-1):
+        data = self._file.read(size)
+        self._mark_chunk()
+        return data
+
+    def _mark_chunk(self):
+        elapsed = time.time() - self.last_seek
+        elapsed_nsec = int(round(elapsed * NANOSECOND))
+        self.chunks.append([self.tell(), elapsed_nsec])
+
 class FileVerifier(object):
     def __init__(self):
         self.size = 0
@@ -140,6 +173,28 @@ def files(mean, stddev, seed=None):
             if size >= 0:
                 break
         yield RandomContentFile(size=size, seed=rand.getrandbits(32))
+
+def files2(mean, stddev, seed=None, numfiles=10):
+    """
+    Yields file objects with effectively random contents, where the
+    size of each file follows the normal distribution with `mean` and
+    `stddev`.
+
+    Rather than continuously generating new files, this pre-computes and
+    stores `numfiles` files and yields them in a loop.
+    """
+    # pre-compute all the files (and save with TemporaryFiles)
+    rand_files = files(mean, stddev, seed)
+    fs = []
+    for _ in xrange(numfiles):
+        f = next(rand_files)
+        t = tempfile.SpooledTemporaryFile()
+        shutil.copyfileobj(f, t)
+        fs.append(t)
+
+    while True:
+        for f in fs:
+            yield PrecomputedContentFile(f)
 
 def names(mean, stddev, charset=None, seed=None):
     """

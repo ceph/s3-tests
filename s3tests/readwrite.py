@@ -168,7 +168,7 @@ def main():
             )
         file_names = itertools.islice(file_names, config.readwrite.files.num)
         file_names = list(file_names)
-        files = realistic.files(
+        files = realistic.files2(
             mean=1024 * config.readwrite.files.size,
             stddev=1024 * config.readwrite.files.stddev,
             seed=seeds['contents'],
