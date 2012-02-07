@@ -2581,6 +2581,19 @@ def test_bucket_create_naming_good_contains_hyphen():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='copy zero sized object in same bucket')
+@attr(assertion='works')
+def test_object_copy_zero_size():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    fp_a = FakeWriteFile(0, '')
+    key.set_contents_from_file(fp_a)
+    key.copy(bucket, 'bar321foo')
+    key2 = bucket.get_key('bar321foo')
+    eq(key2.size, 0)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy object in same bucket')
 @attr(assertion='works')
 def test_object_copy_same_bucket():
