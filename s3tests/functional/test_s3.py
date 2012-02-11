@@ -2583,6 +2583,7 @@ def test_bucket_create_naming_good_contains_hyphen():
 @attr(method='put')
 @attr(operation='create and list objects with special names')
 @attr(assertion='special names work')
+@attr('fails_on_dho')
 def test_bucket_create_special_key_names():
     key_names = [' ', '%', '_', '_ ', '_ _', '__']
     bucket = _create_keys(keys=key_names)
