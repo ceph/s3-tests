@@ -2961,10 +2961,12 @@ def _test_atomic_write(file_size):
     # verify A's
     _verify_atomic_key_data(key, file_size, 'A')
 
+    read_key = bucket.get_key(objname)
+
     # create <file_size> file of B's
     # but try to verify the file before we finish writing all the B's
     fp_b = FakeWriteFile(file_size, 'B',
-        lambda: _verify_atomic_key_data(key, file_size)
+        lambda: _verify_atomic_key_data(read_key, file_size)
         )
     key.set_contents_from_file(fp_b)
 
