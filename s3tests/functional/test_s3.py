@@ -2579,6 +2579,26 @@ def test_bucket_create_naming_good_contains_period():
 def test_bucket_create_naming_good_contains_hyphen():
     check_good_bucket_name('aaa-111')
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create bucket with objects and recreate it')
+@attr(assertion='bucket recreation not overriding index')
+def test_bucket_recreate_not_overriding():
+    key_names = ['mykey1', 'mykey2']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.list()
+
+    names = [e.name for e in list(li)]
+    eq(names, key_names)
+
+    bucket2 = s3.main.create_bucket(bucket.name)
+
+    li = bucket.list()
+
+    names = [e.name for e in list(li)]
+    eq(names, key_names)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create and list objects with special names')
