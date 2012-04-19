@@ -1021,6 +1021,16 @@ def _setup_request(bucket_acl=None, object_acl=None):
 
     return (bucket, key)
 
+def _setup_bucket_request(bucket_acl=None):
+    """
+    set up a (new or existing) bucket with specified acl
+    """
+    bucket = get_new_bucket()
+
+    if bucket_acl is not None:
+        bucket.set_acl(bucket_acl)
+
+    return bucket
 
 def _make_request(method, bucket, key, body=None, authenticated=False):
     """
@@ -1034,6 +1044,56 @@ def _make_request(method, bucket, key, body=None, authenticated=False):
         path = o.path + '?' + o.query
     else:
         path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+
+    if s3.main.is_secure:
+        class_ = HTTPSConnection
+    else:
+        class_ = HTTPConnection
+
+    c = class_(s3.main.host, s3.main.port, strict=True)
+    c.request(method, path, body=body)
+    res = c.getresponse()
+
+    print res.status, res.reason
+    return res
+
+def _make_request(method, bucket, key, body=None, authenticated=False):
+    """
+    issue a request for a specified method, on a specified <bucket,key>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason)
+    """
+    if authenticated:
+        url = key.generate_url(100000, method=method)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+
+    if s3.main.is_secure:
+        class_ = HTTPSConnection
+    else:
+        class_ = HTTPConnection
+
+    c = class_(s3.main.host, s3.main.port, strict=True)
+    c.request(method, path, body=body)
+    res = c.getresponse()
+
+    print res.status, res.reason
+    return res
+
+def _make_bucket_request(method, bucket, body=None, authenticated=False):
+    """
+    issue a request for a specified method, on a specified <bucket,key>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason)
+    """
+    if authenticated:
+        url = bucket.generate_url(100000, method=method)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        path = '/{bucket}'.format(bucket=bucket.name)
 
     if s3.main.is_secure:
         class_ = HTTPSConnection
@@ -1084,6 +1144,52 @@ def test_object_raw_get_object_gone():
     res = _make_request('GET', bucket, key)
     eq(res.status, 404)
     eq(res.reason, 'Not Found')
+
+def _head_bucket(bucket, authenticated=True):
+    res = _make_bucket_request('HEAD', bucket, authenticated=authenticated)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+    obj_count = res.getheader('x-rgw-object-count')
+    assert obj_count is not None, "x-rgw-object-count wasn't returned"
+
+    bytes_used = res.getheader('x-rgw-bytes-used')
+    assert bytes_used is not None, "x-rgw-bytes-used wasn't returned"
+
+    return (int(obj_count), int(bytes_used))
+
+
+@attr(resource='bucket')
+@attr(method='head')
+@attr(operation='head bucket')
+@attr(assertion='succeeds')
+@attr('fails_on_dho')
+def test_bucket_head():
+    bucket = _setup_bucket_request('private')
+
+    _head_bucket(bucket)
+
+
+@attr(resource='bucket')
+@attr(method='head')
+@attr(operation='read bucket extended information')
+@attr(assertion='extended information is getting updated')
+@attr('fails_on_dho')
+def test_bucket_head_extended():
+    bucket = _setup_bucket_request('private')
+
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    eq(obj_count, 0)
+    eq(bytes_used, 0)
+
+    _create_keys(bucket, keys=['foo', 'bar', 'baz'])
+
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    eq(obj_count, 3)
+
+    assert bytes_used > 0
 
 
 @attr(resource='bucket.acl')
