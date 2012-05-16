@@ -12,6 +12,7 @@ import random
 import string
 import socket
 import ssl
+import os
 
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
@@ -2938,8 +2939,13 @@ class FakeFile(object):
         self.char = char
         self.interrupt = interrupt
 
-    def seek(self, offset):
-        self.offset = offset
+    def seek(self, offset, whence=os.SEEK_SET):
+        if whence == os.SEEK_SET:
+            self.offset = offset
+        elif whence == os.SEEK_END:
+            self.offset = self.size + offset;
+        elif whence == os.SEEK_CUR:
+            self.offset += offset
 
     def tell(self):
         return self.offset
