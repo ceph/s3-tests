@@ -3143,7 +3143,7 @@ def _test_atomic_dual_write(file_size):
     # but before we're done, try to write all A's
     fp_a = FakeWriteFile(file_size, 'A')
     fp_b = FakeWriteFile(file_size, 'B',
-        lambda: key2.set_contents_from_file(fp_a)
+        lambda: key2.set_contents_from_file(fp_a, rewind=True)
         )
     key.set_contents_from_file(fp_b)
 
