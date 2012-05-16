@@ -6,6 +6,7 @@ import time
 import math
 import tempfile
 import shutil
+import os
 
 
 NANOSECOND = int(1e9)
@@ -27,10 +28,17 @@ class RandomContentFile(object):
     def _mark_chunk(self):
         self.chunks.append([self.offset, int(round((time.time() - self.last_seek) * NANOSECOND))])
 
-    def seek(self, offset):
-        assert offset == 0
+    def seek(self, offset, whence=os.SEEK_SET):
+        if whence == os.SEEK_SET:
+            self.offset = offset
+        elif whence == os.SEEK_END:
+            self.offset = self.size + offset;
+        elif whence == os.SEEK_CUR:
+            self.offset += offset
+
+        assert self.offset == 0
+
         self.random.seed(self.seed)
-        self.offset = offset
         self.buffer = ''
 
         self.hash = hashlib.md5()
@@ -95,10 +103,10 @@ class PrecomputedContentFile(object):
         self.last_chunks = self.chunks = None
         self.seek(0)
 
-    def seek(self, offset):
-        self._file.seek(offset)
+    def seek(self, offset, whence=os.SEEK_SET):
+        self._file.seek(offset, whence)
 
-        if offset == 0:
+        if self.tell() == 0:
             # only reset the chunks when seeking to the beginning
             self.last_chunks = self.chunks
             self.last_seek = time.time()
