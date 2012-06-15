@@ -2749,6 +2749,7 @@ def test_object_copy_same_bucket():
 @attr(method='put')
 @attr(operation='copy object to itself')
 @attr(assertion='fails')
+@attr('fails_on_dho')
 def test_object_copy_to_itself():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
@@ -2762,6 +2763,7 @@ def test_object_copy_to_itself():
 @attr(method='put')
 @attr(operation='modify object metadata by copying')
 @attr(assertion='fails')
+@attr('fails_on_dho')
 def test_object_copy_to_itself_with_metadata():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
