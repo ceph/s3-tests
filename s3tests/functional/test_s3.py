@@ -2747,6 +2747,35 @@ def test_object_copy_same_bucket():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='copy object to itself')
+@attr(assertion='fails')
+def test_object_copy_to_itself():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+    e = assert_raises(boto.exception.S3ResponseError, key.copy, bucket, 'foo123bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidRequest')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='modify object metadata by copying')
+@attr(assertion='fails')
+def test_object_copy_to_itself_with_metadata():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+    key.copy(bucket, 'foo123bar', {'foo': 'bar'})
+    key.close()
+
+    bucket2 = s3.main.get_bucket(bucket.name)
+    key2 = bucket2.get_key('foo123bar')
+    md = key2.get_metadata('foo')
+    eq(md, 'bar')
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy object from different bucket')
 @attr(assertion='works')
 def test_object_copy_diff_bucket():
