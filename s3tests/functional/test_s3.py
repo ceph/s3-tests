@@ -1038,14 +1038,14 @@ def _setup_bucket_request(bucket_acl=None):
 
     return bucket
 
-def _make_request(method, bucket, key, body=None, authenticated=False):
+def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None):
     """
     issue a request for a specified method, on a specified <bucket,key>,
     with a specified (optional) body (encrypted per the connection), and
     return the response (status, reason)
     """
     if authenticated:
-        url = key.generate_url(100000, method=method)
+        url = key.generate_url(100000, method=method, response_headers=response_headers)
         o = urlparse(url)
         path = o.path + '?' + o.query
     else:
@@ -1207,6 +1207,36 @@ def test_object_raw_authenticated():
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 200)
     eq(res.reason, 'OK')
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='authenticated on private bucket/private object with modified response headers')
+@attr(assertion='succeeds')
+@attr('fails_on_dho')
+@attr('fails_on_rgw')
+def test_object_raw_response_headers():
+    (bucket, key) = _setup_request('private', 'private')
+
+    response_headers = {
+            'response-content-type': 'foo/bar',
+            'response-content-disposition': 'bla',
+            'response-content-language': 'esperanto',
+            'response-content-encoding': 'aaa',
+            'response-expires': '123',
+            'response-cache-control': 'no-cache',
+        }
+
+    res = _make_request('GET', bucket, key, authenticated=True,
+                        response_headers=response_headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+    eq(res.getheader('content-type'), 'foo/bar')
+    eq(res.getheader('content-disposition'), 'bla')
+    eq(res.getheader('content-language'), 'esperanto')
+    eq(res.getheader('content-encoding'), 'aaa')
+    eq(res.getheader('expires'), '123')
+    eq(res.getheader('cache-control'), 'no-cache')
 
 
 @attr(resource='object')
