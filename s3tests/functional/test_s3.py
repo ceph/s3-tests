@@ -1063,31 +1063,6 @@ def _make_request(method, bucket, key, body=None, authenticated=False):
     print res.status, res.reason
     return res
 
-def _make_request(method, bucket, key, body=None, authenticated=False):
-    """
-    issue a request for a specified method, on a specified <bucket,key>,
-    with a specified (optional) body (encrypted per the connection), and
-    return the response (status, reason)
-    """
-    if authenticated:
-        url = key.generate_url(100000, method=method)
-        o = urlparse(url)
-        path = o.path + '?' + o.query
-    else:
-        path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
-
-    if s3.main.is_secure:
-        class_ = HTTPSConnection
-    else:
-        class_ = HTTPConnection
-
-    c = class_(s3.main.host, s3.main.port, strict=True)
-    c.request(method, path, body=body)
-    res = c.getresponse()
-
-    print res.status, res.reason
-    return res
-
 def _make_bucket_request(method, bucket, body=None, authenticated=False):
     """
     issue a request for a specified method, on a specified <bucket,key>,
