@@ -779,6 +779,20 @@ def test_object_create_unreadable():
     key.set_contents_from_string('bar')
 
 
+@attr('fails_on_dho')
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects')
+@attr(assertion='deletes multiple objects with a single call')
+def test_multi_object_delete():
+	bucket = get_new_bucket()
+	key0 = bucket.new_key('key0')
+	key0.set_contents_from_string('foo')
+	key1 = bucket.new_key('key1')
+	key1.set_contents_from_string('bar')
+	stored_keys = bucket.get_all_keys()
+	bucket.delete_keys(stored_keys)
+
 @attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
