@@ -4006,6 +4006,46 @@ def test_multipart_upload():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='check contents of multi-part upload')
+@attr(assertion='successful')
+def test_multipart_upload_contents():
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    num_parts=5
+    payload='foo'*10*1024*1024
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    mp.complete_upload()
+    key=bucket.get_key(key_name)
+    test_string=key.get_contents_as_string()
+    assert test_string == payload*num_parts
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation=' multi-part upload overwrites existing key')
+@attr(assertion='successful')
+def test_multipart_upload_overwrite_existing_object():
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    payload='bar'*10*1024*1024
+    num_parts=5
+    key=bucket.new_key(key_name)
+    key.set_contents_from_string(payload)
+
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    mp.complete_upload()
+    key=bucket.get_key(key_name)
+    test_string=key.get_contents_as_string()
+    assert test_string == payload*num_parts
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='abort multi-part upload')
 @attr(assertion='successful')
 def test_abort_multipart_upload():
