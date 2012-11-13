@@ -1158,7 +1158,6 @@ def _head_bucket(bucket, authenticated=True):
 @attr(method='head')
 @attr(operation='head bucket')
 @attr(assertion='succeeds')
-@attr('fails_on_dho')
 def test_bucket_head():
     bucket = _setup_bucket_request('private')
 
@@ -1169,7 +1168,6 @@ def test_bucket_head():
 @attr(method='head')
 @attr(operation='read bucket extended information')
 @attr(assertion='extended information is getting updated')
-@attr('fails_on_dho')
 def test_bucket_head_extended():
     bucket = _setup_bucket_request('private')
 
@@ -1227,8 +1225,6 @@ def test_object_raw_authenticated():
 @attr(method='get')
 @attr(operation='authenticated on private bucket/private object with modified response headers')
 @attr(assertion='succeeds')
-@attr('fails_on_dho')
-@attr('fails_on_rgw')
 def test_object_raw_response_headers():
     (bucket, key) = _setup_request('private', 'private')
 
@@ -2734,7 +2730,6 @@ def test_bucket_recreate_not_overriding():
 @attr(method='put')
 @attr(operation='create and list objects with special names')
 @attr(assertion='special names work')
-@attr('fails_on_dho')
 def test_bucket_create_special_key_names():
     key_names = [' ', '%', '_', '_ ', '_ _', '__']
     bucket = _create_keys(keys=key_names)
@@ -2773,7 +2768,6 @@ def test_object_copy_same_bucket():
 @attr(method='put')
 @attr(operation='copy object to itself')
 @attr(assertion='fails')
-@attr('fails_on_dho')
 def test_object_copy_to_itself():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
@@ -2787,7 +2781,6 @@ def test_object_copy_to_itself():
 @attr(method='put')
 @attr(operation='modify object metadata by copying')
 @attr(assertion='fails')
-@attr('fails_on_dho')
 def test_object_copy_to_itself_with_metadata():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
