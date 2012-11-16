@@ -2897,6 +2897,55 @@ def test_abort_multipart_upload():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='check that multi-part upload enforces a minimum size')
+@attr(assertion='successful')
+def test_multipart_minimum_part_size_parts_too_small():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    mp = bucket.initiate_multipart_upload(key)
+
+    # upload a few bad parts
+    for i in range(0, 10):
+       mp.upload_part_from_file(StringIO('foobar'), i+1)
+
+    e = assert_raises(boto.exception.S3ResponseError, mp.complete_upload)
+    eq(e.status, 400)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check that a single part upload of arbitrary size succeeds')
+@attr(assertion='successful')
+def test_multipart_size_single_part_upload():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    mp = bucket.initiate_multipart_upload(key)
+
+    # create a single part under 5Mb
+    mp.upload_part_from_file(StringIO('foo'), 1)
+
+    mp.complete_upload()
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='test that a single bad part will cause failure for parts > 1')
+@attr(assertion='successful')
+def test_multipart_size_bad_single_part():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    mp = bucket.initiate_multipart_upload(key)
+
+    # create the single bad part
+    mp.upload_part_from_file(StringIO('foo'), 1)
+
+    # upload a host of good parts
+    for i in range(2, 10):
+       mp.upload_part_from_file(StringIO(('foobar'*1024*1024)), i+1)
+
+    e = assert_raises(boto.exception.S3ResponseError, mp.complete_upload)
+    eq(e.status, 400)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='concurrent multi-part uploads')
 @attr(assertion='successful')
 def test_list_multipart_upload():
