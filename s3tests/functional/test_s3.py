@@ -2829,6 +2829,28 @@ def test_object_copy_not_owned_bucket():
     except AttributeError:
         pass
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object and change acl')
+@attr(assertion='works')
+@attr('fails_on_dho')
+def test_object_copy_canned_acl():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+
+    # use COPY directive
+    key2 = bucket.copy_key('bar321foo', bucket.name, 'foo123bar', headers={'x-amz-acl': 'public-read'})
+    res = _make_request('GET', bucket, key2)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+    # use REPLACE directive
+    key3 = bucket.copy_key('bar321foo2', bucket.name, 'foo123bar', headers={'x-amz-acl': 'public-read'}, metadata={'abc': 'def'})
+    res = _make_request('GET', bucket, key3)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
     """
