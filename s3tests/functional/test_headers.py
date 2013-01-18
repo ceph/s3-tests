@@ -278,6 +278,7 @@ def test_object_create_bad_expect_unreadable():
 @attr(operation='create w/empty content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_create_bad_contentlength_empty():
     key = _setup_bad_object({'Content-Length': ''})
@@ -293,6 +294,7 @@ def test_object_create_bad_contentlength_empty():
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_object_create_bad_contentlength_negative():
     key = _setup_bad_object({'Content-Length': -1})
 
@@ -320,6 +322,7 @@ def test_object_create_bad_contentlength_none():
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
 
@@ -400,6 +403,7 @@ def test_object_create_bad_contenttype_none():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_object_create_bad_contenttype_unreadable():
     key = _setup_bad_object({'Content-Type': '\x08'})
 
@@ -460,6 +464,7 @@ def test_object_create_bad_authorization_invalid():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_object_create_bad_authorization_unreadable():
     key = _setup_bad_object({'Authorization': '\x07'})
 
@@ -715,6 +720,7 @@ def _create_new_connection():
 @attr(operation='create w/empty content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_bucket_create_bad_contentlength_empty():
     conn = _create_new_connection()
@@ -731,6 +737,7 @@ def test_bucket_create_bad_contentlength_empty():
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_bucket_create_bad_contentlength_negative():
     _add_custom_headers({'Content-Length': -1})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
@@ -754,6 +761,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
+@attr('fails_on_dho')
 def test_bucket_create_bad_contentlength_unreadable():
     _add_custom_headers({'Content-Length': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
@@ -814,6 +822,7 @@ def test_bucket_create_bad_authorization_invalid():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_on_dho')
 def test_bucket_create_bad_authorization_unreadable():
     _add_custom_headers({'Authorization': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
