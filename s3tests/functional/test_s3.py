@@ -1040,6 +1040,7 @@ def test_object_write_file():
 @attr(method='post')
 @attr(operation='anonymous browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
+@attr('fails_on_dho')
 def test_post_object_anonymous_request():
 	bucket = get_new_bucket()
 	bucket.set_acl('public-read-write')
@@ -1062,6 +1063,7 @@ def test_post_object_anonymous_request():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
+@attr('fails_on_dho')
 def test_post_object_authenticated_request():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1102,6 +1104,7 @@ def test_post_object_authenticated_request():
 @attr(method='post')
 @attr(operation='anonymous browser based upload via POST request')
 @attr(assertion='succeeds with status 201')
+@attr('fails_on_dho')
 def test_post_object_set_success_code():
 	bucket = get_new_bucket()
 	bucket.set_acl('public-read-write')
@@ -1124,6 +1127,7 @@ def test_post_object_set_success_code():
 @attr(method='post')
 @attr(operation='anonymous browser based upload via POST request')
 @attr(assertion='succeeds with status 204')
+@attr('fails_on_dho')
 def test_post_object_set_invalid_success_code():
 	bucket = get_new_bucket()
 	bucket.set_acl('public-read-write')
@@ -1145,6 +1149,7 @@ def test_post_object_set_invalid_success_code():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
+@attr('fails_on_dho')
 def test_post_object_upload_larger_than_chunk():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1187,6 +1192,7 @@ def test_post_object_upload_larger_than_chunk():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
+@attr('fails_on_dho')
 def test_post_object_set_key_from_filename():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1227,6 +1233,7 @@ def test_post_object_set_key_from_filename():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with status 204')
+@attr('fails_on_dho')
 def test_post_object_ignored_header():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1264,6 +1271,7 @@ def test_post_object_ignored_header():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with status 204')
+@attr('fails_on_dho')
 def test_post_object_case_insensitive_condition_fields():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1301,6 +1309,7 @@ def test_post_object_case_insensitive_condition_fields():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with escaped leading $ and returns written data')
+@attr('fails_on_dho')
 def test_post_object_escaped_field_values():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1341,6 +1350,7 @@ def test_post_object_escaped_field_values():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns redirect url')
+@attr('fails_on_dho')
 def test_post_object_success_redirect_action():
 	bucket = get_new_bucket()
 
@@ -1390,6 +1400,7 @@ def test_post_object_success_redirect_action():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid signature error')
+@attr('fails_on_dho')
 def test_post_object_invalid_signature():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1427,6 +1438,7 @@ def test_post_object_invalid_signature():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with access key does not exist error')
+@attr('fails_on_dho')
 def test_post_object_invalid_access_key():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1464,6 +1476,7 @@ def test_post_object_invalid_access_key():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid expiration error')
+@attr('fails_on_dho')
 def test_post_object_invalid_date_format():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1501,6 +1514,7 @@ def test_post_object_invalid_date_format():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with missing key error')
+@attr('fails_on_dho')
 def test_post_object_no_key_specified():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1537,6 +1551,7 @@ def test_post_object_no_key_specified():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with missing signature error')
+@attr('fails_on_dho')
 def test_post_object_missing_signature():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1574,6 +1589,7 @@ def test_post_object_missing_signature():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with extra input fields policy error')
+@attr('fails_on_dho')
 def test_post_object_missing_policy_condition():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1610,6 +1626,7 @@ def test_post_object_missing_policy_condition():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds using starts-with restriction on metadata header')
+@attr('fails_on_dho')
 def test_post_object_user_specified_header():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1650,6 +1667,7 @@ def test_post_object_user_specified_header():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy condition failed error due to missing field in POST request')
+@attr('fails_on_dho')
 def test_post_object_request_missing_policy_specified_field():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1688,6 +1706,7 @@ def test_post_object_request_missing_policy_specified_field():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with conditions must be list error')
+@attr('fails_on_dho')
 def test_post_object_condition_is_case_sensitive():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1725,6 +1744,7 @@ def test_post_object_condition_is_case_sensitive():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with expiration must be string error')
+@attr('fails_on_dho')
 def test_post_object_expires_is_case_sensitive():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1762,6 +1782,7 @@ def test_post_object_expires_is_case_sensitive():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy expired error')
+@attr('fails_on_dho')
 def test_post_object_expired_policy():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1799,6 +1820,7 @@ def test_post_object_expired_policy():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails using equality restriction on metadata header')
+@attr('fails_on_dho')
 def test_post_object_invalid_request_field_value():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1837,6 +1859,7 @@ def test_post_object_invalid_request_field_value():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy missing expiration error')
+@attr('fails_on_dho')
 def test_post_object_missing_expires_condition():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1874,6 +1897,7 @@ def test_post_object_missing_expires_condition():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy missing conditions error')
+@attr('fails_on_dho')
 def test_post_object_missing_conditions_list():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1904,6 +1928,7 @@ def test_post_object_missing_conditions_list():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with allowable upload size exceeded error')
+@attr('fails_on_dho')
 def test_post_object_upload_size_limit_exceeded():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1941,6 +1966,7 @@ def test_post_object_upload_size_limit_exceeded():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid content length error')
+@attr('fails_on_dho')
 def test_post_object_missing_content_length_argument():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -1978,6 +2004,7 @@ def test_post_object_missing_content_length_argument():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid JSON error')
+@attr('fails_on_dho')
 def test_post_object_invalid_content_length_argument():
 	bucket = get_new_bucket()
 	conn = s3.main
@@ -2015,6 +2042,7 @@ def test_post_object_invalid_content_length_argument():
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with upload size less than minimum allowable error')
+@attr('fails_on_dho')
 def test_post_object_upload_size_below_minimum():
 	bucket = get_new_bucket()
 	conn = s3.main
