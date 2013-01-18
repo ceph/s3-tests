@@ -506,7 +506,6 @@ def test_bucket_list_maxkeys_invalid():
 
 
 @attr('fails_on_rgw')
-@attr('fails_on_dho')
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
@@ -2208,7 +2207,6 @@ def _head_bucket(bucket, authenticated=True):
 @attr(method='head')
 @attr(operation='head bucket')
 @attr(assertion='succeeds')
-@attr('fails_on_dho')
 def test_bucket_head():
     bucket = _setup_bucket_request('private')
 
@@ -2219,7 +2217,6 @@ def test_bucket_head():
 @attr(method='head')
 @attr(operation='read bucket extended information')
 @attr(assertion='extended information is getting updated')
-@attr('fails_on_dho')
 def test_bucket_head_extended():
     bucket = _setup_bucket_request('private')
 
@@ -2277,7 +2274,6 @@ def test_object_raw_authenticated():
 @attr(method='get')
 @attr(operation='authenticated on private bucket/private object with modified response headers')
 @attr(assertion='succeeds')
-@attr('fails_on_dho')
 @attr('fails_on_rgw')
 def test_object_raw_response_headers():
     (bucket, key) = _setup_request('private', 'private')
@@ -3386,7 +3382,6 @@ def test_bucket_acl_no_grants():
 @attr(method='ACLs')
 @attr(operation='add second FULL_CONTROL user')
 @attr(assertion='works for S3, fails for DHO')
-@attr('fails_on_dho')
 def test_bucket_acl_grant_email():
     bucket = get_new_bucket()
     # add alt user
@@ -3458,7 +3453,6 @@ def test_bucket_acl_revoke_all():
 @attr(operation='set/enable/disable logging target')
 @attr(assertion='operations succeed')
 @attr('fails_on_rgw')
-@attr('fails_on_dho')
 def test_logging_toggle():
     bucket = get_new_bucket()
     log_bucket = s3.main.create_bucket(bucket.name + '-log')
@@ -3784,7 +3778,6 @@ def test_bucket_recreate_not_overriding():
 @attr(method='put')
 @attr(operation='create and list objects with special names')
 @attr(assertion='special names work')
-@attr('fails_on_dho')
 def test_bucket_create_special_key_names():
     key_names = [' ', '%', '_', '_ ', '_ _', '__']
     bucket = _create_keys(keys=key_names)
@@ -3823,7 +3816,6 @@ def test_object_copy_same_bucket():
 @attr(method='put')
 @attr(operation='copy object to itself')
 @attr(assertion='fails')
-@attr('fails_on_dho')
 def test_object_copy_to_itself():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
@@ -3837,7 +3829,6 @@ def test_object_copy_to_itself():
 @attr(method='put')
 @attr(operation='modify object metadata by copying')
 @attr(assertion='fails')
-@attr('fails_on_dho')
 def test_object_copy_to_itself_with_metadata():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
@@ -3883,7 +3874,6 @@ def test_object_copy_not_owned_bucket():
 @attr(method='put')
 @attr(operation='copy object and change acl')
 @attr(assertion='works')
-@attr('fails_on_dho')
 def test_object_copy_canned_acl():
     bucket = get_new_bucket()
     key = bucket.new_key('foo123bar')
@@ -4303,7 +4293,6 @@ def test_atomic_dual_write_8mb():
 @attr(operation='write file in deleted bucket')
 @attr(assertion='fail 404')
 @attr('fails_on_aws')
-@attr('fails_on_dho')
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()
 
