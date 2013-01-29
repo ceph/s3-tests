@@ -5,6 +5,6 @@ bunch >=1.0.0
 # 0.14 switches to libev, that means bootstrap needs to change too
 gevent ==0.13.6
 isodate >=0.4.4
-requests
+requests ==0.14.0
 pytz
 ordereddict
