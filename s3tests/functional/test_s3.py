@@ -2901,6 +2901,93 @@ def test_object_acl_canned_authenticatedread():
         )
 
 
+@attr(resource='object.acls')
+@attr(method='put')
+@attr(operation='acl bucket-owner-read')
+@attr(assertion='read back expected values')
+def test_object_acl_canned_bucketownerread():
+    bucket = get_new_bucket(s3.main)
+    bucket.set_acl('public-read-write')
+
+    key = s3.alt.get_bucket(bucket.name).new_key('foo')
+    key.set_contents_from_string('bar')
+
+    bucket_policy = bucket.get_acl()
+    bucket_owner_id = bucket_policy.owner.id
+    bucket_owner_display = bucket_policy.owner.display_name
+
+    key.set_acl('bucket-owner-read')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=bucket_owner_id,
+                display_name=bucket_owner_display,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+    key.delete()
+    bucket.delete()
+
+
+@attr(resource='object.acls')
+@attr(method='put')
+@attr(operation='acl bucket-owner-read')
+@attr(assertion='read back expected values')
+def test_object_acl_canned_bucketownerfullcontrol():
+    bucket = get_new_bucket(s3.main)
+    bucket.set_acl('public-read-write')
+
+    key = s3.alt.get_bucket(bucket.name).new_key('foo')
+    key.set_contents_from_string('bar')
+
+    bucket_policy = bucket.get_acl()
+    bucket_owner_id = bucket_policy.owner.id
+    bucket_owner_display = bucket_policy.owner.display_name
+
+    key.set_acl('bucket-owner-full-control')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='FULL_CONTROL',
+                id=bucket_owner_id,
+                display_name=bucket_owner_display,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+    key.delete()
+    bucket.delete()
+
 @attr(resource='bucket')
 @attr(method='ACLs')
 @attr(operation='set acl private')
