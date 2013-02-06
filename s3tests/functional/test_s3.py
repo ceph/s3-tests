@@ -2882,6 +2882,11 @@ def test_multipart_upload():
     upload = _multipart_upload(bucket, key, 30)
     upload.complete_upload()
 
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    eq(obj_count, 1)
+    eq(bytes_used, 30 * 1024 * 1024)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='abort multi-part upload')
@@ -2892,6 +2897,10 @@ def test_abort_multipart_upload():
     upload = _multipart_upload(bucket, key, 10)
     upload.cancel_upload()
 
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    eq(obj_count, 0)
+    eq(bytes_used, 0)
 
 @attr(resource='object')
 @attr(method='put')
