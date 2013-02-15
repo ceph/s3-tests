@@ -1252,6 +1252,11 @@ def test_object_raw_response_headers():
     eq(res.getheader('expires'), '123')
     eq(res.getheader('cache-control'), 'no-cache')
 
+    # check for duplicate response headers
+    h_list = [h[0] for h in res.getheaders()]
+    h_set = set(h_list)
+    eq(len(h_list), len(h_set))
+
 
 @attr(resource='object')
 @attr(method='ACLs')
