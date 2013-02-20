@@ -3889,10 +3889,21 @@ def test_list_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     upload1 = _multipart_upload(bucket, key, 5, 1)
-    upload2 = _multipart_upload(bucket, key, 5, 1)
+    upload2 = _multipart_upload(bucket, key, 6, 1)
 
     key2="mymultipart2"
     upload3 = _multipart_upload(bucket, key2, 5, 1)
+
+    l = bucket.list_multipart_uploads()
+    l = list(l)
+
+    index = dict([(key, 2), (key2, 1)])
+
+    for upload in l:
+        index[upload.key_name] -= 1;
+
+    for k, c in index.items():
+        eq(c, 0)
 
     upload1.cancel_upload()
     upload2.cancel_upload()
