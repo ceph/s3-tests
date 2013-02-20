@@ -4011,8 +4011,8 @@ def test_multipart_upload():
 def test_multipart_upload_contents():
     bucket = get_new_bucket()
     key_name="mymultipart"
-    num_parts=5
-    payload='foo'*10*1024*1024
+    num_parts=3
+    payload='12345'*1024*1024
     mp=bucket.initiate_multipart_upload(key_name)
     for i in range(0, num_parts):
         mp.upload_part_from_file(StringIO(payload), i+1)
@@ -4030,8 +4030,8 @@ def test_multipart_upload_contents():
 def test_multipart_upload_overwrite_existing_object():
     bucket = get_new_bucket()
     key_name="mymultipart"
-    payload='bar'*10*1024*1024
-    num_parts=5
+    payload='12345'*1024*1024
+    num_parts=2
     key=bucket.new_key(key_name)
     key.set_contents_from_string(payload)
 
