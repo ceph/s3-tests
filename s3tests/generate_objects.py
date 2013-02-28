@@ -46,7 +46,7 @@ def upload_objects(bucket, files, seed):
         print >> sys.stderr, 'sending file with size %dB' % fp.size
         key = Key(bucket)
         key.key = name_generator.next()
-        key.set_contents_from_file(fp)
+        key.set_contents_from_file(fp, rewind=True)
         key.set_acl('public-read')
         keys.append(key)
 
