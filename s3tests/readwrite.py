@@ -126,10 +126,8 @@ def main():
     # parse options
     (options, args) = parse_options()
 
-    if os.isatty(sys.stdin.fileno()):
-        raise RuntimeError('Need configuration in stdin.')
-    config = common.read_config(sys.stdin)
-    conn = common.connect(config.s3)
+    common.setup()
+    config = common.config
     bucket = None
 
     try:
@@ -140,7 +138,7 @@ def main():
         # verify all required config items are present
         if 'readwrite' not in config:
             raise RuntimeError('readwrite section not found in config')
-        for item in ['readers', 'writers', 'duration', 'files', 'bucket']:
+        for item in ['readers', 'writers', 'duration', 'files']:
             if item not in config.readwrite:
                 raise RuntimeError("Missing readwrite config item: {item}".format(item=item))
         for item in ['num', 'size', 'stddev']:
@@ -158,8 +156,7 @@ def main():
         print 'Using random seeds: {seeds}'.format(seeds=seeds)
 
         # setup bucket and other objects
-        bucket_name = common.choose_bucket_prefix(config.readwrite.bucket, max_len=30)
-        bucket = conn.create_bucket(bucket_name)
+        bucket = common.get_new_bucket(common.s3.main)
         print "Created bucket: {name}".format(name=bucket.name)
         file_names = realistic.names(
             mean=15,
