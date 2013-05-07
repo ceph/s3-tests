@@ -38,6 +38,7 @@ from ordereddict import OrderedDict
 from . import (
     nuke_prefixed_buckets,
     get_new_bucket,
+    get_new_bucket_name,
     s3,
     config,
     get_prefix,
@@ -3376,6 +3377,143 @@ def test_bucket_acl_no_grants():
     # can write acl
     bucket.set_acl('private')
 
+def _get_acl_header(user=None, perms=None):
+    all_headers = ["read", "write", "read-acp", "write-acp", "full-control"]
+    headers = {}
+
+    if user == None:
+        user = config.alt.user_id
+
+    if perms != None:
+        for perm in perms:
+           headers["x-amz-grant-{perm}".format(perm=perm)] = "id={uid}".format(uid=user)
+
+    else:
+        for perm in all_headers:
+            headers["x-amz-grant-{perm}".format(perm=perm)] = "id={uid}".format(uid=user)
+
+    return headers
+
+@attr(resource='object')
+@attr(method='PUT')
+@attr(operation='add all grants to user through headers')
+@attr(assertion='adds all grants individually to second user')
+@attr('fails_on_dho')
+def test_object_header_acl_grants():
+    bucket = get_new_bucket()
+    headers = _get_acl_header()
+    k = bucket.new_key("foo_key")
+    k.set_contents_from_string("bar", headers=headers)
+
+    policy = k.get_acl()
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='READ',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ_ACP',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE_ACP',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='FULL_CONTROL',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+
+@attr(resource='bucket')
+@attr(method='PUT')
+@attr(operation='add all grants to user through headers')
+@attr(assertion='adds all grants individually to second user')
+@attr('fails_on_dho')
+def test_bucket_header_acl_grants():
+    headers = _get_acl_header()
+    bucket = s3.main.create_bucket(get_prefix(), headers=headers)
+
+    policy = bucket.get_acl()
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='READ',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ_ACP',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE_ACP',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='FULL_CONTROL',
+                id=config.alt.user_id,
+                display_name=config.alt.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ],
+        )
+
+    # alt user can write
+    bucket2 = s3.alt.get_bucket(bucket.name)
+    key = bucket2.new_key('foo')
+    key.set_contents_from_string('bar')
+
 
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
 # would violate the uniqueness requirement of a user's email. As such, DHO users are
@@ -3955,6 +4093,46 @@ def test_multipart_upload():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='check contents of multi-part upload')
+@attr(assertion='successful')
+def test_multipart_upload_contents():
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    num_parts=3
+    payload='12345'*1024*1024
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    mp.complete_upload()
+    key=bucket.get_key(key_name)
+    test_string=key.get_contents_as_string()
+    assert test_string == payload*num_parts
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation=' multi-part upload overwrites existing key')
+@attr(assertion='successful')
+def test_multipart_upload_overwrite_existing_object():
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    payload='12345'*1024*1024
+    num_parts=2
+    key=bucket.new_key(key_name)
+    key.set_contents_from_string(payload)
+
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    mp.complete_upload()
+    key=bucket.get_key(key_name)
+    test_string=key.get_contents_as_string()
+    assert test_string == payload*num_parts
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='abort multi-part upload')
 @attr(assertion='successful')
 def test_abort_multipart_upload():
@@ -3976,10 +4154,21 @@ def test_list_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     upload1 = _multipart_upload(bucket, key, 5, 1)
-    upload2 = _multipart_upload(bucket, key, 5, 1)
+    upload2 = _multipart_upload(bucket, key, 6, 1)
 
     key2="mymultipart2"
     upload3 = _multipart_upload(bucket, key2, 5, 1)
+
+    l = bucket.list_multipart_uploads()
+    l = list(l)
+
+    index = dict([(key, 2), (key2, 1)])
+
+    for upload in l:
+        index[upload.key_name] -= 1;
+
+    for k, c in index.items():
+        eq(c, 0)
 
     upload1.cancel_upload()
     upload2.cancel_upload()
