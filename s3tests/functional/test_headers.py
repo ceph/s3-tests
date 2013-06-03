@@ -299,7 +299,6 @@ def test_object_create_bad_contentlength_negative():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
-    eq(e.error_code, None)
 
 
 @attr(resource='object')
@@ -736,7 +735,6 @@ def test_bucket_create_bad_contentlength_negative():
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
-    eq(e.error_code, None)
 
 
 @attr(resource='bucket')
