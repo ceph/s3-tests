@@ -34,6 +34,7 @@ import AnonymousAuth
 from email.header import decode_header
 from ordereddict import OrderedDict
 
+from boto.s3.cors import CORSConfiguration
 
 from . import (
     nuke_prefixed_buckets,
@@ -4057,6 +4058,21 @@ def test_stress_bucket_acls_changes():
     bucket = get_new_bucket()
     for i in xrange(10):
         _test_bucket_acls_changes_persistent(bucket);
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set cors')
+@attr(assertion='succeeds')
+def test_set_cors():
+    bucket = get_new_bucket()
+    cfg = CORSConfiguration()
+    cfg.add_rule('GET', '*')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
+    bucket.set_cors(cfg)
+    new_cfg = bucket.get_cors()
 
 class FakeFile(object):
     """
