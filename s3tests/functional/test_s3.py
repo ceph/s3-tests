@@ -3928,6 +3928,20 @@ def test_bucket_create_special_key_names():
     names = [e.name for e in list(li)]
     eq(names, key_names)
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='create and list objects with underscore as prefix, list using prefix')
+@attr(assertion='listing works correctly')
+def test_bucket_list_special_prefix():
+    key_names = ['_bla/1', '_bla/2', '_bla/3', '_bla/4', 'abcd']
+    bucket = _create_keys(keys=key_names)
+
+    li = bucket.get_all_keys()
+    eq(len(li), 5)
+
+    li2 = bucket.get_all_keys(prefix='_bla/')
+    eq(len(li2), 4)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy zero sized object in same bucket')
