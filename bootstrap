@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-if [-f /etc/debian_version ]; then
+if [ -f /etc/debian_version ]; then
     for package in python-pip python-virtualenv python-dev libevent-dev; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
