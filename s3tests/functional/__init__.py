@@ -88,11 +88,17 @@ def setup():
         cfg.readfp(f)
 
     global prefix
+    global location
     try:
         template = cfg.get('fixtures', 'bucket prefix')
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
+
+    try:
+        location = cfg.get('region main', 'name')
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        location = ''
 
     s3.clear()
     config.clear()
@@ -179,7 +185,7 @@ def get_new_bucket_name():
     return name
 
 
-def get_new_bucket(connection=None):
+def get_new_bucket(connection=None, name=None, headers=None):
     """
     Get a bucket that exists and is empty.
 
@@ -188,9 +194,10 @@ def get_new_bucket(connection=None):
     """
     if connection is None:
         connection = s3.main
-    name = get_new_bucket_name()
+    if name is None:
+        name = get_new_bucket_name()
     # the only way for this to fail with a pre-existing bucket is if
     # someone raced us between setup nuke_prefixed_buckets and here;
     # ignore that as astronomically unlikely
-    bucket = connection.create_bucket(name)
+    bucket = connection.create_bucket(name, location=location, headers=headers)
     return bucket

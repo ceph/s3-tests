@@ -752,7 +752,7 @@ def test_object_write_to_nonexist_bucket():
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
-    bucket = s3.main.create_bucket(name)
+    bucket = get_new_bucket(s3.main, name)
     # make sure it's actually there
     s3.main.get_bucket(bucket.name)
     bucket.delete()
@@ -2311,7 +2311,7 @@ def check_bad_bucket_name(name):
     Attempt to create a bucket with a specified name, and confirm
     that the request fails because of an invalid bucket name.
     """
-    e = assert_raises(boto.exception.S3ResponseError, s3.main.create_bucket, name)
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, s3.main, name)
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidBucketName')
@@ -2337,7 +2337,7 @@ def test_bucket_create_naming_bad_starts_nonalpha():
 def test_bucket_create_naming_bad_short_empty():
     # bucket creates where name is empty look like PUTs to the parent
     # resource (with slash), hence their error response is different
-    e = assert_raises(boto.exception.S3ResponseError, s3.main.create_bucket, '')
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, s3.main, '')
     eq(e.status, 405)
     eq(e.reason, 'Method Not Allowed')
     eq(e.error_code, 'MethodNotAllowed')
@@ -2384,7 +2384,7 @@ def check_good_bucket_name(name, _prefix=None):
     # should be very rare
     if _prefix is None:
         _prefix = get_prefix()
-    s3.main.create_bucket('{prefix}{name}'.format(
+    get_new_bucket(s3.main, '{prefix}{name}'.format(
             prefix=_prefix,
             name=name,
             ))
@@ -2398,7 +2398,7 @@ def _test_bucket_create_naming_good_long(length):
     prefix = get_prefix()
     assert len(prefix) < 255
     num = length - len(prefix)
-    s3.main.create_bucket('{prefix}{name}'.format(
+    get_new_bucket(s3.main, '{prefix}{name}'.format(
             prefix=prefix,
             name=num*'a',
             ))
@@ -2473,7 +2473,7 @@ def test_bucket_list_long_name():
     prefix = get_prefix()
     length = 251
     num = length - len(prefix)
-    bucket = s3.main.create_bucket('{prefix}{name}'.format(
+    bucket = get_new_bucket(s3.main, '{prefix}{name}'.format(
             prefix=prefix,
             name=num*'a',
             ))
@@ -2571,9 +2571,9 @@ def test_bucket_create_naming_dns_dash_dot():
 @attr(operation='re-create')
 @attr(assertion='idempotent success')
 def test_bucket_create_exists():
-    bucket = get_new_bucket()
+    bucket = get_new_bucket(s3.main)
     # REST idempotency means this should be a nop
-    s3.main.create_bucket(bucket.name)
+    get_new_bucket(s3.main, bucket.name)
 
 
 @attr(resource='bucket')
@@ -2584,7 +2584,7 @@ def test_bucket_create_exists_nonowner():
     # Names are shared across a global namespace. As such, no two
     # users can create a bucket with that same name.
     bucket = get_new_bucket()
-    e = assert_raises(boto.exception.S3CreateError, s3.alt.create_bucket, bucket.name)
+    e = assert_raises(boto.exception.S3CreateError, get_new_bucket, s3.alt, bucket.name)
     eq(e.status, 409)
     eq(e.reason, 'Conflict')
     eq(e.error_code, 'BucketAlreadyExists')
@@ -3460,7 +3460,7 @@ def test_object_header_acl_grants():
 @attr('fails_on_dho')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
-    bucket = s3.main.create_bucket(get_prefix(), headers=headers)
+    bucket = get_new_bucket(s3.main, get_prefix(), headers)
 
     policy = bucket.get_acl()
     check_grants(
@@ -3595,7 +3595,7 @@ def test_bucket_acl_revoke_all():
 @attr('fails_on_rgw')
 def test_logging_toggle():
     bucket = get_new_bucket()
-    log_bucket = s3.main.create_bucket(bucket.name + '-log')
+    log_bucket = get_new_bucket(s3.main, bucket.name + '-log')
     log_bucket.set_as_logging_target()
     bucket.enable_logging(target_bucket=log_bucket, target_prefix=bucket.name)
     bucket.disable_logging()
@@ -3907,7 +3907,7 @@ def test_bucket_recreate_not_overriding():
     names = [e.name for e in list(li)]
     eq(names, key_names)
 
-    bucket2 = s3.main.create_bucket(bucket.name)
+    bucket2 = get_new_bucket(s3.main, bucket.name)
 
     li = bucket.list()
 
