@@ -99,6 +99,11 @@ class TargetConfig:
                 'host not specified for section {s}'.format(s=section)
                 )
         try:
+            self.is_master=cfg.getboolean(section, 'is_master')
+        except ConfigParser.NoOptionError:
+            pass
+
+        try:
             self.is_secure=cfg.getboolean(section, 'is_secure')
         except ConfigParser.NoOptionError:
             pass
