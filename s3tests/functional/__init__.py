@@ -9,7 +9,6 @@ import string
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
-regions = bunch.Bunch()
 targets = bunch.Bunch()
 
 # this will be assigned by setup()
@@ -121,6 +120,29 @@ class TargetConnection:
         self.conf = conf
         self.connection = conn
 
+
+
+class RegionsInfo:
+    def __init__(self):
+        self.m = bunch.Bunch()
+        self.master = None
+        self.secondaries = []
+
+    def add(self, name, region_config):
+        self.m[name] = region_config
+        if (region_config.is_master):
+            if not self.master is None:
+                raise RuntimeError(
+                    'multiple regions defined as master'
+                    )
+            self.master = region_config
+        else:
+            self.secondaries.append(region_config)
+    def get(self, name):
+        return self.m[name];
+
+regions = RegionsInfo()
+
 # nosetests --processes=N with N>1 is safe
 _multiprocess_can_split_ = True
 
@@ -148,7 +170,6 @@ def setup():
 
     s3.clear()
     config.clear()
-    regions.clear()
 
     for section in cfg.sections():
         try:
@@ -157,8 +178,7 @@ def setup():
             continue
         if type_ != 'region':
             continue
-        region_conf = TargetConfig(cfg, section)
-        regions[name] = region_conf
+        regions.add(name, TargetConfig(cfg, section))
 
     for section in cfg.sections():
         try:
@@ -170,7 +190,7 @@ def setup():
 
         try:
             region_name = cfg.get(section, 'region')
-            region_config = regions[region_name]
+            region_config = regions.get(region_name)
         except ConfigParser.NoOptionError:
             region_config = TargetConfig(cfg, section)
 
