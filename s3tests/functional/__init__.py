@@ -144,9 +144,31 @@ class RegionsInfo:
         else:
             self.secondaries.append(region_config)
     def get(self, name):
-        return self.m[name];
+        return self.m[name]
+    def get(self):
+        return self.m
+    def iteritems(self):
+        return self.m.iteritems()
 
 regions = RegionsInfo()
+
+
+class RegionsConn:
+    def __init__(self):
+        self.m = bunch.Bunch()
+        self.default = None
+        self.master = None
+        self.secondaries = []
+
+    def add(self, name, conn):
+        self.m[name] = conn
+        if not self.default:
+            self.default = conn
+        if (conn.conf.is_master):
+            self.master = conn
+        else:
+            self.secondaries.append(conn)
+
 
 # nosetests --processes=N with N>1 is safe
 _multiprocess_can_split_ = True
@@ -193,11 +215,8 @@ def setup():
         if type_ != 's3':
             continue
 
-        try:
-            region_name = cfg.get(section, 'region')
-            region_config = regions.get(region_name)
-        except ConfigParser.NoOptionError:
-            region_config = TargetConfig(cfg, section)
+        if len(regions.get()) == 0:
+            regions.add("default", TargetConfig(cfg, section))
 
         config[name] = bunch.Bunch()
         for var in [
@@ -209,17 +228,21 @@ def setup():
                 config[name][var] = cfg.get(section, var)
             except ConfigParser.NoOptionError:
                 pass
-        conn = boto.s3.connection.S3Connection(
-            aws_access_key_id=cfg.get(section, 'access_key'),
-            aws_secret_access_key=cfg.get(section, 'secret_key'),
-            is_secure=region_config.is_secure,
-            port=region_config.port,
-            host=region_config.host,
-            # TODO test vhost calling format
-            calling_format=region_config.calling_format,
-            )
-        s3[name] = conn
-        targets[name] = TargetConnection(region_config, conn)
+
+        targets[name] = RegionsConn()
+
+        for (k, conf) in regions.iteritems():
+            conn = boto.s3.connection.S3Connection(
+                aws_access_key_id=cfg.get(section, 'access_key'),
+                aws_secret_access_key=cfg.get(section, 'secret_key'),
+                is_secure=conf.is_secure,
+                port=conf.port,
+                host=conf.host,
+                # TODO test vhost calling format
+                calling_format=conf.calling_format,
+                )
+            targets[name].add(k, TargetConnection(conf, conn))
+        s3[name] = targets[name].default.connection
 
     # WARNING! we actively delete all buckets we see with the prefix
     # we've chosen! Choose your prefix with care, and don't reuse
@@ -262,7 +285,7 @@ def get_new_bucket(target=None, name=None, headers=None):
     reset ACLs and such.
     """
     if target is None:
-        target = targets.main
+        target = targets.main.default
     connection = target.connection
     if name is None:
         name = get_new_bucket_name()

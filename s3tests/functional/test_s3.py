@@ -753,7 +753,7 @@ def test_object_write_to_nonexist_bucket():
 def test_bucket_create_delete():
     name = '{prefix}foo'.format(prefix=get_prefix())
     print 'Trying bucket {name!r}'.format(name=name)
-    bucket = get_new_bucket(targets.main, name)
+    bucket = get_new_bucket(targets.main.default, name)
     # make sure it's actually there
     s3.main.get_bucket(bucket.name)
     bucket.delete()
@@ -2312,7 +2312,7 @@ def check_bad_bucket_name(name):
     Attempt to create a bucket with a specified name, and confirm
     that the request fails because of an invalid bucket name.
     """
-    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main, name)
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, name)
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidBucketName')
@@ -2338,7 +2338,7 @@ def test_bucket_create_naming_bad_starts_nonalpha():
 def test_bucket_create_naming_bad_short_empty():
     # bucket creates where name is empty look like PUTs to the parent
     # resource (with slash), hence their error response is different
-    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main, '')
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, '')
     eq(e.status, 405)
     eq(e.reason, 'Method Not Allowed')
     eq(e.error_code, 'MethodNotAllowed')
@@ -2385,7 +2385,7 @@ def check_good_bucket_name(name, _prefix=None):
     # should be very rare
     if _prefix is None:
         _prefix = get_prefix()
-    get_new_bucket(targets.main, '{prefix}{name}'.format(
+    get_new_bucket(targets.main.default, '{prefix}{name}'.format(
             prefix=_prefix,
             name=name,
             ))
@@ -2399,7 +2399,7 @@ def _test_bucket_create_naming_good_long(length):
     prefix = get_prefix()
     assert len(prefix) < 255
     num = length - len(prefix)
-    get_new_bucket(targets.main, '{prefix}{name}'.format(
+    get_new_bucket(targets.main.default, '{prefix}{name}'.format(
             prefix=prefix,
             name=num*'a',
             ))
@@ -2474,7 +2474,7 @@ def test_bucket_list_long_name():
     prefix = get_prefix()
     length = 251
     num = length - len(prefix)
-    bucket = get_new_bucket(targets.main, '{prefix}{name}'.format(
+    bucket = get_new_bucket(targets.main.default, '{prefix}{name}'.format(
             prefix=prefix,
             name=num*'a',
             ))
@@ -2572,9 +2572,9 @@ def test_bucket_create_naming_dns_dash_dot():
 @attr(operation='re-create')
 @attr(assertion='idempotent success')
 def test_bucket_create_exists():
-    bucket = get_new_bucket(targets.main)
+    bucket = get_new_bucket(targets.main.default)
     # REST idempotency means this should be a nop
-    get_new_bucket(targets.main, bucket.name)
+    get_new_bucket(targets.main.default, bucket.name)
 
 
 @attr(resource='bucket')
@@ -2585,7 +2585,7 @@ def test_bucket_create_exists_nonowner():
     # Names are shared across a global namespace. As such, no two
     # users can create a bucket with that same name.
     bucket = get_new_bucket()
-    e = assert_raises(boto.exception.S3CreateError, get_new_bucket, targets.alt, bucket.name)
+    e = assert_raises(boto.exception.S3CreateError, get_new_bucket, targets.alt.default, bucket.name)
     eq(e.status, 409)
     eq(e.reason, 'Conflict')
     eq(e.error_code, 'BucketAlreadyExists')
@@ -2908,7 +2908,7 @@ def test_object_acl_canned_authenticatedread():
 @attr(operation='acl bucket-owner-read')
 @attr(assertion='read back expected values')
 def test_object_acl_canned_bucketownerread():
-    bucket = get_new_bucket(targets.main)
+    bucket = get_new_bucket(targets.main.default)
     bucket.set_acl('public-read-write')
 
     key = s3.alt.get_bucket(bucket.name).new_key('foo')
@@ -2952,7 +2952,7 @@ def test_object_acl_canned_bucketownerread():
 @attr(operation='acl bucket-owner-read')
 @attr(assertion='read back expected values')
 def test_object_acl_canned_bucketownerfullcontrol():
-    bucket = get_new_bucket(targets.main)
+    bucket = get_new_bucket(targets.main.default)
     bucket.set_acl('public-read-write')
 
     key = s3.alt.get_bucket(bucket.name).new_key('foo')
@@ -3461,7 +3461,7 @@ def test_object_header_acl_grants():
 @attr('fails_on_dho')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
-    bucket = get_new_bucket(targets.main, get_prefix(), headers)
+    bucket = get_new_bucket(targets.main.default, get_prefix(), headers)
 
     policy = bucket.get_acl()
     check_grants(
@@ -3596,7 +3596,7 @@ def test_bucket_acl_revoke_all():
 @attr('fails_on_rgw')
 def test_logging_toggle():
     bucket = get_new_bucket()
-    log_bucket = get_new_bucket(targets.main, bucket.name + '-log')
+    log_bucket = get_new_bucket(targets.main.default, bucket.name + '-log')
     log_bucket.set_as_logging_target()
     bucket.enable_logging(target_bucket=log_bucket, target_prefix=bucket.name)
     bucket.disable_logging()
@@ -3908,7 +3908,7 @@ def test_bucket_recreate_not_overriding():
     names = [e.name for e in list(li)]
     eq(names, key_names)
 
-    bucket2 = get_new_bucket(targets.main, bucket.name)
+    bucket2 = get_new_bucket(targets.main.default, bucket.name)
 
     li = bucket.list()
 
@@ -4001,7 +4001,7 @@ def test_object_copy_diff_bucket():
 @attr(operation='copy from an inaccessible bucket')
 @attr(assertion='fails w/AttributeError')
 def test_object_copy_not_owned_bucket():
-    buckets = [get_new_bucket(), get_new_bucket(targets.alt)]
+    buckets = [get_new_bucket(), get_new_bucket(targets.alt.default)]
     print repr(buckets[1])
     key = buckets[0].new_key('foo123bar')
     key.set_contents_from_string('foo')
