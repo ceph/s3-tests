@@ -48,6 +48,8 @@ from . import (
 
 NONEXISTENT_EMAIL = 'doesnotexist@dreamhost.com.invalid'
 
+def not_eq(a, b):
+    assert a != b, "%r == %r" % (a, b)
 
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(boto.exception.S3ResponseError, fn, *args, **kwargs)
@@ -4530,3 +4532,29 @@ def test_ranged_request_response_code():
     eq(fetched_content, content[4:8])
     eq(status, 206)
 
+def assert_can_test_multiregion():
+    not_eq(targets.main.master, None)
+    not_eq(len(targets.main.secondaries), 0)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='create on one region, access in another')
+@attr(assertion='can\'t access in other region')
+@attr('multiregion')
+def test_region_bucket_create_secondary_access_master():
+    assert_can_test_multiregion()
+
+    master_conn = targets.main.master.connection
+
+    for r in targets.main.secondaries:
+        conn = r.connection
+        bucket = get_new_bucket(r)
+
+        e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
+        eq(e.status, 301)
+
+        e = assert_raises(boto.exception.S3ResponseError, master_conn.delete_bucket, bucket.name)
+        eq(e.status, 301)
+
+
+        conn.delete_bucket(bucket)
