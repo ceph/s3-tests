@@ -4560,12 +4560,18 @@ def test_region_bucket_create_secondary_access_remove_master():
 
         conn.delete_bucket(bucket)
 
-def region_sync_meta(conf):
-    if conf.sync_agent_addr:
-        ret = requests.post('http://{addr}:{port}/metadata/partial'.format(addr = conf.sync_agent_addr, port = conf.sync_agent_port))
-        eq(ret.status_code, 200)
-    if conf.sync_meta_wait:
-        time.sleep(conf.sync_meta_wait)
+# syncs all the regions except for the one passed in
+def region_sync_meta(targets, region):
+
+    for (k, r) in targets.iteritems():
+        if r == region:
+            continue
+        conf = r.conf
+        if conf.sync_agent_addr:
+            ret = requests.post('http://{addr}:{port}/metadata/partial'.format(addr = conf.sync_agent_addr, port = conf.sync_agent_port))
+            eq(ret.status_code, 200)
+        if conf.sync_meta_wait:
+            time.sleep(conf.sync_meta_wait)
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -4582,14 +4588,13 @@ def test_region_bucket_create_master_access_remove_secondary():
         conn = r.connection
         bucket = get_new_bucket(master)
 
-        region_sync_meta(r.conf)
+        region_sync_meta(targets.main, master)
 
         e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
         eq(e.status, 301)
 
         e = assert_raises(boto.exception.S3ResponseError, conn.delete_bucket, bucket.name)
         eq(e.status, 301)
-
 
         master_conn.delete_bucket(bucket)
 
@@ -4601,26 +4606,39 @@ def test_region_bucket_create_master_access_remove_secondary():
 def test_region_copy_object():
     assert_can_test_multiregion()
 
-    master = targets.main.master
-    master_conn = master.connection
+    for (k, dest) in targets.main.iteritems():
+        dest_conn = dest.connection
 
-    master_bucket = get_new_bucket(master)
-    for file_size in (1024, 1024 * 1024, 10 * 1024 * 1024,
-                      100 * 1024 * 1024):
-        for r in targets.main.secondaries:
-            conn = r.connection
-            bucket = get_new_bucket(r)
+        dest_bucket = get_new_bucket(dest)
+        print 'created new dest bucket ', dest_bucket.name
+        region_sync_meta(targets.main, dest)
 
-            content = 'testcontent'
+        for file_size in (1024, 1024 * 1024, 10 * 1024 * 1024,
+                          100 * 1024 * 1024):
+            for (k2, r) in targets.main.iteritems():
+                if r == dest_conn:
+                    continue
+                conn = r.connection
 
-            key = bucket.new_key('testobj')
-            fp_a = FakeWriteFile(file_size, 'A')
-            key.set_contents_from_file(fp_a)
+                bucket = get_new_bucket(r)
+                print 'created bucket', bucket.name
+                region_sync_meta(targets.main, r)
 
-            dest_key = master_bucket.copy_key('testobj-dest', bucket.name, key.name)
+                content = 'testcontent'
 
-            # verify dest
-            _verify_atomic_key_data(dest_key, file_size, 'A')
+                key = bucket.new_key('testobj')
+                fp_a = FakeWriteFile(file_size, 'A')
+                key.set_contents_from_file(fp_a)
 
-            bucket.delete_key(key.name)
-            conn.delete_bucket(bucket)
+                dest_key = dest_bucket.copy_key('testobj-dest', bucket.name, key.name)
+
+                # verify dest
+                _verify_atomic_key_data(dest_key, file_size, 'A')
+
+                bucket.delete_key(key.name)
+                print 'removing bucket', bucket.name
+                conn.delete_bucket(bucket)
+
+                dest_bucket.delete_key(dest_key.name)
+
+        dest_conn.delete_bucket(dest_bucket)

@@ -179,6 +179,9 @@ class RegionsConn:
         self.master = None
         self.secondaries = []
 
+    def iteritems(self):
+        return self.m.iteritems()
+
     def add(self, name, conn):
         self.m[name] = conn
         if not self.default:
