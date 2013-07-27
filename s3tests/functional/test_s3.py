@@ -4541,7 +4541,7 @@ def assert_can_test_multiregion():
 @attr(operation='create on one region, access in another')
 @attr(assertion='can\'t access in other region')
 @attr('multiregion')
-def test_region_bucket_create_secondary_access_master():
+def test_region_bucket_create_secondary_access_remove_master():
     assert_can_test_multiregion()
 
     master_conn = targets.main.master.connection
@@ -4557,4 +4557,31 @@ def test_region_bucket_create_secondary_access_master():
         eq(e.status, 301)
 
 
+        conn.delete_bucket(bucket)
+
+@attr(resource='object')
+@attr(method='copy')
+@attr(operation='cread object in one region, read in another')
+@attr(assertion='can read object')
+@attr('multiregion')
+def test_region_copy_object():
+    assert_can_test_multiregion()
+
+    master = targets.main.master
+
+    master_conn = master.connection
+
+    master_bucket = get_new_bucket(master)
+    for r in targets.main.secondaries:
+        conn = r.connection
+        bucket = get_new_bucket(r)
+
+        content = 'testcontent'
+
+        key = bucket.new_key('testobj')
+        key.set_contents_from_string(content)
+
+        master_bucket.copy_key('testobj-dest', bucket.name, key.name)
+
+        bucket.delete_key(key.name)
         conn.delete_bucket(bucket)
