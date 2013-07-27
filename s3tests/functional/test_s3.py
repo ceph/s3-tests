@@ -4,6 +4,7 @@ import boto.s3.connection
 import boto.s3.acl
 import bunch
 import datetime
+import time
 import email.utils
 import isodate
 import nose
@@ -4559,29 +4560,67 @@ def test_region_bucket_create_secondary_access_remove_master():
 
         conn.delete_bucket(bucket)
 
+def region_sync_meta(conf):
+    if conf.sync_agent_addr:
+        ret = requests.post('http://{addr}:{port}/metadata/partial'.format(addr = conf.sync_agent_addr, port = conf.sync_agent_port))
+        eq(ret.status_code, 200)
+    if conf.sync_meta_wait:
+        time.sleep(conf.sync_meta_wait)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='create on one region, access in another')
+@attr(assertion='can\'t access in other region')
+@attr('multiregion')
+def test_region_bucket_create_master_access_remove_secondary():
+    assert_can_test_multiregion()
+
+    master = targets.main.master
+    master_conn = master.connection
+
+    for r in targets.main.secondaries:
+        conn = r.connection
+        bucket = get_new_bucket(master)
+
+        region_sync_meta(r.conf)
+
+        e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
+        eq(e.status, 301)
+
+        e = assert_raises(boto.exception.S3ResponseError, conn.delete_bucket, bucket.name)
+        eq(e.status, 301)
+
+
+        master_conn.delete_bucket(bucket)
+
 @attr(resource='object')
 @attr(method='copy')
-@attr(operation='cread object in one region, read in another')
+@attr(operation='copy object between regions, verify')
 @attr(assertion='can read object')
 @attr('multiregion')
 def test_region_copy_object():
     assert_can_test_multiregion()
 
     master = targets.main.master
-
     master_conn = master.connection
 
     master_bucket = get_new_bucket(master)
-    for r in targets.main.secondaries:
-        conn = r.connection
-        bucket = get_new_bucket(r)
+    for file_size in (1024, 1024 * 1024, 10 * 1024 * 1024,
+                      100 * 1024 * 1024):
+        for r in targets.main.secondaries:
+            conn = r.connection
+            bucket = get_new_bucket(r)
 
-        content = 'testcontent'
+            content = 'testcontent'
 
-        key = bucket.new_key('testobj')
-        key.set_contents_from_string(content)
+            key = bucket.new_key('testobj')
+            fp_a = FakeWriteFile(file_size, 'A')
+            key.set_contents_from_file(fp_a)
 
-        master_bucket.copy_key('testobj-dest', bucket.name, key.name)
+            dest_key = master_bucket.copy_key('testobj-dest', bucket.name, key.name)
 
-        bucket.delete_key(key.name)
-        conn.delete_bucket(bucket)
+            # verify dest
+            _verify_atomic_key_data(dest_key, file_size, 'A')
+
+            bucket.delete_key(key.name)
+            conn.delete_bucket(bucket)

@@ -84,6 +84,9 @@ class TargetConfig:
         self.api_name = ''
         self.is_master = False
         self.is_secure = False
+        self.sync_agent_addr = None
+        self.sync_agent_port = 0
+        self.sync_meta_wait = 0
         try:
             self.api_name = cfg.get(section, 'api_name')
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
@@ -112,6 +115,22 @@ class TargetConfig:
             raw_calling_format = cfg.get(section, 'calling_format')
         except ConfigParser.NoOptionError:
             raw_calling_format = 'ordinary'
+
+        try:
+            self.sync_agent_addr = cfg.get(section, 'sync_agent_addr')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
+        try:
+            self.sync_agent_port = cfg.getint(section, 'sync_agent_port')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
+        try:
+            self.sync_meta_wait = cfg.getint(section, 'sync_meta_wait')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
 
         try:
             self.calling_format = calling_formats[raw_calling_format]
