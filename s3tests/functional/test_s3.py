@@ -28,6 +28,7 @@ from urlparse import urlparse
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
+from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
 import AnonymousAuth
@@ -4533,9 +4534,9 @@ def test_ranged_request_response_code():
     eq(fetched_content, content[4:8])
     eq(status, 206)
 
-def assert_can_test_multiregion():
-    not_eq(targets.main.master, None)
-    not_eq(len(targets.main.secondaries), 0)
+def check_can_test_multiregion():
+    if not targets.main.master or len(targets.main.secondaries) == 0:
+        raise SkipTest
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -4543,7 +4544,7 @@ def assert_can_test_multiregion():
 @attr(assertion='can\'t access in other region')
 @attr('multiregion')
 def test_region_bucket_create_secondary_access_remove_master():
-    assert_can_test_multiregion()
+    check_can_test_multiregion()
 
     master_conn = targets.main.master.connection
 
@@ -4579,7 +4580,7 @@ def region_sync_meta(targets, region):
 @attr(assertion='can\'t access in other region')
 @attr('multiregion')
 def test_region_bucket_create_master_access_remove_secondary():
-    assert_can_test_multiregion()
+    check_can_test_multiregion()
 
     master = targets.main.master
     master_conn = master.connection
@@ -4604,7 +4605,7 @@ def test_region_bucket_create_master_access_remove_secondary():
 @attr(assertion='can read object')
 @attr('multiregion')
 def test_region_copy_object():
-    assert_can_test_multiregion()
+    check_can_test_multiregion()
 
     for (k, dest) in targets.main.iteritems():
         dest_conn = dest.connection
