@@ -4260,13 +4260,33 @@ def test_stress_bucket_acls_changes():
 def test_set_cors():
     bucket = get_new_bucket()
     cfg = CORSConfiguration()
-    cfg.add_rule('GET', '*')
+    cfg.add_rule('GET', '*.get')
+    cfg.add_rule('PUT', '*.put')
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
 
     bucket.set_cors(cfg)
     new_cfg = bucket.get_cors()
+
+    eq(len(new_cfg), 2)
+
+    result = bunch.Bunch()
+
+    for c in new_cfg:
+        eq(len(c.allowed_method), 1)
+        eq(len(c.allowed_origin), 1)
+        result[c.allowed_method[0]] = c.allowed_origin[0]
+
+
+    eq(result['GET'], '*.get')
+    eq(result['PUT'], '*.put')
+
+    bucket.delete_cors()
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
 
 class FakeFile(object):
     """
