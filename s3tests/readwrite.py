@@ -161,13 +161,23 @@ def main():
         bucket_name = common.choose_bucket_prefix(config.readwrite.bucket, max_len=30)
         bucket = conn.create_bucket(bucket_name)
         print "Created bucket: {name}".format(name=bucket.name)
-        file_names = realistic.names(
-            mean=15,
-            stddev=4,
-            seed=seeds['names'],
-            )
-        file_names = itertools.islice(file_names, config.readwrite.files.num)
-        file_names = list(file_names)
+
+        # check flag for deterministic file name creation
+        if not config.readwrite.get('deterministic_file_names'):
+            print 'Creating random file names'
+            file_names = realistic.names(
+                mean=15,
+                stddev=4,
+                seed=seeds['names'],
+                )
+            file_names = itertools.islice(file_names, config.readwrite.files.num)
+            file_names = list(file_names)
+        else:
+            print 'Creating file names that are deterministic'
+            file_names = []
+            for x in xrange(config.readwrite.files.num):
+                file_names.append('test_file_{num}'.format(num=x))
+
         files = realistic.files2(
             mean=1024 * config.readwrite.files.size,
             stddev=1024 * config.readwrite.files.stddev,
@@ -175,18 +185,20 @@ def main():
             )
         q = gevent.queue.Queue()
 
-        # warmup - get initial set of files uploaded
-        print "Uploading initial set of {num} files".format(num=config.readwrite.files.num)
-        warmup_pool = gevent.pool.Pool(size=100)
-        for file_name in file_names:
-            fp = next(files)
-            warmup_pool.spawn_link_exception(
-                write_file,
-                bucket=bucket,
-                file_name=file_name,
-                fp=fp,
-                )
-        warmup_pool.join()
+        
+        # warmup - get initial set of files uploaded if there are any writers specified
+        if config.readwrite.writers > 0:
+            print "Uploading initial set of {num} files".format(num=config.readwrite.files.num)
+            warmup_pool = gevent.pool.Pool(size=100)
+            for file_name in file_names:
+                fp = next(files)
+                warmup_pool.spawn_link_exception(
+                    write_file,
+                    bucket=bucket,
+                    file_name=file_name,
+                    fp=fp,
+                    )
+            warmup_pool.join()
 
         # main work
         print "Starting main worker loop."
@@ -194,17 +206,25 @@ def main():
         print "Spawning {w} writers and {r} readers...".format(w=config.readwrite.writers, r=config.readwrite.readers)
         group = gevent.pool.Group()
         rand_writer = random.Random(seeds['writer'])
-        for x in xrange(config.readwrite.writers):
-            this_rand = random.Random(rand_writer.randrange(2**32))
-            group.spawn_link_exception(
-                writer,
-                bucket=bucket,
-                worker_id=x,
-                file_names=file_names,
-                files=files,
-                queue=q,
-                rand=this_rand,
-                )
+
+        # Don't create random files if deterministic_files_names is set and true
+        if not config.readwrite.get('deterministic_file_names'):
+            for x in xrange(config.readwrite.writers):
+                this_rand = random.Random(rand_writer.randrange(2**32))
+                group.spawn_link_exception(
+                    writer,
+                    bucket=bucket,
+                    worker_id=x,
+                    file_names=file_names,
+                    files=files,
+                    queue=q,
+                    rand=this_rand,
+                    )
+
+        # Since the loop generating readers already uses config.readwrite.readers
+        # and the file names are already generated (randomly or deterministically),
+        # this loop needs no additional qualifiers. If zero readers are specified,
+        # it will behave as expected (no data is read)
         rand_reader = random.Random(seeds['reader'])
         for x in xrange(config.readwrite.readers):
             this_rand = random.Random(rand_reader.randrange(2**32))
