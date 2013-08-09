@@ -55,13 +55,13 @@ def reader(bucket, worker_id, file_names, queue, rand):
                         msg='md5sum check failed',
                         ),
                     )
-
-        elapsed = end - start
-        result.update(
-            start=start,
-            duration=int(round(elapsed * NANOSECOND)),
-            chunks=fp.chunks,
-            )
+            else:
+                elapsed = end - start
+                result.update(
+                    start=start,
+                    duration=int(round(elapsed * NANOSECOND)),
+                    chunks=fp.chunks,
+                    )
         queue.put(result)
 
 def writer(bucket, worker_id, file_names, files, queue, rand):
@@ -97,12 +97,13 @@ def writer(bucket, worker_id, file_names, files, queue, rand):
         else:
             end = time.time()
 
-        elapsed = end - start
-        result.update(
-            start=start,
-            duration=int(round(elapsed * NANOSECOND)),
-            chunks=fp.last_chunks,
-            )
+            elapsed = end - start
+            result.update(
+                start=start,
+                duration=int(round(elapsed * NANOSECOND)),
+                chunks=fp.last_chunks,
+                )
+
         queue.put(result)
 
 def parse_options():
@@ -241,7 +242,19 @@ def main():
             q.put(StopIteration)
         gevent.spawn_later(config.readwrite.duration, stop)
 
-        yaml.safe_dump_all(q, stream=real_stdout)
+        # wait for all the tests to finish
+        group.join()
+        print 'post-join, queue size {size}'.format(size=q.qsize())
+
+        if q.qsize() > 0:
+            for temp_dict in q:
+                if 'error' in temp_dict:
+                    raise Exception('exception:\n\t{msg}\n\t{trace}'.format(
+                                    msg=temp_dict['error']['msg'],
+                                    trace=temp_dict['error']['traceback'])
+                                   )
+                else:
+                    yaml.safe_dump(temp_dict, stream=real_stdout)
 
     finally:
         # cleanup
