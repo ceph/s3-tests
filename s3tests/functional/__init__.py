@@ -9,9 +9,16 @@ import string
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
+targets = bunch.Bunch()
 
 # this will be assigned by setup()
 prefix = None
+
+calling_formats = dict(
+    ordinary=boto.s3.connection.OrdinaryCallingFormat(),
+    subdomain=boto.s3.connection.SubdomainCallingFormat(),
+    vhost=boto.s3.connection.VHostCallingFormat(),
+    )
 
 def get_prefix():
     assert prefix is not None
@@ -71,6 +78,120 @@ def nuke_prefixed_buckets(prefix):
     print 'Done with cleanup of test buckets.'
 
 
+class TargetConfig:
+    def __init__(self, cfg, section):
+        self.port = None
+        self.api_name = ''
+        self.is_master = False
+        self.is_secure = False
+        self.sync_agent_addr = None
+        self.sync_agent_port = 0
+        self.sync_meta_wait = 0
+        try:
+            self.api_name = cfg.get(section, 'api_name')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+        try:
+            self.port = cfg.getint(section, 'port')
+        except ConfigParser.NoOptionError:
+            pass
+        try:
+            self.host=cfg.get(section, 'host')
+        except ConfigParser.NoOptionError:
+            raise RuntimeError(
+                'host not specified for section {s}'.format(s=section)
+                )
+        try:
+            self.is_master=cfg.getboolean(section, 'is_master')
+        except ConfigParser.NoOptionError:
+            pass
+
+        try:
+            self.is_secure=cfg.getboolean(section, 'is_secure')
+        except ConfigParser.NoOptionError:
+            pass
+
+        try:
+            raw_calling_format = cfg.get(section, 'calling_format')
+        except ConfigParser.NoOptionError:
+            raw_calling_format = 'ordinary'
+
+        try:
+            self.sync_agent_addr = cfg.get(section, 'sync_agent_addr')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
+        try:
+            self.sync_agent_port = cfg.getint(section, 'sync_agent_port')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
+        try:
+            self.sync_meta_wait = cfg.getint(section, 'sync_meta_wait')
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+            pass
+
+
+        try:
+            self.calling_format = calling_formats[raw_calling_format]
+        except KeyError:
+            raise RuntimeError(
+                'calling_format unknown: %r' % raw_calling_format
+                )
+
+class TargetConnection:
+    def __init__(self, conf, conn):
+        self.conf = conf
+        self.connection = conn
+
+
+
+class RegionsInfo:
+    def __init__(self):
+        self.m = bunch.Bunch()
+        self.master = None
+        self.secondaries = []
+
+    def add(self, name, region_config):
+        self.m[name] = region_config
+        if (region_config.is_master):
+            if not self.master is None:
+                raise RuntimeError(
+                    'multiple regions defined as master'
+                    )
+            self.master = region_config
+        else:
+            self.secondaries.append(region_config)
+    def get(self, name):
+        return self.m[name]
+    def get(self):
+        return self.m
+    def iteritems(self):
+        return self.m.iteritems()
+
+regions = RegionsInfo()
+
+
+class RegionsConn:
+    def __init__(self):
+        self.m = bunch.Bunch()
+        self.default = None
+        self.master = None
+        self.secondaries = []
+
+    def iteritems(self):
+        return self.m.iteritems()
+
+    def add(self, name, conn):
+        self.m[name] = conn
+        if not self.default:
+            self.default = conn
+        if (conn.conf.is_master):
+            self.master = conn
+        else:
+            self.secondaries.append(conn)
+
+
 # nosetests --processes=N with N>1 is safe
 _multiprocess_can_split_ = True
 
@@ -88,6 +209,8 @@ def setup():
         cfg.readfp(f)
 
     global prefix
+    global targets
+
     try:
         template = cfg.get('fixtures', 'bucket prefix')
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
@@ -96,11 +219,16 @@ def setup():
 
     s3.clear()
     config.clear()
-    calling_formats = dict(
-        ordinary=boto.s3.connection.OrdinaryCallingFormat(),
-        subdomain=boto.s3.connection.SubdomainCallingFormat(),
-        vhost=boto.s3.connection.VHostCallingFormat(),
-        )
+
+    for section in cfg.sections():
+        try:
+            (type_, name) = section.split(None, 1)
+        except ValueError:
+            continue
+        if type_ != 'region':
+            continue
+        regions.add(name, TargetConfig(cfg, section))
+
     for section in cfg.sections():
         try:
             (type_, name) = section.split(None, 1)
@@ -108,22 +236,9 @@ def setup():
             continue
         if type_ != 's3':
             continue
-        try:
-            port = cfg.getint(section, 'port')
-        except ConfigParser.NoOptionError:
-            port = None
 
-        try:
-            raw_calling_format = cfg.get(section, 'calling_format')
-        except ConfigParser.NoOptionError:
-            raw_calling_format = 'ordinary'
-
-        try:
-            calling_format = calling_formats[raw_calling_format]
-        except KeyError:
-            raise RuntimeError(
-                'calling_format unknown: %r' % raw_calling_format
-                )
+        if len(regions.get()) == 0:
+            regions.add("default", TargetConfig(cfg, section))
 
         config[name] = bunch.Bunch()
         for var in [
@@ -135,16 +250,21 @@ def setup():
                 config[name][var] = cfg.get(section, var)
             except ConfigParser.NoOptionError:
                 pass
-        conn = boto.s3.connection.S3Connection(
-            aws_access_key_id=cfg.get(section, 'access_key'),
-            aws_secret_access_key=cfg.get(section, 'secret_key'),
-            is_secure=cfg.getboolean(section, 'is_secure'),
-            port=port,
-            host=cfg.get(section, 'host'),
-            # TODO test vhost calling format
-            calling_format=calling_format,
-            )
-        s3[name] = conn
+
+        targets[name] = RegionsConn()
+
+        for (k, conf) in regions.iteritems():
+            conn = boto.s3.connection.S3Connection(
+                aws_access_key_id=cfg.get(section, 'access_key'),
+                aws_secret_access_key=cfg.get(section, 'secret_key'),
+                is_secure=conf.is_secure,
+                port=conf.port,
+                host=conf.host,
+                # TODO test vhost calling format
+                calling_format=conf.calling_format,
+                )
+            targets[name].add(k, TargetConnection(conf, conn))
+        s3[name] = targets[name].default.connection
 
     # WARNING! we actively delete all buckets we see with the prefix
     # we've chosen! Choose your prefix with care, and don't reuse
@@ -179,18 +299,20 @@ def get_new_bucket_name():
     return name
 
 
-def get_new_bucket(connection=None):
+def get_new_bucket(target=None, name=None, headers=None):
     """
     Get a bucket that exists and is empty.
 
     Always recreates a bucket from scratch. This is useful to also
     reset ACLs and such.
     """
-    if connection is None:
-        connection = s3.main
-    name = get_new_bucket_name()
+    if target is None:
+        target = targets.main.default
+    connection = target.connection
+    if name is None:
+        name = get_new_bucket_name()
     # the only way for this to fail with a pre-existing bucket is if
     # someone raced us between setup nuke_prefixed_buckets and here;
     # ignore that as astronomically unlikely
-    bucket = connection.create_bucket(name)
+    bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
     return bucket
