@@ -182,6 +182,9 @@ class RegionsConn:
     def iteritems(self):
         return self.m.iteritems()
 
+    def set_default(self, conn):
+        self.default = conn
+
     def add(self, name, conn):
         self.m[name] = conn
         if not self.default:
@@ -216,6 +219,12 @@ def setup():
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
+
+    # pull the default_region out, if it exists
+    try:
+        default_region = cfg.get('fixtures', 'default_region')
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        default_region = None
 
     s3.clear()
     config.clear()
@@ -263,7 +272,18 @@ def setup():
                 # TODO test vhost calling format
                 calling_format=conf.calling_format,
                 )
-            targets[name].add(k, TargetConnection(conf, conn))
+
+            temp_targetConn = TargetConnection(conf, conn)
+            targets[name].add(k, temp_targetConn)
+
+            # Explicitly test for and set the default region, if specified.
+            # If it was not specified, use the 'is_master' flag to set it.
+            if default_region:
+                if default_region == name:
+                    targets[name].set_default(temp_targetConn)
+            elif conf.is_master:
+                targets[name].set_default(temp_targetConn)
+
         s3[name] = targets[name].default.connection
 
     # WARNING! we actively delete all buckets we see with the prefix
