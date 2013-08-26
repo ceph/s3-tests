@@ -53,6 +53,7 @@ def reader(bucket, worker_id, file_names, queue, rand):
                 result.update(
                     error=dict(
                         msg='md5sum check failed',
+                        traceback=traceback.format_exc(),
                         ),
                     )
             else:
