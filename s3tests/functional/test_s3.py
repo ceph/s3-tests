@@ -808,6 +808,9 @@ def test_multi_object_delete():
 	stored_keys = bucket.get_all_keys()
 	bucket.delete_keys(stored_keys)
 
+        # now remove again, should not succeed
+	bucket.delete_keys(stored_keys)
+
 @attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
@@ -4111,6 +4114,25 @@ def test_multipart_upload():
     eq(obj_count, 1)
     eq(bytes_used, 30 * 1024 * 1024)
 
+def _multipart_upload_contents(bucket, key_name, part_size, num_full_parts, last_part_size):
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    num_parts=3
+    payload='12345'*(part_size / 5)
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    last_payload = ''
+    if (last_part_size > 0):
+        last_payload='12345'*(last_part_size / 5)
+        mp.upload_part_from_file(StringIO(last_payload), num_parts+1)
+
+    mp.complete_upload()
+    key=bucket.get_key(key_name)
+    test_string=key.get_contents_as_string()
+    assert test_string == payload*num_parts + last_payload
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check contents of multi-part upload')
@@ -4119,15 +4141,10 @@ def test_multipart_upload_contents():
     bucket = get_new_bucket()
     key_name="mymultipart"
     num_parts=3
-    payload='12345'*1024*1024
-    mp=bucket.initiate_multipart_upload(key_name)
-    for i in range(0, num_parts):
-        mp.upload_part_from_file(StringIO(payload), i+1)
-
-    mp.complete_upload()
-    key=bucket.get_key(key_name)
-    test_string=key.get_contents_as_string()
-    assert test_string == payload*num_parts
+    _multipart_upload_contents(bucket, key_name, 5 * 1024 * 1024, 1, 0)
+    _multipart_upload_contents(bucket, key_name, 5 * 1024 * 1024, 3, 0)
+    _multipart_upload_contents(bucket, key_name, 5 * 1024 * 1024, 1, 128 * 1024)
+    _multipart_upload_contents(bucket, key_name, 5 * 1024 * 1024, 1, 512 * 1024)
 
 
 @attr(resource='object')
