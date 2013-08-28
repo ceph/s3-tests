@@ -4648,6 +4648,13 @@ def test_region_bucket_create_master_access_remove_secondary():
         eq(e.status, 301)
 
         master_conn.delete_bucket(bucket)
+        region_sync_meta(targets.main, master)
+
+        e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
+        eq(e.status, 404)
+
+        e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
+        eq(e.status, 404)
 
 @attr(resource='object')
 @attr(method='copy')
@@ -4681,15 +4688,47 @@ def test_region_copy_object():
                 fp_a = FakeWriteFile(file_size, 'A')
                 key.set_contents_from_file(fp_a)
 
+                region_sync_meta(targets.main, r)
+
                 dest_key = dest_bucket.copy_key('testobj-dest', bucket.name, key.name)
 
                 # verify dest
                 _verify_atomic_key_data(dest_key, file_size, 'A')
 
                 bucket.delete_key(key.name)
+
+                # confirm that the key was deleted as expected
+                region_sync_meta(targets.main, r)
+                temp_key = bucket.get_key(key.name)
+                assert temp_key == None
+
                 print 'removing bucket', bucket.name
                 conn.delete_bucket(bucket)
 
+                # confirm that the bucket was deleted as expected
+                region_sync_meta(targets.main, r)
+                e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
+                eq(e.status, 404)
+                e = assert_raises(boto.exception.S3ResponseError, dest_conn.get_bucket, bucket.name)
+                eq(e.status, 404)
+
+                # confirm that the key was deleted as expected
                 dest_bucket.delete_key(dest_key.name)
+                temp_key = dest_bucket.get_key(dest_key.name)
+                assert temp_key == None
+
 
         dest_conn.delete_bucket(dest_bucket)
+        region_sync_meta(targets.main, dest)
+
+        # ensure that dest_bucket was deleted on this host and all other hosts
+        e = assert_raises(boto.exception.S3ResponseError, dest_conn.get_bucket, dest_bucket.name)
+        eq(e.status, 404)
+        for (k2, r) in targets.main.iteritems():
+            if r == dest_conn:
+                continue
+            conn = r.connection
+            e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, dest_bucket.name)
+            eq(e.status, 404)
+
+
