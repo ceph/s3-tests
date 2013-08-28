@@ -4301,6 +4301,57 @@ def test_set_cors():
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
 
+def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
+    r = func(url, headers=headers)
+    eq(r.status_code, expect_status)
+
+    assert r.headers['access-control-allow-origin'] == expect_allow_origin
+    assert r.headers['access-control-allow-methods'] == expect_allow_methods
+
+    
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='check cors response when origin header set')
+@attr(assertion='returning cors header')
+def test_cors_origin_response():
+    cfg = CORSConfiguration()
+    bucket = get_new_bucket()
+
+    bucket.set_acl('public-read')
+
+    cfg.add_rule('GET', '*suffix')
+    cfg.add_rule('GET', 'start*end')
+    cfg.add_rule('GET', 'prefix*')
+    cfg.add_rule('PUT', '*.put')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
+    bucket.set_cors(cfg)
+
+    url = _get_post_url(s3.main, bucket)
+
+    _cors_request_and_check(requests.get, url, None, 200, None, None)
+    _cors_request_and_check(requests.get, url, {'Origin': 'foo.suffix'}, 200, 'foo.suffix', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': 'foo.bar'}, 200, None, None)
+    _cors_request_and_check(requests.get, url, {'Origin': 'foo.suffix.get'}, 200, None, None)
+    _cors_request_and_check(requests.get, url, {'Origin': 'startend'}, 200, 'startend', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': 'start1end'}, 200, 'start1end', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': 'start12end'}, 200, 'start12end', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': '0start12end'}, 200, None, None)
+    _cors_request_and_check(requests.get, url, {'Origin': 'prefix'}, 200, 'prefix', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': 'prefix.suffix'}, 200, 'prefix.suffix', 'GET')
+    _cors_request_and_check(requests.get, url, {'Origin': 'bla.prefix'}, 200, None, None)
+
+    obj_url = '{u}/{o}'.format(u=url, o='bar')
+    _cors_request_and_check(requests.get, obj_url, {'Origin': 'foo.suffix'}, 404, 'foo.suffix', 'GET')
+    _cors_request_and_check(requests.put, obj_url, {'Origin': 'foo.suffix'}, 403, None, None)
+
+    _cors_request_and_check(requests.put, obj_url, {'Origin': 'foo.put'}, 403, 'foo.put', 'PUT')
+
+    _cors_request_and_check(requests.get, obj_url, {'Origin': 'foo.suffix'}, 404, 'foo.suffix', 'GET')
+
 
 class FakeFile(object):
     """
