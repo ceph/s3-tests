@@ -7,6 +7,8 @@ import os
 import random
 import string
 
+from .utils import region_sync_meta
+
 s3 = bunch.Bunch()
 config = bunch.Bunch()
 targets = bunch.Bunch()
@@ -49,31 +51,49 @@ def choose_bucket_prefix(template, max_len=30):
         )
 
 
+def nuke_prefixed_buckets_on_conn(prefix, name, conn):
+    print 'Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
+        name=name,
+        prefix=prefix,
+        )
+    for bucket in conn.get_all_buckets():
+        if bucket.name.startswith(prefix):
+            print 'Cleaning bucket {bucket}'.format(bucket=bucket)
+            try:
+                bucket.set_canned_acl('private')
+                for key in bucket.list():
+                    print 'Cleaning bucket {bucket} key {key}'.format(
+                        bucket=bucket,
+                        key=key,
+                        )
+                    key.set_canned_acl('private')
+                    key.delete()
+                bucket.delete()
+            except boto.exception.S3ResponseError as e:
+                if e.error_code != 'AccessDenied':
+                    print 'GOT UNWANTED ERROR', e.error_code
+                    raise
+                # seems like we're not the owner of the bucket; ignore
+                pass
+
 def nuke_prefixed_buckets(prefix):
+    # First, delete all buckets on the master connection 
     for name, conn in s3.items():
-        print 'Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
-            name=name,
-            prefix=prefix,
-            )
-        for bucket in conn.get_all_buckets():
-            if bucket.name.startswith(prefix):
-                print 'Cleaning bucket {bucket}'.format(bucket=bucket)
-                try:
-                    bucket.set_canned_acl('private')
-                    for key in bucket.list():
-                        print 'Cleaning bucket {bucket} key {key}'.format(
-                            bucket=bucket,
-                            key=key,
-                            )
-                        key.set_canned_acl('private')
-                        key.delete()
-                    bucket.delete()
-                except boto.exception.S3ResponseError as e:
-                    if e.error_code != 'AccessDenied':
-                        print 'GOT UNWANTED ERROR', e.error_code
-                        raise
-                    # seems like we're not the owner of the bucket; ignore
-                    pass
+        #if conn == s3[targets.main.master]:
+        if conn == targets.main.master.connection:
+            print 'Deleting buckets on {name} (master)'.format(name=name)
+            nuke_prefixed_buckets_on_conn(prefix, name, conn)
+
+    # Then sync to propagate deletes to secondaries
+    region_sync_meta(targets.main, targets.main.master.connection)
+    print 'region-sync in nuke_prefixed_buckets'
+
+    # Now delete remaining buckets on any other connection 
+    for name, conn in s3.items():
+        #if conn != s3[targets.main.master]:
+        if conn != targets.main.master.connection:
+            print 'Deleting buckets on {name} (non-master)'.format(name=name)
+            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 
     print 'Done with cleanup of test buckets.'
 
