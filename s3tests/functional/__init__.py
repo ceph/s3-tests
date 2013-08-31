@@ -77,23 +77,27 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
                 pass
 
 def nuke_prefixed_buckets(prefix):
-    # First, delete all buckets on the master connection 
-    for name, conn in s3.items():
-        #if conn == s3[targets.main.master]:
-        if conn == targets.main.master.connection:
-            print 'Deleting buckets on {name} (master)'.format(name=name)
+    # If no regions are specified, use the simple method
+    if targets.main.master == None:
+        for name, conn in s3.items():
+            print 'Deleting buckets on {name}'.format(name=name)
             nuke_prefixed_buckets_on_conn(prefix, name, conn)
-
-    # Then sync to propagate deletes to secondaries
-    region_sync_meta(targets.main, targets.main.master.connection)
-    print 'region-sync in nuke_prefixed_buckets'
-
-    # Now delete remaining buckets on any other connection 
-    for name, conn in s3.items():
-        #if conn != s3[targets.main.master]:
-        if conn != targets.main.master.connection:
-            print 'Deleting buckets on {name} (non-master)'.format(name=name)
-            nuke_prefixed_buckets_on_conn(prefix, name, conn)
+    else: 
+		    # First, delete all buckets on the master connection 
+		    for name, conn in s3.items():
+		        if conn == targets.main.master.connection:
+		            print 'Deleting buckets on {name} (master)'.format(name=name)
+		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
+		
+		    # Then sync to propagate deletes to secondaries
+		    region_sync_meta(targets.main, targets.main.master.connection)
+		    print 'region-sync in nuke_prefixed_buckets'
+		
+		    # Now delete remaining buckets on any other connection 
+		    for name, conn in s3.items():
+		        if conn != targets.main.master.connection:
+		            print 'Deleting buckets on {name} (non-master)'.format(name=name)
+		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 
     print 'Done with cleanup of test buckets.'
 
