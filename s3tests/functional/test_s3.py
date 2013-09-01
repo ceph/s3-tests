@@ -4638,10 +4638,10 @@ def test_region_bucket_create_master_access_remove_secondary():
         master_conn.delete_bucket(bucket)
         region_sync_meta(targets.main, master)
 
-        e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
+        e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
         eq(e.status, 404)
 
-        e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
+        e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
         eq(e.status, 404)
 
 @attr(resource='object')
