@@ -4132,10 +4132,13 @@ def test_multipart_upload_contents():
     for i in range(0, num_parts):
         mp.upload_part_from_file(StringIO(payload), i+1)
 
+    last_payload='123'*1024*1024
+    mp.upload_part_from_file(StringIO(last_payload), 4)
+
     mp.complete_upload()
     key=bucket.get_key(key_name)
     test_string=key.get_contents_as_string()
-    assert test_string == payload*num_parts
+    assert test_string == payload*num_parts+last_payload
 
 
 @attr(resource='object')
