@@ -4758,13 +4758,21 @@ def test_region_copy_object():
 
                 content = 'testcontent'
 
+                print 'creating key=testobj', 'bucket=',bucket.name
+
                 key = bucket.new_key('testobj')
                 fp_a = FakeWriteFile(file_size, 'A')
                 key.set_contents_from_file(fp_a)
 
+                print 'calling region_sync_meta'
+
                 region_sync_meta(targets.main, r)
 
+                print 'dest_bucket=', dest_bucket.name, 'key=', key.name
+
                 dest_key = dest_bucket.copy_key('testobj-dest', bucket.name, key.name)
+
+                print
 
                 # verify dest
                 _verify_atomic_key_data(dest_key, file_size, 'A')
