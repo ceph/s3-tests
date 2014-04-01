@@ -807,7 +807,14 @@ def test_multi_object_delete():
 	key1 = bucket.new_key('key1')
 	key1.set_contents_from_string('bar')
 	stored_keys = bucket.get_all_keys()
-	bucket.delete_keys(stored_keys)
+	result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 2)
+        eq(len(result.errors), 0)
+
+        # now remove again, should all succeed due to idempotency
+        result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 2)
+        eq(len(result.errors), 0)
 
 @attr(resource='object')
 @attr(method='all')
