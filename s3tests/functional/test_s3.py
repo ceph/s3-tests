@@ -4088,13 +4088,13 @@ def generate_random(mb_size):
         if (x == mb_size):
             return
 
-def _multipart_upload(bucket, s3_key_name, mb_size, do_list=None):
+def _multipart_upload(bucket, s3_key_name, mb_size, do_list=None, headers=None, metadata=None):
     """
     generate a multi-part upload for a random file of specifed size,
     if requested, generate a list of the parts
     return the upload descriptor
     """
-    upload = bucket.initiate_multipart_upload(s3_key_name)
+    upload = bucket.initiate_multipart_upload(s3_key_name, headers=headers, metadata=metadata)
     for i, part in enumerate(generate_random(mb_size)):
         transfer_part(bucket, upload.id, upload.key_name, i, part)
 
@@ -4111,13 +4111,18 @@ def _multipart_upload(bucket, s3_key_name, mb_size, do_list=None):
 def test_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload = _multipart_upload(bucket, key, 30)
+    content_type='text/bla'
+    upload = _multipart_upload(bucket, key, 30, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
     upload.complete_upload()
 
     (obj_count, bytes_used) = _head_bucket(bucket)
 
     eq(obj_count, 1)
     eq(bytes_used, 30 * 1024 * 1024)
+
+    k=bucket.get_key(key)
+    eq(k.metadata['foo'], 'bar')
+    eq(k.content_type, content_type)
 
 @attr(resource='object')
 @attr(method='put')
