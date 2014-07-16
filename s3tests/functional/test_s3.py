@@ -4068,34 +4068,34 @@ def transfer_part(bucket, mp_id, mp_keyname, i, part):
     part_out = StringIO(part)
     mp.upload_part_from_file(part_out, i+1)
 
-def generate_random(mb_size):
+def generate_random(size):
     """
     Generate the specified number of megabytes of random data.
     (actually each MB is a repetition of the first KB)
     """
     mb = 1024 * 1024
     chunk = 1024
-    part_size_mb = 5
+    part_size = 5 * mb
     allowed = string.ascii_letters
-    for x in range(0, mb_size, part_size_mb):
+    for x in range(0, size, part_size):
         strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
         s = ''
-        left = mb_size - x
-        this_part_size = min(left, part_size_mb)
-        for y in range(this_part_size * mb / chunk):
+        left = size - x
+        this_part_size = min(left, part_size)
+        for y in range(this_part_size / chunk):
             s = s + strpart
         yield s
-        if (x == mb_size):
+        if (x == size):
             return
 
-def _multipart_upload(bucket, s3_key_name, mb_size, do_list=None, headers=None, metadata=None):
+def _multipart_upload(bucket, s3_key_name, size, do_list=None, headers=None, metadata=None):
     """
     generate a multi-part upload for a random file of specifed size,
     if requested, generate a list of the parts
     return the upload descriptor
     """
     upload = bucket.initiate_multipart_upload(s3_key_name, headers=headers, metadata=metadata)
-    for i, part in enumerate(generate_random(mb_size)):
+    for i, part in enumerate(generate_random(size)):
         transfer_part(bucket, upload.id, upload.key_name, i, part)
 
     if do_list is not None:
@@ -4112,7 +4112,7 @@ def test_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     content_type='text/bla'
-    upload = _multipart_upload(bucket, key, 30, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
+    upload = _multipart_upload(bucket, key, 30 * 1024 * 1024, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
     upload.complete_upload()
 
     (obj_count, bytes_used) = _head_bucket(bucket)
@@ -4123,6 +4123,31 @@ def test_multipart_upload():
     k=bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multiple multi-part upload with different sizes')
+@attr(assertion='successful')
+def test_multipart_upload_multiple_sizes():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 100 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 600 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 100 * 1024)
+    upload.complete_upload()
+ 
+    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 600 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
+    upload.complete_upload()
 
 @attr(resource='object')
 @attr(method='put')
@@ -4174,7 +4199,7 @@ def test_multipart_upload_overwrite_existing_object():
 def test_abort_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload = _multipart_upload(bucket, key, 10)
+    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.cancel_upload()
 
     (obj_count, bytes_used) = _head_bucket(bucket)
@@ -4189,11 +4214,12 @@ def test_abort_multipart_upload():
 def test_list_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload1 = _multipart_upload(bucket, key, 5, 1)
-    upload2 = _multipart_upload(bucket, key, 6, 1)
+    mb = 1024 * 1024
+    upload1 = _multipart_upload(bucket, key, 5 * mb, 1)
+    upload2 = _multipart_upload(bucket, key, 6 * mb, 1)
 
     key2="mymultipart2"
-    upload3 = _multipart_upload(bucket, key2, 5, 1)
+    upload3 = _multipart_upload(bucket, key2, 5 * mb, 1)
 
     l = bucket.list_multipart_uploads()
     l = list(l)
