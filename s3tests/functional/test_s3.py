@@ -183,6 +183,51 @@ def test_bucket_list_delimiter_basic():
     eq(len(prefixes), 2)
     eq(prefix_names, ['foo/', 'quux/'])
 
+def validate_bucket_list(bucket, prefix, delimiter, marker, max_keys,
+                         is_truncated, check_objs, check_prefixes, next_marker):
+    #
+    li = bucket.get_all_keys(delimiter=delimiter, prefix=prefix, max_keys=max_keys, marker=marker)
+
+    eq(li.is_truncated, is_truncated)
+    eq(li.next_marker, next_marker)
+
+    (keys, prefixes) = _get_keys_prefixes(li)
+
+    eq(len(keys), len(check_objs))
+    eq(len(prefixes), len(check_prefixes))
+
+    objs = [e.name for e in keys]
+    eq(objs, check_objs)
+
+    prefix_names = [e.name for e in prefixes]
+    eq(prefix_names, check_prefixes)
+
+    return li.next_marker
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='prefixes in multi-component object names')
+def test_bucket_list_delimiter_prefix():
+    bucket = _create_keys(keys=['asdf', 'boo/bar', 'boo/baz/xyzzy', 'cquux/thud', 'cquux/bla'])
+
+    delim = '/'
+    marker = ''
+    prefix = ''
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 1, True, ['asdf'], [], 'asdf')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, True, [], ['boo/'], 'boo/')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, False, [], ['cquux/'], None)
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 2, True, ['asdf'], ['boo/'], 'boo/')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 2, False, [], ['cquux/'], None)
+
+    prefix = 'boo/'
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 1, True, ['boo/bar'], [], 'boo/bar')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, False, [], ['boo/baz/'], None)
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 2, False, ['boo/bar'], ['boo/baz/'], None)
 
 @attr(resource='bucket')
 @attr(method='get')
