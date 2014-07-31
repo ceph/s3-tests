@@ -2628,11 +2628,16 @@ def test_bucket_create_naming_dns_dash_dot():
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='re-create')
-@attr(assertion='idempotent success')
 def test_bucket_create_exists():
+    # aws-s3 default region allows recreation of buckets
+    # but all other regions fail with BucketAlreadyOwnedByYou.
     bucket = get_new_bucket(targets.main.default)
-    # REST idempotency means this should be a nop
-    get_new_bucket(targets.main.default, bucket.name)
+    try:
+        get_new_bucket(targets.main.default, bucket.name)
+    except boto.exception.S3CreateError, e:
+        eq(e.status, 409)
+        eq(e.reason, 'Conflict')
+        eq(e.error_code, 'BucketAlreadyOwnedByYou')
 
 
 @attr(resource='bucket')
