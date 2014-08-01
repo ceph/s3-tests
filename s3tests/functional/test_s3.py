@@ -2454,7 +2454,7 @@ def _test_bucket_create_naming_good_long(length):
     Attempt to create a bucket whose name (including the
     prefix) is of a specified length.
     """
-    prefix = get_prefix()
+    prefix = get_new_bucket_name()
     assert len(prefix) < 255
     num = length - len(prefix)
     get_new_bucket(targets.main.default, '{prefix}{name}'.format(
@@ -2529,7 +2529,7 @@ def test_bucket_create_naming_good_long_255():
 @attr(operation='list w/251 byte name')
 @attr(assertion='fails with subdomain')
 def test_bucket_list_long_name():
-    prefix = get_prefix()
+    prefix = get_new_bucket_name()
     length = 251
     num = length - len(prefix)
     bucket = get_new_bucket(targets.main.default, '{prefix}{name}'.format(
