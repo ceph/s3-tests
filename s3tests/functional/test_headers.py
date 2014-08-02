@@ -340,6 +340,11 @@ def test_object_create_bad_contentlength_mismatch_above():
 
     key = _setup_bad_object({'Content-Length': length})
 
+    # Disable retries since key.should_retry will discard the response with
+    # PleaseRetryException.
+    def no_retry(response, chunked_transfer): return False
+    key.should_retry = no_retry
+
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
