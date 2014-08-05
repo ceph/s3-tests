@@ -2169,13 +2169,17 @@ def _head_bucket(bucket, authenticated=True):
     eq(res.status, 200)
     eq(res.reason, 'OK')
 
+    result = {}
+
     obj_count = res.getheader('x-rgw-object-count')
-    assert obj_count is not None, "x-rgw-object-count wasn't returned"
+    if obj_count != None:
+        result['x-rgw-object-count'] = int(obj_count)
 
     bytes_used = res.getheader('x-rgw-bytes-used')
-    assert bytes_used is not None, "x-rgw-bytes-used wasn't returned"
+    if bytes_used is not None:
+        result['x-rgw-bytes-used'] = int(bytes_used)
 
-    return (int(obj_count), int(bytes_used))
+    return result
 
 
 @attr(resource='bucket')
@@ -2183,30 +2187,33 @@ def _head_bucket(bucket, authenticated=True):
 @attr(operation='head bucket')
 @attr(assertion='succeeds')
 def test_bucket_head():
-    bucket = _setup_bucket_request('private')
+    bucket = get_new_bucket()
 
     _head_bucket(bucket)
 
 
+# This test relies on Ceph extensions.
+# http://tracker.ceph.com/issues/2313
+@attr('fails_on_aws')
 @attr(resource='bucket')
 @attr(method='head')
 @attr(operation='read bucket extended information')
 @attr(assertion='extended information is getting updated')
 def test_bucket_head_extended():
-    bucket = _setup_bucket_request('private')
+    bucket = get_new_bucket()
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
+    result = _head_bucket(bucket)
 
-    eq(obj_count, 0)
-    eq(bytes_used, 0)
+    eq(result.get('x-rgw-object-count', 0), 0)
+    eq(result.get('x-rgw-bytes-used', 0), 0)
 
     _create_keys(bucket, keys=['foo', 'bar', 'baz'])
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
+    result = _head_bucket(bucket)
 
-    eq(obj_count, 3)
+    eq(result.get('x-rgw-object-count', 3), 3)
 
-    assert bytes_used > 0
+    assert result.get('x-rgw-bytes-used', 9) > 0
 
 
 @attr(resource='bucket.acl')
@@ -4160,10 +4167,10 @@ def test_multipart_upload():
     upload = _multipart_upload(bucket, key, 30 * 1024 * 1024, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
     upload.complete_upload()
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
+    result = _head_bucket(bucket)
 
-    eq(obj_count, 1)
-    eq(bytes_used, 30 * 1024 * 1024)
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
 
     k=bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
@@ -4247,10 +4254,10 @@ def test_abort_multipart_upload():
     upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.cancel_upload()
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
+    result = _head_bucket(bucket)
 
-    eq(obj_count, 0)
-    eq(bytes_used, 0)
+    eq(result.get('x-rgw-object-count', 0), 0)
+    eq(result.get('x-rgw-bytes-used', 0), 0)
 
 @attr(resource='object')
 @attr(method='put')
