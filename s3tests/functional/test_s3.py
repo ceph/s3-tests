@@ -131,6 +131,19 @@ def _get_keys_prefixes(li):
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
+@attr(assertion='object has correct size')
+def test_bucket_list_object_size():
+    bucket = _create_keys(keys=['1', '22', '333'])
+
+    l = bucket.get_all_keys()
+    eq(len(l), 3)
+    for key, size in zip(l, range(1, 4)):
+       eq(key.size, size)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys')
 @attr(assertion='pagination w/max_keys=2, no marker')
 def test_bucket_list_many():
     bucket = _create_keys(keys=['foo', 'bar', 'baz'])
