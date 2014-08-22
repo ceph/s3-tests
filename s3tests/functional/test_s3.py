@@ -862,6 +862,18 @@ def test_multi_object_delete():
         eq(len(result.errors), 0)
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='correct etag')
+def test_object_write_check_etag():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    res = _make_request('PUT', bucket, key, body='bar', authenticated=True)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+    eq(res.getheader("ETag"), '"37b51d194a7513e45b56f6524f2d51f2"')
+
+@attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
 @attr(assertion='read back what we wrote and rewrote')
