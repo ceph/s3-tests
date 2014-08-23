@@ -176,16 +176,30 @@ def test_object_create_bad_md5_invalid():
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='create w/incorrect MD5')
+@attr(operation='create w/invalid MD5')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_md5_wrong():
+def test_object_create_bad_md5_invalid():
     key = _setup_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidDigest')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/mismatched MD5')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_md5_bad():
+    key = _setup_bad_object({'Content-MD5':'rL0Y20zC+Fzt72VPzMSk2A=='})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'BadDigest')
 
 
 @attr(resource='object')
