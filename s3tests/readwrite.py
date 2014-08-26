@@ -50,12 +50,14 @@ def reader(bucket, worker_id, file_names, queue, rand):
             end = time.time()
 
             if not fp.valid():
+                m='md5sum check failed start={s} ({se}) end={e} size={sz} obj={o}'.format(s=time.ctime(start), se=start, e=end, sz=fp.size, o=objname)
                 result.update(
                     error=dict(
-                        msg='md5sum check failed',
+                        msg=m,
                         traceback=traceback.format_exc(),
                         ),
                     )
+                print "ERROR:", m
             else:
                 elapsed = end - start
                 result.update(
