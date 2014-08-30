@@ -6129,10 +6129,11 @@ def test_object_copy_to_itself():
 
     copy_source = {'Bucket': bucket_name, 'Key': 'foo123bar'}
 
-    e = assert_raises(ClientError, client.copy, copy_source, bucket_name, 'foo123bar')
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    key.copy(bucket, 'foo123bar')
+
+    key2 = bucket.get_key('foo123bar')
+    got = key2.get_contents_as_string()
+    eq(got, 'foo')
 
 @attr(resource='object')
 @attr(method='put')
