@@ -4113,14 +4113,12 @@ def transfer_part(bucket, mp_id, mp_keyname, i, part):
     part_out = StringIO(part)
     mp.upload_part_from_file(part_out, i+1)
 
-def generate_random(size):
+def generate_random(size, part_size=5*1024*1024):
     """
-    Generate the specified number of megabytes of random data.
+    Generate the specified number random data.
     (actually each MB is a repetition of the first KB)
     """
-    mb = 1024 * 1024
     chunk = 1024
-    part_size = 5 * mb
     allowed = string.ascii_letters
     for x in range(0, size, part_size):
         strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
@@ -4133,14 +4131,14 @@ def generate_random(size):
         if (x == size):
             return
 
-def _multipart_upload(bucket, s3_key_name, size, do_list=None, headers=None, metadata=None):
+def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None):
     """
     generate a multi-part upload for a random file of specifed size,
     if requested, generate a list of the parts
     return the upload descriptor
     """
     upload = bucket.initiate_multipart_upload(s3_key_name, headers=headers, metadata=metadata)
-    for i, part in enumerate(generate_random(size)):
+    for i, part in enumerate(generate_random(size, part_size)):
         transfer_part(bucket, upload.id, upload.key_name, i, part)
 
     if do_list is not None:
@@ -4193,6 +4191,18 @@ def test_multipart_upload_multiple_sizes():
 
     upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.complete_upload()
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check failure on multiple multi-part upload with size too small')
+@attr(assertion='fails 400')
+def test_multipart_upload_size_too_small():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    upload = _multipart_upload(bucket, key, 100 * 1024, part_size=10*1024)
+    e = assert_raises(boto.exception.S3ResponseError, upload.complete_upload)
+    eq(e.status, 400)
+    eq(e.error_code, u'EntityTooSmall')
 
 @attr(resource='object')
 @attr(method='put')
