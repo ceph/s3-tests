@@ -4270,11 +4270,11 @@ def test_list_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     mb = 1024 * 1024
-    upload1 = _multipart_upload(bucket, key, 5 * mb, 1)
-    upload2 = _multipart_upload(bucket, key, 6 * mb, 1)
+    upload1 = _multipart_upload(bucket, key, 5 * mb, do_list = True)
+    upload2 = _multipart_upload(bucket, key, 6 * mb, do_list = True)
 
     key2="mymultipart2"
-    upload3 = _multipart_upload(bucket, key2, 5 * mb, 1)
+    upload3 = _multipart_upload(bucket, key2, 5 * mb, do_list = True)
 
     l = bucket.list_multipart_uploads()
     l = list(l)
