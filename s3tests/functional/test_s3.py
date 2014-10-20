@@ -47,6 +47,7 @@ from . import (
     targets,
     config,
     get_prefix,
+    is_slow_backend,
     )
 
 
@@ -4816,6 +4817,7 @@ def test_region_bucket_create_master_access_remove_secondary():
         e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
         eq(e.status, 404)
 
+
 @attr(resource='object')
 @attr(method='copy')
 @attr(operation='copy object between regions, verify')
@@ -4831,8 +4833,12 @@ def test_region_copy_object():
         print 'created new dest bucket ', dest_bucket.name
         region_sync_meta(targets.main, dest)
 
-        for file_size in (1024, 1024 * 1024, 10 * 1024 * 1024,
-                          100 * 1024 * 1024):
+        if is_slow_backend():
+            sizes = (1024, 10 * 1024 * 1024)
+        else:
+            sizes = (1024, 10 * 1024 * 1024, 100 * 1024 * 1024)
+
+        for file_size in sizes:
             for (k2, r) in targets.main.iteritems():
                 if r == dest_conn:
                     continue

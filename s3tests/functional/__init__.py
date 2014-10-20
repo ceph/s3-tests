@@ -26,6 +26,9 @@ def get_prefix():
     assert prefix is not None
     return prefix
 
+def is_slow_backend():
+    return slow_backend
+
 def choose_bucket_prefix(template, max_len=30):
     """
     Choose a prefix for our test buckets, so they're easy to identify.
@@ -237,12 +240,18 @@ def setup():
 
     global prefix
     global targets
+    global slow_backend
 
     try:
         template = cfg.get('fixtures', 'bucket prefix')
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
+
+    try:
+        slow_backend = cfg.getboolean('fixtures', 'slow backend')
+    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        slow_backend = False
 
     # pull the default_region out, if it exists
     try:
