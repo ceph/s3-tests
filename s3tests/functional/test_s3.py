@@ -58,7 +58,6 @@ def not_eq(a, b):
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(boto.exception.S3ResponseError, fn, *args, **kwargs)
     eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
@@ -554,7 +553,6 @@ def test_bucket_list_maxkeys_invalid():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='blah')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidArgument')
 
 
@@ -568,7 +566,6 @@ def test_bucket_list_maxkeys_unreadable():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='\x0a')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     # Weird because you can clearly see an InvalidArgument error code. What's
     # also funny is the Amazon tells us that it's not an interger or within an
     # integer range. Is 'blah' in the integer range?
@@ -749,7 +746,6 @@ def test_bucket_notexist():
 
     e = assert_raises(boto.exception.S3ResponseError, s3.main.get_bucket, name)
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
 
@@ -762,7 +758,6 @@ def test_bucket_delete_notexist():
     print 'Trying bucket {name!r}'.format(name=name)
     e = assert_raises(boto.exception.S3ResponseError, s3.main.delete_bucket, name)
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
 @attr(resource='bucket')
@@ -779,7 +774,6 @@ def test_bucket_delete_nonempty():
     # try to delete
     e = assert_raises(boto.exception.S3ResponseError, bucket.delete)
     eq(e.status, 409)
-    eq(e.reason, 'Conflict')
     eq(e.error_code, 'BucketNotEmpty')
 
 @attr(resource='object')
@@ -793,7 +787,6 @@ def test_object_write_to_nonexist_bucket():
     key = bucket.new_key('foo123bar')
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'foo')
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
 
@@ -811,7 +804,6 @@ def test_bucket_create_delete():
     # make sure it's gone
     e = assert_raises(boto.exception.S3ResponseError, bucket.delete)
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
 
@@ -824,7 +816,6 @@ def test_object_read_notexist():
     key = bucket.new_key('foobar')
     e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchKey')
 
 
@@ -2135,7 +2126,6 @@ def test_object_raw_get():
     (bucket, key) = _setup_request('public-read', 'public-read')
     res = _make_request('GET', bucket, key)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object')
@@ -2149,7 +2139,6 @@ def test_object_raw_get_bucket_gone():
 
     res = _make_request('GET', bucket, key)
     eq(res.status, 404)
-    eq(res.reason, 'Not Found')
 
 
 @attr(resource='object')
@@ -2162,12 +2151,10 @@ def test_object_raw_get_object_gone():
 
     res = _make_request('GET', bucket, key)
     eq(res.status, 404)
-    eq(res.reason, 'Not Found')
 
 def _head_bucket(bucket, authenticated=True):
     res = _make_bucket_request('HEAD', bucket, authenticated=authenticated)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
     obj_count = res.getheader('x-rgw-object-count')
     assert obj_count is not None, "x-rgw-object-count wasn't returned"
@@ -2218,7 +2205,6 @@ def test_object_raw_get_bucket_acl():
 
     res = _make_request('GET', bucket, key)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object.acl')
@@ -2230,7 +2216,6 @@ def test_object_raw_get_object_acl():
 
     res = _make_request('GET', bucket, key)
     eq(res.status, 403)
-    eq(res.reason, 'Forbidden')
 
 
 @attr(resource='object')
@@ -2242,7 +2227,6 @@ def test_object_raw_authenticated():
 
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object')
@@ -2265,7 +2249,6 @@ def test_object_raw_response_headers():
     res = _make_request('GET', bucket, key, authenticated=True,
                         response_headers=response_headers)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
     eq(res.getheader('content-type'), 'foo/bar')
     eq(res.getheader('content-disposition'), 'bla')
     eq(res.getheader('content-language'), 'esperanto')
@@ -2283,7 +2266,6 @@ def test_object_raw_authenticated_bucket_acl():
 
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object')
@@ -2295,7 +2277,6 @@ def test_object_raw_authenticated_object_acl():
 
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object')
@@ -2309,7 +2290,6 @@ def test_object_raw_authenticated_bucket_gone():
 
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 404)
-    eq(res.reason, 'Not Found')
 
 
 @attr(resource='object')
@@ -2322,7 +2302,6 @@ def test_object_raw_authenticated_object_gone():
 
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 404)
-    eq(res.reason, 'Not Found')
 
 
 @attr(resource='object')
@@ -2335,7 +2314,6 @@ def test_object_raw_put():
 
     res = _make_request('PUT', bucket, key, body='foo')
     eq(res.status, 403)
-    eq(res.reason, 'Forbidden')
 
 
 @attr(resource='object')
@@ -2349,7 +2327,6 @@ def test_object_raw_put_write_access():
 
     res = _make_request('PUT', bucket, key, body='foo')
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 @attr(resource='object')
@@ -2362,7 +2339,6 @@ def test_object_raw_put_authenticated():
 
     res = _make_request('PUT', bucket, key, body='foo', authenticated=True)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 
 def check_bad_bucket_name(name):
@@ -2372,7 +2348,6 @@ def check_bad_bucket_name(name):
     """
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, name)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidBucketName')
 
 
@@ -2398,7 +2373,6 @@ def test_bucket_create_naming_bad_short_empty():
     # resource (with slash), hence their error response is different
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, '')
     eq(e.status, 405)
-    eq(e.reason, 'Method Not Allowed')
     eq(e.error_code, 'MethodNotAllowed')
 
 
@@ -2645,7 +2619,6 @@ def test_bucket_create_exists_nonowner():
     bucket = get_new_bucket()
     e = assert_raises(boto.exception.S3CreateError, get_new_bucket, targets.alt.default, bucket.name)
     eq(e.status, 409)
-    eq(e.reason, 'Conflict')
     eq(e.error_code, 'BucketAlreadyExists')
 
 
@@ -3401,7 +3374,6 @@ def test_bucket_acl_grant_nonexist_user():
     print policy.to_xml()
     e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidArgument')
 
 
@@ -3627,7 +3599,6 @@ def test_bucket_acl_grant_email_notexist():
     policy.acl.add_email_grant('FULL_CONTROL', NONEXISTENT_EMAIL)
     e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     eq(e.error_code, 'UnresolvableGrantByEmailAddress')
 
 
@@ -3857,7 +3828,6 @@ def test_object_giveaway():
     key.set_xml_acl(CORRECT_ACL)
     e = assert_raises(boto.exception.S3ResponseError, key.set_xml_acl, WRONG_ACL)
     eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 @attr(resource='bucket')
@@ -3910,7 +3880,6 @@ def test_list_buckets_bad_auth():
     conn = _create_connection_bad_auth()
     e = assert_raises(boto.exception.S3ResponseError, conn.get_all_buckets)
     eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 @attr(resource='bucket')
@@ -4035,7 +4004,6 @@ def test_object_copy_to_itself():
     key.set_contents_from_string('foo')
     e = assert_raises(boto.exception.S3ResponseError, key.copy, bucket, 'foo123bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidRequest')
 
 @attr(resource='object')
@@ -4096,13 +4064,11 @@ def test_object_copy_canned_acl():
     key2 = bucket.copy_key('bar321foo', bucket.name, 'foo123bar', headers={'x-amz-acl': 'public-read'})
     res = _make_request('GET', bucket, key2)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
     # use REPLACE directive
     key3 = bucket.copy_key('bar321foo2', bucket.name, 'foo123bar', headers={'x-amz-acl': 'public-read'}, metadata={'abc': 'def'})
     res = _make_request('GET', bucket, key3)
     eq(res.status, 200)
-    eq(res.reason, 'OK')
 
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
@@ -4723,7 +4689,6 @@ def test_atomic_write_bucket_gone():
     fp_a = FakeWriteFile(1024*1024, 'A', remove_bucket)
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_a)
     eq(e.status, 404)
-    eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
 @attr(resource='object')
