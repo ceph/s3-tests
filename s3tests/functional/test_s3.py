@@ -5175,4 +5175,31 @@ def test_region_copy_object():
             e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, dest_bucket.name)
             eq(e.status, 404)
 
+def check_versioning(bucket, status):
+    try:
+        eq(bucket.get_versioning_status()['Versioning'], status)
+    except KeyError:
+        eq(status, None)
+
+@attr(resource='bucket')
+@attr(method='create')
+@attr(operation='create versioned bucket')
+@attr(assertion='can create and suspend bucket versioning')
+@attr('versioning')
+def test_versioning_bucket_create_suspend():
+    bucket = get_new_bucket()
+    print bucket.get_versioning_status()
+    check_versioning(bucket, None)
+
+    bucket.configure_versioning(False)
+    check_versioning(bucket, "Suspended")
+
+    bucket.configure_versioning(True)
+    check_versioning(bucket, "Enabled")
+
+    bucket.configure_versioning(True)
+    check_versioning(bucket, "Enabled")
+
+    bucket.configure_versioning(False)
+    check_versioning(bucket, "Suspended")
 
