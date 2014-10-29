@@ -5188,7 +5188,6 @@ def check_versioning(bucket, status):
 @attr('versioning')
 def test_versioning_bucket_create_suspend():
     bucket = get_new_bucket()
-    print bucket.get_versioning_status()
     check_versioning(bucket, None)
 
     bucket.configure_versioning(False)
@@ -5202,4 +5201,61 @@ def test_versioning_bucket_create_suspend():
 
     bucket.configure_versioning(False)
     check_versioning(bucket, "Suspended")
+
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='create versioned object')
+@attr(assertion='can create access and remove appropriate versions')
+@attr('versioning')
+def test_versioning_obj_create_read_remove():
+    bucket = get_new_bucket()
+    objname = 'testobj'
+
+    total = 5
+
+    c = []
+    for i in xrange(total):
+        c.append('content-{i}'.format(i=i))
+
+        key = bucket.new_key(objname)
+        key.set_contents_from_string(c[i])
+
+        if i == 0:
+            bucket.configure_versioning(True)
+            check_versioning(bucket, "Enabled")
+
+    # check to see if object is pointing at correct version
+    key = bucket.get_key(objname)
+    eq(key.get_contents_as_string(), c[-1])
+    print 'total', total
+
+    k = []
+    for o in bucket.list_versions():
+        k.insert(0, o)
+
+    for j in xrange(total):
+        print j, k[j], k[j].version_id
+
+    for j in xrange(total):
+        # check by versioned key
+        rmkey = k.pop(-1)
+        eq(rmkey.get_contents_as_string(), c[-1])
+
+        # remove version
+        print 'removing version_id=', rmkey.version_id
+        bucket.delete_key(rmkey.name, version_id = rmkey.version_id)
+        c.pop(-1)
+
+        # check to see if object is pointing at correct version
+        key = bucket.get_key(objname)
+
+        if len(c) > 0:
+            print c[-1]
+            eq(key.get_contents_as_string(), c[-1])
+            i = len(c)
+            for key in bucket.list_versions():
+                i -= 1
+                eq(key.get_contents_as_string(), c[i])
+        else:
+            eq(key, None)
 
