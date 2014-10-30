@@ -5202,19 +5202,25 @@ def test_versioning_bucket_create_suspend():
     bucket.configure_versioning(False)
     check_versioning(bucket, "Suspended")
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create versioned object')
-@attr(assertion='can create access and remove appropriate versions')
-@attr('versioning')
-def test_versioning_obj_create_read_remove():
-    bucket = get_new_bucket()
-    objname = 'testobj'
+def test_obj_versions(bucket, objname, contents):
+    # check to see if object is pointing at correct version
+    key = bucket.get_key(objname)
 
-    total = 5
+    if len(contents) > 0:
+        print contents[-1]
+        print 'testing obj head', objname
+        eq(key.get_contents_as_string(), contents[-1])
+        i = len(contents)
+        for key in bucket.list_versions():
+            i -= 1
+            print 'testing obj version-id=', key.version_id
+            eq(key.get_contents_as_string(), contents[i])
+    else:
+        eq(key, None)
 
+def create_multiple_versions(bucket, objname, num_versions):
     c = []
-    for i in xrange(total):
+    for i in xrange(num_versions):
         c.append('content-{i}'.format(i=i))
 
         key = bucket.new_key(objname)
@@ -5223,39 +5229,56 @@ def test_versioning_obj_create_read_remove():
         if i == 0:
             bucket.configure_versioning(True)
             check_versioning(bucket, "Enabled")
-
-    # check to see if object is pointing at correct version
-    key = bucket.get_key(objname)
-    eq(key.get_contents_as_string(), c[-1])
-    print 'total', total
-
     k = []
     for o in bucket.list_versions():
+        print o, o.version_id
         k.insert(0, o)
+        print 'created obj name=', objname, 'version-id=', o.version_id
 
-    for j in xrange(total):
+    eq(len(k), len(c))
+
+    for j in xrange(num_versions):
         print j, k[j], k[j].version_id
 
-    for j in xrange(total):
-        # check by versioned key
-        rmkey = k.pop(-1)
-        eq(rmkey.get_contents_as_string(), c[-1])
+    return (k, c)
 
-        # remove version
-        print 'removing version_id=', rmkey.version_id
-        bucket.delete_key(rmkey.name, version_id = rmkey.version_id)
-        c.pop(-1)
 
-        # check to see if object is pointing at correct version
-        key = bucket.get_key(objname)
+def remove_obj_version(bucket, k, c, i):
+    # check by versioned key
+    i = i % len(k)
+    rmkey = k.pop(i)
+    eq(rmkey.get_contents_as_string(), c.pop(i))
 
-        if len(c) > 0:
-            print c[-1]
-            eq(key.get_contents_as_string(), c[-1])
-            i = len(c)
-            for key in bucket.list_versions():
-                i -= 1
-                eq(key.get_contents_as_string(), c[i])
-        else:
-            eq(key, None)
+    # remove version
+    print 'removing version_id=', rmkey.version_id
+    bucket.delete_key(rmkey.name, version_id = rmkey.version_id)
+
+def do_test_create_remove_versions(bucket, objname, num_versions, remove_start_idx, idx_inc):
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    test_obj_versions(bucket, objname, c)
+
+    idx = remove_start_idx
+
+    for j in xrange(num_versions):
+        remove_obj_version(bucket, k, c, idx)
+        idx += idx_inc
+        test_obj_versions(bucket, objname, c)
+
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='create versioned object')
+@attr(assertion='can create access and remove appropriate versions')
+@attr('versioning')
+def test_versioning_obj_create_read_remove():
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    num_vers = 5
+
+    do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
+    do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
+    do_test_create_remove_versions(bucket, objname, num_vers, 0, 0)
+    do_test_create_remove_versions(bucket, objname, num_vers, 1, 0)
+    do_test_create_remove_versions(bucket, objname, num_vers, 4, -1)
+    do_test_create_remove_versions(bucket, objname, num_vers, 3, 3)
 
