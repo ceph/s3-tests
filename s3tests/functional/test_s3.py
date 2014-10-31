@@ -5202,19 +5202,33 @@ def test_versioning_bucket_create_suspend():
     bucket.configure_versioning(False)
     check_versioning(bucket, "Suspended")
 
-def test_obj_versions(bucket, objname, contents):
+
+def check_head_obj_content(key, content):
+    if content is not None:
+        eq(key.get_contents_as_string(), content)
+    else:
+        print 'check head', key
+        eq(key, None)
+
+def check_obj_content(key, content):
+    if content is not None:
+        eq(key.get_contents_as_string(), content)
+    else:
+        eq(isinstance(key, boto.s3.deletemarker.DeleteMarker), True)
+
+
+def check_obj_versions(bucket, objname, contents):
     # check to see if object is pointing at correct version
     key = bucket.get_key(objname)
 
     if len(contents) > 0:
-        print contents[-1]
         print 'testing obj head', objname
-        eq(key.get_contents_as_string(), contents[-1])
+        check_head_obj_content(key, contents[-1])
         i = len(contents)
         for key in bucket.list_versions():
             i -= 1
             print 'testing obj version-id=', key.version_id
-            eq(key.get_contents_as_string(), contents[i])
+            check_obj_content(key, contents[i])
     else:
         eq(key, None)
 
@@ -5247,27 +5261,59 @@ def remove_obj_version(bucket, k, c, i):
     # check by versioned key
     i = i % len(k)
     rmkey = k.pop(i)
-    eq(rmkey.get_contents_as_string(), c.pop(i))
+    content = c.pop(i)
+    if (not rmkey.delete_marker):
+        eq(rmkey.get_contents_as_string(), content)
 
     # remove version
     print 'removing version_id=', rmkey.version_id
     bucket.delete_key(rmkey.name, version_id = rmkey.version_id)
 
+def remove_obj_head(bucket, objname, k, c):
+    print 'removing obj=', objname
+    key = bucket.delete_key(objname)
+
+    k.append(key)    
+    c.append(None)
+
+    eq(key.delete_marker, True)
+
+    check_obj_versions(bucket, objname, c)
+
 def do_test_create_remove_versions(bucket, objname, num_versions, remove_start_idx, idx_inc):
     (k, c) = create_multiple_versions(bucket, objname, num_versions)
 
-    test_obj_versions(bucket, objname, c)
+    check_obj_versions(bucket, objname, c)
 
     idx = remove_start_idx
 
     for j in xrange(num_versions):
         remove_obj_version(bucket, k, c, idx)
         idx += idx_inc
-        test_obj_versions(bucket, objname, c)
+        check_obj_versions(bucket, objname, c)
+
+def do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_ops, remove_start_idx, idx_inc, head_rm_ratio):
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    check_obj_versions(bucket, objname, c)
+
+    idx = remove_start_idx
+
+    r = 0
+
+    for j in xrange(num_ops):
+        r += head_rm_ratio
+        if r >= 1:
+            r %= 1
+            remove_obj_head(bucket, objname, k, c)
+        else:
+            remove_obj_version(bucket, k, c, idx)
+            idx += idx_inc
+        check_obj_versions(bucket, objname, c)
 
 @attr(resource='object')
 @attr(method='create')
-@attr(operation='create versioned object')
+@attr(operation='create and remove versioned object')
 @attr(assertion='can create access and remove appropriate versions')
 @attr('versioning')
 def test_versioning_obj_create_read_remove():
@@ -5281,4 +5327,16 @@ def test_versioning_obj_create_read_remove():
     do_test_create_remove_versions(bucket, objname, num_vers, 1, 0)
     do_test_create_remove_versions(bucket, objname, num_vers, 4, -1)
     do_test_create_remove_versions(bucket, objname, num_vers, 3, 3)
+
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='create and remove versioned object and head')
+@attr(assertion='can create access and remove appropriate versions')
+@attr('versioning')
+def test_versioning_obj_create_read_remove_head():
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    num_vers = 5
+
+    do_test_create_remove_versions_and_head(bucket, objname, num_vers, num_vers * 2, -1, 0, 0.5)
 
