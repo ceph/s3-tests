@@ -5181,6 +5181,26 @@ def check_versioning(bucket, status):
     except KeyError:
         eq(status, None)
 
+# amazon is eventual consistent, retry a bit if failed
+def check_configure_versioning_retry(bucket, status, expected_string):
+    bucket.configure_versioning(status)
+
+    read_status = None
+
+    for i in xrange(5):
+        try:
+            read_status = bucket.get_versioning_status()['Versioning']
+        except KeyError:
+            read_status = None
+
+        if (expected_string == read_status):
+            break
+
+        time.sleep(1)
+
+    eq(expected_string, read_status)
+
+
 @attr(resource='bucket')
 @attr(method='create')
 @attr(operation='create versioned bucket')
@@ -5190,17 +5210,10 @@ def test_versioning_bucket_create_suspend():
     bucket = get_new_bucket()
     check_versioning(bucket, None)
 
-    bucket.configure_versioning(False)
-    check_versioning(bucket, "Suspended")
-
-    bucket.configure_versioning(True)
-    check_versioning(bucket, "Enabled")
-
-    bucket.configure_versioning(True)
-    check_versioning(bucket, "Enabled")
-
-    bucket.configure_versioning(False)
-    check_versioning(bucket, "Suspended")
+    check_configure_versioning_retry(bucket, False, "Suspended")
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    check_configure_versioning_retry(bucket, False, "Suspended")
 
 
 def check_head_obj_content(key, content):
@@ -5217,7 +5230,7 @@ def check_obj_content(key, content):
         eq(isinstance(key, boto.s3.deletemarker.DeleteMarker), True)
 
 
-def check_obj_versions(bucket, objname, contents):
+def check_obj_versions(bucket, objname, keys, contents):
     # check to see if object is pointing at correct version
     key = bucket.get_key(objname)
 
@@ -5227,13 +5240,15 @@ def check_obj_versions(bucket, objname, contents):
         i = len(contents)
         for key in bucket.list_versions():
             i -= 1
+            eq(keys[i].version_id or 'null', key.version_id)
             print 'testing obj version-id=', key.version_id
             check_obj_content(key, contents[i])
     else:
         eq(key, None)
 
-def create_multiple_versions(bucket, objname, num_versions):
-    c = []
+def create_multiple_versions(bucket, objname, num_versions, k = None, c = None):
+    c = c or []
+    k = k or []
     for i in xrange(num_versions):
         c.append('content-{i}'.format(i=i))
 
@@ -5241,18 +5256,25 @@ def create_multiple_versions(bucket, objname, num_versions):
         key.set_contents_from_string(c[i])
 
         if i == 0:
-            bucket.configure_versioning(True)
-            check_versioning(bucket, "Enabled")
-    k = []
+            check_configure_versioning_retry(bucket, True, "Enabled")
+
+    k_pos = len(k)
+    i = 0
     for o in bucket.list_versions():
+        i += 1
+        if i > num_versions:
+            break
+
         print o, o.version_id
-        k.insert(0, o)
+        k.insert(k_pos, o)
         print 'created obj name=', objname, 'version-id=', o.version_id
 
     eq(len(k), len(c))
 
     for j in xrange(num_versions):
         print j, k[j], k[j].version_id
+
+    check_obj_versions(bucket, objname, k, c)
 
     return (k, c)
 
@@ -5268,6 +5290,7 @@ def remove_obj_version(bucket, k, c, i):
     # remove version
     print 'removing version_id=', rmkey.version_id
     bucket.delete_key(rmkey.name, version_id = rmkey.version_id)
+    check_obj_versions(bucket, rmkey.name, k, c)
 
 def remove_obj_head(bucket, objname, k, c):
     print 'removing obj=', objname
@@ -5278,30 +5301,25 @@ def remove_obj_head(bucket, objname, k, c):
 
     eq(key.delete_marker, True)
 
-    check_obj_versions(bucket, objname, c)
+    check_obj_versions(bucket, objname, k, c)
 
 def do_test_create_remove_versions(bucket, objname, num_versions, remove_start_idx, idx_inc):
     (k, c) = create_multiple_versions(bucket, objname, num_versions)
-
-    check_obj_versions(bucket, objname, c)
 
     idx = remove_start_idx
 
     for j in xrange(num_versions):
         remove_obj_version(bucket, k, c, idx)
         idx += idx_inc
-        check_obj_versions(bucket, objname, c)
 
-def do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_ops, remove_start_idx, idx_inc, head_rm_ratio):
-    (k, c) = create_multiple_versions(bucket, objname, num_versions)
-
-    check_obj_versions(bucket, objname, c)
-
+def do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c):
     idx = remove_start_idx
 
     r = 0
 
-    for j in xrange(num_ops):
+    total = len(k)
+
+    for j in xrange(total):
         r += head_rm_ratio
         if r >= 1:
             r %= 1
@@ -5309,7 +5327,13 @@ def do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_o
         else:
             remove_obj_version(bucket, k, c, idx)
             idx += idx_inc
-        check_obj_versions(bucket, objname, c)
+
+    check_obj_versions(bucket, objname, k, c)
+
+def do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_ops, remove_start_idx, idx_inc, head_rm_ratio):
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c)
 
 @attr(resource='object')
 @attr(method='create')
@@ -5339,4 +5363,134 @@ def test_versioning_obj_create_read_remove_head():
     num_vers = 5
 
     do_test_create_remove_versions_and_head(bucket, objname, num_vers, num_vers * 2, -1, 0, 0.5)
+
+def is_null_key(k):
+    return (k.version_id is None) or (k.version_id == 'null')
+
+def delete_suspended_versioning_obj(bucket, objname, k, c):
+    key = bucket.delete_key(objname)
+
+    i = 0
+    while i < len(k):
+        if is_null_key(k[i]):
+            k.pop(i)
+            c.pop(i)
+        else:
+            i += 1
+
+    key.version_id = "null"
+    k.append(key)
+    c.append(None)
+
+    check_obj_versions(bucket, objname, k, c)
+
+def overwrite_suspended_versioning_obj(bucket, objname, k, c, content):
+    key = bucket.new_key(objname)
+    key.set_contents_from_string(content)
+
+    i = 0
+    while i < len(k):
+        print 'kkk', i, k[i], k[i].version_id
+        if is_null_key(k[i]):
+            print 'null key!'
+            k.pop(i)
+            c.pop(i)
+        else:
+            i += 1
+
+    k.append(key)
+    c.append(content)
+
+    check_obj_versions(bucket, objname, k, c)
+
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='suspend versioned bucket')
+@attr(assertion='suspended versioning behaves correctly')
+@attr('versioning')
+def test_versioning_obj_suspend_versions():
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    num_versions = 5
+    objname = 'testobj'
+
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    check_configure_versioning_retry(bucket, False, "Suspended")
+
+    delete_suspended_versioning_obj(bucket, objname, k, c)
+    delete_suspended_versioning_obj(bucket, objname, k, c)
+    overwrite_suspended_versioning_obj(bucket, objname, k, c, 'null content 1')
+    overwrite_suspended_versioning_obj(bucket, objname, k, c, 'null content 2')
+    delete_suspended_versioning_obj(bucket, objname, k, c)
+    overwrite_suspended_versioning_obj(bucket, objname, k, c, 'null content 3')
+    delete_suspended_versioning_obj(bucket, objname, k, c)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    (k, c) = create_multiple_versions(bucket, objname, 3, k, c)
+
+    do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
+    do_remove_versions(bucket, objname, 0, 5, 0, k, c)
+
+    eq(len(k), 0)
+    eq(len(k), len(c))
+
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='suspend versioned bucket')
+@attr(assertion='suspended versioning behaves correctly')
+@attr('versioning')
+def test_versioning_obj_suspend_versions_simple():
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    num_versions = 1
+    objname = 'testobj'
+
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    check_configure_versioning_retry(bucket, False, "Suspended")
+
+    delete_suspended_versioning_obj(bucket, objname, k, c)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    (k, c) = create_multiple_versions(bucket, objname, 1, k, c)
+
+    for i in xrange(len(k)):
+        print 'JJJ: ', k[i].version_id, c[i]
+
+    do_remove_versions(bucket, objname, 0, 0, 0.5, k, c)
+    do_remove_versions(bucket, objname, 0, 0, 0, k, c)
+
+    eq(len(k), 0)
+    eq(len(k), len(c))
+
+@attr(resource='object')
+@attr(method='remove')
+@attr(operation='create and remove versions')
+@attr(assertion='everything works')
+@attr('versioning')
+def test_versioning_obj_create_versions_remove_all():
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    num_versions = 10
+    objname = 'testobj'
+
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
+    do_remove_versions(bucket, objname, 0, 5, 0, k, c)
+
+    eq(len(k), 0)
+    eq(len(k), len(c))
 
