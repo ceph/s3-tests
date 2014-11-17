@@ -4380,26 +4380,36 @@ def test_multipart_upload_size_too_small():
     eq(e.status, 400)
     eq(e.error_code, u'EntityTooSmall')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check contents of multi-part upload')
-@attr(assertion='successful')
-def test_multipart_upload_contents():
-    bucket = get_new_bucket()
-    key_name="mymultipart"
-    num_parts=3
-    payload='12345'*1024*1024
+def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def do_test_multipart_upload_contents(bucket, key_name, num_parts):
+    payload=gen_rand_string(5)*1024*1024
     mp=bucket.initiate_multipart_upload(key_name)
     for i in range(0, num_parts):
         mp.upload_part_from_file(StringIO(payload), i+1)
 
     last_payload='123'*1024*1024
-    mp.upload_part_from_file(StringIO(last_payload), 4)
+    mp.upload_part_from_file(StringIO(last_payload), num_parts + 1)
 
     mp.complete_upload()
     key=bucket.get_key(key_name)
     test_string=key.get_contents_as_string()
-    assert test_string == payload*num_parts+last_payload
+
+    all_payload = payload*num_parts + last_payload
+    print 'JJJ', key_name, len(all_payload), len(test_string)
+
+    assert test_string == all_payload
+
+    return all_payload
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check contents of multi-part upload')
+@attr(assertion='successful')
+def test_multipart_upload_contents():
+    do_test_multipart_upload_contents(get_new_bucket(), 'mymultipart', 3)
 
 
 @attr(resource='object')
@@ -5494,3 +5504,33 @@ def test_versioning_obj_create_versions_remove_all():
     eq(len(k), 0)
     eq(len(k), len(c))
 
+@attr(resource='object')
+@attr(method='multipart')
+@attr(operation='create and test multipart object')
+@attr(assertion='everything works')
+@attr('versioning')
+def test_versioning_obj_create_overwrite_multipart():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    objname = 'testobj'
+
+    c = []
+
+    num_vers = 3
+
+    for i in xrange(num_vers):
+        c.append(do_test_multipart_upload_contents(bucket, objname, 3))
+
+    k = []
+    for key in bucket.list_versions():
+        k.insert(0, key)
+
+    eq(len(k), num_vers)
+    check_obj_versions(bucket, objname, k, c)
+
+    do_remove_versions(bucket, objname, 0, 3, 0.5, k, c)
+    do_remove_versions(bucket, objname, 0, 3, 0, k, c)
+
+    eq(len(k), 0)
+    eq(len(k), len(c))
