@@ -5534,3 +5534,33 @@ def test_versioning_obj_create_overwrite_multipart():
 
     eq(len(k), 0)
     eq(len(k), len(c))
+
+
+def test_versioning_copy_obj_version():
+    bucket = get_new_bucket()
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    num_versions = 3
+    objname = 'testobj'
+
+    (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+    # copy into the same bucket
+    for i in xrange(num_versions):
+        new_key_name = 'key_{i}'.format(i=i)
+        new_key = bucket.copy_key(new_key_name, bucket.name, k[i].name, src_version_id=k[i].version_id)
+        eq(new_key.get_contents_as_string(), c[i])
+
+    another_bucket = get_new_bucket()
+
+    # copy into a different bucket
+    for i in xrange(num_versions):
+        new_key_name = 'key_{i}'.format(i=i)
+        new_key = another_bucket.copy_key(new_key_name, bucket.name, k[i].name, src_version_id=k[i].version_id)
+        eq(new_key.get_contents_as_string(), c[i])
+
+    # test copy of head object
+    new_key = another_bucket.copy_key('new_key', bucket.name, objname)
+    eq(new_key.get_contents_as_string(), c[num_versions - 1])
+
