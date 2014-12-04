@@ -2154,6 +2154,20 @@ def test_object_raw_get_bucket_gone():
 
 
 @attr(resource='object')
+@attr(method='delete')
+@attr(operation='deleted object and bucket')
+@attr(assertion='fails 404')
+def test_object_delete_key_bucket_gone():
+    (bucket, key) = _setup_request()
+    key.delete()
+    bucket.delete()
+
+    e = assert_raises(boto.exception.S3ResponseError, key.delete)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
+@attr(resource='object')
 @attr(method='get')
 @attr(operation='deleted object')
 @attr(assertion='fails 404')
