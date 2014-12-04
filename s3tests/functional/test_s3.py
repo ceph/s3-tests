@@ -3878,12 +3878,12 @@ def test_buckets_create_then_list():
             raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
 # Common code to create a connection object, which'll use bad authorization information
-def _create_connection_bad_auth():
+def _create_connection_bad_auth(aws_access_key_id='badauth'):
     # We're going to need to manually build a connection using bad authorization info.
     # But to save the day, lets just hijack the settings from s3.main. :)
     main = s3.main
     conn = boto.s3.connection.S3Connection(
-        aws_access_key_id='badauth',
+        aws_access_key_id=aws_access_key_id,
         aws_secret_access_key='roflmao',
         is_secure=main.is_secure,
         port=main.port,
@@ -3896,6 +3896,7 @@ def _create_connection_bad_auth():
 @attr(method='get')
 @attr(operation='list all buckets (anonymous)')
 @attr(assertion='succeeds')
+@attr('fails_on_aws')
 def test_list_buckets_anonymous():
     # Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
     # emulating standard HTTP access.
@@ -3911,12 +3912,23 @@ def test_list_buckets_anonymous():
 @attr(method='get')
 @attr(operation='list all buckets (bad auth)')
 @attr(assertion='fails 403')
-def test_list_buckets_bad_auth():
+def test_list_buckets_invalid_auth():
     conn = _create_connection_bad_auth()
     e = assert_raises(boto.exception.S3ResponseError, conn.get_all_buckets)
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    eq(e.error_code, 'InvalidAccessKeyId')
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all buckets (bad auth)')
+@attr(assertion='fails 403')
+def test_list_buckets_bad_auth():
+    conn = _create_connection_bad_auth(aws_access_key_id=s3.main.aws_access_key_id)
+    e = assert_raises(boto.exception.S3ResponseError, conn.get_all_buckets)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
 
 @attr(resource='bucket')
 @attr(method='put')
