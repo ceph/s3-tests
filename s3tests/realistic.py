@@ -12,6 +12,62 @@ import os
 NANOSECOND = int(1e9)
 
 
+def generate_file_contents(size):
+    """
+    A helper function to generate binary contents for a given size, and
+    calculates the md5 hash of the contents appending itself at the end of the
+    blob.
+    It uses sha1's hexdigest which is 40 chars long. So any binary generated
+    should remove the last 40 chars from the blob to retrieve the original hash
+    and binary so that validity can be proved.
+    """
+    size = int(size)
+    contents = os.urandom(size)
+    content_hash = hashlib.sha1(contents).hexdigest()
+    return contents + content_hash
+
+
+class FileValidator(object):
+
+    def __init__(self, f=None):
+        self._file = tempfile.SpooledTemporaryFile()
+        self.original_hash = None
+        self.new_hash = None
+        if f:
+            f.seek(0)
+            shutil.copyfileobj(f, self._file)
+
+    def valid(self):
+        """
+        Returns True if this file looks valid. The file is valid if the end
+        of the file has the md5 digest for the first part of the file.
+        """
+        self._file.seek(0)
+        contents = self._file.read()
+        self.original_hash, binary = contents[-40:], contents[:-40]
+        self.new_hash = hashlib.sha1(binary).hexdigest()
+        if not self.new_hash == self.original_hash:
+            print 'original  hash: ', self.original_hash
+            print 'new hash: ', self.new_hash
+            print 'size: ', self._file.tell()
+            return False
+        return True
+
+    # XXX not sure if we need all of these
+    def seek(self, offset, whence=os.SEEK_SET):
+        self._file.seek(offset, whence)
+
+    def tell(self):
+        return self._file.tell()
+
+    def read(self, size=-1):
+        return self._file.read(size)
+
+    def write(self, data):
+        self._file.write(data)
+        self._file.seek(0)
+
+
 class RandomContentFile(object):
     def __init__(self, size, seed):
         self.size = size
@@ -99,7 +155,7 @@ class PrecomputedContentFile(object):
         self._file = tempfile.SpooledTemporaryFile()
         f.seek(0)
         shutil.copyfileobj(f, self._file)
-        
+
         self.last_chunks = self.chunks = None
         self.seek(0)
 
@@ -182,6 +238,7 @@ def files(mean, stddev, seed=None):
                 break
         yield RandomContentFile(size=size, seed=rand.getrandbits(32))
 
+
 def files2(mean, stddev, seed=None, numfiles=10):
     """
     Yields file objects with effectively random contents, where the
@@ -192,17 +249,17 @@ def files2(mean, stddev, seed=None, numfiles=10):
     stores `numfiles` files and yields them in a loop.
     """
     # pre-compute all the files (and save with TemporaryFiles)
-    rand_files = files(mean, stddev, seed)
     fs = []
     for _ in xrange(numfiles):
-        f = next(rand_files)
         t = tempfile.SpooledTemporaryFile()
-        shutil.copyfileobj(f, t)
+        t.write(generate_file_contents(random.normalvariate(mean, stddev)))
+        t.seek(0)
         fs.append(t)
 
     while True:
         for f in fs:
-            yield PrecomputedContentFile(f)
+            yield f
+
 
 def names(mean, stddev, charset=None, seed=None):
     """
