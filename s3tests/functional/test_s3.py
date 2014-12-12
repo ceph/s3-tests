@@ -2051,6 +2051,141 @@ def test_post_object_upload_size_below_minimum():
 	eq(r.status_code, 400)
 
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='data re-write w/ If-Match: the latest ETag')
+@attr(assertion='replaces previous data and metadata')
+@attr('fails_on_aws')
+def test_put_object_ifmatch_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    key.set_contents_from_string('zar', headers={'If-Match': key.etag.replace('"', '').strip()})
+    got_new_data = key.get_contents_as_string()
+    eq(got_new_data, 'zar')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='data re-write w/ If-Match: outdated ETag')
+@attr(assertion='fails 412')
+@attr('fails_on_aws')
+def test_put_object_ifmatch_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'zar',
+                      headers={'If-Match': 'ABCORZ'})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite existing object w/ If-Match: *')
+@attr(assertion='replaces previous data and metadata')
+@attr('fails_on_aws')
+def test_put_object_ifmatch_overwrite_existed_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    key.set_contents_from_string('zar', headers={'If-Match': '*'})
+    got_new_data = key.get_contents_as_string()
+    eq(got_new_data, 'zar')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite non-existing object w/ If-Match: *')
+@attr(assertion='fails 412')
+@attr('fails_on_aws')
+def test_put_object_ifmatch_nonexisted_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar', headers={'If-Match': '*'})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite existing object w/ If-None-Match: outdated ETag')
+@attr(assertion='replaces previous data and metadata')
+@attr('fails_on_aws')
+def test_put_object_ifnonmatch_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    key.set_contents_from_string('zar', headers={'If-None-Match': 'ABCORZ'})
+    got_new_data = key.get_contents_as_string()
+    eq(got_new_data, 'zar')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite existing object w/ If-None-Match: the latest ETag')
+@attr(assertion='fails 412')
+@attr('fails_on_aws')
+def test_put_object_ifnonmatch_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'zar',
+                      headers={'If-None-Match': key.etag.replace('"', '').strip()})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite non-existing object w/ If-None-Match: *')
+@attr(assertion='succeeds')
+@attr('fails_on_aws')
+def test_put_object_ifnonmatch_nonexisted_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar', headers={'If-None-Match': '*'})
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='overwrite existing object w/ If-None-Match: *')
+@attr(assertion='fails 412')
+@attr('fails_on_aws')
+def test_put_object_ifnonmatch_overwrite_existed_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+    got_data = key.get_contents_as_string()
+    eq(got_data, 'bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string,
+                      'zar', headers={'If-None-Match': '*'})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+
 def _setup_request(bucket_acl=None, object_acl=None):
     """
     add a foo key, and specified key and bucket acls to
@@ -4759,6 +4894,87 @@ def test_atomic_dual_write_4mb():
 @attr(assertion='8MB successful')
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
+
+def _test_atomic_conditional_write(file_size):
+    """
+    Create a file of A's, use it to set_contents_from_file.
+    Verify the contents are all A's.
+    Create a file of B's, use it to re-set_contents_from_file.
+    Before re-set continues, verify content's still A's
+    Re-read the contents, and confirm we get B's
+    """
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    key = bucket.new_key(objname)
+
+    # create <file_size> file of A's
+    fp_a = FakeWriteFile(file_size, 'A')
+    key.set_contents_from_file(fp_a)
+
+    # verify A's
+    _verify_atomic_key_data(key, file_size, 'A')
+
+    read_key = bucket.get_key(objname)
+
+    # create <file_size> file of B's
+    # but try to verify the file before we finish writing all the B's
+    fp_b = FakeWriteFile(file_size, 'B',
+        lambda: _verify_atomic_key_data(read_key, file_size)
+        )
+    key.set_contents_from_file(fp_b, headers={'If-Match': '*'})
+
+    # verify B's
+    _verify_atomic_key_data(key, file_size, 'B')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write atomicity')
+@attr(assertion='1MB successful')
+@attr('fails_on_aws')
+def test_atomic_conditional_write_1mb():
+    _test_atomic_conditional_write(1024*1024)
+
+def _test_atomic_dual_conditional_write(file_size):
+    """
+    create an object, two sessions writing different contents
+    confirm that it is all one or the other
+    """
+    bucket = get_new_bucket()
+    objname = 'testobj'
+    key = bucket.new_key(objname)
+
+    fp_a = FakeWriteFile(file_size, 'A')
+    key.set_contents_from_file(fp_a)
+    _verify_atomic_key_data(key, file_size, 'A')
+    etag_fp_a = key.etag.replace('"', '').strip()
+
+    # get a second key object (for the same key)
+    # so both can be writing without interfering
+    key2 = bucket.new_key(objname)
+
+    # write <file_size> file of C's
+    # but before we're done, try to write all B's
+    fp_b = FakeWriteFile(file_size, 'B')
+    fp_c = FakeWriteFile(file_size, 'C',
+        lambda: key2.set_contents_from_file(fp_b, rewind=True, headers={'If-Match': etag_fp_a})
+        )
+    # key.set_contents_from_file(fp_c, headers={'If-Match': etag_fp_a})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_c,
+                      headers={'If-Match': etag_fp_a})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+    # verify the file
+    _verify_atomic_key_data(key, file_size, 'B')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write one or the other')
+@attr(assertion='1MB successful')
+@attr('fails_on_aws')
+def test_atomic_dual_conditional_write_1mb():
+    _test_atomic_dual_conditional_write(1024*1024)
 
 @attr(resource='object')
 @attr(method='put')
