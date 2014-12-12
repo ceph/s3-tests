@@ -4383,7 +4383,7 @@ def test_multipart_upload_size_too_small():
 def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
-def do_test_multipart_upload_contents(bucket, key_name, num_parts):
+def _do_test_multipart_upload_contents(bucket, key_name, num_parts):
     payload=gen_rand_string(5)*1024*1024
     mp=bucket.initiate_multipart_upload(key_name)
     for i in range(0, num_parts):
@@ -4409,7 +4409,7 @@ def do_test_multipart_upload_contents(bucket, key_name, num_parts):
 @attr(operation='check contents of multi-part upload')
 @attr(assertion='successful')
 def test_multipart_upload_contents():
-    do_test_multipart_upload_contents(get_new_bucket(), 'mymultipart', 3)
+    _do_test_multipart_upload_contents(get_new_bucket(), 'mymultipart', 3)
 
 
 @attr(resource='object')
@@ -5313,7 +5313,7 @@ def remove_obj_head(bucket, objname, k, c):
 
     check_obj_versions(bucket, objname, k, c)
 
-def do_test_create_remove_versions(bucket, objname, num_versions, remove_start_idx, idx_inc):
+def _do_test_create_remove_versions(bucket, objname, num_versions, remove_start_idx, idx_inc):
     (k, c) = create_multiple_versions(bucket, objname, num_versions)
 
     idx = remove_start_idx
@@ -5322,7 +5322,7 @@ def do_test_create_remove_versions(bucket, objname, num_versions, remove_start_i
         remove_obj_version(bucket, k, c, idx)
         idx += idx_inc
 
-def do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c):
+def _do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c):
     idx = remove_start_idx
 
     r = 0
@@ -5340,10 +5340,10 @@ def do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio
 
     check_obj_versions(bucket, objname, k, c)
 
-def do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_ops, remove_start_idx, idx_inc, head_rm_ratio):
+def _do_test_create_remove_versions_and_head(bucket, objname, num_versions, num_ops, remove_start_idx, idx_inc, head_rm_ratio):
     (k, c) = create_multiple_versions(bucket, objname, num_versions)
 
-    do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c)
+    _do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_ratio, k, c)
 
 @attr(resource='object')
 @attr(method='create')
@@ -5355,12 +5355,12 @@ def test_versioning_obj_create_read_remove():
     objname = 'testobj'
     num_vers = 5
 
-    do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
-    do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
-    do_test_create_remove_versions(bucket, objname, num_vers, 0, 0)
-    do_test_create_remove_versions(bucket, objname, num_vers, 1, 0)
-    do_test_create_remove_versions(bucket, objname, num_vers, 4, -1)
-    do_test_create_remove_versions(bucket, objname, num_vers, 3, 3)
+    _do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
+    _do_test_create_remove_versions(bucket, objname, num_vers, -1, 0)
+    _do_test_create_remove_versions(bucket, objname, num_vers, 0, 0)
+    _do_test_create_remove_versions(bucket, objname, num_vers, 1, 0)
+    _do_test_create_remove_versions(bucket, objname, num_vers, 4, -1)
+    _do_test_create_remove_versions(bucket, objname, num_vers, 3, 3)
 
 @attr(resource='object')
 @attr(method='create')
@@ -5372,7 +5372,7 @@ def test_versioning_obj_create_read_remove_head():
     objname = 'testobj'
     num_vers = 5
 
-    do_test_create_remove_versions_and_head(bucket, objname, num_vers, num_vers * 2, -1, 0, 0.5)
+    _do_test_create_remove_versions_and_head(bucket, objname, num_vers, num_vers * 2, -1, 0, 0.5)
 
 def is_null_key(k):
     return (k.version_id is None) or (k.version_id == 'null')
@@ -5443,8 +5443,8 @@ def test_versioning_obj_suspend_versions():
 
     (k, c) = create_multiple_versions(bucket, objname, 3, k, c)
 
-    do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
-    do_remove_versions(bucket, objname, 0, 5, 0, k, c)
+    _do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
+    _do_remove_versions(bucket, objname, 0, 5, 0, k, c)
 
     eq(len(k), 0)
     eq(len(k), len(c))
@@ -5476,8 +5476,8 @@ def test_versioning_obj_suspend_versions_simple():
     for i in xrange(len(k)):
         print 'JJJ: ', k[i].version_id, c[i]
 
-    do_remove_versions(bucket, objname, 0, 0, 0.5, k, c)
-    do_remove_versions(bucket, objname, 0, 0, 0, k, c)
+    _do_remove_versions(bucket, objname, 0, 0, 0.5, k, c)
+    _do_remove_versions(bucket, objname, 0, 0, 0, k, c)
 
     eq(len(k), 0)
     eq(len(k), len(c))
@@ -5498,8 +5498,8 @@ def test_versioning_obj_create_versions_remove_all():
 
     (k, c) = create_multiple_versions(bucket, objname, num_versions)
 
-    do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
-    do_remove_versions(bucket, objname, 0, 5, 0, k, c)
+    _do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
+    _do_remove_versions(bucket, objname, 0, 5, 0, k, c)
 
     eq(len(k), 0)
     eq(len(k), len(c))
@@ -5520,7 +5520,7 @@ def test_versioning_obj_create_overwrite_multipart():
     num_vers = 3
 
     for i in xrange(num_vers):
-        c.append(do_test_multipart_upload_contents(bucket, objname, 3))
+        c.append(_do_test_multipart_upload_contents(bucket, objname, 3))
 
     k = []
     for key in bucket.list_versions():
@@ -5529,8 +5529,8 @@ def test_versioning_obj_create_overwrite_multipart():
     eq(len(k), num_vers)
     check_obj_versions(bucket, objname, k, c)
 
-    do_remove_versions(bucket, objname, 0, 3, 0.5, k, c)
-    do_remove_versions(bucket, objname, 0, 3, 0, k, c)
+    _do_remove_versions(bucket, objname, 0, 3, 0.5, k, c)
+    _do_remove_versions(bucket, objname, 0, 3, 0, k, c)
 
     eq(len(k), 0)
     eq(len(k), len(c))
