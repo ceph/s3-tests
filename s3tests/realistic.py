@@ -12,6 +12,50 @@ import os
 NANOSECOND = int(1e9)
 
 
+def generate_file_contents(size):
+    """
+    A helper function to generate binary contents for a given size, and
+    calculates the md5 hash of the contents appending itself at the end of the
+    blob.
+    It uses sha1's hexdigest which is 40 chars long. So any binary generated
+    should remove the last 40 chars from the blob to retrieve the original hash
+    and binary so that validity can be proved.
+    """
+    contents = os.urandom(size)
+    content_hash = hashlib.sha1(contents).hexdigest()
+    return contents + content_hash
+
+
+class FileValidator(object):
+
+    def __init__(self, f):
+        self._file = tempfile.SpooledTemporaryFile()
+        f.seek(0)
+        shutil.copyfileobj(f, self._file)
+        self.seek(0)
+
+    def valid(self):
+        """
+        Returns True if this file looks valid. The file is valid if the end
+        of the file has the md5 digest for the first part of the file.
+        """
+        contents = self._file.read()
+        self._file.seek(0)
+        original_hash, binary = contents[-40:], contents[:-40]
+        new_hash = hashlib.sha1(binary).hexdigest()
+        return new_hash == original_hash
+
+    # XXX not sure if we need all of these
+    def seek(self, offset, whence=os.SEEK_SET):
+        self._file.seek(offset, whence)
+
+    def tell(self):
+        return self._file.tell()
+
+    def read(self, size=-1):
+        return self._file.read(size)
+
+
 class RandomContentFile(object):
     def __init__(self, size, seed):
         self.size = size
@@ -94,12 +138,13 @@ class RandomContentFile(object):
 
         return ''.join(r)
 
+
 class PrecomputedContentFile(object):
     def __init__(self, f):
         self._file = tempfile.SpooledTemporaryFile()
         f.seek(0)
         shutil.copyfileobj(f, self._file)
-        
+
         self.last_chunks = self.chunks = None
         self.seek(0)
 
@@ -153,6 +198,7 @@ class FileVerifier(object):
             return self.hash.digest().startswith(self.buf)
 
         return self.buf == self.hash.digest()
+
 
 def files(mean, stddev, seed=None):
     """
