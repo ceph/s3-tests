@@ -40,13 +40,11 @@ class TestFiles(object):
         t = tempfile.SpooledTemporaryFile()
         shutil.copyfileobj(source, t)
         precomputed = realistic.PrecomputedContentFile(t)
-        assert precomputed.valid()
 
-        #verifier = realistic.FileVerifier()
-        #shutil.copyfileobj(precomputed, verifier)
+        verifier = realistic.FileVerifier()
+        shutil.copyfileobj(precomputed, verifier)
 
-        #assert verifier.valid()
-        #assert 0
+        assert verifier.valid()
 
 
 # new implementation

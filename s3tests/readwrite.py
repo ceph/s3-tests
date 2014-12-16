@@ -21,7 +21,7 @@ def reader(bucket, worker_id, file_names, queue, rand):
         objname = rand.choice(file_names)
         key = bucket.new_key(objname)
 
-        fp = realistic.FileVerifier()
+        fp = realistic.FileValidator()
         result = dict(
                 type='r',
                 bucket=bucket.name,
@@ -31,7 +31,7 @@ def reader(bucket, worker_id, file_names, queue, rand):
 
         start = time.time()
         try:
-            key.get_contents_to_file(fp)
+            key.get_contents_to_file(fp._file)
         except gevent.GreenletExit:
             raise
         except Exception as e:
@@ -50,7 +50,7 @@ def reader(bucket, worker_id, file_names, queue, rand):
             end = time.time()
 
             if not fp.valid():
-                m='md5sum check failed start={s} ({se}) end={e} size={sz} obj={o}'.format(s=time.ctime(start), se=start, e=end, sz=fp.size, o=objname)
+                m='md5sum check failed start={s} ({se}) end={e} size={sz} obj={o}'.format(s=time.ctime(start), se=start, e=end, sz=fp._file.tell(), o=objname)
                 result.update(
                     error=dict(
                         msg=m,
@@ -63,13 +63,13 @@ def reader(bucket, worker_id, file_names, queue, rand):
                 result.update(
                     start=start,
                     duration=int(round(elapsed * NANOSECOND)),
-                    chunks=fp.chunks,
                     )
         queue.put(result)
 
 def writer(bucket, worker_id, file_names, files, queue, rand):
     while True:
         fp = next(files)
+        fp.seek(0)
         objname = rand.choice(file_names)
         key = bucket.new_key(objname)
 
@@ -104,7 +104,6 @@ def writer(bucket, worker_id, file_names, files, queue, rand):
             result.update(
                 start=start,
                 duration=int(round(elapsed * NANOSECOND)),
-                chunks=fp.last_chunks,
                 )
 
         queue.put(result)
@@ -189,7 +188,7 @@ def main():
             )
         q = gevent.queue.Queue()
 
-        
+
         # warmup - get initial set of files uploaded if there are any writers specified
         if config.readwrite.writers > 0:
             print "Uploading initial set of {num} files".format(num=config.readwrite.files.num)
