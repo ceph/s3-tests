@@ -503,12 +503,12 @@ def test_object_create_bad_authorization_none():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_incorrect():
-    key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUA:FWeDfwojDSdS2Ztmpfeubhd9isU='})
+    key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
 
 
 @attr(resource='object')
