@@ -5536,6 +5536,12 @@ def test_versioning_obj_create_overwrite_multipart():
     eq(len(k), len(c))
 
 
+
+@attr(resource='object')
+@attr(method='multipart')
+@attr(operation='create and test versioned object copying')
+@attr(assertion='everything works')
+@attr('versioning')
 def test_versioning_copy_obj_version():
     bucket = get_new_bucket()
 
@@ -5563,4 +5569,93 @@ def test_versioning_copy_obj_version():
     # test copy of head object
     new_key = another_bucket.copy_key('new_key', bucket.name, objname)
     eq(new_key.get_contents_as_string(), c[num_versions - 1])
+
+def _count_bucket_objs(bucket):
+    k = []
+    for key in bucket.list_versions():
+        k.insert(0, key)
+    return len(k)
+
+
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='delete multiple versions')
+@attr(assertion='deletes multiple versions of an object with a single call')
+@attr('versioning')
+def test_versioning_multi_object_delete():
+	bucket = get_new_bucket()
+
+        check_configure_versioning_retry(bucket, True, "Enabled")
+
+        keyname = 'key'
+
+	key0 = bucket.new_key(keyname)
+	key0.set_contents_from_string('foo')
+	key1 = bucket.new_key(keyname)
+	key1.set_contents_from_string('bar')
+
+        stored_keys = []
+        for key in bucket.list_versions():
+            stored_keys.insert(0, key)
+
+        eq(len(stored_keys), 2)
+
+	result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 2)
+        eq(len(result.errors), 0)
+
+        eq(_count_bucket_objs(bucket), 0)
+
+        # now remove again, should all succeed due to idempotency
+        result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 2)
+        eq(len(result.errors), 0)
+
+        eq(_count_bucket_objs(bucket), 0)
+
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='delete multiple versions')
+@attr(assertion='deletes multiple versions of an object and delete marker with a single call')
+@attr('versioning')
+def test_versioning_multi_object_delete_with_marker():
+        bucket = get_new_bucket()
+
+        check_configure_versioning_retry(bucket, True, "Enabled")
+
+        keyname = 'key'
+
+	key0 = bucket.new_key(keyname)
+	key0.set_contents_from_string('foo')
+	key1 = bucket.new_key(keyname)
+	key1.set_contents_from_string('bar')
+
+        key2 = bucket.delete_key(keyname)
+        eq(key2.delete_marker, True)
+
+        stored_keys = []
+        for key in bucket.list_versions():
+            stored_keys.insert(0, key)
+
+        eq(len(stored_keys), 3)
+
+	result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 3)
+        eq(len(result.errors), 0)
+        eq(_count_bucket_objs(bucket), 0)
+
+        delete_markers = []
+        for o in result.deleted:
+            if o.delete_marker:
+                delete_markers.insert(0, o)
+
+        eq(len(delete_markers), 1)
+        eq(key2.version_id, delete_markers[0].version_id)
+
+        # now remove again, should all succeed due to idempotency
+        result = bucket.delete_keys(stored_keys)
+        eq(len(result.deleted), 3)
+        eq(len(result.errors), 0)
+
+        eq(_count_bucket_objs(bucket), 0)
 
