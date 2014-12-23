@@ -5690,3 +5690,73 @@ def test_versioning_multi_object_delete_with_marker_create():
             eq(o.name, keyname)
             eq(o.version_id, delete_markers[0].delete_marker_version_id)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='change acl on an object version changes specific version')
+@attr(assertion='works')
+@attr('versioning')
+def test_versioned_object_acl():
+    bucket = get_new_bucket()
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    keyname = 'foo'
+
+    key0 = bucket.new_key(keyname)
+    key0.set_contents_from_string('bar')
+    key1 = bucket.new_key(keyname)
+    key1.set_contents_from_string('bla')
+    key2 = bucket.new_key(keyname)
+    key2.set_contents_from_string('zxc')
+
+    stored_keys = []
+    for key in bucket.list_versions():
+        stored_keys.insert(0, key)
+
+    k1 = stored_keys[1]
+
+    policy = bucket.get_acl(key_name=k1.name, version_id=k1.version_id)
+
+    default_policy = [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            ]
+
+    print repr(policy)
+    check_grants(policy.acl.grants, default_policy)
+
+    bucket.set_canned_acl('public-read', key_name=k1.name, version_id=k1.version_id)
+
+    policy = bucket.get_acl(key_name=k1.name, version_id=k1.version_id)
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+    k = bucket.new_key(keyname)
+    check_grants(k.get_acl().acl.grants, default_policy)
+
