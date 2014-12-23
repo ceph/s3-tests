@@ -4305,6 +4305,29 @@ def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='check multipart upload without parts')
+def test_multipart_upload_empty():
+    bucket = get_new_bucket()
+    key = "mymultipart"
+    upload = _multipart_upload(bucket, key, 0)
+    e = assert_raises(boto.exception.S3ResponseError, upload.complete_upload)
+    eq(e.status, 400)
+    eq(e.error_code, u'MalformedXML')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart uploads with single small part')
+def test_multipart_upload_small():
+    bucket = get_new_bucket()
+    key = "mymultipart"
+    size = 1
+    upload = _multipart_upload(bucket, key, size)
+    upload.complete_upload()
+    key2 = bucket.get_key(key)
+    eq(key2.size, size)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='complete multi-part upload')
 @attr(assertion='successful')
 def test_multipart_upload():
