@@ -9,8 +9,6 @@ import email.utils
 import isodate
 import nose
 import operator
-import random
-import string
 import socket
 import ssl
 import os
@@ -31,6 +29,7 @@ from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
+from .utils import generate_random
 from .utils import region_sync_meta
 import AnonymousAuth
 
@@ -4287,24 +4286,6 @@ def transfer_part(bucket, mp_id, mp_keyname, i, part):
     mp.id = mp_id
     part_out = StringIO(part)
     mp.upload_part_from_file(part_out, i+1)
-
-def generate_random(size, part_size=5*1024*1024):
-    """
-    Generate the specified number random data.
-    (actually each MB is a repetition of the first KB)
-    """
-    chunk = 1024
-    allowed = string.ascii_letters
-    for x in range(0, size, part_size):
-        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
-        s = ''
-        left = size - x
-        this_part_size = min(left, part_size)
-        for y in range(this_part_size / chunk):
-            s = s + strpart
-        yield s
-        if (x == size):
-            return
 
 def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None):
     """
