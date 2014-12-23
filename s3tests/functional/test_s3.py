@@ -5659,3 +5659,34 @@ def test_versioning_multi_object_delete_with_marker():
 
         eq(_count_bucket_objs(bucket), 0)
 
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='multi delete create marker')
+@attr(assertion='returns correct marker version id')
+@attr('versioning')
+def test_versioning_multi_object_delete_with_marker_create():
+        bucket = get_new_bucket()
+
+        check_configure_versioning_retry(bucket, True, "Enabled")
+
+        keyname = 'key'
+
+        rmkeys = { bucket.new_key(keyname) }
+
+        eq(_count_bucket_objs(bucket), 0)
+
+        result = bucket.delete_keys(rmkeys)
+        eq(len(result.deleted), 1)
+        eq(_count_bucket_objs(bucket), 1)
+
+        delete_markers = []
+        for o in result.deleted:
+            if o.delete_marker:
+                delete_markers.insert(0, o)
+
+        eq(len(delete_markers), 1)
+
+        for o in bucket.list_versions():
+            eq(o.name, keyname)
+            eq(o.version_id, delete_markers[0].delete_marker_version_id)
+
