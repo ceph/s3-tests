@@ -2799,6 +2799,16 @@ def test_bucket_create_exists():
 
 
 @attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get location')
+def test_bucket_get_location():
+    bucket = get_new_bucket(targets.main.default)
+    actual_location = bucket.get_location()
+    expected_location = targets.main.default.conf.api_name
+    eq(actual_location, expected_location)
+
+
+@attr(resource='bucket')
 @attr(method='put')
 @attr(operation='re-create by non-owner')
 @attr(assertion='fails 409')
