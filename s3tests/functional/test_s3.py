@@ -4437,6 +4437,14 @@ def test_abort_multipart_upload():
     eq(obj_count, 0)
     eq(bytes_used, 0)
 
+def test_abort_multipart_upload_not_found():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    e = assert_raises(boto.exception.S3ResponseError, bucket.cancel_multipart_upload, key, '1')
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchUpload')
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='concurrent multi-part uploads')
