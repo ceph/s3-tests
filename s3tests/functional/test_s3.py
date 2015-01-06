@@ -2549,7 +2549,8 @@ def check_bad_bucket_name(name):
 @attr(operation='name begins with underscore')
 @attr(assertion='fails with subdomain: 400')
 def test_bucket_create_naming_bad_starts_nonalpha():
-    check_bad_bucket_name('_alphasoup')
+    bucket_name = get_new_bucket_name()
+    check_bad_bucket_name('_' + bucket_name)
 
 
 @attr(resource='bucket')
