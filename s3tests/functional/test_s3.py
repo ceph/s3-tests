@@ -22,6 +22,7 @@ import pytz
 import json
 import httplib2
 import threading
+import itertools
 
 import xml.etree.ElementTree as ET
 
@@ -5250,6 +5251,9 @@ def check_obj_versions(bucket, objname, keys, contents):
         check_head_obj_content(key, contents[-1])
         i = len(contents)
         for key in bucket.list_versions():
+            if key.name != objname:
+                continue
+
             i -= 1
             eq(keys[i].version_id or 'null', key.version_id)
             print 'testing obj version-id=', key.version_id
@@ -5272,6 +5276,8 @@ def create_multiple_versions(bucket, objname, num_versions, k = None, c = None):
     k_pos = len(k)
     i = 0
     for o in bucket.list_versions():
+        if o.name != objname:
+            continue
         i += 1
         if i > num_versions:
             break
@@ -5536,6 +5542,43 @@ def test_versioning_obj_create_overwrite_multipart():
     eq(len(k), 0)
     eq(len(k), len(c))
 
+
+
+@attr(resource='object')
+@attr(method='multipart')
+@attr(operation='list versioned objects')
+@attr(assertion='everything works')
+@attr('versioning')
+def test_versioning_obj_list_marker():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    objname = 'testobj'
+    objname2 = 'testobj-1'
+
+    num_vers = 5
+
+    (k, c) = create_multiple_versions(bucket, objname, num_vers)
+    (k2, c2) = create_multiple_versions(bucket, objname2, num_vers)
+
+    k.reverse()
+    k2.reverse()
+
+    allkeys = k + k2
+
+    names = []
+
+    for key1, key2 in itertools.izip_longest(bucket.list_versions(), allkeys):
+        eq(key1.version_id, key2.version_id)
+        names.append(key1.name)
+
+    for i in xrange(len(allkeys)):
+        for key1, key2 in itertools.izip_longest(bucket.list_versions(key_marker=names[i], version_id_marker=allkeys[i].version_id), allkeys[i+1:]):
+            eq(key1.version_id, key2.version_id)
+
+    # with nonexisting version id, skip to next object
+    for key1, key2 in itertools.izip_longest(bucket.list_versions(key_marker=objname, version_id_marker='nosuchversion'), allkeys[5:]):
+            eq(key1.version_id, key2.version_id)
 
 
 @attr(resource='object')
