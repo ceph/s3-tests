@@ -4412,6 +4412,7 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
 @attr(method='get')
 @attr(operation='check cors response when origin header set')
 @attr(assertion='returning cors header')
+@attr('fails_on_dho')
 def test_cors_origin_response():
     cfg = CORSConfiguration()
     bucket = get_new_bucket()
