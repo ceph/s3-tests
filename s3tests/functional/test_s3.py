@@ -2089,6 +2089,9 @@ def test_put_object_ifmatch_failed():
     eq(e.reason, 'Precondition Failed')
     eq(e.error_code, 'PreconditionFailed')
 
+    got_old_data = key.get_contents_as_string()
+    eq(got_old_data, 'bar')
+
 
 @attr(resource='object')
 @attr(method='put')
@@ -2120,6 +2123,10 @@ def test_put_object_ifmatch_nonexisted_failed():
     eq(e.reason, 'Precondition Failed')
     eq(e.error_code, 'PreconditionFailed')
 
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchKey')
 
 @attr(resource='object')
 @attr(method='put')
@@ -2156,6 +2163,8 @@ def test_put_object_ifnonmatch_failed():
     eq(e.reason, 'Precondition Failed')
     eq(e.error_code, 'PreconditionFailed')
 
+    got_old_data = key.get_contents_as_string()
+    eq(got_old_data, 'bar')
 
 @attr(resource='object')
 @attr(method='put')
@@ -2187,6 +2196,9 @@ def test_put_object_ifnonmatch_overwrite_existed_failed():
     eq(e.status, 412)
     eq(e.reason, 'Precondition Failed')
     eq(e.error_code, 'PreconditionFailed')
+
+    got_old_data = key.get_contents_as_string()
+    eq(got_old_data, 'bar')
 
 
 def _setup_request(bucket_acl=None, object_acl=None):
