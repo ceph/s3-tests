@@ -20,6 +20,7 @@ import hmac
 import sha
 import pytz
 import json
+import httplib2
 
 import xml.etree.ElementTree as ET
 
@@ -5029,6 +5030,21 @@ def check_can_test_multiregion():
     if not targets.main.master or len(targets.main.secondaries) == 0:
         raise SkipTest
 
+def create_presigned_url(conn, method, bucket_name, key_name, expiration):
+    return conn.generate_url(expires_in=expiration,
+        method=method,
+        bucket=bucket_name,
+        key=key_name,
+        query_auth=True,
+    )
+
+def send_raw_http_request(conn, method, bucket_name, key_name, follow_redirects = False):
+    url = create_presigned_url(conn, method, bucket_name, key_name, 3600)
+    print url
+    h = httplib2.Http()
+    h.follow_redirects = follow_redirects
+    return h.request(url, method)
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='create on one region, access in another')
@@ -5043,12 +5059,11 @@ def test_region_bucket_create_secondary_access_remove_master():
         conn = r.connection
         bucket = get_new_bucket(r)
 
-        e = assert_raises(boto.exception.S3ResponseError, master_conn.get_bucket, bucket.name)
-        eq(e.status, 301)
+        r, content = send_raw_http_request(master_conn, 'GET', bucket.name, '', follow_redirects = False)
+        eq(r.status, 301)
 
-        e = assert_raises(boto.exception.S3ResponseError, master_conn.delete_bucket, bucket.name)
-        eq(e.status, 301)
-
+        r, content = send_raw_http_request(master_conn, 'DELETE', bucket.name, '', follow_redirects = False)
+        eq(r.status, 301)
 
         conn.delete_bucket(bucket)
 
@@ -5069,11 +5084,11 @@ def test_region_bucket_create_master_access_remove_secondary():
 
         region_sync_meta(targets.main, master)
 
-        e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
-        eq(e.status, 301)
+        r, content = send_raw_http_request(conn, 'GET', bucket.name, '', follow_redirects = False)
+        eq(r.status, 301)
 
-        e = assert_raises(boto.exception.S3ResponseError, conn.delete_bucket, bucket.name)
-        eq(e.status, 301)
+        r, content = send_raw_http_request(conn, 'DELETE', bucket.name, '', follow_redirects = False)
+        eq(r.status, 301)
 
         master_conn.delete_bucket(bucket)
         region_sync_meta(targets.main, master)
