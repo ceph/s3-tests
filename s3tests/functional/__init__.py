@@ -59,18 +59,20 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
         name=name,
         prefix=prefix,
         )
+
     for bucket in conn.get_all_buckets():
+        print 'prefix=',prefix
         if bucket.name.startswith(prefix):
             print 'Cleaning bucket {bucket}'.format(bucket=bucket)
             try:
-                bucket.set_canned_acl('private')
-                for key in bucket.list():
+                # bucket.set_canned_acl('private')
+                for key in bucket.list_versions():
                     print 'Cleaning bucket {bucket} key {key}'.format(
                         bucket=bucket,
                         key=key,
                         )
-                    key.set_canned_acl('private')
-                    key.delete()
+                    # key.set_canned_acl('private')
+                    bucket.delete_key(key.name, version_id = key.version_id)
                 bucket.delete()
             except boto.exception.S3ResponseError as e:
                 if e.error_code != 'AccessDenied':
