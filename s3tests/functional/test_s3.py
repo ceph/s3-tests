@@ -1160,6 +1160,41 @@ def test_post_object_authenticated_request():
 	got = key.get_contents_as_string()
 	eq(got, 'bar')
 
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='authenticated browser based upload via POST request, bad access key')
+@attr(assertion='fails')
+def test_post_object_authenticated_request_bad_access_key():
+	bucket = get_new_bucket()
+	bucket.set_acl('public-read-write')
+
+	url = _get_post_url(s3.main, bucket)
+
+	utc = pytz.utc
+	expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
+
+	policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
+	"conditions": [\
+	{"bucket": bucket.name},\
+	["starts-with", "$key", "foo"],\
+	{"acl": "private"},\
+	["starts-with", "$Content-Type", "text/plain"],\
+	["content-length-range", 0, 1024]\
+	]\
+	}
+
+	json_policy_document = json.JSONEncoder().encode(policy_document)
+	policy = base64.b64encode(json_policy_document)
+	conn = s3.main
+	signature = base64.b64encode(hmac.new(conn.aws_secret_access_key, policy, sha).digest())
+
+	payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , 'foo'),\
+	("acl" , "private"),("signature" , signature),("policy" , policy),\
+	("Content-Type" , "text/plain"),('file', ('bar'))])
+
+	r = requests.post(url, files = payload)
+	eq(r.status_code, 403)
+
 
 @attr(resource='object')
 @attr(method='post')
