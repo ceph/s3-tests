@@ -5852,17 +5852,18 @@ def test_versioned_object_acl():
     check_grants(k.get_acl().acl.grants, default_policy)
 
 
-def _do_create_object(bucket, objname, i):
+def _do_create_object(bucket, objname, i, obj_size):
     k = bucket.new_key(objname)
-    k.set_contents_from_string('data {i}'.format(i=i))
+    s = 'x' * obj_size
+    k.set_contents_from_string(s)
 
 def _do_remove_ver(bucket, obj):
     bucket.delete_key(obj.name, version_id = obj.version_id)
 
-def _do_create_versioned_obj_concurrent(bucket, objname, num):
+def _do_create_obj_concurrent(bucket, objname, num, obj_size=0):
     t = []
     for i in range(num):
-        thr = threading.Thread(target = _do_create_object, args=(bucket, objname, i))
+        thr = threading.Thread(target = _do_create_object, args=(bucket, objname, i, obj_size))
         thr.start()
         t.append(thr)
     return t
@@ -5894,7 +5895,7 @@ def test_versioned_concurrent_object_create_concurrent_remove():
     num_objs = 5
 
     for i in xrange(5):
-        t = _do_create_versioned_obj_concurrent(bucket, keyname, num_objs)
+        t = _do_create_obj_concurrent(bucket, keyname, num_objs)
         _do_wait_completion(t)
 
         eq(_count_bucket_versioned_objs(bucket), num_objs)
@@ -5923,7 +5924,7 @@ def test_versioned_concurrent_object_create_and_remove():
     all_threads = []
 
     for i in xrange(3):
-        t = _do_create_versioned_obj_concurrent(bucket, keyname, num_objs)
+        t = _do_create_obj_concurrent(bucket, keyname, num_objs)
         all_threads.append(t)
 
         t = _do_clear_versioned_bucket_concurrent(bucket)
@@ -5938,3 +5939,36 @@ def test_versioned_concurrent_object_create_and_remove():
 
     eq(_count_bucket_versioned_objs(bucket), 0)
     eq(len(bucket.get_all_keys()), 0)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='concurrent creation of objects, concurrent removal')
+@attr(assertion='works')
+def test_non_versioned_concurrent_object_create_concurrent_remove():
+    bucket = get_new_bucket()
+
+    # not configuring versioning here! this test is non-versioned
+
+    keyname = 'myobj'
+
+    num_objs = 5
+    obj_size = 10 # non-zero
+
+    for i in xrange(5):
+        t = _do_create_obj_concurrent(bucket, keyname, num_objs, obj_size)
+        _do_wait_completion(t)
+
+        keys = []
+        for k in bucket.get_all_keys():
+            keys.append(k)
+        eq(len(keys), 1)
+        eq(keys[0].size, obj_size)
+
+
+        t = _do_clear_versioned_bucket_concurrent(bucket)
+        _do_wait_completion(t)
+
+        eq(_count_bucket_versioned_objs(bucket), 0)
+        eq(len(bucket.get_all_keys()), 0)
+
+
