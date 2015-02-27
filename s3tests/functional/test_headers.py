@@ -745,7 +745,6 @@ def test_bucket_create_bad_contentlength_empty():
 
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
-    eq(e.error_code, None)
 
 
 @attr(resource='bucket')
