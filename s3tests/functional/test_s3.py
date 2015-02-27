@@ -21,6 +21,8 @@ import json
 import httplib2
 import threading
 import itertools
+import string
+import random
 
 import xml.etree.ElementTree as ET
 
