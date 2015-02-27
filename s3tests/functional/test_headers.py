@@ -28,6 +28,8 @@ from . import (
     s3,
     config,
     get_prefix,
+    TargetConnection,
+    targets,
     )
 
 
@@ -292,6 +294,7 @@ def test_object_create_bad_contentlength_empty():
 @attr(method='put')
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
+@attr('fails_on_mod_proxy_fcgi')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_negative():
     key = _setup_bad_object({'Content-Length': -1})
@@ -318,6 +321,7 @@ def test_object_create_bad_contentlength_none():
 @attr(method='put')
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
+@attr('fails_on_mod_proxy_fcgi')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
@@ -707,7 +711,7 @@ def _create_new_connection():
         host=main.host,
         calling_format=main.calling_format,
         )
-    return conn
+    return TargetConnection(targets.main.default.conf, conn)
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -729,6 +733,7 @@ def test_bucket_create_bad_contentlength_empty():
 @attr(method='put')
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
+@attr('fails_on_mod_proxy_fcgi')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_negative():
     _add_custom_headers({'Content-Length': -1})
@@ -751,6 +756,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(method='put')
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
+@attr('fails_on_mod_proxy_fcgi')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_unreadable():
     _add_custom_headers({'Content-Length': '\x07'})

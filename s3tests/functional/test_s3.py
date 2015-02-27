@@ -4561,6 +4561,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 @attr(method='put')
 @attr(operation='w/expect continue')
 @attr(assertion='succeeds if object is public-read-write')
+@attr('100_continue')
 def test_100_continue():
     bucket = get_new_bucket()
     objname = 'testobj'
