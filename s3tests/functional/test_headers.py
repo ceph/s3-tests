@@ -720,9 +720,8 @@ def _create_new_connection():
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
 def test_bucket_create_bad_contentlength_empty():
-    conn = _create_new_connection()
     _add_custom_headers({'Content-Length': ''})
-    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, conn)
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
