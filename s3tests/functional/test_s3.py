@@ -3261,6 +3261,27 @@ def test_object_acl_canned_bucketownerfullcontrol():
     key.delete()
     bucket.delete()
 
+@attr(resource='object.acls')
+@attr(method='put')
+@attr(operation='set write-acp')
+@attr(assertion='does not modify owner')
+def test_object_acl_full_control_verify_owner():
+    bucket = get_new_bucket(targets.main.default)
+    bucket.set_acl('public-read-write')
+
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    key.add_user_grant(permission='FULL_CONTROL', user_id=config.alt.user_id)
+
+    k2 = s3.alt.get_bucket(bucket.name).get_key('foo')
+
+    k2.add_user_grant(permission='READ_ACP', user_id=config.alt.user_id)
+
+    policy = k2.get_acl()
+    eq(policy.owner.id, config.main.user_id)
+
+
 @attr(resource='bucket')
 @attr(method='ACLs')
 @attr(operation='set acl private')
@@ -3531,6 +3552,12 @@ def test_bucket_acl_grant_userid_fullcontrol():
     _check_bucket_acl_grant_can_write(bucket)
     # can write acl
     _check_bucket_acl_grant_can_writeacp(bucket)
+
+    # verify owner did not change
+    bucket2 = s3.main.get_bucket(bucket.name)
+    policy = bucket2.get_acl()
+    eq(policy.owner.id, config.main.user_id)
+    eq(policy.owner.display_name, config.main.display_name)
 
 
 @attr(resource='bucket')
