@@ -4397,6 +4397,36 @@ def test_object_copy_canned_acl():
     eq(res.status, 200)
     eq(res.reason, 'OK')
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object and retain metadata')
+def test_object_copy_retaining_metadata():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+    metadata = {'key1': 'value1', 'key2': 'value2'}
+    key.set_remote_metadata(metadata, {}, False)
+
+    bucket.copy_key('bar321foo', bucket.name, 'foo123bar')
+    key2 = bucket.get_key('bar321foo')
+    eq(key2.size, 3)
+    eq(key2.metadata, metadata)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object and replace metadata')
+def test_object_copy_replacing_metadata():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+    key.set_remote_metadata({'key1': 'value1', 'key2': 'value2'}, {}, False)
+
+    metadata = {'key3': 'value3', 'key1': 'value4'}
+    bucket.copy_key('bar321foo', bucket.name, 'foo123bar', metadata=metadata)
+    key2 = bucket.get_key('bar321foo')
+    eq(key2.size, 3)
+    eq(key2.metadata, metadata)
+
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
     """
