@@ -927,6 +927,7 @@ def test_bucket_create_bad_date_none():
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
+    eq(e.message, 'AWS authentication requires a valid Date or x-amz-date header')
 
 
 @attr(resource='bucket')
