@@ -4673,6 +4673,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 @attr(operation='w/expect continue')
 @attr(assertion='succeeds if object is public-read-write')
 @attr('100_continue')
+@attr('fails_on_mod_proxy_fcgi')
 def test_100_continue():
     bucket = get_new_bucket()
     objname = 'testobj'
