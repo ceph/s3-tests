@@ -2939,6 +2939,37 @@ def test_bucket_acl_default():
 
 
 @attr(resource='bucket')
+@attr(method='get')
+@attr(operation='public-read acl')
+@attr(assertion='read back expected defaults')
+def test_bucket_acl_canned_during_create():
+    name = get_new_bucket_name()
+    bucket = targets.main.default.connection.create_bucket(name, policy = 'public-read')
+    policy = bucket.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+@attr(resource='bucket')
 @attr(method='put')
 @attr(operation='acl: public-read,private')
 @attr(assertion='read back expected values')
