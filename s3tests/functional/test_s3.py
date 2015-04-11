@@ -5139,6 +5139,46 @@ def test_object_copy_bucket_not_found():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='copy object if modified since')
+def test_object_copy_if_modified_since():
+    now = time.time()
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+
+    before = formatdate(now - 10)
+    bucket.copy_key('bar321foo', bucket.name, 'foo123bar', headers={'x-amz-copy-source-if-modified-since': before})
+
+    # Sleep since Amazon returns 200 if the date is in the future:
+    # https://forums.aws.amazon.com/message.jspa?messageID=325930
+    time.sleep(20)
+
+    after = formatdate(now + 10)
+    e = assert_raises(boto.exception.S3ResponseError, bucket.copy_key, 'bar321foo', bucket.name, 'foo123bar', headers={'x-amz-copy-source-if-modified-since': after})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object if unmodified since')
+def test_object_copy_if_unmodified_since():
+    now = time.time()
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+
+    after = formatdate(now + 10)
+    bucket.copy_key('bar321foo', bucket.name, 'foo123bar', headers={'x-amz-copy-source-if-unmodified-since': after})
+
+    before = formatdate(now - 10)
+    e = assert_raises(boto.exception.S3ResponseError, bucket.copy_key, 'bar321foo', bucket.name, 'foo123bar', headers={'x-amz-copy-source-if-unmodified-since': before})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+    eq(e.error_code, 'PreconditionFailed')
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy from non-existent object')
 def test_object_copy_key_not_found():
     bucket = get_new_bucket()
