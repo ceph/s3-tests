@@ -4473,6 +4473,26 @@ def test_object_copy_replacing_metadata():
     eq(key2.metadata, metadata)
     eq(key2.content_type, content_type)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy from non-existent bucket')
+def test_object_copy_bucket_not_found():
+    bucket = get_new_bucket()
+    e = assert_raises(boto.exception.S3ResponseError, bucket.copy_key, 'foo123bar', bucket.name + "-fake", 'bar321foo')
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy from non-existent object')
+def test_object_copy_key_not_found():
+    bucket = get_new_bucket()
+    e = assert_raises(boto.exception.S3ResponseError, bucket.copy_key, 'foo123bar', bucket.name, 'bar321foo')
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchKey')
+
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
     """
