@@ -3126,6 +3126,39 @@ def test_object_acl_default():
 
 @attr(resource='object.acls')
 @attr(method='put')
+@attr(operation='acl public-read')
+@attr(assertion='read back expected values')
+def test_object_acl_canned_during_create():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar', policy='public-read')
+    policy = key.get_acl()
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+
+@attr(resource='object.acls')
+@attr(method='put')
 @attr(operation='acl public-read,private')
 @attr(assertion='read back expected values')
 def test_object_acl_canned():
