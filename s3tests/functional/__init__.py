@@ -64,22 +64,31 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
         print 'prefix=',prefix
         if bucket.name.startswith(prefix):
             print 'Cleaning bucket {bucket}'.format(bucket=bucket)
-            try:
-                # bucket.set_canned_acl('private')
-                for key in bucket.list_versions():
-                    print 'Cleaning bucket {bucket} key {key}'.format(
-                        bucket=bucket,
-                        key=key,
-                        )
-                    # key.set_canned_acl('private')
-                    bucket.delete_key(key.name, version_id = key.version_id)
-                bucket.delete()
-            except boto.exception.S3ResponseError as e:
-                if e.error_code != 'AccessDenied':
-                    print 'GOT UNWANTED ERROR', e.error_code
-                    raise
-                # seems like we're not the owner of the bucket; ignore
-                pass
+            success = False
+            for i in xrange(2):
+                try:
+                    for key in bucket.list_versions():
+                        print 'Cleaning bucket {bucket} key {key}'.format(
+                            bucket=bucket,
+                            key=key,
+                            )
+                        # key.set_canned_acl('private')
+                        bucket.delete_key(key.name, version_id = key.version_id)
+                    bucket.delete()
+                    success = True
+                except boto.exception.S3ResponseError as e:
+                    if e.error_code != 'AccessDenied':
+                        print 'GOT UNWANTED ERROR', e.error_code
+                        raise
+                    # seems like we don't have permissions set appropriately, we'll
+                    # modify permissions and retry
+                    pass
+
+                if success:
+                    return
+
+                bucket.set_canned_acl('private')
+
 
 def nuke_prefixed_buckets(prefix):
     # If no regions are specified, use the simple method
@@ -105,7 +114,6 @@ def nuke_prefixed_buckets(prefix):
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 
     print 'Done with cleanup of test buckets.'
-
 
 class TargetConfig:
     def __init__(self, cfg, section):
