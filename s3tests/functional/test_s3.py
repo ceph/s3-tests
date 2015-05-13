@@ -4515,21 +4515,43 @@ def transfer_part(bucket, mp_id, mp_keyname, i, part):
     part_out = StringIO(part)
     mp.upload_part_from_file(part_out, i+1)
 
-def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None):
+def generate_random(size, part_size=5*1024*1024):
+    """
+    Generate the specified number random data.
+    (actually each MB is a repetition of the first KB)
+    """
+    chunk = 1024
+    allowed = string.ascii_letters
+    for x in range(0, size, part_size):
+        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
+        s = ''
+        left = size - x
+        this_part_size = min(left, part_size)
+        for y in range(this_part_size / chunk):
+            s = s + strpart
+        yield s
+        if (x == size):
+            return
+
+def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None, resend_part=-1):
     """
     generate a multi-part upload for a random file of specifed size,
     if requested, generate a list of the parts
     return the upload descriptor
     """
     upload = bucket.initiate_multipart_upload(s3_key_name, headers=headers, metadata=metadata)
+    s = ''
     for i, part in enumerate(generate_random(size, part_size)):
+        s += part
         transfer_part(bucket, upload.id, upload.key_name, i, part)
+        if resend_part == i:
+            transfer_part(bucket, upload.id, upload.key_name, i, part)
 
     if do_list is not None:
         l = bucket.list_multipart_uploads()
         l = list(l)
 
-    return upload
+    return (upload, s)
 
 @attr(resource='object')
 @attr(method='put')
@@ -4537,7 +4559,7 @@ def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=
 def test_multipart_upload_empty():
     bucket = get_new_bucket()
     key = "mymultipart"
-    upload = _multipart_upload(bucket, key, 0)
+    (upload, data) = _multipart_upload(bucket, key, 0)
     e = assert_raises(boto.exception.S3ResponseError, upload.complete_upload)
     eq(e.status, 400)
     eq(e.error_code, u'MalformedXML')
@@ -4549,7 +4571,7 @@ def test_multipart_upload_small():
     bucket = get_new_bucket()
     key = "mymultipart"
     size = 1
-    upload = _multipart_upload(bucket, key, size)
+    (upload, data) = _multipart_upload(bucket, key, size)
     upload.complete_upload()
     key2 = bucket.get_key(key)
     eq(key2.size, size)
@@ -4562,7 +4584,7 @@ def test_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     content_type='text/bla'
-    upload = _multipart_upload(bucket, key, 30 * 1024 * 1024, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
+    (upload, data) = _multipart_upload(bucket, key, 30 * 1024 * 1024, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
     upload.complete_upload()
 
     result = _head_bucket(bucket)
@@ -4577,26 +4599,51 @@ def test_multipart_upload():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='complete multiple multi-part upload with different sizes')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload')
+@attr(assertion='successful')
+def test_multipart_upload_resend_part():
+    bucket = get_new_bucket()
+    key="mymultipart"
+    content_type='text/bla'
+    objlen = 30 * 1024 * 1024
+    (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'}, resend_part=1)
+    upload.complete_upload()
+
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    # eq(obj_count, 1)
+    # eq(bytes_used, 30 * 1024 * 1024)
+
+    k=bucket.get_key(key)
+    eq(k.metadata['foo'], 'bar')
+    eq(k.content_type, content_type)
+    test_string=k.get_contents_as_string()
+    eq(k.size, len(test_string))
+    eq(k.size, objlen)
+    eq(test_string, data)
+
 @attr(assertion='successful')
 def test_multipart_upload_multiple_sizes():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 5 * 1024 * 1024)
     upload.complete_upload()
 
-    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 100 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 100 * 1024)
     upload.complete_upload()
 
-    upload = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 600 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 5 * 1024 * 1024 + 600 * 1024)
     upload.complete_upload()
 
-    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 100 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 100 * 1024)
     upload.complete_upload()
  
-    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 600 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 10 * 1024 * 1024 + 600 * 1024)
     upload.complete_upload()
 
-    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.complete_upload()
 
 @attr(resource='object')
@@ -4606,7 +4653,7 @@ def test_multipart_upload_multiple_sizes():
 def test_multipart_upload_size_too_small():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload = _multipart_upload(bucket, key, 100 * 1024, part_size=10*1024)
+    (upload, data) = _multipart_upload(bucket, key, 100 * 1024, part_size=10*1024)
     e = assert_raises(boto.exception.S3ResponseError, upload.complete_upload)
     eq(e.status, 400)
     eq(e.error_code, u'EntityTooSmall')
@@ -4671,7 +4718,7 @@ def test_multipart_upload_overwrite_existing_object():
 def test_abort_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
-    upload = _multipart_upload(bucket, key, 10 * 1024 * 1024)
+    (upload, data) = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.cancel_upload()
 
     result = _head_bucket(bucket)
@@ -4695,11 +4742,11 @@ def test_list_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     mb = 1024 * 1024
-    upload1 = _multipart_upload(bucket, key, 5 * mb, do_list = True)
-    upload2 = _multipart_upload(bucket, key, 6 * mb, do_list = True)
+    (upload1, data) = _multipart_upload(bucket, key, 5 * mb, do_list = True)
+    (upload2, data) = _multipart_upload(bucket, key, 6 * mb, do_list = True)
 
     key2="mymultipart2"
-    upload3 = _multipart_upload(bucket, key2, 5 * mb, do_list = True)
+    (upload3, data) = _multipart_upload(bucket, key2, 5 * mb, do_list = True)
 
     l = bucket.list_multipart_uploads()
     l = list(l)
