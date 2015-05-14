@@ -4359,8 +4359,7 @@ def generate_random(size, part_size=5*1024*1024):
         if (x == size):
             return
 
-
-def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None, resend_part=-1):
+def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None, resend_parts=[]):
     """
     generate a multi-part upload for a random file of specifed size,
     if requested, generate a list of the parts
@@ -4371,7 +4370,7 @@ def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=
     for i, part in enumerate(generate_random(size, part_size)):
         s += part
         transfer_part(bucket, upload.id, upload.key_name, i, part)
-        if resend_part == i:
+        if i in resend_parts:
             transfer_part(bucket, upload.id, upload.key_name, i, part)
 
     if do_list is not None:
@@ -4403,6 +4402,17 @@ def test_multipart_upload_small():
     key2 = bucket.get_key(key)
     eq(key2.size, size)
 
+def _check_content_using_range(k, data, step):
+    objlen = k.size
+    for ofs in xrange(0, k.size, step):
+        toread = k.size - ofs
+        if toread > step:
+            toread = step
+        end = ofs + toread - 1
+        read_range = k.get_contents_as_string(headers={'Range': 'bytes={s}-{e}'.format(s=ofs, e=end)})
+        eq(len(read_range), toread)
+        eq(read_range, data[ofs:end+1])
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='complete multi-part upload')
@@ -4411,7 +4421,8 @@ def test_multipart_upload():
     bucket = get_new_bucket()
     key="mymultipart"
     content_type='text/bla'
-    (upload, data) = _multipart_upload(bucket, key, 30 * 1024 * 1024, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
+    objlen = 30 * 1024 * 1024
+    (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
     upload.complete_upload()
 
     (obj_count, bytes_used) = _head_bucket(bucket)
@@ -4422,6 +4433,30 @@ def test_multipart_upload():
     k=bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
+    test_string=k.get_contents_as_string()
+    eq(len(test_string), k.size)
+    eq(test_string, data)
+
+    _check_content_using_range(k, data, 1000000)
+    _check_content_using_range(k, data, 10000000)
+
+def _check_upload_multipart_resend(bucket, key, objlen, resend_parts):
+    content_type='text/bla'
+    (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'}, resend_parts=resend_parts)
+    upload.complete_upload()
+
+    (obj_count, bytes_used) = _head_bucket(bucket)
+
+    k=bucket.get_key(key)
+    eq(k.metadata['foo'], 'bar')
+    eq(k.content_type, content_type)
+    test_string=k.get_contents_as_string()
+    eq(k.size, len(test_string))
+    eq(k.size, objlen)
+    eq(test_string, data)
+
+    _check_content_using_range(k, data, 1000000)
+    _check_content_using_range(k, data, 10000000)
 
 @attr(resource='object')
 @attr(method='put')
@@ -4433,23 +4468,13 @@ def test_multipart_upload():
 def test_multipart_upload_resend_part():
     bucket = get_new_bucket()
     key="mymultipart"
-    content_type='text/bla'
     objlen = 30 * 1024 * 1024
-    (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'}, resend_part=1)
-    upload.complete_upload()
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
-
-    # eq(obj_count, 1)
-    # eq(bytes_used, 30 * 1024 * 1024)
-
-    k=bucket.get_key(key)
-    eq(k.metadata['foo'], 'bar')
-    eq(k.content_type, content_type)
-    test_string=k.get_contents_as_string()
-    eq(k.size, len(test_string))
-    eq(k.size, objlen)
-    eq(test_string, data)
+    _check_upload_multipart_resend(bucket, key, objlen, [0])
+    _check_upload_multipart_resend(bucket, key, objlen, [1])
+    _check_upload_multipart_resend(bucket, key, objlen, [2])
+    _check_upload_multipart_resend(bucket, key, objlen, [1,2])
+    _check_upload_multipart_resend(bucket, key, objlen, [0,1,2,3,4,5])
 
 @attr(assertion='successful')
 def test_multipart_upload_multiple_sizes():
