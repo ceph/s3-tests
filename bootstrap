@@ -9,9 +9,8 @@ if [ -f /etc/debian_version ]; then
         fi
     done
     if [ -n "$missing" ]; then
-        echo "$0: missing required packages, please install them:" 1>&2
-        echo "  sudo apt-get install $missing"
-        exit 1
+        echo "$0: missing required DEB packages. Installing via sudo." 1>&2
+        sudo apt-get -y install $missing
     fi
 fi
 if [ -f /etc/redhat-release ]; then
@@ -21,9 +20,8 @@ if [ -f /etc/redhat-release ]; then
         fi
     done
     if [ -n "$missing" ]; then
-        echo "$0: missing required packages, please install them:" 1>&2
-        echo "  sudo yum install $missing"
-        exit 1
+        echo "$0: missing required RPM packages. Installing via sudo." 1>&2
+        sudo yum -y install $missing
     fi
 fi
 
