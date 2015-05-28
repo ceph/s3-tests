@@ -4449,6 +4449,18 @@ def test_object_copy_not_owned_bucket():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='copy a non-owned object in a non-owned bucket, but with perms')
+@attr(assertion='works')
+def test_object_copy_not_owned_object_bucket():
+    bucket = get_new_bucket(targets.main.default)
+    key = bucket.new_key('foo123bar')
+    key.set_contents_from_string('foo')
+    bucket.add_user_grant(permission='FULL_CONTROL', user_id=config.alt.user_id, recursive=True)
+    k2 = s3.alt.get_bucket(bucket.name).get_key('foo123bar')
+    k2.copy(bucket.name, 'bar321foo')
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy object and change acl')
 @attr(assertion='works')
 def test_object_copy_canned_acl():
