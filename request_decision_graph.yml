@@ -269,14 +269,74 @@ bucket_put_simple:
             - '2 {garbage}'
         website_body:
             - null
-            - '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IndexDocument><Suffix>{suffix}</Suffix><IndexDocument>{error_doc}<WebsiteConfiguration/>'
-        suffix:
+            - '<WebsiteConfiguration>{index_doc}{error_doc}{routing_rules}</WebsiteConfiguration>'
+            - '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">{index_doc}{error_doc}{routing_rules}</WebsiteConfiguration>'
+        index_doc:
+            - null
+            - '<IndexDocument>{filename}</IndexDocument>'
+            - '<IndexDocument><Suffix>{filename}</Suffix></IndexDocument>'
+        filename:
             - null
             - '2 {garbage}'
             - '{random 2-10 printable}.html'
+            - '{random 100-1000 printable}.html'
+            - '{random 100-1000 printable_no_whitespace}.html'
         error_doc:
             - null
-            - '<ErrorDocument><Key>{suffix}</Key></ErrorDocument>'
+            - '<ErrorDocument>{filename}</ErrorDocument>'
+            - '<ErrorDocument><Key>{filename}</Key></ErrorDocument>'
+        routing_rules:
+            - null
+            - ['0-10', '<RoutingRules>{routing_rules_content}</RoutingRules>']
+        routing_rules_content:
+            - null
+            - ['0-1000', '<RoutingRule>{routing_rule}</RoutingRule>']
+        routing_rule:
+            - null
+            - ['0-2', '{routing_rule_condition}{routing_rule_redirect}']
+        routing_rule_condition:
+            - null
+            - ['0-10', '<Condition>{KeyPrefixEquals}{HttpErrorCodeReturnedEquals}</Condition>']
+        KeyPrefixEquals:
+            - null
+            - ['0-2', '<KeyPrefixEquals>{filename}</KeyPrefixEquals>']
+        HttpErrorCodeReturnedEquals:
+            - null
+            - ['0-2', '<HttpErrorCodeReturnedEquals>{HttpErrorCode}</HttpErrorCodeReturnedEquals>']
+        HttpErrorCode:
+            - null
+            - '2 {garbage}'
+            - '{random 1-10 digits}'
+            - '{random 1-100 printable}'
+        routing_rule_redirect:
+            - null
+            - '{protocol}{hostname}{ReplaceKeyPrefixWith}{ReplaceKeyWith}{HttpRedirectCode}'
+        protocol:
+            - null
+            - '<Protocol>http</Protocol>'
+            - '<Protocol>https</Protocol>'
+            - ['1-5', '<Protocol>{garbage}</Protocol>']
+            - ['1-5', '<Protocol>{filename}</Protocol>']
+        hostname:
+            - null
+            - ['1-5', '<HostHame>{hostname_val}</HostHame>']
+            - ['1-5', '<HostHame>{garbage}</HostHame>']
+        hostname_val:
+            - null
+            - '{random 1-255 printable_no_whitespace}'
+            - '{random 1-255 printable}'
+            - '{random 1-255 punctuation}'
+            - '{random 1-255 whitespace}'
+            - '{garbage}'
+        ReplaceKeyPrefixWith:
+            - null
+            - ['1-5', '<ReplaceKeyPrefixWith>{filename}</ReplaceKeyPrefixWith>']
+        HttpRedirectCode:
+            - null
+            - ['1-5', '<HttpRedirectCode>{random 1-10 digits}</HttpRedirectCode>']
+            - ['1-5', '<HttpRedirectCode>{random 1-100 printable}</HttpRedirectCode>']
+            - ['1-5', '<HttpRedirectCode>{filename}</HttpRedirectCode>']
+
     choices: []
 
 object:
