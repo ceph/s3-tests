@@ -1,3 +1,5 @@
+from __future__ import print_function
+import sys
 import ConfigParser
 import boto.exception
 import boto.s3.connection
@@ -55,15 +57,15 @@ def choose_bucket_prefix(template, max_len=30):
 
 
 def nuke_prefixed_buckets_on_conn(prefix, name, conn):
-    print 'Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
+    print('Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
         name=name,
         prefix=prefix,
-        )
+        ))
 
     for bucket in conn.get_all_buckets():
-        print 'prefix=',prefix
+        print('prefix=',prefix)
         if bucket.name.startswith(prefix):
-            print 'Cleaning bucket {bucket}'.format(bucket=bucket)
+            print('Cleaning bucket {bucket}'.format(bucket=bucket))
             success = False
             for i in xrange(2):
                 try:
@@ -81,17 +83,17 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
                             raise e
                         keys = bucket.list();
                     for key in keys:
-                        print 'Cleaning bucket {bucket} key {key}'.format(
+                        print('Cleaning bucket {bucket} key {key}'.format(
                             bucket=bucket,
                             key=key,
-                            )
+                            ))
                         # key.set_canned_acl('private')
                         bucket.delete_key(key.name, version_id = key.version_id)
                     bucket.delete()
                     success = True
                 except boto.exception.S3ResponseError as e:
                     if e.error_code != 'AccessDenied':
-                        print 'GOT UNWANTED ERROR', e.error_code
+                        print('GOT UNWANTED ERROR', e.error_code)
                         raise
                     # seems like we don't have permissions set appropriately, we'll
                     # modify permissions and retry
@@ -107,26 +109,26 @@ def nuke_prefixed_buckets(prefix):
     # If no regions are specified, use the simple method
     if targets.main.master == None:
         for name, conn in s3.items():
-            print 'Deleting buckets on {name}'.format(name=name)
+            print('Deleting buckets on {name}'.format(name=name))
             nuke_prefixed_buckets_on_conn(prefix, name, conn)
     else: 
 		    # First, delete all buckets on the master connection 
 		    for name, conn in s3.items():
 		        if conn == targets.main.master.connection:
-		            print 'Deleting buckets on {name} (master)'.format(name=name)
+		            print('Deleting buckets on {name} (master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 		
 		    # Then sync to propagate deletes to secondaries
 		    region_sync_meta(targets.main, targets.main.master.connection)
-		    print 'region-sync in nuke_prefixed_buckets'
+		    print('region-sync in nuke_prefixed_buckets')
 		
 		    # Now delete remaining buckets on any other connection 
 		    for name, conn in s3.items():
 		        if conn != targets.main.master.connection:
-		            print 'Deleting buckets on {name} (non-master)'.format(name=name)
+		            print('Deleting buckets on {name} (non-master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 
-    print 'Done with cleanup of test buckets.'
+    print('Done with cleanup of test buckets.')
 
 class TargetConfig:
     def __init__(self, cfg, section):
