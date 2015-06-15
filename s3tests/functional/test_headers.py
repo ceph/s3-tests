@@ -167,7 +167,7 @@ def _setup_bad_object(headers=None, remove=None):
 @attr(operation='create w/invalid MD5')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_md5_invalid():
+def test_object_create_bad_md5_invalid_garbage():
     key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
@@ -181,7 +181,7 @@ def test_object_create_bad_md5_invalid():
 @attr(operation='create w/invalid MD5')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_md5_invalid():
+def test_object_create_bad_md5_invalid_short():
     key = _setup_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
