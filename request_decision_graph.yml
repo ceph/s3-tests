@@ -269,7 +269,7 @@ bucket_put_simple:
             - '2 {garbage}'
         website_body:
             - null
-            - '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IndexDocument><Suffix>{suffix}</Suffix><IndexDocument>{error_doc}<WebsiteConfiguration/>'
+            - '<WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IndexDocument><Suffix>{suffix}</Suffix></IndexDocument>{error_doc}</WebsiteConfiguration>'
         suffix:
             - null
             - '2 {garbage}'
