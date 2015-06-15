@@ -27,9 +27,6 @@ import re
 
 import xml.etree.ElementTree as ET
 
-from httplib import HTTPConnection, HTTPSConnection
-from urlparse import urlparse
-
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
@@ -53,6 +50,8 @@ from . import (
     config,
     get_prefix,
     is_slow_backend,
+    _make_request,
+    _make_bucket_request,
     )
 
 
@@ -2454,57 +2453,6 @@ def _setup_bucket_request(bucket_acl=None):
         bucket.set_acl(bucket_acl)
 
     return bucket
-
-def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, expires_in=100000):
-    """
-    issue a request for a specified method, on a specified <bucket,key>,
-    with a specified (optional) body (encrypted per the connection), and
-    return the response (status, reason)
-    """
-    if authenticated:
-        url = key.generate_url(expires_in, method=method, response_headers=response_headers)
-        o = urlparse(url)
-        path = o.path + '?' + o.query
-    else:
-        path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
-
-    if s3.main.is_secure:
-        class_ = HTTPSConnection
-    else:
-        class_ = HTTPConnection
-
-    c = class_(s3.main.host, s3.main.port, strict=True)
-    c.request(method, path, body=body)
-    res = c.getresponse()
-
-    print res.status, res.reason
-    return res
-
-def _make_bucket_request(method, bucket, body=None, authenticated=False, expires_in=100000):
-    """
-    issue a request for a specified method, on a specified <bucket,key>,
-    with a specified (optional) body (encrypted per the connection), and
-    return the response (status, reason)
-    """
-    if authenticated:
-        url = bucket.generate_url(expires_in, method=method)
-        o = urlparse(url)
-        path = o.path + '?' + o.query
-    else:
-        path = '/{bucket}'.format(bucket=bucket.name)
-
-    if s3.main.is_secure:
-        class_ = HTTPSConnection
-    else:
-        class_ = HTTPConnection
-
-    c = class_(s3.main.host, s3.main.port, strict=True)
-    c.request(method, path, body=body)
-    res = c.getresponse()
-
-    print res.status, res.reason
-    return res
-
 
 @attr(resource='object')
 @attr(method='get')

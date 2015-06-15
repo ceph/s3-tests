@@ -8,6 +8,8 @@ import itertools
 import os
 import random
 import string
+from httplib import HTTPConnection, HTTPSConnection
+from urlparse import urlparse
 
 from .utils import region_sync_meta
 
@@ -312,6 +314,10 @@ def setup():
             'user_id',
             'display_name',
             'email',
+            's3website_domain',
+            'host',
+            'port',
+            'is_secure',
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
@@ -394,3 +400,84 @@ def get_new_bucket(target=None, name=None, headers=None):
     # ignore that as astronomically unlikely
     bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
     return bucket
+
+def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True):
+    """
+    issue a request for a specified method, on a specified <bucket,key>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason)
+    """
+    if response_headers is None:
+        response_headers = {}
+    if request_headers is None:
+        request_headers = {}
+    if not path_style:
+        conn = bucket.connection
+        request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
+
+    if authenticated:
+        url = key.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        if path_style:
+            path = '/{bucket}/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+        else:
+            path = '/{obj}'.format(bucket=key.bucket.name, obj=key.name)
+
+    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure)
+
+def _make_bucket_request(method, bucket, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True):
+    """
+    issue a request for a specified method, on a specified <bucket,key>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason)
+    """
+    if response_headers is None:
+        response_headers = {}
+    if request_headers is None:
+        request_headers = {}
+    if not path_style:
+        conn = bucket.connection
+        request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
+
+    if authenticated:
+        url = bucket.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        if path_style:
+            path = '/{bucket}'.format(bucket=bucket.name)
+        else:
+            path = '/'
+
+    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure)
+
+def _make_raw_request(host, port, method, path, body=None, request_headers=None, secure=False):
+    if secure:
+        class_ = HTTPSConnection
+    else:
+        class_ = HTTPConnection
+
+    if request_headers is None:
+        request_headers = {}
+
+    skip_host=('Host' in request_headers)
+    skip_accept_encoding = False
+    c = class_(host, port, strict=True)
+
+    # We do the request manually, so we can muck with headers
+    #c.request(method, path, body=body, headers=request_headers)
+    c.connect()
+    c.putrequest(method, path, skip_host, skip_accept_encoding)
+    for k,v in request_headers.items():
+        c.putheader(k,v)
+    c.endheaders(message_body=body)
+
+    res = c.getresponse()
+    #c.close()
+
+    print(res.status, res.reason)
+    return res
+
+
