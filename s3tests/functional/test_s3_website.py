@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
 from cStringIO import StringIO
+import collections
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
@@ -55,8 +56,10 @@ from . import (
     )
 
 WEBSITE_CONFIGS_XMLFRAG = {
-        'IndexDoc': '<IndexDocument><Suffix>{indexdoc}</Suffix></IndexDocument>',
-        'IndexDocErrorDoc': '<IndexDocument><Suffix>{indexdoc}</Suffix></IndexDocument><ErrorDocument><Key>{errordoc}</Key></ErrorDocument>',
+        'IndexDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument>',
+        'IndexDocErrorDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument><ErrorDocument><Key>${ErrorDocument_Key}</Key></ErrorDocument>',
+        'RedirectAll': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName></RedirectAllRequestsTo>',
+        'RedirectAll+Protocol': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName><Protocol>${RedirectAllRequestsTo_Protocol}</Protocol></RedirectAllRequestsTo>',
         }
 
 def make_website_config(xml_fragment):
@@ -74,20 +77,35 @@ def get_website_url(proto, bucket, path):
         domain = config['main']['s3website_domain']
     elif('s3website_domain' in config['alt']):
         domain = config['DEFAULT']['s3website_domain']
+    path = path.lstrip('/')
     return "%s://%s.%s/%s" % (proto, bucket, domain, path)
 
-def _test_website_prep(bucket, xml_fragment):
-    indexname = choose_bucket_prefix(template='index-{random}.html', max_len=32)
-    errorname = choose_bucket_prefix(template='error-{random}.html', max_len=32)
-    xml_fragment = xml_fragment.format(indexdoc=indexname, errordoc=errorname)
+def _test_website_populate_fragment(xml_fragment, fields):
+    f = {
+          'IndexDocument_Suffix': choose_bucket_prefix(template='index-{random}.html', max_len=32),
+          'ErrorDocument_Key': choose_bucket_prefix(template='error-{random}.html', max_len=32),
+          'RedirectAllRequestsTo_HostName': choose_bucket_prefix(template='{random}.{random}.com', max_len=32),
+        }
+    f.update(fields)
+    xml_fragment = string.Template(xml_fragment).safe_substitute(**f)
+    return xml_fragment, f
+
+def _test_website_prep(bucket, xml_template, hardcoded_fields = {}):
+    xml_fragment, f = _test_website_populate_fragment(xml_template, hardcoded_fields)
     config_xml = make_website_config(xml_fragment)
+    print(config_xml)
     bucket.set_website_configuration_xml(config_xml)
     eq (config_xml, bucket.get_website_configuration_xml())
-    return indexname, errorname
+    return f
 
 def __website_expected_reponse_status(res, status, reason):
-    eq(res.status, status)
-    eq(res.reason, reason)
+    if not isinstance(status, collections.Container):
+        status = set([status])
+    if not isinstance(reason, collections.Container):
+        reason = set([reason])
+
+    ok(res.status in status, 'HTTP status code mismatch')
+    ok(res.reason in reason, 'HTTP reason mismatch')
 
 def _website_expected_error_response(res, bucket_name, status, reason, code):
     body = res.read()
@@ -96,7 +114,7 @@ def _website_expected_error_response(res, bucket_name, status, reason, code):
     ok('<li>Code: '+code+'</li>' in body, 'HTML should contain "Code: %s" ' % (code, ))
     ok(('<li>BucketName: %s</li>' % (bucket_name, )) in body, 'HTML should contain bucket name')
 
-def _website_request(bucket_name, path):
+def _website_request(bucket_name, path, method='GET'):
     url = get_website_url('http', bucket_name, path)
     print("url", url)
 
@@ -104,7 +122,8 @@ def _website_request(bucket_name, path):
     path = o.path + '?' + o.query
     request_headers={}
     request_headers['Host'] = o.hostname
-    res = _make_raw_request(config.main.host, config.main.port, 'GET', path, request_headers=request_headers, secure=False)
+    print('Request: {method} {path} {headers}'.format(method=method, path=path, headers=' '.join(map(lambda t: t[0]+':'+t[1]+"\n", request_headers.items()))))
+    res = _make_raw_request(config.main.host, config.main.port, method, path, request_headers=request_headers, secure=False)
     for (k,v) in res.getheaders():
         print(k,v)
     return res
@@ -140,9 +159,9 @@ def test_website_nonexistant_bucket_rgw():
 @attr('s3website')
 def test_website_public_bucket_list_public_index():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
@@ -150,7 +169,7 @@ def test_website_public_bucket_list_public_index():
     res = _website_request(bucket.name, '')
     body = res.read()
     print(body)
-    eq(body, indexstring, 'default content should match index.html set content')
+    eq(body, indexstring) # default content should match index.html set content
     __website_expected_reponse_status(res, 200, 'OK')
     indexhtml.delete()
     bucket.delete()
@@ -162,9 +181,9 @@ def test_website_public_bucket_list_public_index():
 @attr('s3website')
 def test_website_private_bucket_list_public_index():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.set_canned_acl('private')
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
@@ -187,7 +206,7 @@ def test_website_private_bucket_list_public_index():
 def test_website_private_bucket_list_empty():
     bucket = get_new_bucket()
     bucket.set_canned_acl('private')
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
@@ -200,7 +219,7 @@ def test_website_private_bucket_list_empty():
 @attr('s3website')
 def test_website_public_bucket_list_empty():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
 
     res = _website_request(bucket.name, '')
@@ -214,9 +233,9 @@ def test_website_public_bucket_list_empty():
 @attr('s3website')
 def test_website_public_bucket_list_private_index():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
@@ -233,9 +252,9 @@ def test_website_public_bucket_list_private_index():
 @attr('s3website')
 def test_website_private_bucket_list_private_index():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.set_canned_acl('private')
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
@@ -254,7 +273,7 @@ def test_website_private_bucket_list_private_index():
 @attr('s3website')
 def test_website_private_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
 
     res = _website_request(bucket.name, '')
@@ -271,7 +290,7 @@ def test_website_private_bucket_list_empty_missingerrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
 
     res = _website_request(bucket.name, '')
@@ -285,9 +304,9 @@ def test_website_public_bucket_list_empty_missingerrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
@@ -305,9 +324,9 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
 @attr('s3website')
 def test_website_private_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
@@ -326,9 +345,9 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
 @attr('s3website')
 def test_website_private_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
@@ -349,9 +368,9 @@ def test_website_private_bucket_list_empty_blockederrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
@@ -372,13 +391,13 @@ def test_website_public_bucket_list_empty_blockederrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
@@ -400,13 +419,13 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
 @attr('s3website')
 def test_website_private_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
@@ -429,9 +448,9 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
 @attr('s3website')
 def test_website_private_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
@@ -452,9 +471,9 @@ def test_website_private_bucket_list_empty_gooderrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
@@ -475,13 +494,13 @@ def test_website_public_bucket_list_empty_gooderrordoc():
 @attr('s3website')
 def test_website_public_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
@@ -503,13 +522,13 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
 @attr('s3website')
 def test_website_private_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
-    indexname, errorname = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
-    indexhtml = bucket.new_key(indexname)
+    indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
-    errorhtml = bucket.new_key(errorname)
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
