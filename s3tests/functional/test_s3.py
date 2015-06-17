@@ -4484,39 +4484,41 @@ def test_object_copy_canned_acl():
 @attr(method='put')
 @attr(operation='copy object and retain metadata')
 def test_object_copy_retaining_metadata():
-    bucket = get_new_bucket()
-    key = bucket.new_key('foo123bar')
-    metadata = {'key1': 'value1', 'key2': 'value2'}
-    key.set_metadata('key1', 'value1')
-    key.set_metadata('key2', 'value2')
-    content_type = 'audio/ogg'
-    key.content_type = content_type
-    key.set_contents_from_string('foo')
+    for size in [3, 1024 * 1024]:
+        bucket = get_new_bucket()
+        key = bucket.new_key('foo123bar')
+        metadata = {'key1': 'value1', 'key2': 'value2'}
+        key.set_metadata('key1', 'value1')
+        key.set_metadata('key2', 'value2')
+        content_type = 'audio/ogg'
+        key.content_type = content_type
+        key.set_contents_from_string(str(bytearray(size)))
 
-    bucket.copy_key('bar321foo', bucket.name, 'foo123bar')
-    key2 = bucket.get_key('bar321foo')
-    eq(key2.size, 3)
-    eq(key2.metadata, metadata)
-    eq(key2.content_type, content_type)
+        bucket.copy_key('bar321foo', bucket.name, 'foo123bar')
+        key2 = bucket.get_key('bar321foo')
+        eq(key2.size, size)
+        eq(key2.metadata, metadata)
+        eq(key2.content_type, content_type)
 
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy object and replace metadata')
 def test_object_copy_replacing_metadata():
-    bucket = get_new_bucket()
-    key = bucket.new_key('foo123bar')
-    key.set_metadata('key1', 'value1')
-    key.set_metadata('key2', 'value2')
-    key.content_type = 'audio/ogg'
-    key.set_contents_from_string('foo')
+    for size in [3, 1024 * 1024]:
+        bucket = get_new_bucket()
+        key = bucket.new_key('foo123bar')
+        key.set_metadata('key1', 'value1')
+        key.set_metadata('key2', 'value2')
+        key.content_type = 'audio/ogg'
+        key.set_contents_from_string(str(bytearray(size)))
 
-    metadata = {'key3': 'value3', 'key1': 'value4'}
-    content_type = 'audio/mpeg'
-    bucket.copy_key('bar321foo', bucket.name, 'foo123bar', metadata=metadata, headers={'Content-Type': content_type})
-    key2 = bucket.get_key('bar321foo')
-    eq(key2.size, 3)
-    eq(key2.metadata, metadata)
-    eq(key2.content_type, content_type)
+        metadata = {'key3': 'value3', 'key1': 'value4'}
+        content_type = 'audio/mpeg'
+        bucket.copy_key('bar321foo', bucket.name, 'foo123bar', metadata=metadata, headers={'Content-Type': content_type})
+        key2 = bucket.get_key('bar321foo')
+        eq(key2.size, size)
+        eq(key2.metadata, metadata)
+        eq(key2.content_type, content_type)
 
 def transfer_part(bucket, mp_id, mp_keyname, i, part):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
