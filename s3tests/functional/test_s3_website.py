@@ -1,50 +1,14 @@
 from __future__ import print_function
 import sys
-from cStringIO import StringIO
 import collections
-import boto.exception
-import boto.s3.connection
-import boto.s3.acl
-import bunch
-import datetime
-import time
-import email.utils
-import isodate
 import nose
-import operator
-import socket
-import ssl
-import os
-import requests
-import base64
-import hmac
-import sha
-import pytz
-import json
-import httplib2
-import threading
-import itertools
 import string
 import random
 
-import xml.etree.ElementTree as ET
-
-from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
-
-from .utils import assert_raises
-from .utils import generate_random
-from .utils import region_sync_meta
-import AnonymousAuth
-
-from email.header import decode_header
-from ordereddict import OrderedDict
-
-from boto.s3.cors import CORSConfiguration
 
 from . import (
     get_new_bucket,
