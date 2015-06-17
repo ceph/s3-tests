@@ -19,6 +19,8 @@ from . import (
     choose_bucket_prefix,
     )
 
+from ..common import with_setup_kwargs
+
 WEBSITE_CONFIGS_XMLFRAG = {
         'IndexDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument>',
         'IndexDocErrorDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument><ErrorDocument><Key>${ErrorDocument_Key}</Key></ErrorDocument>',

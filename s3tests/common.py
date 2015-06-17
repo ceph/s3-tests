@@ -181,3 +181,73 @@ def get_new_bucket(connection=None):
 
 def teardown():
     nuke_prefixed_buckets()
+
+def with_setup_kwargs(setup, teardown=None):
+    """Decorator to add setup and/or teardown methods to a test function::
+
+      @with_setup_args(setup, teardown)
+      def test_something():
+          " ... "
+
+    The setup function should return (kwargs) which will be passed to
+    test function, and teardown function.
+
+    Note that `with_setup_kwargs` is useful *only* for test functions, not for test
+    methods or inside of TestCase subclasses.
+    """
+    def decorate(func):
+        kwargs = {}
+
+        def test_wrapped(*args, **kwargs2):
+            k2 = kwargs.copy()
+            k2.update(kwargs2)
+            k2['testname'] = func.__name__
+            func(*args, **k2)
+
+        test_wrapped.__name__ = func.__name__
+
+        def setup_wrapped():
+            k = setup()
+            kwargs.update(k)
+            if hasattr(func, 'setup'):
+                func.setup()
+        test_wrapped.setup = setup_wrapped
+
+        if teardown:
+            def teardown_wrapped():
+                if hasattr(func, 'teardown'):
+                    func.teardown()
+                teardown(**kwargs)
+
+            test_wrapped.teardown = teardown_wrapped
+        else:
+            if hasattr(func, 'teardown'):
+                test_wrapped.teardown = func.teardown()
+        return test_wrapped
+    return decorate
+
+# Demo case for the above, when you run test_gen():
+# _test_gen will run twice,
+# with the following stderr printing
+# setup_func {'b': 2}
+# testcase ('1',) {'b': 2, 'testname': '_test_gen'}
+# teardown_func {'b': 2}
+# setup_func {'b': 2}
+# testcase () {'b': 2, 'testname': '_test_gen'}
+# teardown_func {'b': 2}
+# 
+#def setup_func():
+#    kwargs = {'b': 2}
+#    print("setup_func", kwargs, file=sys.stderr)
+#    return kwargs
+#
+#def teardown_func(**kwargs):
+#    print("teardown_func", kwargs, file=sys.stderr)
+#
+#@with_setup_kwargs(setup=setup_func, teardown=teardown_func)
+#def _test_gen(*args, **kwargs):
+#    print("testcase", args, kwargs, file=sys.stderr)
+#
+#def test_gen():
+#    yield _test_gen, '1'
+#    yield _test_gen
