@@ -5396,6 +5396,22 @@ def test_ranged_request_return_trailing_bytes_response_code():
     eq(fetched_content, content[-7:])
     eq(status, 206)
 
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='range')
+@attr(assertion='returns invalid range, 416')
+def test_ranged_request_invalid_range():
+    content = 'testcontent'
+
+    bucket = get_new_bucket()
+    key = bucket.new_key('testobj')
+    key.set_contents_from_string(content)
+
+    # test invalid range
+    e = assert_raises(boto.exception.S3ResponseError, key.open, 'r', headers={'Range': 'bytes=40-50'})
+    eq(e.status, 416)
+    eq(e.error_code, 'InvalidRange')
+
 def check_can_test_multiregion():
     if not targets.main.master or len(targets.main.secondaries) == 0:
         raise SkipTest
