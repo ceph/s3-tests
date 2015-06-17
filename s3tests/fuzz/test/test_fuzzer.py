@@ -178,7 +178,7 @@ def test_expand_random_printable_no_whitespace():
         assert_true(reduce(lambda x, y: x and y, [x not in string.whitespace and x in string.printable for x in got]))
 
 
-def test_expand_random_binary():
+def test_expand_random_binary_no_whitespace():
     prng = random.Random(1)
     for _ in xrange(1000):
         got = expand({}, '{random 500 binary_no_whitespace}', prng)
