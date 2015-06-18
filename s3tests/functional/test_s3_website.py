@@ -547,12 +547,12 @@ def test_website_bucket_private_redirectall_path():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
     bucket.set_canned_acl('private')
 
-    pathfragment = choose_bucket_prefix(template='{random}', max_len=16)
+    pathfragment = choose_bucket_prefix(template='/{random}', max_len=16)
 
-    res = _website_request(bucket.name, '/'+pathfragment)
+    res = _website_request(bucket.name, pathfragment)
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
-    new_url = 'http://%s/%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
+    new_url = 'http://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
     _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
 
     bucket.delete()
@@ -568,12 +568,12 @@ def test_website_bucket_private_redirectall_path_upgrade():
     f = _test_website_prep(bucket, x)
     bucket.set_canned_acl('private')
 
-    pathfragment = choose_bucket_prefix(template='{random}', max_len=16)
+    pathfragment = choose_bucket_prefix(template='/{random}', max_len=16)
 
-    res = _website_request(bucket.name, pathfragment)
+    res = _website_request(bucket.name, +pathfragment)
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
-    new_url = 'https://%s/%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
+    new_url = 'https://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
     _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
 
     bucket.delete()
