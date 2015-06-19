@@ -607,6 +607,90 @@ def test_website_bucket_private_redirectall_path_upgrade():
 
     bucket.delete()
 
+# ------ x-amz redirect tests
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='x-amz-website-redirect-location should not fire without websiteconf')
+@attr('s3website')
+@attr('x-amz-website-redirect-location')
+def test_websute_xredirect_nonwebsite():
+    bucket = get_new_bucket()
+    #f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
+    #bucket.set_canned_acl('private')
+
+    k = bucket.new_key('page')
+    content = 'wrong-content'
+    headers = {'x-amz-website-redirect-location': '/relative'}
+    k.set_contents_from_string(content, headers=headers)
+    k.make_public()
+
+    res = _website_request(bucket.name, '/page')
+    # RGW returns "302 Found" per RFC2616
+    # S3 returns 302 Moved Temporarily per RFC1945
+    #_website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    __website_expected_reponse_status(res, 200, 'OK')
+    body = res.read()
+    print(body)
+    eq(body, content, 'default content should match index.html set content')
+
+    k.delete()
+    bucket.delete()
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path')
+@attr('s3website')
+@attr('x-amz-website-redirect-location')
+def test_websute_xredirect_relative():
+    bucket = get_new_bucket()
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    bucket.make_public()
+
+    k = bucket.new_key('page')
+    content = 'wrong-content'
+    headers = {'x-amz-website-redirect-location': '/relative'}
+    k.set_contents_from_string(content, headers=headers)
+    k.make_public()
+
+    res = _website_request(bucket.name, '/page')
+    # RGW returns "302 Found" per RFC2616
+    # S3 returns 302 Moved Temporarily per RFC1945
+    new_url =  get_website_url(bucket_name=bucket.name, path='/relative')
+    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+
+    k.delete()
+    bucket.delete()
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute')
+@attr('s3website')
+@attr('x-amz-website-redirect-location')
+def test_websute_xredirect_abs():
+    bucket = get_new_bucket()
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    bucket.make_public()
+
+    k = bucket.new_key('page')
+    content = 'wrong-content'
+    headers = {'x-amz-website-redirect-location': 'http://example.com/foo'}
+    k.set_contents_from_string(content, headers=headers)
+    k.make_public()
+
+    res = _website_request(bucket.name, '/page')
+    # RGW returns "302 Found" per RFC2616
+    # S3 returns 302 Moved Temporarily per RFC1945
+    new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
+    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+
+    k.delete()
+    bucket.delete()
+
+# ------ RoutingRules tests
+
 # RoutingRules
 ROUTING_RULES = {
     'empty': '',
