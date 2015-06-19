@@ -5,6 +5,7 @@ import os
 import random
 import string
 import yaml
+from lxml import etree
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
@@ -251,3 +252,19 @@ def with_setup_kwargs(setup, teardown=None):
 #def test_gen():
 #    yield _test_gen, '1'
 #    yield _test_gen
+
+
+def normalize_xml_whitespace(xml, pretty_print=True):
+    root = etree.fromstring(xml.encode(encoding='ascii'))
+
+    for element in root.iter('*'):
+        if element.text is not None and not element.text.strip():
+            element.text = None
+        if element.text is not None:
+            element.text = element.text.strip().replace("\n","").replace("\r","")
+        if element.tail is not None and not element.tail.strip():
+            element.tail = None
+        if element.tail is not None:
+            element.tail = element.tail.strip().replace("\n","").replace("\r","")
+
+    return etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
