@@ -884,7 +884,7 @@ def routing_check(*args, **kwargs):
     else:
         assert(False)
 
-@attr('xml')
+@attr('RoutingRules')
 def testGEN_routing():
 
     for t in ROUTING_RULES_TESTS:
