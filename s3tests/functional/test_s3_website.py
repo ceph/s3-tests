@@ -20,8 +20,11 @@ from . import (
     choose_bucket_prefix,
     )
 
-from ..common import with_setup_kwargs
-from ..xmlhelper import normalize_xml_whitespace
+from ..common import ( 
+        with_setup_kwargs,
+        normalize_xml_whitespace,
+        assert_xml_equal
+)
 
 IGNORE_FIELD = 'IGNORETHIS'
 
@@ -86,6 +89,7 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}):
     config_xml2 = bucket.get_website_configuration_xml()
     config_xml2 = normalize_xml_whitespace(config_xml2, pretty_print=True) # For us to read
     #print("config_xml2\n", config_xml2)
+    assert_xml_equal(config_xml1, config_xml2)
     eq (config_xml1, config_xml2)
     f['WebsiteConfiguration'] = config_xml2
     return f
