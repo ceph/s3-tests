@@ -5,7 +5,11 @@ import os
 import random
 import string
 import yaml
+import re
 from lxml import etree
+
+from doctest import Example
+from lxml.doctestcompare import LXMLOutputChecker
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
@@ -261,10 +265,23 @@ def normalize_xml_whitespace(xml, pretty_print=True):
         if element.text is not None and not element.text.strip():
             element.text = None
         if element.text is not None:
-            element.text = element.text.strip().replace("\n","").replace("\r","")
+            element.text = element.text.strip().replace("\n", "").replace("\r", "")
         if element.tail is not None and not element.tail.strip():
             element.tail = None
         if element.tail is not None:
-            element.tail = element.tail.strip().replace("\n","").replace("\r","")
+            element.tail = element.tail.strip().replace("\n", "").replace("\r", "")
 
-    return etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
+    xmlstr = etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
+    # there are two different DTD URIs
+    xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="DTD-URI"', xmlstr)
+    xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="DTD-URI"', xmlstr)
+    for uri in ['http://doc.s3.amazonaws.com/doc/2006-03-01/', 'http://s3.amazonaws.com/doc/2006-03-01/']:
+        xmlstr = xmlstr.replace(uri, 'URI-DTD')
+    #xmlstr = re.sub(r'>\s+', '>', xmlstr, count=0, flags=re.MULTILINE)
+    return xmlstr
+
+def assert_xml_equal(got, want):
+    checker = LXMLOutputChecker()
+    if not checker.check_output(want, got, 0):
+        message = checker.output_difference(Example("", want), got, 0)
+        raise AssertionError(message)
