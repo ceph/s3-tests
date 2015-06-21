@@ -625,9 +625,11 @@ def test_websute_xredirect_nonwebsite():
 
     k = bucket.new_key('page')
     content = 'wrong-content'
-    headers = {'x-amz-website-redirect-location': '/relative'}
-    k.set_contents_from_string(content, headers=headers)
-    k.make_public()
+    redirect_dest = '/relative'
+    headers = {'x-amz-website-redirect-location': redirect_dest}
+    k.set_contents_from_string(content, headers=headers, policy='public-read')
+    redirect = k.get_redirect()
+    ok(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
     # RGW returns "302 Found" per RFC2616
@@ -654,15 +656,17 @@ def test_websute_xredirect_relative():
 
     k = bucket.new_key('page')
     content = 'wrong-content'
-    headers = {'x-amz-website-redirect-location': '/relative'}
-    k.set_contents_from_string(content, headers=headers)
-    k.make_public()
+    redirect_dest = '/relative'
+    headers = {'x-amz-website-redirect-location': redirect_dest}
+    k.set_contents_from_string(content, headers=headers, policy='public-read')
+    redirect = k.get_redirect()
+    ok(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
-    new_url =  get_website_url(bucket_name=bucket.name, path='/relative')
-    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    new_url =  get_website_url(bucket_name=bucket.name, path=redirect_dest)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     k.delete()
     bucket.delete()
@@ -680,15 +684,17 @@ def test_websute_xredirect_abs():
 
     k = bucket.new_key('page')
     content = 'wrong-content'
-    headers = {'x-amz-website-redirect-location': 'http://example.com/foo'}
-    k.set_contents_from_string(content, headers=headers)
-    k.make_public()
+    redirect_dest = 'http://example.com/foo'
+    headers = {'x-amz-website-redirect-location': redirect_dest}
+    k.set_contents_from_string(content, headers=headers, policy='public-read')
+    redirect = k.get_redirect()
+    ok(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
-    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     k.delete()
     bucket.delete()
