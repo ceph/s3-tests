@@ -5,11 +5,15 @@ import nose
 import string
 import random
 from pprint import pprint
+import time
 
 from urlparse import urlparse
 
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
+from nose.tools import timed
+
+from .. import common
 
 from . import (
     get_new_bucket,
@@ -19,12 +23,6 @@ from . import (
     _make_raw_request,
     choose_bucket_prefix,
     )
-
-from ..common import ( 
-        with_setup_kwargs,
-        normalize_xml_whitespace,
-        assert_xml_equal
-)
 
 IGNORE_FIELD = 'IGNORETHIS'
 
@@ -55,13 +53,16 @@ def get_website_url(**kwargs):
         hostname = kwargs['hostname']
     if 'path' in kwargs:
         path = kwargs['path']
+
+    if hostname is None and bucket is None:
+        return '/' + path.lstrip('/')
     
     domain = config['main']['host']
     if('s3website_domain' in config['main']):
         domain = config['main']['s3website_domain']
     elif('s3website_domain' in config['alt']):
         domain = config['DEFAULT']['s3website_domain']
-    if hostname is None:
+    if hostname is None and bucket is not None:
         hostname = '%s.%s' % (bucket, domain)
     path = path.lstrip('/')
     return "%s://%s/%s" % (proto, hostname, path)
@@ -84,12 +85,14 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}):
     xml_fragment, f = _test_website_populate_fragment(xml_template, hardcoded_fields)
     config_xml1 = make_website_config(xml_fragment)
     bucket.set_website_configuration_xml(config_xml1)
-    config_xml1 = normalize_xml_whitespace(config_xml1, pretty_print=True) # Do it late, so the system gets weird whitespace
     #print("config_xml1\n", config_xml1)
     config_xml2 = bucket.get_website_configuration_xml()
-    config_xml2 = normalize_xml_whitespace(config_xml2, pretty_print=True) # For us to read
+
+    # Cleanup for our validation
+    config_xml1 = common.normalize_xml(config_xml1, pretty_print=True) # Do it late, so the system gets weird whitespace
+    config_xml2 = common.normalize_xml(config_xml2, pretty_print=True) # For us to read
+    common.assert_xml_equal(config_xml1, config_xml2)
     #print("config_xml2\n", config_xml2)
-    assert_xml_equal(config_xml1, config_xml2)
     eq (config_xml1, config_xml2)
     f['WebsiteConfiguration'] = config_xml2
     return f
@@ -105,14 +108,40 @@ def __website_expected_reponse_status(res, status, reason):
     if reason is not IGNORE_FIELD:
         ok(res.reason in reason, 'HTTP reason was was %s should be %s' % (res.reason, reason))
 
-def _website_expected_error_response(res, bucket_name, status, reason, code):
-    body = res.read()
-    print(body)
+def _website_expected_default_html(**kwargs):
+    fields = []
+    for k in kwargs.keys():
+        # AmazonS3 seems to be inconsistent, some HTML errors include BucketName, but others do not.
+        if k is 'BucketName':
+            continue
+
+        v = kwargs[k]
+        if isinstance(v, str):
+            v = [v]
+        elif not isinstance(v, collections.Container):
+            v = [v]
+        for v2 in v:
+            s = '<li>%s: %s</li>' % (k,v2)
+            fields.append(s)
+    return fields
+
+def _website_expected_error_response(res, bucket_name, status, reason, code, content=None, body=None):
+    if body is None:
+        body = res.read()
+        print(body)
     __website_expected_reponse_status(res, status, reason)
-    if code is not IGNORE_FIELD:
-        ok('<li>Code: '+code+'</li>' in body, 'HTML should contain "Code: %s" ' % (code, ))
-    if bucket_name is not IGNORE_FIELD:
-        ok(('<li>BucketName: %s</li>' % (bucket_name, )) in body, 'HTML should contain bucket name')
+
+    # Argh, AmazonS3 is really inconsistent, so we have a conditional test!
+    # This is most visible if you have an ErrorDoc present
+    errorcode = res.getheader('x-amz-error-code', None)
+    if errorcode is not None:
+        eq(errorcode, code)
+
+    if not isinstance(content, collections.Container):
+        content = set([content])
+    for f in content:
+        if f is not IGNORE_FIELD and f is not None:
+            ok(f in body, 'HTML should contain "%s"' % (f, ))
 
 def _website_expected_redirect_response(res, status, reason, new_url):
     body = res.read()
@@ -122,16 +151,18 @@ def _website_expected_redirect_response(res, status, reason, new_url):
     eq(loc, new_url, 'Location header should be set "%s" != "%s"' % (loc,new_url,))
     ok(len(body) == 0, 'Body of a redirect should be empty')
 
-def _website_request(bucket_name, path, method='GET'):
+def _website_request(bucket_name, path, connect_hostname=None, method='GET'):
     url = get_website_url(proto='http', bucket=bucket_name, path=path)
     print("url", url)
-
     o = urlparse(url)
+    if connect_hostname is None:
+        connect_hostname = o.hostname
     path = o.path + '?' + o.query
     request_headers={}
     request_headers['Host'] = o.hostname
-    print('Request: {method} {path} {headers}'.format(method=method, path=path, headers=' '.join(map(lambda t: t[0]+':'+t[1]+"\n", request_headers.items()))))
-    res = _make_raw_request(config.main.host, config.main.port, method, path, request_headers=request_headers, secure=False)
+    request_headers['Accept'] = '*/*'
+    print('Request: {method} {path}\n{headers}'.format(method=method, path=path, headers=''.join(map(lambda t: t[0]+':'+t[1]+"\n", request_headers.items()))))
+    res = _make_raw_request(connect_hostname, config.main.port, method, path, request_headers=request_headers, secure=False)
     for (k,v) in res.getheaders():
         print(k,v)
     return res
@@ -143,10 +174,11 @@ def _website_request(bucket_name, path, method='GET'):
 @attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket, exposing security risk')
 @attr('s3website')
 @attr('fails_on_rgw')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_nonexistant_bucket_s3():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
-    _website_expected_error_response(res, bucket_name, 404, 'Not Found', 'NoSuchBucket')
+    _website_expected_error_response(res, bucket_name, 404, 'Not Found', 'NoSuchBucket', content=_website_expected_default_html(Code='NoSuchBucket'))
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -154,10 +186,11 @@ def test_website_nonexistant_bucket_s3():
 @attr(assertion='non-existant bucket via website endpoint should give Forbidden, keeping bucket identity secure')
 @attr('s3website')
 @attr('fails_on_s3')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_nonexistant_bucket_rgw():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
-    _website_expected_error_response(res, bucket_name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket_name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
 
 #------------- IndexDocument only, successes
 @attr(resource='bucket')
@@ -165,6 +198,8 @@ def test_website_nonexistant_bucket_rgw():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is public')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
+@timed(5)
 def test_website_public_bucket_list_public_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -173,6 +208,9 @@ def test_website_public_bucket_list_public_index():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
+    #time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -187,6 +225,7 @@ def test_website_public_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_public_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -195,6 +234,10 @@ def test_website_private_bucket_list_public_index():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
+    #time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
+
 
     res = _website_request(bucket.name, '')
     __website_expected_reponse_status(res, 200, 'OK')
@@ -211,13 +254,15 @@ def test_website_private_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.set_canned_acl('private')
+    # TODO: wait for sync
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
     bucket.delete()
 
 @attr(resource='bucket')
@@ -225,13 +270,14 @@ def test_website_private_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey')
+    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=_website_expected_default_html(Code='NoSuchKey'))
     bucket.delete()
 
 @attr(resource='bucket')
@@ -239,6 +285,7 @@ def test_website_public_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -247,9 +294,14 @@ def test_website_public_bucket_list_private_index():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
+    #time.sleep(1)
+    #time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
+
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
     indexhtml.delete()
     bucket.delete()
 
@@ -258,6 +310,7 @@ def test_website_public_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -266,9 +319,13 @@ def test_website_private_bucket_list_private_index():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
+    ##time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
+
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
 
     indexhtml.delete()
     bucket.delete()
@@ -279,15 +336,14 @@ def test_website_private_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, missing errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
-    body = res.read()
-    print(body)
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
     
     bucket.delete()
 
@@ -296,6 +352,7 @@ def test_website_private_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, missing errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -310,6 +367,7 @@ def test_website_public_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -318,9 +376,12 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
+    #time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
 
     indexhtml.delete()
     bucket.delete()
@@ -330,6 +391,7 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -338,9 +400,12 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
     indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
+    #time.sleep(1)
+    while bucket.get_key(f['IndexDocument_Suffix']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
 
     indexhtml.delete()
     bucket.delete()
@@ -351,6 +416,7 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, blocked errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -359,12 +425,15 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
     body = res.read()
     print(body)
-    ok(errorstring not in body, 'error content should match error.html set content')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
+    ok(errorstring not in body, 'error content should NOT match error.html set content')
 
     errorhtml.delete()
     bucket.delete()
@@ -374,6 +443,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, blocked errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -382,11 +452,13 @@ def test_website_public_bucket_list_empty_blockederrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey')
     body = res.read()
     print(body)
+    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=_website_expected_default_html(Code='NoSuchKey'), body=body)
     ok(errorstring not in body, 'error content should match error.html set content')
 
     errorhtml.delete()
@@ -397,6 +469,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -409,11 +482,14 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
     body = res.read()
     print(body)
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     ok(errorstring not in body, 'error content should match error.html set content')
 
     indexhtml.delete()
@@ -425,6 +501,7 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -437,11 +514,14 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
     body = res.read()
     print(body)
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     ok(errorstring not in body, 'error content should match error.html set content')
 
     indexhtml.delete()
@@ -454,6 +534,7 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, good errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -462,12 +543,12 @@ def test_website_private_bucket_list_empty_gooderrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
-    body = res.read()
-    print(body)
-    eq(body, errorstring, 'error content should match error.html set content')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
 
     errorhtml.delete()
     bucket.delete()
@@ -477,6 +558,7 @@ def test_website_private_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, good errordoc')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -485,12 +567,12 @@ def test_website_public_bucket_list_empty_gooderrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
+   #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey')
-    body = res.read()
-    print(body)
-    eq(body, errorstring, 'error content should match error.html set content')
+    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=[errorstring])
 
     errorhtml.delete()
     bucket.delete()
@@ -500,6 +582,7 @@ def test_website_public_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_public_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -512,12 +595,12 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
-    body = res.read()
-    print(body)
-    eq(body, errorstring, 'error content should match error.html set content')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
 
     indexhtml.delete()
     errorhtml.delete()
@@ -528,6 +611,7 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_private_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -540,12 +624,12 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
     errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
+    #time.sleep(1)
+    while bucket.get_key(f['ErrorDocument_Key']) is None:
+        time.sleep(0.05)
 
     res = _website_request(bucket.name, '')
-    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied')
-    body = res.read()
-    print(body)
-    eq(body, errorstring, 'error content should match error.html set content')
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
 
     indexhtml.delete()
     errorhtml.delete()
@@ -557,6 +641,7 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_bucket_private_redirectall_base():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -566,7 +651,7 @@ def test_website_bucket_private_redirectall_base():
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'http://%s/' % f['RedirectAllRequestsTo_HostName']
-    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     bucket.delete()
 
@@ -575,6 +660,7 @@ def test_website_bucket_private_redirectall_base():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_bucket_private_redirectall_path():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -586,7 +672,7 @@ def test_website_bucket_private_redirectall_path():
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'http://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
-    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     bucket.delete()
 
@@ -595,6 +681,7 @@ def test_website_bucket_private_redirectall_path():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_bucket_private_redirectall_path_upgrade():
     bucket = get_new_bucket()
     x = string.Template(WEBSITE_CONFIGS_XMLFRAG['RedirectAll+Protocol']).safe_substitute(RedirectAllRequestsTo_Protocol='https')
@@ -607,7 +694,7 @@ def test_website_bucket_private_redirectall_path_upgrade():
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'https://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
-    _website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     bucket.delete()
 
@@ -618,7 +705,8 @@ def test_website_bucket_private_redirectall_path_upgrade():
 @attr(assertion='x-amz-website-redirect-location should not fire without websiteconf')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-def test_websute_xredirect_nonwebsite():
+#@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_website_xredirect_nonwebsite():
     bucket = get_new_bucket()
     #f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
     #bucket.set_canned_acl('private')
@@ -632,13 +720,14 @@ def test_websute_xredirect_nonwebsite():
     ok(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
+    body = res.read()
+    print(body)
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     #_website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
-    __website_expected_reponse_status(res, 200, 'OK')
-    body = res.read()
-    print(body)
-    eq(body, content, 'default content should match index.html set content')
+    expected_content = _website_expected_default_html(Code='NoSuchWebsiteConfiguration', BucketName=bucket.name, Message='The specified bucket does not have a website configuration')
+    print(expected_content)
+    _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchWebsiteConfiguration', content=expected_content, body=body)
 
     k.delete()
     bucket.delete()
@@ -649,7 +738,8 @@ def test_websute_xredirect_nonwebsite():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-def test_websute_xredirect_relative():
+@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_website_xredirect_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
@@ -665,8 +755,8 @@ def test_websute_xredirect_relative():
     res = _website_request(bucket.name, '/page')
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
-    new_url =  get_website_url(bucket_name=bucket.name, path=redirect_dest)
-    _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
+    #new_url =  get_website_url(bucket_name=bucket.name, path=redirect_dest)
+    _website_expected_redirect_response(res, 301, ['Moved Permanently'], redirect_dest)
 
     k.delete()
     bucket.delete()
@@ -677,7 +767,8 @@ def test_websute_xredirect_relative():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-def test_websute_xredirect_abs():
+@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_website_xredirect_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
@@ -853,6 +944,10 @@ def routing_setup():
   k.set_contents_from_string(s)
   k.set_canned_acl('public-read')
 
+  #time.sleep(1)
+  while bucket.get_key(f['ErrorDocument_Key']) is None:
+      time.sleep(0.05)
+
   return kwargs
 
 def routing_teardown(**kwargs):
@@ -861,7 +956,8 @@ def routing_teardown(**kwargs):
     o.delete()
   
            
-@with_setup_kwargs(setup=routing_setup, teardown=routing_teardown) 
+@common.with_setup_kwargs(setup=routing_setup, teardown=routing_teardown) 
+@timed(5)
 def routing_check(*args, **kwargs):
     bucket = kwargs['bucket']
     args=args[0]
@@ -873,7 +969,7 @@ def routing_check(*args, **kwargs):
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'], hardcoded_fields=xml_fields)
     #print(f)
     config_xml2 = bucket.get_website_configuration_xml()
-    config_xml2 = normalize_xml_whitespace(config_xml2, pretty_print=True) # For us to read
+    config_xml2 = common.normalize_xml(config_xml2, pretty_print=True) # For us to read
     res = _website_request(bucket.name, args['url'])
     print(config_xml2)
     # RGW returns "302 Found" per RFC2616
@@ -895,8 +991,8 @@ def routing_check(*args, **kwargs):
         assert(False)
 
 @attr('RoutingRules')
-def testGEN_routing():
-
+@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
         yield routing_check, t
 

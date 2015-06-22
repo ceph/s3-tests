@@ -258,7 +258,7 @@ def with_setup_kwargs(setup, teardown=None):
 #    yield _test_gen
 
 
-def normalize_xml_whitespace(xml, pretty_print=True):
+def normalize_xml(xml, pretty_print=True):
     root = etree.fromstring(xml.encode(encoding='ascii'))
 
     for element in root.iter('*'):
@@ -271,10 +271,14 @@ def normalize_xml_whitespace(xml, pretty_print=True):
         if element.tail is not None:
             element.tail = element.tail.strip().replace("\n", "").replace("\r", "")
 
+    # Sort the elements
+    for parent in root.xpath('//*[./*]'): # Search for parent elements
+          parent[:] = sorted(parent,key=lambda x: x.tag)
+
     xmlstr = etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
     # there are two different DTD URIs
-    xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="DTD-URI"', xmlstr)
-    xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="DTD-URI"', xmlstr)
+    xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="s3"', xmlstr)
+    xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="s3"', xmlstr)
     for uri in ['http://doc.s3.amazonaws.com/doc/2006-03-01/', 'http://s3.amazonaws.com/doc/2006-03-01/']:
         xmlstr = xmlstr.replace(uri, 'URI-DTD')
     #xmlstr = re.sub(r'>\s+', '>', xmlstr, count=0, flags=re.MULTILINE)
