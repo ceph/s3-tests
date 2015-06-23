@@ -259,6 +259,9 @@ def with_setup_kwargs(setup, teardown=None):
 
 
 def normalize_xml(xml, pretty_print=True):
+    if xml is None:
+        return xml
+
     root = etree.fromstring(xml.encode(encoding='ascii'))
 
     for element in root.iter('*'):
@@ -285,6 +288,9 @@ def normalize_xml(xml, pretty_print=True):
     return xmlstr
 
 def assert_xml_equal(got, want):
+    assert want is not None, 'Wanted XML cannot be None'
+    if got is None:
+        raise AssertionError('Got input to validate was None')
     checker = LXMLOutputChecker()
     if not checker.check_output(want, got, 0):
         message = checker.output_difference(Example("", want), got, 0)

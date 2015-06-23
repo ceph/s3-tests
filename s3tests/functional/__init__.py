@@ -401,7 +401,7 @@ def get_new_bucket(target=None, name=None, headers=None):
     bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
     return bucket
 
-def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True):
+def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
     """
     issue a request for a specified method, on a specified <bucket,key>,
     with a specified (optional) body (encrypted per the connection), and
@@ -425,9 +425,9 @@ def _make_request(method, bucket, key, body=None, authenticated=False, response_
         else:
             path = '/{obj}'.format(bucket=key.bucket.name, obj=key.name)
 
-    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure)
+    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure, timeout=timeout)
 
-def _make_bucket_request(method, bucket, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True):
+def _make_bucket_request(method, bucket, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
     """
     issue a request for a specified method, on a specified <bucket,key>,
     with a specified (optional) body (encrypted per the connection), and
@@ -451,9 +451,9 @@ def _make_bucket_request(method, bucket, body=None, authenticated=False, respons
         else:
             path = '/'
 
-    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure)
+    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure, timeout=timeout)
 
-def _make_raw_request(host, port, method, path, body=None, request_headers=None, secure=False):
+def _make_raw_request(host, port, method, path, body=None, request_headers=None, secure=False, timeout=None):
     if secure:
         class_ = HTTPSConnection
     else:
@@ -464,7 +464,7 @@ def _make_raw_request(host, port, method, path, body=None, request_headers=None,
 
     skip_host=('Host' in request_headers)
     skip_accept_encoding = False
-    c = class_(host, port, strict=True)
+    c = class_(host, port, strict=True, timeout=timeout)
 
     # We do the request manually, so we can muck with headers
     #c.request(method, path, body=body, headers=request_headers)

@@ -12,6 +12,7 @@ from urlparse import urlparse
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
 from nose.tools import timed
+from boto.exception import S3ResponseError
 
 from .. import common
 
@@ -26,6 +27,9 @@ from . import (
 
 IGNORE_FIELD = 'IGNORETHIS'
 
+SLEEP_INTERVAL = 0.01
+SLEEP_MAX = 2.0
+
 WEBSITE_CONFIGS_XMLFRAG = {
         'IndexDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument>${RoutingRules}',
         'IndexDocErrorDoc': '<IndexDocument><Suffix>${IndexDocument_Suffix}</Suffix></IndexDocument><ErrorDocument><Key>${ErrorDocument_Key}</Key></ErrorDocument>${RoutingRules}',
@@ -37,7 +41,7 @@ def make_website_config(xml_fragment):
     """
     Take the tedious stuff out of the config
     """
-    return '<?xml version="1.0" encoding="UTF-8"?><WebsiteConfiguration xmlns="http://doc.s3.amazonaws.com/doc/2006-03-01/">' + xml_fragment + '</WebsiteConfiguration>'
+    return '<?xml version="1.0" encoding="UTF-8"?><WebsiteConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' + xml_fragment + '</WebsiteConfiguration>'
 
 def get_website_url(**kwargs):
     """
@@ -81,20 +85,52 @@ def _test_website_populate_fragment(xml_fragment, fields):
     xml_fragment = string.Template(xml_fragment).safe_substitute(**f)
     return xml_fragment, f
 
-def _test_website_prep(bucket, xml_template, hardcoded_fields = {}):
+def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=None):
     xml_fragment, f = _test_website_populate_fragment(xml_template, hardcoded_fields)
-    config_xml1 = make_website_config(xml_fragment)
-    bucket.set_website_configuration_xml(config_xml1)
-    #print("config_xml1\n", config_xml1)
-    config_xml2 = bucket.get_website_configuration_xml()
+    f['WebsiteConfiguration'] = ''
+    if not xml_template:
+        bucket.delete_website_configuration()
+        return f
+    
+    config_xmlnew = make_website_config(xml_fragment)
 
+    config_xmlold = ''
+    try:
+        config_xmlold = common.normalize_xml(bucket.get_website_configuration_xml(), pretty_print=True)
+    except S3ResponseError as e:
+        if str(e.status) == str(404) and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code):
+            pass
+        else:
+            raise e
+
+    try:
+        bucket.set_website_configuration_xml(config_xmlnew)
+        config_xmlnew = common.normalize_xml(config_xmlnew, pretty_print=True)
+    except S3ResponseError as e:
+        if expect_fail is not None:
+            if isinstance(expect_fail, dict):
+                pass
+            elif isinstance(expect_fail, str):
+                pass
+        raise e
+
+    # TODO: in some cases, it takes non-zero time for the config to be applied by AmazonS3
+    # We should figure out how to poll for changes better
+    # WARNING: eu-west-1 as of 2015/06/22 was taking at least 4 seconds to propogate website configs, esp when you cycle between non-null configs
+    time.sleep(0.1)
+    config_xmlcmp = common.normalize_xml(bucket.get_website_configuration_xml(), pretty_print=True)
+
+    #if config_xmlold is not None:
+    #    print('old',config_xmlold.replace("\n",''))
+    #if config_xmlcmp is not None:
+    #    print('cmp',config_xmlcmp.replace("\n",''))
+    #if config_xmlnew is not None:
+    #    print('new',config_xmlnew.replace("\n",''))
     # Cleanup for our validation
-    config_xml1 = common.normalize_xml(config_xml1, pretty_print=True) # Do it late, so the system gets weird whitespace
-    config_xml2 = common.normalize_xml(config_xml2, pretty_print=True) # For us to read
-    common.assert_xml_equal(config_xml1, config_xml2)
-    #print("config_xml2\n", config_xml2)
-    eq (config_xml1, config_xml2)
-    f['WebsiteConfiguration'] = config_xml2
+    common.assert_xml_equal(config_xmlcmp, config_xmlnew)
+    #print("config_xmlcmp\n", config_xmlcmp)
+    #eq (config_xmlnew, config_xmlcmp)
+    f['WebsiteConfiguration'] = config_xmlcmp
     return f
 
 def __website_expected_reponse_status(res, status, reason):
@@ -135,7 +171,8 @@ def _website_expected_error_response(res, bucket_name, status, reason, code, con
     # This is most visible if you have an ErrorDoc present
     errorcode = res.getheader('x-amz-error-code', None)
     if errorcode is not None:
-        eq(errorcode, code)
+        if code is not IGNORE_FIELD:
+            eq(errorcode, code)
 
     if not isinstance(content, collections.Container):
         content = set([content])
@@ -151,7 +188,7 @@ def _website_expected_redirect_response(res, status, reason, new_url):
     eq(loc, new_url, 'Location header should be set "%s" != "%s"' % (loc,new_url,))
     ok(len(body) == 0, 'Body of a redirect should be empty')
 
-def _website_request(bucket_name, path, connect_hostname=None, method='GET'):
+def _website_request(bucket_name, path, connect_hostname=None, method='GET', timeout=None):
     url = get_website_url(proto='http', bucket=bucket_name, path=path)
     print("url", url)
     o = urlparse(url)
@@ -162,7 +199,7 @@ def _website_request(bucket_name, path, connect_hostname=None, method='GET'):
     request_headers['Host'] = o.hostname
     request_headers['Accept'] = '*/*'
     print('Request: {method} {path}\n{headers}'.format(method=method, path=path, headers=''.join(map(lambda t: t[0]+':'+t[1]+"\n", request_headers.items()))))
-    res = _make_raw_request(connect_hostname, config.main.port, method, path, request_headers=request_headers, secure=False)
+    res = _make_raw_request(connect_hostname, config.main.port, method, path, request_headers=request_headers, secure=False, timeout=timeout)
     for (k,v) in res.getheaders():
         print(k,v)
     return res
@@ -199,7 +236,7 @@ def test_website_nonexistant_bucket_rgw():
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is public')
 @attr('s3website')
 @nose.with_setup(setup=None, teardown=common.teardown) 
-@timed(5)
+@timed(10)
 def test_website_public_bucket_list_public_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -210,7 +247,7 @@ def test_website_public_bucket_list_public_index():
     indexhtml.make_public()
     #time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -236,7 +273,7 @@ def test_website_private_bucket_list_public_index():
     indexhtml.make_public()
     #time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
 
     res = _website_request(bucket.name, '')
@@ -297,7 +334,7 @@ def test_website_public_bucket_list_private_index():
     #time.sleep(1)
     #time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
 
     res = _website_request(bucket.name, '')
@@ -321,7 +358,7 @@ def test_website_private_bucket_list_private_index():
     indexhtml.set_canned_acl('private')
     ##time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
 
     res = _website_request(bucket.name, '')
@@ -378,7 +415,7 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
     indexhtml.set_canned_acl('private')
     #time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
@@ -402,7 +439,7 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
     indexhtml.set_canned_acl('private')
     #time.sleep(1)
     while bucket.get_key(f['IndexDocument_Suffix']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
@@ -427,7 +464,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -453,7 +490,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -484,7 +521,7 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -516,7 +553,7 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     body = res.read()
@@ -545,7 +582,7 @@ def test_website_private_bucket_list_empty_gooderrordoc():
     errorhtml.set_canned_acl('public-read')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
@@ -569,7 +606,7 @@ def test_website_public_bucket_list_empty_gooderrordoc():
     errorhtml.set_canned_acl('public-read')
    #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=[errorstring])
@@ -597,7 +634,7 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
     errorhtml.set_canned_acl('public-read')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
@@ -626,7 +663,7 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
     errorhtml.set_canned_acl('public-read')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
-        time.sleep(0.05)
+        time.sleep(SLEEP_INTERVAL)
 
     res = _website_request(bucket.name, '')
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=[errorstring])
@@ -854,14 +891,14 @@ ROUTING_RULES = {
     </Redirect>
     </RoutingRule>
 """,
-   'AmazonExample2+HttpRedirectCode=314': \
+   'AmazonExample2+HttpRedirectCode=TMPL': \
 """
     <RoutingRule>
     <Condition>
        <KeyPrefixEquals>images/</KeyPrefixEquals>
     </Condition>
     <Redirect>
-      <HttpRedirectCode>314</HttpRedirectCode>
+      <HttpRedirectCode>{HttpRedirectCode}</HttpRedirectCode>
       <ReplaceKeyWith>folderdeleted.html</ReplaceKeyWith>
     </Redirect>
     </RoutingRule>
@@ -897,38 +934,68 @@ ROUTING_RULES_TESTS = [
   dict(xml=dict(RoutingRules=ROUTING_RULES['empty']), url='', location=None, code=200),
   dict(xml=dict(RoutingRules=ROUTING_RULES['empty']), url='/', location=None, code=200), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['empty']), url='/x', location=None, code=404), 
+
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1']), url='/', location=None, code=200), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1']), url='/x', location=None, code=404), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1']), url='/docs/', location=dict(proto='http',bucket='{bucket_name}',path='/documents/'), code=301), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1']), url='/docs/x', location=dict(proto='http',bucket='{bucket_name}',path='/documents/x'), code=301), 
+
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https']), url='/', location=None, code=200), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https']), url='/x', location=None, code=404), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https']), url='/docs/', location=dict(proto='https',bucket='{bucket_name}',path='/documents/'), code=301), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https']), url='/docs/x', location=dict(proto='https',bucket='{bucket_name}',path='/documents/x'), code=301), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/', location=None, code=200), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/x', location=None, code=404), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/docs/', location=dict(proto='http2',bucket='{bucket_name}',path='/documents/'), code=301), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/docs/x', location=dict(proto='http2',bucket='{bucket_name}',path='/documents/x'), code=301), 
+
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https+Hostname=xyzzy']), url='/', location=None, code=200), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https+Hostname=xyzzy']), url='/x', location=None, code=404), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https+Hostname=xyzzy']), url='/docs/', location=dict(proto='https',hostname='xyzzy',path='/documents/'), code=301), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=https+Hostname=xyzzy']), url='/docs/x', location=dict(proto='https',hostname='xyzzy',path='/documents/x'), code=301), 
+
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample2']), url='/images/', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=301), 
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample2']), url='/images/x', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=301), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample2+HttpRedirectCode=314']), url='/images/', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=314), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample2+HttpRedirectCode=314']), url='/images/x', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=314), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3']), url='/x', location=dict(proto='http',bucket='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/x'), code=301), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3']), url='/images/x', location=dict(proto='http',bucket='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/images/x'), code=301), 
+
+
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3']), url='/x', location=dict(proto='http',hostname='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/x'), code=301), 
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3']), url='/images/x', location=dict(proto='http',hostname='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/images/x'), code=301), 
+
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3+KeyPrefixEquals']), url='/x', location=None, code=404), 
-  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3+KeyPrefixEquals']), url='/images/x', location=dict(proto='http',bucket='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/x'), code=301), 
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample3+KeyPrefixEquals']), url='/images/x', location=dict(proto='http',hostname='ec2-11-22-333-44.compute-1.amazonaws.com',path='/report-404/x'), code=301), 
 ]
+
+ROUTING_ERROR_PROTOCOL = dict(code=400, reason='Bad Request', errorcode='InvalidRequest', bodyregex=r'Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically.')
+
+ROUTING_RULES_TESTS_ERRORS = [
+  # Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically.
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/', location=None, code=400, error=ROUTING_ERROR_PROTOCOL), 
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/x', location=None, code=400, error=ROUTING_ERROR_PROTOCOL),  
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/docs/', location=None, code=400, error=ROUTING_ERROR_PROTOCOL), 
+  dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/docs/x', location=None, code=400, error=ROUTING_ERROR_PROTOCOL), 
+]
+
+VALID_AMZ_REDIRECT = set([301,302,303,304,305,307,308])
+
+# General lots of tests
+for redirect_code in VALID_AMZ_REDIRECT:
+  rules = ROUTING_RULES['AmazonExample2+HttpRedirectCode=TMPL'].format(HttpRedirectCode=redirect_code)
+  result = redirect_code
+  ROUTING_RULES_TESTS.append(
+    dict(xml=dict(RoutingRules=rules), url='/images/', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=result)
+  )
+  ROUTING_RULES_TESTS.append(
+    dict(xml=dict(RoutingRules=rules), url='/images/x', location=dict(proto='http',bucket='{bucket_name}',path='/folderdeleted.html'), code=result)
+  )
+
+# TODO:
+# codes other than those in VALID_AMZ_REDIRECT
+# give an error of 'The provided HTTP redirect code (314) is not valid. Valid codes are 3XX except 300.' during setting the website config
+# we should check that we can return that too on ceph
 
 def routing_setup():
   kwargs = {'obj':[]}
   bucket = get_new_bucket()
   kwargs['bucket'] = bucket
   kwargs['obj'].append(bucket)
-  f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+  #f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+  f = _test_website_prep(bucket, '')
   kwargs.update(f)
   bucket.set_canned_acl('public-read')
 
@@ -946,7 +1013,7 @@ def routing_setup():
 
   #time.sleep(1)
   while bucket.get_key(f['ErrorDocument_Key']) is None:
-      time.sleep(0.05)
+      time.sleep(SLEEP_INTERVAL)
 
   return kwargs
 
@@ -957,7 +1024,7 @@ def routing_teardown(**kwargs):
   
            
 @common.with_setup_kwargs(setup=routing_setup, teardown=routing_teardown) 
-@timed(5)
+#@timed(10)
 def routing_check(*args, **kwargs):
     bucket = kwargs['bucket']
     args=args[0]
@@ -968,10 +1035,10 @@ def routing_check(*args, **kwargs):
     pprint(xml_fields)
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'], hardcoded_fields=xml_fields)
     #print(f)
-    config_xml2 = bucket.get_website_configuration_xml()
-    config_xml2 = common.normalize_xml(config_xml2, pretty_print=True) # For us to read
+    config_xmlcmp = bucket.get_website_configuration_xml()
+    config_xmlcmp = common.normalize_xml(config_xmlcmp, pretty_print=True) # For us to read
     res = _website_request(bucket.name, args['url'])
-    print(config_xml2)
+    print(config_xmlcmp)
     # RGW returns "302 Found" per RFC2616
     # S3 returns 302 Moved Temporarily per RFC1945
     new_url = args['location']
@@ -991,6 +1058,7 @@ def routing_check(*args, **kwargs):
         assert(False)
 
 @attr('RoutingRules')
+@attr('s3website')
 @nose.with_setup(setup=None, teardown=common.teardown) 
 def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
