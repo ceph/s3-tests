@@ -4635,8 +4635,6 @@ def _check_upload_multipart_resend(bucket, key, objlen, resend_parts):
     (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'}, resend_parts=resend_parts)
     upload.complete_upload()
 
-    (obj_count, bytes_used) = _head_bucket(bucket)
-
     k=bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
