@@ -6107,7 +6107,7 @@ def test_versioning_multi_object_delete_with_marker_create():
 
         keyname = 'key'
 
-        rmkeys = { bucket.new_key(keyname) }
+        rmkeys = [ bucket.new_key(keyname) ]
 
         eq(_count_bucket_versioned_objs(bucket), 0)
 
