@@ -896,6 +896,32 @@ def test_object_write_check_etag():
     eq(res.getheader("ETag"), '"37b51d194a7513e45b56f6524f2d51f2"')
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='correct cache control header')
+def test_object_write_cache_control():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    cache_control = 'public, max-age=14400'
+    key.set_contents_from_string('bar', headers = {'Cache-Control': cache_control})
+    key2 = bucket.get_key('foo')
+    eq(key2.cache_control, cache_control)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='correct expires header')
+def test_object_write_expires():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    utc = pytz.utc
+    expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
+    expires = expires.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    key.set_contents_from_string('bar', headers = {'Expires': expires})
+    key2 = bucket.get_key('foo')
+    eq(key2.expires, expires)
+
+@attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
 @attr(assertion='read back what we wrote and rewrote')
