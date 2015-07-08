@@ -916,6 +916,80 @@ def test_object_write_read_update_read_delete():
     key.delete()
 
 
+def _do_send_file_cb(bucket_name, blob_name, size):
+    conn = boto.s3.connection.S3Connection(
+        aws_access_key_id=s3['main'].aws_access_key_id,
+        aws_secret_access_key=s3['main'].aws_secret_access_key,
+        is_secure=s3['main'].is_secure,
+        port=s3['main'].port,
+        host=s3['main'].host,
+        calling_format=s3['main'].calling_format,
+        )
+    bucket = conn.get_bucket(bucket_name)
+    key = bucket.new_key(blob_name)
+    fp = FakeWriteFile(size, 'B')
+    key.set_contents_from_file(fp)
+
+@attr(resource='object')
+@attr(method='all')
+@attr(operation='concurrent put')
+@attr(assertion='PUT request with the latest date wins')
+def test_concurrent_object_write():
+    size = 100
+    bucket = get_new_bucket()
+    blob_name = "foo"
+
+    fp = FakeWriteFile(size, 'A',
+            lambda: _do_send_file_cb(bucket.name, blob_name, size))
+    key = bucket.new_key(blob_name)
+    key.set_contents_from_file(fp)
+    blob = bucket.get_key(blob_name)
+
+    start = time.time()
+    content = None
+    while True:
+        k = bucket.get_key(blob_name)
+        content = k.get_contents_as_string()
+        if content == 'B' * size:
+            break
+        if time.time() - start > 30:
+            break
+        time.sleep(1)
+    eq(content, 'B' * size)
+
+
+@attr(resource='object')
+@attr(method='all')
+@attr(operation='concurrent put')
+@attr(assertion='PUT overwrite request with the latest date wins')
+def test_concurrent_object_overwrite():
+    size = 100
+    bucket = get_new_bucket()
+    blob_name = "foo"
+
+    # create the blob
+    key = bucket.new_key(blob_name)
+    key.set_contents_from_string('blob')
+
+    fp = FakeWriteFile(size, 'A',
+            lambda: _do_send_file_cb(bucket.name, blob_name, size))
+    key = bucket.new_key(blob_name)
+    key.set_contents_from_file(fp)
+    blob = bucket.get_key(blob_name)
+
+    start = time.time()
+    content = None
+    while True:
+        k = bucket.get_key(blob_name)
+        content = k.get_contents_as_string()
+        if content == 'B' * size:
+            break
+        if time.time() - start > 30:
+            break
+        time.sleep(1)
+    eq(content, 'B' * size)
+
+
 def _set_get_metadata(metadata, bucket=None):
     """
     create a new key in a (new or specified) bucket,
