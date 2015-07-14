@@ -41,5 +41,4 @@ virtualenv --no-site-packages --distribute virtualenv
 # easy_install, and we really wanted pip; next line will fail if pip
 # requirements.txt does not match setup.py requirements -- sucky but
 # good enough for now
-./virtualenv/bin/python setup.py develop \
-    --allow-hosts None
+./virtualenv/bin/python setup.py develop
