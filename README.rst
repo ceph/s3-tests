@@ -73,7 +73,7 @@ Once you have that, you can run the tests with::
 
 You can specify what test(s) to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional.test_s3:test_bucket_acl_grant_userid_read
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional.test_s3:test_bucket_list_empty
 
 Some tests have attributes set based on their current reliability and
 things like AWS not enforcing their spec stricly. You can filter tests
