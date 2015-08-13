@@ -26,6 +26,7 @@ import random
 
 import xml.etree.ElementTree as ET
 
+from email.Utils import formatdate
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
@@ -2118,6 +2119,116 @@ def test_post_object_upload_size_below_minimum():
 	r = requests.post(url, files = payload)
 	eq(r.status_code, 400)
 
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Match: the latest ETag')
+@attr(assertion='succeeds')
+def test_get_object_ifmatch_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    new_key = bucket.get_key('foo', headers={'If-Match': key.etag})
+    got = new_key.get_contents_as_string()
+    eq(got, 'bar')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Match: bogus ETag')
+@attr(assertion='fails 412')
+def test_get_object_ifmatch_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Match': 'ABCORZ'})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-None-Match: the latest ETag')
+@attr(assertion='fails 304')
+def test_get_object_ifnonematch_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-None-Match': key.etag})
+    eq(e.status, 304)
+    eq(e.reason, 'Not Modified')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-None-Match: bogus ETag')
+@attr(assertion='succeeds')
+def test_get_object_ifnonematch_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    new_key = bucket.get_key('foo', headers={'If-None-Match': 'ABCORZ'})
+    got = new_key.get_contents_as_string()
+    eq(got, 'bar')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Modified-Since: before')
+@attr(assertion='succeeds')
+def test_get_object_ifmodifiedsince_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    new_key = bucket.get_key('foo', headers={'If-Modified-Since': 'Sat, 29 Oct 1994 19:43:31 GMT'})
+    got = new_key.get_contents_as_string()
+    eq(got, 'bar')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Modified-Since: after')
+@attr(assertion='fails 304')
+def test_get_object_ifmodifiedsince_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    # Sleep since Amazon returns 200 if the date is in the future:
+    # https://forums.aws.amazon.com/message.jspa?messageID=325930
+    now = time.time()
+    time.sleep(20)
+    after = formatdate(now + 10)
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Modified-Since': after})
+    eq(e.status, 304)
+    eq(e.reason, 'Not Modified')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Unmodified-Since: before')
+@attr(assertion='fails 412')
+def test_get_object_ifunmodifiedsince_good():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Unmodified-Since': 'Sat, 29 Oct 1994 19:43:31 GMT'})
+    eq(e.status, 412)
+    eq(e.reason, 'Precondition Failed')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='get w/ If-Unmodified-Since: after')
+@attr(assertion='succeeds')
+def test_get_object_ifunmodifiedsince_failed():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    new_key = bucket.get_key('foo', headers={'If-Unmodified-Since': 'Tue, 29 Oct 2030 19:43:31 GMT'})
+    got = new_key.get_contents_as_string()
+    eq(got, 'bar')
 
 @attr(resource='object')
 @attr(method='put')
