@@ -161,7 +161,7 @@ def main():
             )
         q = gevent.queue.Queue()
 
-        logger_g = gevent.spawn_link_exception(yaml.safe_dump_all, q, stream=real_stdout)
+        logger_g = gevent.spawn(yaml.safe_dump_all, q, stream=real_stdout)
 
         print "Writing {num} objects with {w} workers...".format(
             num=config.roundtrip.files.num,
@@ -171,7 +171,7 @@ def main():
         start = time.time()
         for objname in objnames:
             fp = next(files)
-            pool.spawn_link_exception(
+            pool.spawn(
                 writer,
                 bucket=bucket,
                 objname=objname,
@@ -195,7 +195,7 @@ def main():
         pool = gevent.pool.Pool(size=config.roundtrip.readers)
         start = time.time()
         for objname in objnames:
-            pool.spawn_link_exception(
+            pool.spawn(
                 reader,
                 bucket=bucket,
                 objname=objname,
