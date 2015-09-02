@@ -4555,6 +4555,14 @@ def transfer_part(bucket, mp_id, mp_keyname, i, part):
     part_out = StringIO(part)
     mp.upload_part_from_file(part_out, i+1)
 
+def copy_part(src_bucket, src_keyname, dst_bucket, dst_keyname, mp_id, i, start=None, end=None):
+    """Copy a part of a multipart upload from other bucket.
+    """
+    mp = boto.s3.multipart.MultiPartUpload(dst_bucket)
+    mp.key_name = dst_keyname
+    mp.id = mp_id
+    mp.copy_part_from_key(src_bucket, src_keyname, i+1, start, end)
+
 def generate_random(size, part_size=5*1024*1024):
     """
     Generate the specified number random data.
@@ -4595,6 +4603,29 @@ def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=
 
     return (upload, s)
 
+def _multipart_copy(src_bucketname, src_keyname, dst_bucket, dst_keyname, size, part_size=5*1024*1024, do_list=None, headers=None, metadata=None, resend_parts=[]):
+    upload = dst_bucket.initiate_multipart_upload(dst_keyname, headers=headers, metadata=metadata)
+    i = 0
+    for start_offset in range(0, size, part_size):
+        end_offset = min(start_offset + part_size - 1, size - 1)
+        copy_part(src_bucketname, src_keyname, dst_bucket, dst_keyname, upload.id, i, start_offset, end_offset)
+        if i in resend_parts:
+            copy_part(src_bucketname, src_keyname, dst_bucket, dst_name, upload.id, i, start_offset, end_offset)
+        i = i + 1
+
+    if do_list is not None:
+        l = dst_bucket.list_multipart_uploads()
+        l = list(l)
+
+    return upload
+
+def _create_key_with_random_content(keyname, size=7*1024*1024):
+    bucket = get_new_bucket()
+    key = bucket.new_key(keyname)
+    data = StringIO(str(generate_random(size, size).next()))
+    key.set_contents_from_file(fp=data)
+    return (bucket, key)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart upload without parts')
@@ -4616,6 +4647,19 @@ def test_multipart_upload_small():
     (upload, data) = _multipart_upload(bucket, key, size)
     upload.complete_upload()
     key2 = bucket.get_key(key)
+    eq(key2.size, size)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copies with single small part')
+def test_multipart_copy_small():
+    (src_bucket, src_key) = _create_key_with_random_content('foo')
+    dst_bucket = get_new_bucket()
+    dst_keyname = "mymultipart"
+    size = 1
+    copy = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, size)
+    copy.complete_upload()
+    key2 = dst_bucket.get_key(dst_keyname)
     eq(key2.size, size)
 
 def _check_content_using_range(k, data, step):
