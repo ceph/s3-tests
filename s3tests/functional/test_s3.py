@@ -4756,6 +4756,33 @@ def test_multipart_upload_multiple_sizes():
     (upload, data) = _multipart_upload(bucket, key, 10 * 1024 * 1024)
     upload.complete_upload()
 
+@attr(assertion='successful')
+def test_multipart_copy_multiple_sizes():
+    (src_bucket, src_key) = _create_key_with_random_content('foo', 12 * 1024 * 1024)
+    dst_bucket = get_new_bucket()
+    dst_keyname="mymultipart"
+
+    k = src_bucket.get_key(src_key.name)
+    s = k.get_contents_as_string()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024 + 100 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024 + 600 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024 + 100 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024 + 600 * 1024)
+    upload.complete_upload()
+
+    upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024)
+    upload.complete_upload()
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check failure on multiple multi-part upload with size too small')
