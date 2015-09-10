@@ -5960,6 +5960,29 @@ def test_versioning_obj_create_versions_remove_all():
     eq(len(k), len(c))
 
 @attr(resource='object')
+@attr(method='remove')
+@attr(operation='create and remove versions')
+@attr(assertion='everything works')
+@attr('versioning')
+def test_versioning_obj_create_versions_remove_special_names():
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    num_versions = 10
+    objnames = ['_testobj', '_', ':', ' ']
+
+    for objname in objnames:
+        (k, c) = create_multiple_versions(bucket, objname, num_versions)
+
+        _do_remove_versions(bucket, objname, 0, 5, 0.5, k, c)
+        _do_remove_versions(bucket, objname, 0, 5, 0, k, c)
+
+        eq(len(k), 0)
+        eq(len(k), len(c))
+
+@attr(resource='object')
 @attr(method='multipart')
 @attr(operation='create and test multipart object')
 @attr(assertion='everything works')
