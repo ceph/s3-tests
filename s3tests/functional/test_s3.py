@@ -833,20 +833,6 @@ def test_object_read_notexist():
     eq(e.error_code, 'NoSuchKey')
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write to special characters key')
-@attr(assertion='fails 404')
-def test_object_create_special_characters():
-    bucket = get_new_bucket()
-    # sourced from: http://xml.silmaril.ie/specials.html
-    key = bucket.new_key('<&>"\'')
-    key.set_contents_from_string('bar')
-    got = key.get_contents_as_string()
-    eq(got, 'bar')
-    bucket.get_all_keys()
-
-
 # While the test itself passes, there's a SAX parser error during teardown. It
 # seems to be a boto bug.  It happens with both amazon and dho.
 # http://code.google.com/p/boto/issues/detail?id=501
@@ -4368,7 +4354,20 @@ def test_bucket_recreate_not_overriding():
 @attr(operation='create and list objects with special names')
 @attr(assertion='special names work')
 def test_bucket_create_special_key_names():
-    key_names = [' ', '%', '_', '_ ', '_ _', '__']
+    key_names = [
+        ' ',
+        '"',
+        '$',
+        '%',
+        '&',
+        '\'',
+        '<',
+        '>',
+        '_',
+        '_ ',
+        '_ _',
+        '__',
+    ]
     bucket = _create_keys(keys=key_names)
 
     li = bucket.list()
