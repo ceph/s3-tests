@@ -3419,6 +3419,30 @@ def test_object_acl_full_control_verify_owner():
     policy = k2.get_acl()
     eq(policy.owner.id, config.main.user_id)
 
+@attr(resource='object.acls')
+@attr(method='put')
+@attr(operation='set write-acp')
+@attr(assertion='does not modify other attributes')
+def test_object_acl_full_control_verify_attributes():
+    bucket = get_new_bucket(targets.main.default)
+    bucket.set_acl('public-read-write')
+
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar', {'x-amz-foo': 'bar'})
+
+    etag = key.etag
+    content_type = key.content_type
+
+    for k in bucket.list():
+        eq(k.etag, etag)
+        eq(k.content_type, content_type)
+
+    key.add_user_grant(permission='FULL_CONTROL', user_id=config.alt.user_id)
+
+    for k in bucket.list():
+        eq(k.etag, etag)
+        eq(k.content_type, content_type)
+
 
 @attr(resource='bucket')
 @attr(method='ACLs')
