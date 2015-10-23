@@ -11,11 +11,13 @@ import random
 import string
 import socket
 import ssl
+import os
 
 from boto.s3.connection import S3Connection
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
+from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
 import AnonymousAuth
@@ -161,21 +163,18 @@ def _setup_bad_object(headers=None, remove=None):
     _add_custom_headers(headers=headers, remove=remove)
     return bucket.new_key('foo')
 
+def tag(*tags):
+    def wrap(func):
+        for tag in tags:
+            setattr(func, tag, True)
+        return func
+    return wrap
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/invalid MD5')
-@attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_md5_invalid_garbage():
-    key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
+#
+# common tests
+#
 
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
-    eq(e.error_code, 'InvalidDigest')
-
-
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/invalid MD5')
@@ -189,7 +188,7 @@ def test_object_create_bad_md5_invalid_short():
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'InvalidDigest')
 
-
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/mismatched MD5')
@@ -203,7 +202,7 @@ def test_object_create_bad_md5_bad():
     eq(e.reason, 'Bad Request')
     eq(e.error_code, 'BadDigest')
 
-
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/empty MD5')
@@ -218,6 +217,7 @@ def test_object_create_bad_md5_empty():
     eq(e.error_code, 'InvalidDigest')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/non-graphics in MD5')
@@ -232,6 +232,7 @@ def test_object_create_bad_md5_unreadable():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/no MD5 header')
@@ -244,6 +245,7 @@ def test_object_create_bad_md5_none():
 
 # strangely, amazon doesn't report an error with a non-expect 100 also, our
 # error comes back as html, and not xml as I normally expect
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/Expect 200')
@@ -257,6 +259,7 @@ def test_object_create_bad_expect_mismatch():
 
 # this is a really long test, and I don't know if it's valid...
 # again, accepts this with no troubles
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/empty expect')
@@ -267,6 +270,7 @@ def test_object_create_bad_expect_empty():
     key.set_contents_from_string('bar')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/no expect')
@@ -278,6 +282,7 @@ def test_object_create_bad_expect_none():
 
 
 # this is a really long test..
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/non-graphic expect')
@@ -289,6 +294,7 @@ def test_object_create_bad_expect_unreadable():
     key.set_contents_from_string('bar')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/empty content length')
@@ -304,6 +310,7 @@ def test_object_create_bad_contentlength_empty():
     eq(e.error_code, None)
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/negative content length')
@@ -318,6 +325,7 @@ def test_object_create_bad_contentlength_negative():
     eq(e.reason, 'Bad Request')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/no content length')
@@ -331,6 +339,8 @@ def test_object_create_bad_contentlength_none():
     eq(e.reason, 'Length Required')
     eq(e.error_code,'MissingContentLength')
 
+
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/non-graphic content length')
@@ -346,6 +356,7 @@ def test_object_create_bad_contentlength_unreadable():
     eq(e.error_code, None)
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/content length too long')
@@ -369,23 +380,7 @@ def test_object_create_bad_contentlength_mismatch_above():
     eq(e.error_code, 'RequestTimeout')
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/content length too short')
-@attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_contentlength_mismatch_below():
-    content = 'bar'
-    length = len(content) - 1
-    key = _setup_bad_object({'Content-Length': length})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
-    eq(e.status, 400)
-    # dho is 'Bad request', which doesn't match the http response code
-    eq(e.reason, 'Bad Request')
-    eq(e.error_code, 'BadDigest')
-
-
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/content type text/plain')
@@ -396,6 +391,7 @@ def test_object_create_bad_contenttype_invalid():
     key.set_contents_from_string('bar')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/empty content type')
@@ -406,6 +402,7 @@ def test_object_create_bad_contenttype_empty():
     key.set_contents_from_string('bar')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/no content type')
@@ -416,6 +413,7 @@ def test_object_create_bad_contenttype_none():
     key.set_contents_from_string('bar')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/non-graphic content type')
@@ -431,51 +429,8 @@ def test_object_create_bad_contenttype_unreadable():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/empty user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_ua_empty():
-    key = _setup_bad_object({'User-Agent': ''})
-    key.set_contents_from_string('bar')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/non-graphic user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_ua_unreadable():
-    key = _setup_bad_object({'User-Agent': '\x07'})
-    key.set_contents_from_string('bar')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/no user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_ua_none():
-    key = _setup_bad_object(remove=('User-Agent',))
-    key.set_contents_from_string('bar')
-
-
-@nose.with_setup(teardown=_clear_custom_headers)
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/invalid authorization')
-@attr(assertion='fails 400')
-def test_object_create_bad_authorization_invalid():
-    key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
-    eq(e.error_code, 'InvalidArgument')
-
-
 # the teardown is really messed up here. check it out
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/non-graphic authorization')
@@ -491,6 +446,7 @@ def test_object_create_bad_authorization_unreadable():
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/empty authorization')
@@ -506,6 +462,7 @@ def test_object_create_bad_authorization_empty():
 
 
 # the teardown is really messed up here. check it out
+@tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/no authorization')
@@ -520,132 +477,7 @@ def test_object_create_bad_authorization_none():
     eq(e.error_code, 'AccessDenied')
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/incorrect authorization')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_authorization_incorrect():
-    key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/invalid date')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_invalid():
-    key = _setup_bad_object({'Date': 'Bad Date'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/empty date')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_empty():
-    key = _setup_bad_object({'Date': ''})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/non-graphic date')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_unreadable():
-    key = _setup_bad_object({'Date': '\x07'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/no date')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_none():
-    key = _setup_bad_object(remove=('Date',))
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/date in past')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_before_today():
-    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'RequestTimeTooSkewed')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/date in future')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_after_today():
-    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'RequestTimeTooSkewed')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/date before epoch')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_before_epoch():
-    key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create w/date after 9999')
-@attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_object_create_bad_date_after_end():
-    key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
-
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'RequestTimeTooSkewed')
-
-
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/no content length')
@@ -655,6 +487,8 @@ def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     get_new_bucket()
 
+
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='acls')
 @attr(operation='set w/no content length')
@@ -668,6 +502,8 @@ def test_object_acl_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     key.set_acl('public-read')
 
+
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='acls')
 @attr(operation='set w/invalid permission')
@@ -684,6 +520,7 @@ def test_bucket_put_bad_canned_acl():
 
 # strangely, amazon doesn't report an error with a non-expect 100 also, our
 # error comes back as html, and not xml as I normally expect
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/expect 200')
@@ -697,6 +534,7 @@ def test_bucket_create_bad_expect_mismatch():
 
 # this is a really long test, and I don't know if it's valid...
 # again, accepts this with no troubles
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/expect empty')
@@ -706,6 +544,8 @@ def test_bucket_create_bad_expect_empty():
     _add_custom_headers({'Expect': ''})
     bucket = get_new_bucket()
 
+
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/expect nongraphic')
@@ -732,6 +572,7 @@ def _create_new_connection():
         )
     return TargetConnection(targets.main.default.conf, conn)
 
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/empty content length')
@@ -742,11 +583,11 @@ def test_bucket_create_bad_contentlength_empty():
     conn = _create_new_connection()
     _add_custom_headers({'Content-Length': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, conn)
-
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
 
 
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/negative content length')
@@ -760,6 +601,7 @@ def test_bucket_create_bad_contentlength_negative():
     eq(e.reason, 'Bad Request')
 
 
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/no content length')
@@ -770,6 +612,7 @@ def test_bucket_create_bad_contentlength_none():
     bucket = get_new_bucket()
 
 
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/non-graphic content length')
@@ -779,57 +622,13 @@ def test_bucket_create_bad_contentlength_none():
 def test_bucket_create_bad_contentlength_unreadable():
     _add_custom_headers({'Content-Length': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 400)
     eq(e.reason, 'Bad Request')
     eq(e.error_code, None)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/empty user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_ua_empty():
-    _add_custom_headers({'User-Agent': ''})
-    bucket = get_new_bucket()
-
-
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/non-graphic user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_ua_unreadable():
-    _add_custom_headers({'User-Agent': '\x07'})
-    bucket = get_new_bucket()
-
-
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/no user agent')
-@attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_ua_none():
-    _add_custom_headers(remove=('User-Agent',))
-    bucket = get_new_bucket()
-
-
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/invalid authorization')
-@attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_authorization_invalid():
-    _add_custom_headers({'Authorization': 'AWS HAHAHA'})
-    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
-    eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
-    eq(e.error_code, 'InvalidArgument')
-
-
 # the teardown is really messed up here. check it out
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/non-graphic authorization')
@@ -839,12 +638,12 @@ def test_bucket_create_bad_authorization_invalid():
 def test_bucket_create_bad_authorization_unreadable():
     _add_custom_headers({'Authorization': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/empty authorization')
@@ -853,13 +652,13 @@ def test_bucket_create_bad_authorization_unreadable():
 def test_bucket_create_bad_authorization_empty():
     _add_custom_headers({'Authorization': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
 # the teardown is really messed up here. check it out
+@tag('auth_common')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/no authorization')
@@ -868,104 +667,1005 @@ def test_bucket_create_bad_authorization_empty():
 def test_bucket_create_bad_authorization_none():
     _add_custom_headers(remove=('Authorization',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
+#
+# AWS2 specific tests
+#
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid MD5')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_md5_invalid_garbage_aws2():
+    key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidDigest')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/content length too short')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contentlength_mismatch_below_aws2():
+    content = 'bar'
+    length = len(content) - 1
+    key = _setup_bad_object({'Content-Length': length})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
+    eq(e.status, 400)
+    # dho is 'Bad request', which doesn't match the http response code
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'BadDigest')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/incorrect authorization')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_incorrect_aws2():
+    key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
+
+
+@tag('auth_aws2')
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid authorization')
+@attr(assertion='fails 400')
+def test_object_create_bad_authorization_invalid_aws2():
+    key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/empty user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_empty_aws2():
+    key = _setup_bad_object({'User-Agent': ''})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/non-graphic user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_unreadable_aws2():
+    key = _setup_bad_object({'User-Agent': '\x07'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/no user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_none_aws2():
+    key = _setup_bad_object(remove=('User-Agent',))
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_invalid_aws2():
+    key = _setup_bad_object({'Date': 'Bad Date'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/empty date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_empty_aws2():
+    key = _setup_bad_object({'Date': ''})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/non-graphic date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_unreadable_aws2():
+    key = _setup_bad_object({'Date': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/no date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_none_aws2():
+    key = _setup_bad_object(remove=('Date',))
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date in past')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_today_aws2():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date in future')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_today_aws2():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date before epoch')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_epoch_aws2():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+
+@tag('auth_aws2')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date after 9999')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_end_aws2():
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'RequestTimeTooSkewed')
+
+
+@tag('auth_aws2')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/invalid authorization')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_authorization_invalid_aws2():
+    _add_custom_headers({'Authorization': 'AWS HAHAHA'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+@tag('auth_aws2')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/empty user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_empty_aws2():
+    _add_custom_headers({'User-Agent': ''})
+    bucket = get_new_bucket()
+
+
+@tag('auth_aws2')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/non-graphic user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_unreadable_aws2():
+    _add_custom_headers({'User-Agent': '\x07'})
+    bucket = get_new_bucket()
+
+
+@tag('auth_aws2')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/no user agent')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_none_aws2():
+    _add_custom_headers(remove=('User-Agent',))
+    bucket = get_new_bucket()
+
+
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/invalid date')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_invalid():
+def test_bucket_create_bad_date_invalid_aws2():
     _add_custom_headers({'Date': 'Bad Date'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/empty date')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_empty():
+def test_bucket_create_bad_date_empty_aws2():
     _add_custom_headers({'Date': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/non-graphic date')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_unreadable():
+def test_bucket_create_bad_date_unreadable_aws2():
     _add_custom_headers({'Date': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/no date')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_none():
+def test_bucket_create_bad_date_none_aws2():
     _add_custom_headers(remove=('Date',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/date in past')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_before_today():
+def test_bucket_create_bad_date_before_today_aws2():
     _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'RequestTimeTooSkewed')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/date in future')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_after_today():
+def test_bucket_create_bad_date_after_today_aws2():
     _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'RequestTimeTooSkewed')
 
 
+@tag('auth_aws2')
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/date before epoch')
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
-def test_bucket_create_bad_date_before_epoch():
+def test_bucket_create_bad_date_before_epoch_aws2():
     _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
+#
+# AWS4 specific tests
+#
+
+def check_aws4_support():
+    if 'S3_USE_SIGV4' not in os.environ:
+       raise SkipTest
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid MD5')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_md5_invalid_garbage_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Content-MD5':'AWS4 HAHAHA'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidDigest')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/content length too short')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_contentlength_mismatch_below_aws4():
+    check_aws4_support()
+    content = 'bar'
+    length = len(content) - 1
+    key = _setup_bad_object({'Content-Length': length})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
+    eq(e.status, 400)
+    # dho is 'Bad request', which doesn't match the http response code
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'XAmzContentSHA256Mismatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/incorrect authorization')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_authorization_incorrect_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=AKIAIGR7ZNNBHC5BKSUB/20150930/us-east-1/s3/aws4_request,SignedHeaders=host;user-agent,Signature=FWeDfwojDSdS2Ztmpfeubhd9isU='})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
+
+
+@tag('auth_aws4')
+@nose.with_setup(teardown=_clear_custom_headers)
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid authorization')
+@attr(assertion='fails 400')
+def test_object_create_bad_authorization_invalid_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=HAHAHA'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    assert e.error_code in ('AuthorizationHeaderMalformed', 'InvalidArgument')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/empty user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_empty_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'User-Agent': ''})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/non-graphic user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_unreadable_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'User-Agent': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/no user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_ua_none_aws4():
+    check_aws4_support()
+    key = _setup_bad_object(remove=('User-Agent',))
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_invalid_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': 'Bad Date'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_invalid_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': 'Bad Date'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/empty date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_empty_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': ''})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/empty x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_empty_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': ''})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/non-graphic date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_unreadable_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/non-graphic x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_unreadable_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/no date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_none_aws4():
+    check_aws4_support()
+    key = _setup_bad_object(remove=('Date',))
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/no x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_none_aws4():
+    check_aws4_support()
+    key = _setup_bad_object(remove=('X-Amz-Date',))
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date in past')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_today_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/x-amz-date in past')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_before_today_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': '20100707T215304Z'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date in future')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_today_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/x-amz-date in future')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_after_today_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': '20300707T215304Z'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date before epoch')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_before_epoch_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/x-amz-date before epoch')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_before_epoch_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': '19500707T215304Z'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date after 9999')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_date_after_end_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
+    key.set_contents_from_string('bar')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/x-amz-date after 9999')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_bad_amz_date_after_end_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'X-Amz-Date': '99990707T215304Z'})
+
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create with missing signed custom header')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_missing_signed_custom_header_aws4():
+    check_aws4_support()
+    key = _setup_bad_object({'x-zoo': 'zoo'})
+    _add_custom_non_auth_headers(remove=('x-zoo',))
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='put')
+@attr(opearation='create with missing signed header')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_missing_signed_header_aws4():
+    check_aws4_support()
+    key = _setup_bad_object()
+    _add_custom_non_auth_headers(remove=('Content-MD5',))
+    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/invalid authorization')
+@attr(assertion='fails 400')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_authorization_invalid_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Authorization': 'AWS4 HAHAHA'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 400)
+    eq(e.reason, 'Bad Request')
+    eq(e.error_code, 'InvalidArgument')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/empty user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_empty_aws4():
+    check_aws4_support()
+    _add_custom_headers({'User-Agent': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/non-graphic user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_unreadable_aws4():
+    check_aws4_support()
+    _add_custom_headers({'User-Agent': '\x07'})
+
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/no user agent')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_ua_none_aws4():
+    check_aws4_support()
+    _add_custom_headers(remove=('User-Agent',))
+
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/invalid date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_invalid_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': 'Bad Date'})
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/invalid x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_invalid_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': 'Bad Date'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/empty date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_empty_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': ''})
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/empty x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_empty_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': ''})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/non-graphic date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_unreadable_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/non-graphic x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_unreadable_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': '\x07'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/no date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_none_aws4():
+    check_aws4_support()
+    _add_custom_headers(remove=('Date',))
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/no x-amz-date')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_none_aws4():
+    check_aws4_support()
+    _add_custom_headers(remove=('X-Amz-Date',))
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/date in past')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_before_today_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/x-amz-date in past')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_before_today_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': '20100707T215304Z'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/date in future')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_after_today_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/x-amz-date in future')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_after_today_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': '20300707T215304Z'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/date before epoch')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_date_before_epoch_aws4():
+    check_aws4_support()
+    _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
+    get_new_bucket()
+
+
+@tag('auth_aws4')
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='create w/x-amz-date before epoch')
+@attr(assertion='fails 403')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_bucket_create_bad_amz_date_before_epoch_aws4():
+    check_aws4_support()
+    _add_custom_headers({'X-Amz-Date': '19500707T215304Z'})
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
+
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')

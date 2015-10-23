@@ -259,6 +259,69 @@ def test_bucket_list_delimiter_alt():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
+@attr(assertion='percentage delimiter characters')
+def test_bucket_list_delimiter_percentage():
+    bucket = _create_keys(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
+
+    li = bucket.list(delimiter='%')
+    eq(li.delimiter, '%')
+
+    # foo contains no 'a' and so is a complete key
+    (keys,prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['foo'])
+
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    prefix_names = [e.name for e in prefixes]
+    eq(len(prefixes), 2)
+    eq(prefix_names, ['b%', 'c%'])
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='whitespace delimiter characters')
+def test_bucket_list_delimiter_whitespace():
+    bucket = _create_keys(keys=['b ar', 'b az', 'c ab', 'foo'])
+
+    li = bucket.list(delimiter=' ')
+    eq(li.delimiter, ' ')
+
+    # foo contains no 'a' and so is a complete key
+    (keys,prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['foo'])
+
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    prefix_names = [e.name for e in prefixes]
+    eq(len(prefixes), 2)
+    eq(prefix_names, ['b ', 'c '])
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='dot delimiter characters')
+def test_bucket_list_delimiter_dot():
+    bucket = _create_keys(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
+
+    li = bucket.list(delimiter='.')
+    eq(li.delimiter, '.')
+
+    # foo contains no 'a' and so is a complete key
+    (keys,prefixes) = _get_keys_prefixes(li)
+    names = [e.name for e in keys]
+    eq(names, ['foo'])
+
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    prefix_names = [e.name for e in prefixes]
+    eq(len(prefixes), 2)
+    eq(prefix_names, ['b.', 'c.'])
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
 @attr(assertion='non-printable delimiter can be specified')
 def test_bucket_list_delimiter_unreadable():
     key_names = ['bar', 'baz', 'cab', 'foo']
