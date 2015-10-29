@@ -23,6 +23,7 @@ import threading
 import itertools
 import string
 import random
+import re
 
 import xml.etree.ElementTree as ET
 
@@ -832,6 +833,27 @@ def test_object_read_notexist():
     eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchKey')
 
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='read contents that were never written to raise one error response')
+@attr(assertion='RequestId appears in the error response')
+def test_object_requestid_on_error():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foobar')
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
+    request_id = re.search(r'<RequestId>.*</RequestId>', e.body.encode('utf-8')).group(0)
+    assert request_id is not None
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='read contents that were never written to raise one error response')
+@attr(assertion='RequestId in the error response matchs the x-amz-request-id in the headers')
+def test_object_requestid_matchs_header_on_error():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foobar')
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
+    request_id = re.search(r'<RequestId>(.*)</RequestId>', e.body.encode('utf-8')).group(1)
+    eq(key.resp.getheader('x-amz-request-id'), request_id)
 
 @attr(resource='object')
 @attr(method='put')
