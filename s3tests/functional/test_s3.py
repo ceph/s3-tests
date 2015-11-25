@@ -4695,6 +4695,12 @@ def test_multipart_upload_small():
     key2 = bucket.get_key(key)
     eq(key2.size, size)
 
+def _check_key_content(src, dst):
+    assert(src.size >= dst.size)
+    src_content = src.get_contents_as_string(headers={'Range': 'bytes={s}-{e}'.format(s=0, e=dst.size-1)})
+    dst_content = dst.get_contents_as_string()
+    eq(src_content, dst_content)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
@@ -4707,6 +4713,7 @@ def test_multipart_copy_small():
     copy.complete_upload()
     key2 = dst_bucket.get_key(dst_keyname)
     eq(key2.size, size)
+    _check_key_content(src_key, key2)
 
 def _check_content_using_range(k, data, step):
     objlen = k.size
@@ -4808,26 +4815,29 @@ def test_multipart_copy_multiple_sizes():
     dst_bucket = get_new_bucket()
     dst_keyname="mymultipart"
 
-    k = src_bucket.get_key(src_key.name)
-    s = k.get_contents_as_string()
-
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024 + 100 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 5 * 1024 * 1024 + 600 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024 + 100 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024 + 600 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
     upload = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, 10 * 1024 * 1024)
     upload.complete_upload()
+    _check_key_content(src_key, dst_bucket.get_key(dst_keyname))
 
 @attr(resource='object')
 @attr(method='put')
