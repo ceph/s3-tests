@@ -98,7 +98,7 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
                     pass
 
                 if success:
-                    return
+                    break
 
                 bucket.set_canned_acl('private')
 
