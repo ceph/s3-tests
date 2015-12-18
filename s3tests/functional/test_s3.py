@@ -4571,6 +4571,21 @@ def test_object_copy_same_bucket():
     key2 = bucket.get_key('bar321foo')
     eq(key2.get_contents_as_string(), 'foo')
 
+# http://tracker.ceph.com/issues/11563
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object with content-type')
+@attr(assertion='works')
+def test_object_copy_verify_contenttype():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo123bar')
+    content_type = 'text/bla'
+    key.set_contents_from_string('foo',headers={'Content-Type': content_type})
+    key.copy(bucket, 'bar321foo')
+    key2 = bucket.get_key('bar321foo')
+    eq(key2.get_contents_as_string(), 'foo')
+    eq(key2.content_type, content_type)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy object to itself')
