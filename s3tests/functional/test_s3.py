@@ -631,7 +631,7 @@ def test_bucket_list_maxkeys_invalid():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='blah')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidArgument')
 
 
@@ -645,7 +645,7 @@ def test_bucket_list_maxkeys_unreadable():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_all_keys, max_keys='\x0a')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     # Weird because you can clearly see an InvalidArgument error code. What's
     # also funny is the Amazon tells us that it's not an interger or within an
     # integer range. Is 'blah' in the integer range?
@@ -2774,7 +2774,7 @@ def check_bad_bucket_name(name):
     """
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, name)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidBucketName')
 
 
@@ -3934,7 +3934,7 @@ def test_bucket_acl_grant_nonexist_user():
     print policy.to_xml()
     e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidArgument')
 
 
@@ -4160,7 +4160,7 @@ def test_bucket_acl_grant_email_notexist():
     policy.acl.add_email_grant('FULL_CONTROL', NONEXISTENT_EMAIL)
     e = assert_raises(boto.exception.S3ResponseError, bucket.set_acl, policy)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'UnresolvableGrantByEmailAddress')
 
 
@@ -4608,7 +4608,7 @@ def test_object_copy_to_itself():
     key.set_contents_from_string('foo')
     e = assert_raises(boto.exception.S3ResponseError, key.copy, bucket, 'foo123bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidRequest')
 
 @attr(resource='object')
@@ -5125,7 +5125,7 @@ def test_multipart_upload_missing_part():
     xml = xml.replace('<PartNumber>1</PartNumber>', '<PartNumber>9999</PartNumber>')
     e = assert_raises(boto.exception.S3ResponseError, bucket.complete_multipart_upload, key_name, mp.id, xml)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidPart')
 
 @attr(resource='object')
@@ -5140,7 +5140,7 @@ def test_multipart_upload_incorrect_etag():
     xml = xml.replace('<ETag>"93b885adfe0da089cdf634904fd59f71"</ETag>', '<ETag>"ffffffffffffffffffffffffffffffff"</ETag>')
     e = assert_raises(boto.exception.S3ResponseError, bucket.complete_multipart_upload, key_name, mp.id, xml)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidPart')
 
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
