@@ -814,6 +814,41 @@ def test_bucket_list_object_time():
 
     _compare_dates(iso_datetime, http_datetime)
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all objects (anonymous)')
+@attr(assertion='succeeds')
+def test_bucket_list_objects_anonymous():
+    # Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
+    # emulating standard HTTP access.
+    #
+    # While it may have been possible to use httplib directly, doing it this way takes care of also
+    # allowing us to vary the calling format in testing.
+    conn = _create_connection_bad_auth()
+    conn._auth_handler = AnonymousAuth.AnonymousAuthHandler(None, None, None) # Doesn't need this
+    bucket = get_new_bucket()
+    bucket.set_acl('public-read')
+    anon_bucket = conn.get_bucket(bucket.name)
+    anon_bucket.get_all_keys()
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all objects (anonymous)')
+@attr(assertion='fails')
+def test_bucket_list_objects_anonymous_fail():
+    # Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
+    # emulating standard HTTP access.
+    #
+    # While it may have been possible to use httplib directly, doing it this way takes care of also
+    # allowing us to vary the calling format in testing.
+    conn = _create_connection_bad_auth()
+    conn._auth_handler = AnonymousAuth.AnonymousAuthHandler(None, None, None) # Doesn't need this
+    bucket = get_new_bucket()
+    e = assert_raises(boto.exception.S3ResponseError, conn.get_bucket, bucket.name)
+    eq(e.status, 403)
+    eq(e.reason, 'Forbidden')
+    eq(e.error_code, 'AccessDenied')
+
 
 @attr(resource='bucket')
 @attr(method='get')
