@@ -999,6 +999,18 @@ def test_multi_object_delete():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='write zero-byte key')
+@attr(assertion='correct content length')
+def test_object_head_zero_bytes():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('')
+
+    key2 = bucket.get_key('foo')
+    eq(key2.content_length, '0')
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='write key')
 @attr(assertion='correct etag')
 def test_object_write_check_etag():
