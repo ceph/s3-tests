@@ -5672,6 +5672,27 @@ def test_atomic_write_bucket_gone():
     eq(e.error_code, 'NoSuchBucket')
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='begin to overwrite file with multipart upload then abort')
+@attr(assertion='read back original key contents')
+def test_atomic_multipart_upload_write():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('bar')
+
+    upload = bucket.initiate_multipart_upload(key)
+
+    key = bucket.get_key('foo')
+    got = key.get_contents_as_string()
+    eq(got, 'bar')
+
+    upload.cancel_upload()
+
+    key = bucket.get_key('foo')
+    got = key.get_contents_as_string()
+    eq(got, 'bar')
+
+@attr(resource='object')
 @attr(method='get')
 @attr(operation='range')
 @attr(assertion='returns correct data, 206')
