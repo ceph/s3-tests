@@ -238,6 +238,14 @@ def test_bucket_list_delimiter_prefix():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
+@attr(assertion='prefix and delimiter handling when object ends with delimiter')
+def test_bucket_list_delimiter_prefix_ends_with_delimiter():
+    bucket = _create_keys(keys=['asdf/'])
+    validate_bucket_list(bucket, 'asdf/', '/', '', 1000, False, ['asdf/'], [], None)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
 @attr(assertion='non-slash delimiter characters')
 def test_bucket_list_delimiter_alt():
     bucket = _create_keys(keys=['bar', 'baz', 'cab', 'foo'])
