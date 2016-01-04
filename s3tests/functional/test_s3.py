@@ -5143,6 +5143,28 @@ def test_multipart_upload_incorrect_etag():
     eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidPart')
 
+@attr('wip')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='multi-part upload atomicity')
+def test_multipart_upload_atomic():
+    bucket = get_new_bucket()
+    key_name="mymultipart"
+    payload='12345'*1024*1024
+    num_parts=2
+    key=bucket.new_key(key_name)
+    key.set_contents_from_string(payload)
+
+    mp=bucket.initiate_multipart_upload(key_name)
+    for i in range(0, num_parts):
+        mp.upload_part_from_file(StringIO(payload), i+1)
+
+    mp.cancel_upload()
+    key=bucket.get_key(key_name)
+    assert key is not None
+    test_string=key.get_contents_as_string()
+    assert test_string == payload
+
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
     Send the specified request w/expect 100-continue
