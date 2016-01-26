@@ -257,6 +257,10 @@ def with_setup_kwargs(setup, teardown=None):
 #    yield _test_gen, '1'
 #    yield _test_gen
 
+def trim_xml(xml_str):
+    p = etree.XMLParser(remove_blank_text=True)
+    elem = etree.XML(xml_str, parser=p)
+    return etree.tostring(elem)
 
 def normalize_xml(xml, pretty_print=True):
     if xml is None:

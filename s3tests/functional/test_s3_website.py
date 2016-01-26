@@ -98,13 +98,15 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
     try:
         config_xmlold = common.normalize_xml(bucket.get_website_configuration_xml(), pretty_print=True)
     except S3ResponseError as e:
-        if str(e.status) == str(404) and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code):
+        if str(e.status) == str(404) \
+            and True:
+            #and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code):
             pass
         else:
             raise e
 
     try:
-        bucket.set_website_configuration_xml(config_xmlnew)
+        bucket.set_website_configuration_xml(common.trim_xml(config_xmlnew))
         config_xmlnew = common.normalize_xml(config_xmlnew, pretty_print=True)
     except S3ResponseError as e:
         if expect_fail is not None:
@@ -220,14 +222,16 @@ def test_website_nonexistant_bucket_s3():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
-@attr(assertion='non-existant bucket via website endpoint should give Forbidden, keeping bucket identity secure')
+#@attr(assertion='non-existant bucket via website endpoint should give Forbidden, keeping bucket identity secure')
+@attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket')
 @attr('s3website')
 @attr('fails_on_s3')
 @nose.with_setup(setup=None, teardown=common.teardown) 
 def test_website_nonexistant_bucket_rgw():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
-    _website_expected_error_response(res, bucket_name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
+    #_website_expected_error_response(res, bucket_name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
+    _website_expected_error_response(res, bucket_name, 404, 'Not Found', 'NoSuchBucket', content=_website_expected_default_html(Code='NoSuchBucket'))
 
 #------------- IndexDocument only, successes
 @attr(resource='bucket')
@@ -685,8 +689,6 @@ def test_website_bucket_private_redirectall_base():
     bucket.set_canned_acl('private')
 
     res = _website_request(bucket.name, '')
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'http://%s/' % f['RedirectAllRequestsTo_HostName']
     _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
@@ -706,8 +708,6 @@ def test_website_bucket_private_redirectall_path():
     pathfragment = choose_bucket_prefix(template='/{random}', max_len=16)
 
     res = _website_request(bucket.name, pathfragment)
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'http://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
     _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
@@ -728,8 +728,6 @@ def test_website_bucket_private_redirectall_path_upgrade():
     pathfragment = choose_bucket_prefix(template='/{random}', max_len=16)
 
     res = _website_request(bucket.name, pathfragment)
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     new_url = 'https://%s%s' % (f['RedirectAllRequestsTo_HostName'], pathfragment)
     _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
@@ -754,7 +752,7 @@ def test_website_xredirect_nonwebsite():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    ok(k.get_redirect(), redirect_dest)
+    eq(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
     body = res.read()
@@ -772,11 +770,11 @@ def test_website_xredirect_nonwebsite():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
-@attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, public key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
 @nose.with_setup(setup=None, teardown=common.teardown) 
-def test_website_xredirect_relative():
+def test_website_xredirect_public_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
@@ -787,11 +785,9 @@ def test_website_xredirect_relative():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    ok(k.get_redirect(), redirect_dest)
+    eq(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     #new_url =  get_website_url(bucket_name=bucket.name, path=redirect_dest)
     _website_expected_redirect_response(res, 301, ['Moved Permanently'], redirect_dest)
 
@@ -801,11 +797,11 @@ def test_website_xredirect_relative():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
-@attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, public key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
 @nose.with_setup(setup=None, teardown=common.teardown) 
-def test_website_xredirect_abs():
+def test_website_xredirect_public_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
@@ -816,17 +812,69 @@ def test_website_xredirect_abs():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    ok(k.get_redirect(), redirect_dest)
+    eq(k.get_redirect(), redirect_dest)
 
     res = _website_request(bucket.name, '/page')
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
     _website_expected_redirect_response(res, 301, ['Moved Permanently'], new_url)
 
     k.delete()
     bucket.delete()
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, private key')
+@attr('s3website')
+@attr('x-amz-website-redirect-location')
+@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_website_xredirect_private_relative():
+    bucket = get_new_bucket()
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    bucket.make_public()
+
+    k = bucket.new_key('page')
+    content = 'wrong-content'
+    redirect_dest = '/relative'
+    headers = {'x-amz-website-redirect-location': redirect_dest}
+    k.set_contents_from_string(content, headers=headers, policy='private')
+    redirect = k.get_redirect()
+    eq(k.get_redirect(), redirect_dest)
+
+    res = _website_request(bucket.name, '/page')
+    # We get a 403 because the page is private
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
+
+    k.delete()
+    bucket.delete()
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, private key')
+@attr('s3website')
+@attr('x-amz-website-redirect-location')
+@nose.with_setup(setup=None, teardown=common.teardown) 
+def test_website_xredirect_private_abs():
+    bucket = get_new_bucket()
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
+    bucket.make_public()
+
+    k = bucket.new_key('page')
+    content = 'wrong-content'
+    redirect_dest = 'http://example.com/foo'
+    headers = {'x-amz-website-redirect-location': redirect_dest}
+    k.set_contents_from_string(content, headers=headers, policy='private')
+    redirect = k.get_redirect()
+    eq(k.get_redirect(), redirect_dest)
+
+    res = _website_request(bucket.name, '/page')
+    new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
+    # We get a 403 because the page is private
+    _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'))
+
+    k.delete()
+    bucket.delete()
 # ------ RoutingRules tests
 
 # RoutingRules
@@ -907,7 +955,7 @@ ROUTING_RULES = {
 """
     <RoutingRule>
     <Condition>
-      <HttpErrorCodeReturnedEquals>404</HttpErrorCodeReturnedEquals >
+      <HttpErrorCodeReturnedEquals>404</HttpErrorCodeReturnedEquals>
     </Condition>
     <Redirect>
       <HostName>ec2-11-22-333-44.compute-1.amazonaws.com</HostName>
@@ -1039,8 +1087,6 @@ def routing_check(*args, **kwargs):
     config_xmlcmp = common.normalize_xml(config_xmlcmp, pretty_print=True) # For us to read
     res = _website_request(bucket.name, args['url'])
     print(config_xmlcmp)
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
     new_url = args['location']
     if new_url is not None:
         new_url = get_website_url(**new_url)
@@ -1062,6 +1108,8 @@ def routing_check(*args, **kwargs):
 @nose.with_setup(setup=None, teardown=common.teardown) 
 def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
+        if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
+            t['xml']['RoutingRules'] = common.trim_xml(t['xml']['RoutingRules'])
         yield routing_check, t
 
     
