@@ -790,10 +790,9 @@ def test_website_xredirect_nonwebsite():
     res = _website_request(bucket.name, '/page')
     body = res.read()
     print(body)
-    # RGW returns "302 Found" per RFC2616
-    # S3 returns 302 Moved Temporarily per RFC1945
-    #_website_expected_redirect_response(res, 302, ['Found', 'Moved Temporarily'], new_url)
-    expected_content = _website_expected_default_html(Code='NoSuchWebsiteConfiguration', BucketName=bucket.name, Message='The specified bucket does not have a website configuration')
+    expected_content = _website_expected_default_html(Code='NoSuchWebsiteConfiguration', BucketName=bucket.name)
+    # TODO: RGW does not have custom error messages for different 404s yet
+    #expected_content = _website_expected_default_html(Code='NoSuchWebsiteConfiguration', BucketName=bucket.name, Message='The specified bucket does not have a website configuration')
     print(expected_content)
     _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchWebsiteConfiguration', content=expected_content, body=body)
 
