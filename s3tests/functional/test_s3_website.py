@@ -6,13 +6,14 @@ import string
 import random
 from pprint import pprint
 import time
+import boto.exception
 
 from urlparse import urlparse
 
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
 from nose.tools import timed
-from boto.exception import S3ResponseError
+from nose.plugins.skip import SkipTest
 
 from .. import common
 
@@ -36,6 +37,38 @@ WEBSITE_CONFIGS_XMLFRAG = {
         'RedirectAll': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName></RedirectAllRequestsTo>${RoutingRules}',
         'RedirectAll+Protocol': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName><Protocol>${RedirectAllRequestsTo_Protocol}</Protocol></RedirectAllRequestsTo>${RoutingRules}',
         }
+
+CAN_WEBSITE = None
+
+def check_can_test_website():
+    global CAN_WEBSITE
+    # This is a bit expensive, so we cache this
+    if CAN_WEBSITE is None:
+        bucket = get_new_bucket()
+        try:
+            wsconf = bucket.get_website_configuration()
+            CAN_WEBSITE = True
+        except boto.exception.S3ResponseError as e:
+            if e.status == 404 and e.reason == 'Not Found' and e.error_code ==  'NoSuchWebsiteConfiguration':
+                CAN_WEBSITE = True
+            elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
+                # rgw_enable_static_website is false
+                CAN_WEBSITE = False
+            elif e.status == 403 and e.reason == 'SignatureDoesNotMatch':
+                # This is older versions that do not support the website code
+                CAN_WEBSITE = False
+            else:
+                raise RuntimeError("Unknown response in checking if WebsiteConf is supported", e)
+        finally:
+            bucket.delete()
+
+    if CAN_WEBSITE is True:
+        return True
+    elif CAN_WEBSITE is False:
+        raise SkipTest
+    else:
+        raise RuntimeError("Unknown cached response in checking if WebsiteConf is supported")
+
 
 def make_website_config(xml_fragment):
     """
@@ -97,7 +130,7 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
     config_xmlold = ''
     try:
         config_xmlold = common.normalize_xml(bucket.get_website_configuration_xml(), pretty_print=True)
-    except S3ResponseError as e:
+    except boto.exception.S3ResponseError as e:
         if str(e.status) == str(404) \
             and True:
             #and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code):
@@ -108,7 +141,7 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
     try:
         bucket.set_website_configuration_xml(common.trim_xml(config_xmlnew))
         config_xmlnew = common.normalize_xml(config_xmlnew, pretty_print=True)
-    except S3ResponseError as e:
+    except boto.exception.S3ResponseError as e:
         if expect_fail is not None:
             if isinstance(expect_fail, dict):
                 pass
@@ -213,7 +246,7 @@ def _website_request(bucket_name, path, connect_hostname=None, method='GET', tim
 @attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket, exposing security risk')
 @attr('s3website')
 @attr('fails_on_rgw')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_s3():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
@@ -226,7 +259,7 @@ def test_website_nonexistant_bucket_s3():
 @attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket')
 @attr('s3website')
 @attr('fails_on_s3')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_rgw():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
@@ -239,7 +272,7 @@ def test_website_nonexistant_bucket_rgw():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is public')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 @timed(10)
 def test_website_public_bucket_list_public_index():
     bucket = get_new_bucket()
@@ -266,7 +299,7 @@ def test_website_public_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_public_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -295,7 +328,7 @@ def test_website_private_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -311,7 +344,7 @@ def test_website_private_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -326,7 +359,7 @@ def test_website_public_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -351,7 +384,7 @@ def test_website_public_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -377,7 +410,7 @@ def test_website_private_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, missing errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -393,7 +426,7 @@ def test_website_private_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, missing errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -408,7 +441,7 @@ def test_website_public_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -432,7 +465,7 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -457,7 +490,7 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, blocked errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -484,7 +517,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, blocked errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -510,7 +543,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -542,7 +575,7 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -575,7 +608,7 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, good errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -599,7 +632,7 @@ def test_website_private_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, good errordoc')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -623,7 +656,7 @@ def test_website_public_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -652,7 +685,7 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -682,7 +715,7 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_base():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -699,7 +732,7 @@ def test_website_bucket_private_redirectall_base():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -718,7 +751,7 @@ def test_website_bucket_private_redirectall_path():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path_upgrade():
     bucket = get_new_bucket()
     x = string.Template(WEBSITE_CONFIGS_XMLFRAG['RedirectAll+Protocol']).safe_substitute(RedirectAllRequestsTo_Protocol='https')
@@ -740,7 +773,7 @@ def test_website_bucket_private_redirectall_path_upgrade():
 @attr(assertion='x-amz-website-redirect-location should not fire without websiteconf')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-#@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_nonwebsite():
     bucket = get_new_bucket()
     #f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -773,7 +806,7 @@ def test_website_xredirect_nonwebsite():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, public key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -800,7 +833,7 @@ def test_website_xredirect_public_relative():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, public key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -827,7 +860,7 @@ def test_website_xredirect_public_abs():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, private key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -854,7 +887,7 @@ def test_website_xredirect_private_relative():
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, private key')
 @attr('s3website')
 @attr('x-amz-website-redirect-location')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -1038,6 +1071,7 @@ for redirect_code in VALID_AMZ_REDIRECT:
 # we should check that we can return that too on ceph
 
 def routing_setup():
+  check_can_test_website()
   kwargs = {'obj':[]}
   bucket = get_new_bucket()
   kwargs['bucket'] = bucket
@@ -1069,9 +1103,8 @@ def routing_teardown(**kwargs):
   for o in reversed(kwargs['obj']):
     print('Deleting', str(o))
     o.delete()
-  
-           
-@common.with_setup_kwargs(setup=routing_setup, teardown=routing_teardown) 
+
+@common.with_setup_kwargs(setup=routing_setup, teardown=routing_teardown)
 #@timed(10)
 def routing_check(*args, **kwargs):
     bucket = kwargs['bucket']
@@ -1105,7 +1138,7 @@ def routing_check(*args, **kwargs):
 
 @attr('RoutingRules')
 @attr('s3website')
-@nose.with_setup(setup=None, teardown=common.teardown) 
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
         if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
