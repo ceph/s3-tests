@@ -1136,7 +1136,7 @@ def routing_check(*args, **kwargs):
     else:
         assert(False)
 
-@attr('RoutingRules')
+@attr('s3website_RoutingRules')
 @attr('s3website')
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_routing_generator():
