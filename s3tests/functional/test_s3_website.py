@@ -49,7 +49,7 @@ def check_can_test_website():
             wsconf = bucket.get_website_configuration()
             CAN_WEBSITE = True
         except boto.exception.S3ResponseError as e:
-            if e.status == 404 and e.reason == 'Not Found' and e.error_code ==  'NoSuchWebsiteConfiguration':
+            if e.status == 404 and e.reason == 'Not Found' and e.error_code in ['NoSuchWebsiteConfiguration', 'NoSuchKey']:
                 CAN_WEBSITE = True
             elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
                 # rgw_enable_static_website is false
@@ -132,8 +132,8 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
         config_xmlold = common.normalize_xml(bucket.get_website_configuration_xml(), pretty_print=True)
     except boto.exception.S3ResponseError as e:
         if str(e.status) == str(404) \
-            and True:
-            #and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code):
+            and ('NoSuchWebsiteConfiguration' in e.body or 'NoSuchWebsiteConfiguration' in e.code or
+                    'NoSuchKey' in e.body or 'NoSuchKey' in e.code):
             pass
         else:
             raise e
