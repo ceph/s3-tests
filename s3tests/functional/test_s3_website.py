@@ -54,7 +54,7 @@ def check_can_test_website():
             elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
                 # rgw_enable_static_website is false
                 CAN_WEBSITE = False
-            elif e.status == 403 and e.reason == 'SignatureDoesNotMatch':
+            elif e.status == 403 and e.reason == 'SignatureDoesNotMatch' and e.error_code == 'Forbidden':
                 # This is older versions that do not support the website code
                 CAN_WEBSITE = False
             else:
