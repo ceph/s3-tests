@@ -86,6 +86,17 @@ def check_grants(got, want):
         eq(g.type, w.pop('type'))
         eq(w, {})
 
+def check_aws4_support():
+    if 'S3_USE_SIGV4' not in os.environ:
+        raise SkipTest
+
+def tag(*tags):
+    def wrap(func):
+        for tag in tags:
+            setattr(func, tag, True)
+        return func
+    return wrap
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
@@ -2712,6 +2723,61 @@ def test_object_raw_authenticated_object_gone():
     res = _make_request('GET', bucket, key, authenticated=True)
     eq(res.status, 404)
     eq(res.reason, 'Not Found')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='x-amz-expires check not expired')
+@attr(assertion='succeeds')
+def test_object_raw_get_x_amz_expires_not_expired():
+    check_aws4_support()
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True, expires_in=100000)
+    eq(res.status, 200)
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='check x-amz-expires value out of range zero')
+@attr(assertion='fails 403')
+def test_object_raw_get_x_amz_expires_out_range_zero():
+    check_aws4_support()
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True, expires_in=0)
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='check x-amz-expires value out of max range')
+@attr(assertion='fails 403')
+def test_object_raw_get_x_amz_expires_out_max_range():
+    check_aws4_support()
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True, expires_in=604801)
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='check x-amz-expires value out of positive range')
+@attr(assertion='succeeds')
+def test_object_raw_get_x_amz_expires_out_positive_range():
+    check_aws4_support()
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    res = _make_request('GET', bucket, key, authenticated=True, expires_in=-7)
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
 
 
 @attr(resource='object')
