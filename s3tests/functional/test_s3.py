@@ -1190,6 +1190,15 @@ def test_object_set_get_metadata_empty_to_unreadable_prefix():
     got = _set_get_metadata_unreadable(metadata)
     eq(got, [(metadata, 'utf-8')])
 
+@attr(resource='object.metadata')
+@attr(method='put')
+@attr(operation='metadata write')
+@attr(assertion='non-printing prefixes noted and preserved')
+@attr('fails_strict_rfc2616')
+def test_object_set_get_metadata_bencoding_unreadable_suffix():
+    metadata = 5 * '\x04'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
 
 @attr(resource='object.metadata')
 @attr(method='put')
