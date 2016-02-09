@@ -4704,6 +4704,18 @@ def test_object_copy_to_itself_with_metadata():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='verifying x-amz-copy-src URL encoding and decoding')
+@attr(assertion='works')
+def test_object_copy_url_encoding():
+    buckets = [get_new_bucket(), get_new_bucket()]
+    key = buckets[0].new_key('foobar with %-sign')
+    key.set_contents_from_string('foo')
+    key.copy(buckets[1], 'foobar123')
+    key2 = buckets[1].get_key('foobar123')
+    eq(key2.get_contents_as_string(), 'foo')
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy object from different bucket')
 @attr(assertion='works')
 def test_object_copy_diff_bucket():
