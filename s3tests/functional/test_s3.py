@@ -1059,6 +1059,58 @@ def test_object_write_expires():
     eq(key2.expires, expires)
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='correct robots tag header')
+def test_object_write_robots_tag():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    robots_tag = 'googlebot: noarchive'
+    key.set_contents_from_string('bar', headers = {'X-Robots-Tag': robots_tag })
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['x-robots-tag'], robots_tag)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content encoding header')
+def test_object_write_content_encoding():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_encoding = 'gzip'
+    key.set_contents_from_string('bar', headers = {'Content-Encoding': 'gzip'})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-encoding'], content_encoding)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content disposition header')
+def test_object_write_content_disposition():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_disposition = u'filename=sample.txt'
+    key.set_contents_from_string('bar', headers = {'Content-disposition': content_disposition})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-disposition'], content_disposition)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content language header')
+def test_object_write_content_language():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_language = 'de'
+    key.set_contents_from_string('bar', headers = {'Content-Language': content_language})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-language'], content_language)
+
+@attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
 @attr(assertion='read back what we wrote and rewrote')
