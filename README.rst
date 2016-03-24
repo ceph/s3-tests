@@ -4,17 +4,30 @@
 
 The tests use the Nose test framework.
 
+Required:
+
 python-virtualenv
+
 PyYAML
+
 nose >=1.0.0
+
 boto >=2.6.0
+
 bunch >=1.0.0
+
 gevent ==0.13.6
+
 isodate >=0.4.4
+
 requests ==0.14.0
+
 pytz >=2011k
+
 ordereddict
+
 httplib2
+
 lxml
 
 	sudo yum install python-virtualenv
