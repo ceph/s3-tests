@@ -4,11 +4,21 @@
 
 The tests use the Nose test framework.
 
-	sudo apt-get install python-virtualenv
+python-virtualenv
+PyYAML
+nose >=1.0.0
+boto >=2.6.0
+bunch >=1.0.0
+gevent ==0.13.6
+isodate >=0.4.4
+requests ==0.14.0
+pytz >=2011k
+ordereddict
+httplib2
+lxml
 
-and then run::
-
-	./bootstrap
+	sudo yum install python-virtualenv
+	sudo ./bootstrap
 
 Configuration:
 
