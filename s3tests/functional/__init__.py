@@ -1,3 +1,5 @@
+from __future__ import print_function
+import sys
 import ConfigParser
 import boto.exception
 import boto.s3.connection
@@ -6,6 +8,8 @@ import itertools
 import os
 import random
 import string
+from httplib import HTTPConnection, HTTPSConnection
+from urlparse import urlparse
 
 from .utils import region_sync_meta
 
@@ -55,15 +59,15 @@ def choose_bucket_prefix(template, max_len=30):
 
 
 def nuke_prefixed_buckets_on_conn(prefix, name, conn):
-    print 'Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
+    print('Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
         name=name,
         prefix=prefix,
-        )
+        ))
 
     for bucket in conn.get_all_buckets():
-        print 'prefix=',prefix
+        print('prefix=',prefix)
         if bucket.name.startswith(prefix):
-            print 'Cleaning bucket {bucket}'.format(bucket=bucket)
+            print('Cleaning bucket {bucket}'.format(bucket=bucket))
             success = False
             for i in xrange(2):
                 try:
@@ -81,17 +85,17 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
                             raise e
                         keys = bucket.list();
                     for key in keys:
-                        print 'Cleaning bucket {bucket} key {key}'.format(
+                        print('Cleaning bucket {bucket} key {key}'.format(
                             bucket=bucket,
                             key=key,
-                            )
+                            ))
                         # key.set_canned_acl('private')
                         bucket.delete_key(key.name, version_id = key.version_id)
                     bucket.delete()
                     success = True
                 except boto.exception.S3ResponseError as e:
                     if e.error_code != 'AccessDenied':
-                        print 'GOT UNWANTED ERROR', e.error_code
+                        print('GOT UNWANTED ERROR', e.error_code)
                         raise
                     # seems like we don't have permissions set appropriately, we'll
                     # modify permissions and retry
@@ -107,26 +111,26 @@ def nuke_prefixed_buckets(prefix):
     # If no regions are specified, use the simple method
     if targets.main.master == None:
         for name, conn in s3.items():
-            print 'Deleting buckets on {name}'.format(name=name)
+            print('Deleting buckets on {name}'.format(name=name))
             nuke_prefixed_buckets_on_conn(prefix, name, conn)
     else: 
 		    # First, delete all buckets on the master connection 
 		    for name, conn in s3.items():
 		        if conn == targets.main.master.connection:
-		            print 'Deleting buckets on {name} (master)'.format(name=name)
+		            print('Deleting buckets on {name} (master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 		
 		    # Then sync to propagate deletes to secondaries
 		    region_sync_meta(targets.main, targets.main.master.connection)
-		    print 'region-sync in nuke_prefixed_buckets'
+		    print('region-sync in nuke_prefixed_buckets')
 		
 		    # Now delete remaining buckets on any other connection 
 		    for name, conn in s3.items():
 		        if conn != targets.main.master.connection:
-		            print 'Deleting buckets on {name} (non-master)'.format(name=name)
+		            print('Deleting buckets on {name} (non-master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
 
-    print 'Done with cleanup of test buckets.'
+    print('Done with cleanup of test buckets.')
 
 class TargetConfig:
     def __init__(self, cfg, section):
@@ -310,6 +314,10 @@ def setup():
             'user_id',
             'display_name',
             'email',
+            's3website_domain',
+            'host',
+            'port',
+            'is_secure',
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
@@ -392,3 +400,89 @@ def get_new_bucket(target=None, name=None, headers=None):
     # ignore that as astronomically unlikely
     bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
     return bucket
+
+def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
+    """
+    issue a request for a specified method, on a specified <bucket,key>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason).
+
+    If key is None, then this will be treated as a bucket-level request.
+    """
+    if response_headers is None:
+        response_headers = {}
+    if request_headers is None:
+        request_headers = {}
+    if not path_style:
+        conn = bucket.connection
+        request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
+
+    if authenticated:
+        urlobj = None
+        if key is not None:
+            urlobj = key
+        elif bucket is not None:
+            urlobj = bucket
+        else:
+            raise RuntimeError('Unable to find bucket name')
+        url = urlobj.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
+        o = urlparse(url)
+        path = o.path + '?' + o.query
+    else:
+        bucketobj = None
+        if key is not None:
+            path = '/{obj}'.format(obj=key.name)
+            bucketobj = key.bucket
+        elif bucket is not None:
+            path = '/'
+            bucketobj = bucket
+        else:
+            raise RuntimeError('Unable to find bucket name')
+        if path_style:
+            path = '/{bucket}'.format(bucket=bucketobj.name) + path
+
+    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure, timeout=timeout)
+
+def _make_bucket_request(method, bucket, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
+    """
+    issue a request for a specified method, on a specified <bucket>,
+    with a specified (optional) body (encrypted per the connection), and
+    return the response (status, reason)
+    """
+    return _make_request(method=method, bucket=bucket, key=None, body=body, authenticated=authenticated, response_headers=response_headers, request_headers=request_headers, expires_in=expires_in, path_style=path_style, timeout=timeout)
+
+def _make_raw_request(host, port, method, path, body=None, request_headers=None, secure=False, timeout=None):
+    """
+    issue a request to a specific host & port, for a specified method, on a
+    specified path with a specified (optional) body (encrypted per the
+    connection), and return the response (status, reason).
+
+    This allows construction of special cases not covered by the bucket/key to
+    URL mapping of _make_request/_make_bucket_request.
+    """
+    if secure:
+        class_ = HTTPSConnection
+    else:
+        class_ = HTTPConnection
+
+    if request_headers is None:
+        request_headers = {}
+
+    skip_host=('Host' in request_headers)
+    skip_accept_encoding = False
+    c = class_(host, port, strict=True, timeout=timeout)
+
+    # We do the request manually, so we can muck with headers
+    #c.request(method, path, body=body, headers=request_headers)
+    c.connect()
+    c.putrequest(method, path, skip_host, skip_accept_encoding)
+    for k,v in request_headers.items():
+        c.putheader(k,v)
+    c.endheaders(message_body=body)
+
+    res = c.getresponse()
+    #c.close()
+
+    print(res.status, res.reason)
+    return res
+
