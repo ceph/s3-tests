@@ -2,26 +2,24 @@
  S3 compatibility tests
 ========================
 
-This is a set of completely unofficial Amazon AWS S3 compatibility
-tests, that will hopefully be useful to people implementing software
-that exposes an S3-like API.
+The tests use the Nose test framework. First install::
 
-The tests only cover the REST interface.
+	sudo yum install python-virtualenv
 
-TODO: test direct HTTP downloads, like a web browser would do.
+and then run ./bootstrap::
 
-The tests use the Boto library, so any e.g. HTTP-level differences
-that Boto papers over, the tests will not be able to discover. Raw
-HTTP tests may be added later.
-
-The tests use the Nose test framework. To get started, ensure you have
-the ``virtualenv`` software installed; e.g. on Debian/Ubuntu::
-
-	sudo apt-get install python-virtualenv
-
-and then run::
-
-	./bootstrap
+	python-virtualenv
+	PyYAML
+	nose >=1.0.0
+	boto >=2.6.0
+	bunch >=1.0.0
+	gevent ==0.13.6
+	isodate >=0.4.4
+	requests ==0.14.0
+	pytz >=2011k
+	ordereddict
+	httplib2
+	lxml
 
 You will need to create a configuration file with the location of the
 service and two different credentials, something like this::
@@ -69,7 +67,8 @@ service and two different credentials, something like this::
 
 Once you have that, you can run the tests with::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests --with-xunit
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v 2>&1 | tee nosetestresults.csv
 
 You can specify what test(s) to run::
 
@@ -81,11 +80,27 @@ based on their attributes::
 
 	S3TEST_CONF=aws.conf ./virtualenv/bin/nosetests -a '!fails_on_aws'
 
+Configuration::
 
-TODO
-====
+[default]	
+host = 
+# port = 8080
+is_secure = no
 
-- We should assume read-after-write consistency, and make the tests
-  actually request such a location.
+[fixtures]
+bucket prefix = s3-{random}-
 
-  http://aws.amazon.com/s3/faqs/#What_data_consistency_model_does_Amazon_S3_employ
+[s3 main]
+#user_id = 
+
+display_name = 
+
+access_key = 
+secret_key = 
+
+[s3 alt]
+user_id = 
+display_name = 
+email = 
+access_key = 
+secret_key = 
