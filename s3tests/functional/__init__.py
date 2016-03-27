@@ -408,11 +408,10 @@ def _make_request(method, bucket, key, body=None, authenticated=False, response_
     return the response (status, reason).
 
     If key is None, then this will be treated as a bucket-level request.
+
+    If the request or response headers are None, then default values will be
+    provided by later methods.
     """
-    if response_headers is None:
-        response_headers = {}
-    if request_headers is None:
-        request_headers = {}
     if not path_style:
         conn = bucket.connection
         request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
@@ -468,17 +467,11 @@ def _make_raw_request(host, port, method, path, body=None, request_headers=None,
     if request_headers is None:
         request_headers = {}
 
-    skip_host=('Host' in request_headers)
-    skip_accept_encoding = False
     c = class_(host, port, strict=True, timeout=timeout)
 
-    # We do the request manually, so we can muck with headers
-    #c.request(method, path, body=body, headers=request_headers)
-    c.connect()
-    c.putrequest(method, path, skip_host, skip_accept_encoding)
-    for k,v in request_headers.items():
-        c.putheader(k,v)
-    c.endheaders(message_body=body)
+    # TODO: We might have to modify this in future if we need to interact with
+    # how httplib.request handles Accept-Encoding and Host.
+    c.request(method, path, body=body, headers=request_headers)
 
     res = c.getresponse()
     #c.close()
