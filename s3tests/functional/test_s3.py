@@ -5179,36 +5179,6 @@ def test_list_multipart_upload():
     upload2.cancel_upload()
     upload3.cancel_upload()
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multi-part upload with missing part')
-def test_multipart_upload_missing_part():
-    bucket = get_new_bucket()
-    key_name = "mymultipart"
-    mp = bucket.initiate_multipart_upload(key_name)
-    mp.upload_part_from_file(StringIO('\x00'), 1)
-    xml = mp.to_xml()
-    xml = xml.replace('<PartNumber>1</PartNumber>', '<PartNumber>9999</PartNumber>')
-    e = assert_raises(boto.exception.S3ResponseError, bucket.complete_multipart_upload, key_name, mp.id, xml)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidPart')
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multi-part upload with incorrect ETag')
-def test_multipart_upload_incorrect_etag():
-    bucket = get_new_bucket()
-    key_name = "mymultipart"
-    mp = bucket.initiate_multipart_upload(key_name)
-    mp.upload_part_from_file(StringIO('\x00'), 1)
-    xml = mp.to_xml()
-    xml = xml.replace('<ETag>"93b885adfe0da089cdf634904fd59f71"</ETag>', '<ETag>"ffffffffffffffffffffffffffffffff"</ETag>')
-    e = assert_raises(boto.exception.S3ResponseError, bucket.complete_multipart_upload, key_name, mp.id, xml)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidPart')
-
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
     Send the specified request w/expect 100-continue
