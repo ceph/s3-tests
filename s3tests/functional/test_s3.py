@@ -4927,6 +4927,7 @@ def _check_key_content(src, dst):
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
+@attr('fails_on_rgw')
 def test_multipart_copy_small():
     (src_bucket, src_key) = _create_key_with_random_content('foo')
     dst_bucket = get_new_bucket()
@@ -5033,6 +5034,7 @@ def test_multipart_upload_multiple_sizes():
     upload.complete_upload()
 
 @attr(assertion='successful')
+@attr('fails_on_rgw')
 def test_multipart_copy_multiple_sizes():
     (src_bucket, src_key) = _create_key_with_random_content('foo', 12 * 1024 * 1024)
     dst_bucket = get_new_bucket()
