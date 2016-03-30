@@ -6,7 +6,7 @@ This is a set of completely unofficial Amazon AWS S3 compatibility
 tests, that will hopefully be useful to people implementing software
 that exposes an S3-like API.
 
-The tests only covers the REST interface.
+The tests only cover the REST interface.
 
 The tests use the Boto library, so any e.g. HTTP-level differences
 that Boto papers over, the tests will not be able to discover. Raw
