@@ -6,9 +6,7 @@ This is a set of completely unofficial Amazon AWS S3 compatibility
 tests, that will hopefully be useful to people implementing software
 that exposes an S3-like API.
 
-The tests only cover the REST interface.
-
-TODO: test direct HTTP downloads, like a web browser would do.
+The tests only covers the REST interface.
 
 The tests use the Boto library, so any e.g. HTTP-level differences
 that Boto papers over, the tests will not be able to discover. Raw
@@ -71,6 +69,10 @@ Once you have that, you can run the tests with::
 
 	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests
 
+To gather a list of tests being run, use the flags::
+
+	 -v --collect-only
+
 You can specify what test(s) to run::
 
 	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional.test_s3:test_bucket_list_empty
@@ -87,5 +89,6 @@ TODO
 
 - We should assume read-after-write consistency, and make the tests
   actually request such a location.
-
   http://aws.amazon.com/s3/faqs/#What_data_consistency_model_does_Amazon_S3_employ
+
+- Test direct HTTP downloads, like a web browser would do.
