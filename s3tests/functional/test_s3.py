@@ -1012,6 +1012,7 @@ def test_multi_object_delete():
 @attr(method='put')
 @attr(operation='write zero-byte key')
 @attr(assertion='correct content length')
+@attr('fails_on_rgw')   # actually, just apache; works with civetweb.
 def test_object_head_zero_bytes():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
