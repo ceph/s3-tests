@@ -5396,6 +5396,30 @@ def test_cors_origin_response():
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'GET'}, 403, None, None)
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'PUT'}, 200, 'foo.put', 'PUT')
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='check cors response when origin is set to wildcard')
+@attr(assertion='returning cors header')
+def test_cors_origin_wildcard():
+    cfg = CORSConfiguration()
+    bucket = get_new_bucket()
+
+    bucket.set_acl('public-read')
+
+    cfg.add_rule('GET', '*')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
+    bucket.set_cors(cfg)
+
+    time.sleep(3)
+
+    url = _get_post_url(s3.main, bucket)
+
+    _cors_request_and_check(requests.get, url, None, 200, None, None)
+    _cors_request_and_check(requests.get, url, {'Origin': 'example.origin'}, 200, '*', 'GET')
+
 
 class FakeFile(object):
     """
