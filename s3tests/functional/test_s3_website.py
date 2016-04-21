@@ -37,6 +37,8 @@ WEBSITE_CONFIGS_XMLFRAG = {
         'RedirectAll': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName></RedirectAllRequestsTo>${RoutingRules}',
         'RedirectAll+Protocol': '<RedirectAllRequestsTo><HostName>${RedirectAllRequestsTo_HostName}</HostName><Protocol>${RedirectAllRequestsTo_Protocol}</Protocol></RedirectAllRequestsTo>${RoutingRules}',
         }
+INDEXDOC_TEMPLATE = '<html><h1>IndexDoc</h1><body>{random}</body></html>'
+ERRORDOC_TEMPLATE = '<html><h1>ErrorDoc</h1><body>{random}</body></html>'
 
 CAN_WEBSITE = None
 
@@ -279,7 +281,7 @@ def test_website_public_bucket_list_public_index():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
     #time.sleep(1)
@@ -305,7 +307,7 @@ def test_website_private_bucket_list_public_index():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.set_canned_acl('private')
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.make_public()
     #time.sleep(1)
@@ -365,7 +367,7 @@ def test_website_public_bucket_list_private_index():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.make_public()
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -390,7 +392,7 @@ def test_website_private_bucket_list_private_index():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
     bucket.set_canned_acl('private')
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     ##time.sleep(1)
@@ -447,7 +449,7 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -471,7 +473,7 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -496,7 +498,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -523,7 +525,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
     while bucket.get_key(f['ErrorDocument_Key']) is None:
@@ -549,11 +551,11 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -581,11 +583,11 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('private')
     #time.sleep(1)
@@ -614,9 +616,8 @@ def test_website_private_bucket_list_empty_gooderrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
-    errorhtml.set_contents_from_string(errorstring)
-    errorhtml.set_canned_acl('public-read')
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
+    errorhtml.set_contents_from_string(errorstring, policy='public-read')
     #time.sleep(1)
     while bucket.get_key(f['ErrorDocument_Key']) is None:
         time.sleep(SLEEP_INTERVAL)
@@ -638,7 +639,7 @@ def test_website_public_bucket_list_empty_gooderrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
    #time.sleep(1)
@@ -662,11 +663,11 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.make_public()
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
     #time.sleep(1)
@@ -691,11 +692,11 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
     bucket.set_canned_acl('private')
     indexhtml = bucket.new_key(f['IndexDocument_Suffix'])
-    indexstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    indexstring = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=256)
     indexhtml.set_contents_from_string(indexstring)
     indexhtml.set_canned_acl('private')
     errorhtml = bucket.new_key(f['ErrorDocument_Key'])
-    errorstring = choose_bucket_prefix(template='<html><body>{random}</body></html>', max_len=256)
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
     errorhtml.set_contents_from_string(errorstring)
     errorhtml.set_canned_acl('public-read')
     #time.sleep(1)
@@ -1010,6 +1011,10 @@ ROUTING_RULES = {
 """,
 }
 
+for k in ROUTING_RULES.keys():
+  if len(ROUTING_RULES[k]) > 0:
+    ROUTING_RULES[k] = "<!-- %s -->\n%s" % (k, ROUTING_RULES[k])
+
 ROUTING_RULES_TESTS = [
   dict(xml=dict(RoutingRules=ROUTING_RULES['empty']), url='', location=None, code=200),
   dict(xml=dict(RoutingRules=ROUTING_RULES['empty']), url='/', location=None, code=200),
@@ -1043,7 +1048,7 @@ ROUTING_RULES_TESTS = [
 
 ROUTING_ERROR_PROTOCOL = dict(code=400, reason='Bad Request', errorcode='InvalidRequest', bodyregex=r'Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically.')
 
-ROUTING_RULES_TESTS_ERRORS = [
+ROUTING_RULES_TESTS_ERRORS = [ # TODO: Unused!
   # Invalid protocol, protocol can be http or https. If not defined the protocol will be selected automatically.
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/', location=None, code=400, error=ROUTING_ERROR_PROTOCOL),
   dict(xml=dict(RoutingRules=ROUTING_RULES['AmazonExample1+Protocol=http2']), url='/x', location=None, code=400, error=ROUTING_ERROR_PROTOCOL),
@@ -1079,16 +1084,20 @@ def routing_setup():
   f = _test_website_prep(bucket, '')
   kwargs.update(f)
   bucket.set_canned_acl('public-read')
+  
+  k = bucket.new_key('debug-ws.xml')
+  kwargs['obj'].append(k)
+  k.set_contents_from_string('', policy='public-read')
 
   k = bucket.new_key(f['IndexDocument_Suffix'])
   kwargs['obj'].append(k)
-  s = choose_bucket_prefix(template='<html><h1>Index</h1><body>{random}</body></html>', max_len=64)
+  s = choose_bucket_prefix(template=INDEXDOC_TEMPLATE, max_len=64)
   k.set_contents_from_string(s)
   k.set_canned_acl('public-read')
 
   k = bucket.new_key(f['ErrorDocument_Key'])
   kwargs['obj'].append(k)
-  s = choose_bucket_prefix(template='<html><h1>Error</h1><body>{random}</body></html>', max_len=64)
+  s = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=64)
   k.set_contents_from_string(s)
   k.set_canned_acl('public-read')
 
@@ -1112,6 +1121,10 @@ def routing_check(*args, **kwargs):
     pprint(args)
     xml_fields = kwargs.copy()
     xml_fields.update(args['xml'])
+
+    k = bucket.get_key('debug-ws.xml')
+    k.set_contents_from_string(str(args)+str(kwargs), policy='public-read')
+
     pprint(xml_fields)
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'], hardcoded_fields=xml_fields)
     #print(f)
