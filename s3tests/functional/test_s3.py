@@ -2357,11 +2357,14 @@ def test_get_object_ifmodifiedsince_failed():
     key = bucket.new_key('foo')
     key.set_contents_from_string('bar')
 
-    # Sleep since Amazon returns 200 if the date is in the future:
-    # https://forums.aws.amazon.com/message.jspa?messageID=325930
-    now = time.time()
-    time.sleep(20)
-    after = formatdate(now + 10)
+    for k in bucket.get_all_keys():
+        key = k
+
+    mtime = time.strptime(key.last_modified, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+    after = time.ctime(time.mktime(mtime) + 1)
+
+    time.sleep(1)
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Modified-Since': after})
     eq(e.status, 304)
