@@ -5,6 +5,11 @@ import os
 import random
 import string
 import yaml
+import re
+from lxml import etree
+
+from doctest import Example
+from lxml.doctestcompare import LXMLOutputChecker
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
@@ -181,3 +186,116 @@ def get_new_bucket(connection=None):
 
 def teardown():
     nuke_prefixed_buckets()
+
+def with_setup_kwargs(setup, teardown=None):
+    """Decorator to add setup and/or teardown methods to a test function::
+
+      @with_setup_args(setup, teardown)
+      def test_something():
+          " ... "
+
+    The setup function should return (kwargs) which will be passed to
+    test function, and teardown function.
+
+    Note that `with_setup_kwargs` is useful *only* for test functions, not for test
+    methods or inside of TestCase subclasses.
+    """
+    def decorate(func):
+        kwargs = {}
+
+        def test_wrapped(*args, **kwargs2):
+            k2 = kwargs.copy()
+            k2.update(kwargs2)
+            k2['testname'] = func.__name__
+            func(*args, **k2)
+
+        test_wrapped.__name__ = func.__name__
+
+        def setup_wrapped():
+            k = setup()
+            kwargs.update(k)
+            if hasattr(func, 'setup'):
+                func.setup()
+        test_wrapped.setup = setup_wrapped
+
+        if teardown:
+            def teardown_wrapped():
+                if hasattr(func, 'teardown'):
+                    func.teardown()
+                teardown(**kwargs)
+
+            test_wrapped.teardown = teardown_wrapped
+        else:
+            if hasattr(func, 'teardown'):
+                test_wrapped.teardown = func.teardown()
+        return test_wrapped
+    return decorate
+
+# Demo case for the above, when you run test_gen():
+# _test_gen will run twice,
+# with the following stderr printing
+# setup_func {'b': 2}
+# testcase ('1',) {'b': 2, 'testname': '_test_gen'}
+# teardown_func {'b': 2}
+# setup_func {'b': 2}
+# testcase () {'b': 2, 'testname': '_test_gen'}
+# teardown_func {'b': 2}
+# 
+#def setup_func():
+#    kwargs = {'b': 2}
+#    print("setup_func", kwargs, file=sys.stderr)
+#    return kwargs
+#
+#def teardown_func(**kwargs):
+#    print("teardown_func", kwargs, file=sys.stderr)
+#
+#@with_setup_kwargs(setup=setup_func, teardown=teardown_func)
+#def _test_gen(*args, **kwargs):
+#    print("testcase", args, kwargs, file=sys.stderr)
+#
+#def test_gen():
+#    yield _test_gen, '1'
+#    yield _test_gen
+
+def trim_xml(xml_str):
+    p = etree.XMLParser(remove_blank_text=True)
+    elem = etree.XML(xml_str, parser=p)
+    return etree.tostring(elem)
+
+def normalize_xml(xml, pretty_print=True):
+    if xml is None:
+        return xml
+
+    root = etree.fromstring(xml.encode(encoding='ascii'))
+
+    for element in root.iter('*'):
+        if element.text is not None and not element.text.strip():
+            element.text = None
+        if element.text is not None:
+            element.text = element.text.strip().replace("\n", "").replace("\r", "")
+        if element.tail is not None and not element.tail.strip():
+            element.tail = None
+        if element.tail is not None:
+            element.tail = element.tail.strip().replace("\n", "").replace("\r", "")
+
+    # Sort the elements
+    for parent in root.xpath('//*[./*]'): # Search for parent elements
+          parent[:] = sorted(parent,key=lambda x: x.tag)
+
+    xmlstr = etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
+    # there are two different DTD URIs
+    xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="s3"', xmlstr)
+    xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="s3"', xmlstr)
+    for uri in ['http://doc.s3.amazonaws.com/doc/2006-03-01/', 'http://s3.amazonaws.com/doc/2006-03-01/']:
+        xmlstr = xmlstr.replace(uri, 'URI-DTD')
+    #xmlstr = re.sub(r'>\s+', '>', xmlstr, count=0, flags=re.MULTILINE)
+    return xmlstr
+
+def assert_xml_equal(got, want):
+    assert want is not None, 'Wanted XML cannot be None'
+    if got is None:
+        raise AssertionError('Got input to validate was None')
+    checker = LXMLOutputChecker()
+    if not checker.check_output(want, got, 0):
+        message = checker.output_difference(Example("", want), got, 0)
+        raise AssertionError(message)
