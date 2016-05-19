@@ -682,6 +682,7 @@ def test_bucket_create_bad_authorization_none():
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_md5_invalid_garbage_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Content-MD5':'AWS HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
@@ -696,6 +697,7 @@ def test_object_create_bad_md5_invalid_garbage_aws2():
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_mismatch_below_aws2():
+    check_aws2_support()
     content = 'bar'
     length = len(content) - 1
     key = _setup_bad_object({'Content-Length': length})
@@ -712,6 +714,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_incorrect_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -726,6 +729,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
 @attr(operation='create w/invalid authorization')
 @attr(assertion='fails 400')
 def test_object_create_bad_authorization_invalid_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
@@ -740,6 +744,7 @@ def test_object_create_bad_authorization_invalid_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_empty_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'User-Agent': ''})
     key.set_contents_from_string('bar')
 
@@ -751,6 +756,7 @@ def test_object_create_bad_ua_empty_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_unreadable_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'User-Agent': '\x07'})
     key.set_contents_from_string('bar')
 
@@ -762,6 +768,7 @@ def test_object_create_bad_ua_unreadable_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_none_aws2():
+    check_aws2_support()
     key = _setup_bad_object(remove=('User-Agent',))
     key.set_contents_from_string('bar')
 
@@ -773,6 +780,7 @@ def test_object_create_bad_ua_none_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_invalid_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': 'Bad Date'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -787,6 +795,7 @@ def test_object_create_bad_date_invalid_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_empty_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': ''})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -801,6 +810,7 @@ def test_object_create_bad_date_empty_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_unreadable_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': '\x07'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
@@ -816,6 +826,7 @@ def test_object_create_bad_date_unreadable_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_none_aws2():
+    check_aws2_support()
     key = _setup_bad_object(remove=('Date',))
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -830,6 +841,7 @@ def test_object_create_bad_date_none_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_before_today_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -844,6 +856,7 @@ def test_object_create_bad_date_before_today_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_after_today_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -858,6 +871,7 @@ def test_object_create_bad_date_after_today_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_before_epoch_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -872,6 +886,7 @@ def test_object_create_bad_date_before_epoch_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_after_end_aws2():
+    check_aws2_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
@@ -886,6 +901,7 @@ def test_object_create_bad_date_after_end_aws2():
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_invalid_aws2():
+    check_aws2_support()
     _add_custom_headers({'Authorization': 'AWS HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 400)
@@ -900,6 +916,7 @@ def test_bucket_create_bad_authorization_invalid_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_empty_aws2():
+    check_aws2_support()
     _add_custom_headers({'User-Agent': ''})
     bucket = get_new_bucket()
 
@@ -911,6 +928,7 @@ def test_bucket_create_bad_ua_empty_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_unreadable_aws2():
+    check_aws2_support()
     _add_custom_headers({'User-Agent': '\x07'})
     bucket = get_new_bucket()
 
@@ -922,6 +940,7 @@ def test_bucket_create_bad_ua_unreadable_aws2():
 @attr(assertion='succeeds')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_none_aws2():
+    check_aws2_support()
     _add_custom_headers(remove=('User-Agent',))
     bucket = get_new_bucket()
 
@@ -933,6 +952,7 @@ def test_bucket_create_bad_ua_none_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_invalid_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': 'Bad Date'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -947,6 +967,7 @@ def test_bucket_create_bad_date_invalid_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_empty_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -961,6 +982,7 @@ def test_bucket_create_bad_date_empty_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_unreadable_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -975,6 +997,7 @@ def test_bucket_create_bad_date_unreadable_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_none_aws2():
+    check_aws2_support()
     _add_custom_headers(remove=('Date',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -989,6 +1012,7 @@ def test_bucket_create_bad_date_none_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_before_today_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -1003,6 +1027,7 @@ def test_bucket_create_bad_date_before_today_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_after_today_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -1017,6 +1042,7 @@ def test_bucket_create_bad_date_after_today_aws2():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_before_epoch_aws2():
+    check_aws2_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 403)
@@ -1030,6 +1056,11 @@ def test_bucket_create_bad_date_before_epoch_aws2():
 def check_aws4_support():
     if 'S3_USE_SIGV4' not in os.environ:
        raise SkipTest
+
+def check_aws2_support():
+    if 'S3_USE_SIGV4' in os.environ:
+       raise SkipTest
+
 
 @tag('auth_aws4')
 @attr(resource='object')
