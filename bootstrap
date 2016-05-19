@@ -2,7 +2,7 @@
 set -e
 
 if [ -f /etc/debian_version ]; then
-    for package in python-pip python-virtualenv python-dev libevent-dev; do
+    for package in python-pip python-virtualenv python-dev libevent-dev libxml2-dev libxslt-dev; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
             missing="${missing:+$missing }$package"
@@ -14,7 +14,7 @@ if [ -f /etc/debian_version ]; then
     fi
 fi
 if [ -f /etc/redhat-release ]; then
-    for package in python-pip python-virtualenv python-devel libevent-devel; do
+    for package in python-pip python-virtualenv python-devel libevent-devel libxml2-devel libxslt-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
