@@ -4816,14 +4816,126 @@ def test_object_copy_key_not_found():
     eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchKey')
 
-def transfer_part(bucket, mp_id, mp_keyname, i, part):
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object to/from versioned bucket')
+@attr(assertion='works')
+def test_object_copy_versioned_bucket():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key = bucket.new_key('foo123bar')
+    size = 1*1024*1024
+    data = str(bytearray(size))
+    key.set_contents_from_string(data)
+
+    # copy object in the same bucket
+    key2 = bucket.copy_key('bar321foo', bucket.name, key.name, src_version_id = key.version_id)
+    key2 = bucket.get_key(key2.name)
+    eq(key2.size, size)
+    got = key2.get_contents_as_string()
+    eq(got, data)
+
+    # second copy
+    key3 = bucket.copy_key('bar321foo2', bucket.name, key2.name, src_version_id = key2.version_id)
+    key3 = bucket.get_key(key3.name)
+    eq(key3.size, size)
+    got = key3.get_contents_as_string()
+    eq(got, data)
+
+    # copy to another versioned bucket
+    bucket2 = get_new_bucket()
+    check_configure_versioning_retry(bucket2, True, "Enabled")
+    key4 = bucket2.copy_key('bar321foo3', bucket.name, key.name, src_version_id = key.version_id)
+    key4 = bucket2.get_key(key4.name)
+    eq(key4.size, size)
+    got = key4.get_contents_as_string()
+    eq(got, data)
+
+    # copy to another non versioned bucket
+    bucket3 = get_new_bucket()
+    key5 = bucket3.copy_key('bar321foo4', bucket.name, key.name , src_version_id = key.version_id)
+    key5 = bucket3.get_key(key5.name)
+    eq(key5.size, size)
+    got = key5.get_contents_as_string()
+    eq(got, data)
+
+    # copy from a non versioned bucket
+    key6 = bucket.copy_key('foo123bar2', bucket3.name, key5.name)
+    key6 = bucket.get_key(key6.name)
+    eq(key6.size, size)
+    got = key6.get_contents_as_string()
+    eq(got, data)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='test copy object of a multipart upload')
+@attr(assertion='successful')
+def test_object_copy_versioning_multipart_upload():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key_name="srcmultipart"
+    content_type='text/bla'
+    objlen = 30 * 1024 * 1024
+    (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
+    upload.complete_upload()
+    key = bucket.get_key(key_name)
+
+    # copy object in the same bucket
+    key2 = bucket.copy_key('dstmultipart', bucket.name, key.name, src_version_id = key.version_id)
+    key2 = bucket.get_key(key2.name)
+    eq(key2.metadata['foo'], 'bar')
+    eq(key2.content_type, content_type)
+    eq(key2.size, key.size)
+    got = key2.get_contents_as_string()
+    eq(got, data)
+
+    # second copy
+    key3 = bucket.copy_key('dstmultipart2', bucket.name, key2.name, src_version_id = key2.version_id)
+    key3 = bucket.get_key(key3.name)
+    eq(key3.metadata['foo'], 'bar')
+    eq(key3.content_type, content_type)
+    eq(key3.size, key.size)
+    got = key3.get_contents_as_string()
+    eq(got, data)
+
+    # copy to another versioned bucket
+    bucket2 = get_new_bucket()
+    check_configure_versioning_retry(bucket2, True, "Enabled")
+    key4 = bucket2.copy_key('dstmultipart3', bucket.name, key.name, src_version_id = key.version_id)
+    key4 = bucket2.get_key(key4.name)
+    eq(key4.metadata['foo'], 'bar')
+    eq(key4.content_type, content_type)
+    eq(key4.size, key.size)
+    got = key4.get_contents_as_string()
+    eq(got, data)
+
+    # copy to another non versioned bucket
+    bucket3 = get_new_bucket()
+    key5 = bucket3.copy_key('dstmultipart4', bucket.name, key.name, src_version_id = key.version_id)
+    key5 = bucket3.get_key(key5.name)
+    eq(key5.metadata['foo'], 'bar')
+    eq(key5.content_type, content_type)
+    eq(key5.size, key.size)
+    got = key5.get_contents_as_string()
+    eq(got, data)
+
+    # copy from a non versioned bucket
+    key6 = bucket3.copy_key('dstmultipart5', bucket3.name, key5.name)
+    key6 = bucket3.get_key(key6.name)
+    eq(key6.metadata['foo'], 'bar')
+    eq(key6.content_type, content_type)
+    eq(key6.size, key.size)
+    got = key6.get_contents_as_string()
+    eq(got, data)
+
+def transfer_part(bucket, mp_id, mp_keyname, i, part, headers=None):
     """Transfer a part of a multipart upload. Designed to be run in parallel.
     """
     mp = boto.s3.multipart.MultiPartUpload(bucket)
     mp.key_name = mp_keyname
     mp.id = mp_id
     part_out = StringIO(part)
-    mp.upload_part_from_file(part_out, i+1)
+    mp.upload_part_from_file(part_out, i+1, headers=headers)
 
 def copy_part(src_bucket, src_keyname, dst_bucket, dst_keyname, mp_id, i, start=None, end=None):
     """Copy a part of a multipart upload from other bucket.
@@ -4863,9 +4975,9 @@ def _multipart_upload(bucket, s3_key_name, size, part_size=5*1024*1024, do_list=
     s = ''
     for i, part in enumerate(generate_random(size, part_size)):
         s += part
-        transfer_part(bucket, upload.id, upload.key_name, i, part)
+        transfer_part(bucket, upload.id, upload.key_name, i, part, headers)
         if i in resend_parts:
-            transfer_part(bucket, upload.id, upload.key_name, i, part)
+            transfer_part(bucket, upload.id, upload.key_name, i, part, headers)
 
     if do_list is not None:
         l = bucket.list_multipart_uploads()
@@ -6855,3 +6967,476 @@ def test_versioned_concurrent_object_create_and_remove():
 
     eq(_count_bucket_versioned_objs(bucket), 0)
     eq(len(bucket.get_all_keys()), 0)
+
+# Create a lifecycle config.  Either days (int) and prefix (string) is given, or rules.
+# Rules is an array of dictionaries, each dict has a 'days' and a 'prefix' key
+def create_lifecycle(days = None, prefix = 'test/', rules = None):
+    lifecycle = boto.s3.lifecycle.Lifecycle()
+    if rules == None:
+        expiration = boto.s3.lifecycle.Expiration(days=days)
+        rule = boto.s3.lifecycle.Rule(id=prefix, prefix=prefix, status='Enabled',
+                                      expiration=expiration)
+        lifecycle.append(rule)
+    else:
+        for rule in rules:
+            expiration = boto.s3.lifecycle.Expiration(days=rule['days'])
+            rule = boto.s3.lifecycle.Rule(id=rule['id'], prefix=rule['prefix'],
+                                          status=rule['status'], expiration=expiration)
+            lifecycle.append(rule)
+    return lifecycle
+
+def set_lifecycle(rules = None):
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=rules)
+    bucket.configure_lifecycle(lifecycle)
+    return bucket
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config')
+@attr('lifecycle')
+def test_lifecycle_set():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 1, 'prefix': 'test1/', 'status':'Enabled'},
+                                        {'id': 'rule2', 'days': 2, 'prefix': 'test2/', 'status':'Disabled'}])
+    eq(bucket.configure_lifecycle(lifecycle), True)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get lifecycle config')
+@attr('lifecycle')
+def test_lifecycle_get():
+    bucket = set_lifecycle(rules=[{'id': 'test1/', 'days': 31, 'prefix': 'test1/', 'status': 'Enabled'},
+                                  {'id': 'test2/', 'days': 120, 'prefix': 'test2/', 'status':'Enabled'}])
+    current = bucket.get_lifecycle_config()
+    eq(current[0].expiration.days, 31)
+    eq(current[0].id, 'test1/')
+    eq(current[0].prefix, 'test1/')
+    eq(current[1].expiration.days, 120)
+    eq(current[1].id, 'test2/')
+    eq(current[1].prefix, 'test2/')
+
+# The test harnass for lifecycle is configured to treat days as 2 second intervals.
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration')
+@attr('lifecycle')
+@attr('fails_on_aws')
+def test_lifecycle_expiration():
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'days': 6, 'prefix': 'expire3/', 'status': 'Enabled'}])
+    _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                      'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(35)
+    expire1_keys = bucket.get_all_keys()
+    # Wait for next expiration cycle
+    time.sleep(15)
+    keep2_keys = bucket.get_all_keys()
+    # Wait for final expiration cycle
+    time.sleep(25)
+    expire3_keys = bucket.get_all_keys()
+
+    eq(len(init_keys), 6)
+    eq(len(expire1_keys), 4)
+    eq(len(keep2_keys), 4)
+    eq(len(expire3_keys), 2)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='id too long in lifecycle rule')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_id_too_long():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 256*'a', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='same id')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_same_id():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'},
+                                        {'id': 'rule1', 'days': 2, 'prefix': 'test2/', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='invalid status in lifecycle rule')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_invalid_status():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'disabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'invalid'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='rules conflicted in lifecycle')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_rules_conflicted():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'},
+                                        {'id': 'rule2', 'days': 3, 'prefix': 'test3/', 'status': 'Enabled'},
+                                        {'id': 'rule3', 'days': 5, 'prefix': 'test1/abc', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidRequest')
+
+def _test_encryption_sse_customer_write(file_size):
+    """
+    Tests Create a file of A's, use it to set_contents_from_file.
+    Create a file of B's, use it to re-set_contents_from_file.
+    Re-read the contents, and confirm we get B's
+    """
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*file_size
+    key.set_contents_from_string(data, headers=sse_client_headers)
+    rdata = key.get_contents_as_string(headers=sse_client_headers)
+    eq(data, rdata)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-C encrypted transfer 1 byte')
+@attr(assertion='success')
+@attr('encryption')
+def test_encrypted_transfer_1b():
+    _test_encryption_sse_customer_write(1)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-C encrypted transfer 1KB')
+@attr(assertion='success')
+@attr('encryption')
+def test_encrypted_transfer_1kb():
+    _test_encryption_sse_customer_write(1024)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-C encrypted transfer 1MB')
+@attr(assertion='success')
+@attr('encryption')
+def test_encrypted_transfer_1MB():
+    _test_encryption_sse_customer_write(1024*1024)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-C encrypted transfer 13 bytes')
+@attr(assertion='success')
+@attr('encryption')
+def test_encrypted_transfer_13b():
+    _test_encryption_sse_customer_write(13)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write encrypted with SSE-C and read without SSE-C')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_present():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=sse_client_headers)
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
+    eq(e.status, 400)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write encrypted with SSE-C but read with other key')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_other_key():
+    bucket = get_new_bucket()
+    sse_client_headers_A = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+    sse_client_headers_B = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
+        'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=sse_client_headers_A)
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.get_contents_as_string, headers=sse_client_headers_B)
+    eq(e.status, 400)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write encrypted with SSE-C, but md5 is bad')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_invalid_md5():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'AAAAAAAAAAAAAAAAAAAAAA=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.set_contents_from_string, data, headers=sse_client_headers)
+    eq(e.status, 400)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write encrypted with SSE-C, but dont provide MD5')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_no_md5():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.set_contents_from_string, data, headers=sse_client_headers)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='declare SSE-C but do not provide key')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_no_key():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256'
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.set_contents_from_string, data, headers=sse_client_headers)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Do not declare SSE-C but provide key and MD5')
+@attr(assertion='operation successfull, no encryption')
+@attr('encryption')
+def test_encryption_key_no_sse_c():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=sse_client_headers)
+    rdata = key.get_contents_as_string()
+    eq(data, rdata)
+
+
+def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
+                          do_list=None, init_headers=None, part_headers=None,
+                          metadata=None, resend_parts=[]):
+    """
+    generate a multi-part upload for a random file of specifed size,
+    if requested, generate a list of the parts
+    return the upload descriptor
+    """
+    upload = bucket.initiate_multipart_upload(s3_key_name, headers=init_headers, metadata=metadata)
+    s = ''
+    for i, part in enumerate(generate_random(size, part_size)):
+        s += part
+        transfer_part(bucket, upload.id, upload.key_name, i, part, part_headers)
+        if i in resend_parts:
+            transfer_part(bucket, upload.id, upload.key_name, i, part, part_headers)
+
+    if do_list is not None:
+        l = bucket.list_multipart_uploads()
+        l = list(l)
+
+    return (upload, s)
+
+
+def _check_content_using_range_enc(k, data, step, enc_headers=None):
+    objlen = k.size
+    for ofs in xrange(0, k.size, step):
+        toread = k.size - ofs
+        if toread > step:
+            toread = step
+        end = ofs + toread - 1
+        read_range = k.get_contents_as_string(
+            headers=dict({'Range': 'bytes={s}-{e}'.format(s=ofs, e=end)}, **enc_headers))
+        eq(len(read_range), toread)
+        eq(read_range, data[ofs:end+1])
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_upload():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    (upload, data) = _multipart_upload_enc(bucket, key, objlen,
+                                           init_headers=enc_headers, part_headers=enc_headers,
+                                           metadata={'foo': 'bar'})
+    upload.complete_upload()
+    result = _head_bucket(bucket)
+
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
+
+    k = bucket.get_key(key)
+    eq(k.metadata['foo'], 'bar')
+    eq(k.content_type, content_type)
+    test_string = k.get_contents_as_string(headers=enc_headers)
+    eq(len(test_string), k.size)
+    eq(data, test_string)
+    eq(test_string, data)
+
+    _check_content_using_range_enc(k, data, 1000000, enc_headers=enc_headers)
+    _check_content_using_range_enc(k, data, 10000000, enc_headers=enc_headers)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='multipart upload with bad key for uploading chunks')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_invalid_chunks_1():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/bla'
+    objlen = 30 * 1024 * 1024
+    init_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    part_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
+        'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
+    }
+    e = assert_raises(boto.exception.S3ResponseError,
+                      _multipart_upload_enc, bucket, key, objlen,
+                      init_headers=init_headers, part_headers=part_headers,
+                      metadata={'foo': 'bar'})
+    eq(e.status, 400)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='multipart upload with bad md5 for chunks')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_invalid_chunks_2():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    init_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    part_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'AAAAAAAAAAAAAAAAAAAAAA=='
+    }
+    e = assert_raises(boto.exception.S3ResponseError,
+                      _multipart_upload_enc, bucket, key, objlen,
+                      init_headers=init_headers, part_headers=part_headers,
+                      metadata={'foo': 'bar'})
+    eq(e.status, 400)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload and download with bad key')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_bad_download():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    put_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    get_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
+        'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
+    }
+
+    (upload, data) = _multipart_upload_enc(bucket, key, objlen,
+                                           init_headers=put_headers, part_headers=put_headers,
+                                           metadata={'foo': 'bar'})
+    upload.complete_upload()
+    result = _head_bucket(bucket)
+
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
+
+    k = bucket.get_key(key)
+    eq(k.metadata['foo'], 'bar')
+    eq(k.content_type, content_type)
+    e = assert_raises(boto.exception.S3ResponseError,
+                      k.get_contents_as_string, headers=get_headers)
