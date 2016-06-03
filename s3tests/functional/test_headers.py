@@ -12,6 +12,9 @@ import string
 import socket
 import ssl
 import os
+import re
+
+from urlparse import urlparse
 
 from boto.s3.connection import S3Connection
 
@@ -25,6 +28,7 @@ import AnonymousAuth
 from email.header import decode_header
 
 from . import (
+    _make_raw_request,
     nuke_prefixed_buckets,
     get_new_bucket,
     s3,
@@ -1381,12 +1385,27 @@ def test_object_create_bad_amz_date_after_end_aws4():
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_missing_signed_custom_header_aws4():
     check_aws4_support()
-    key = _setup_bad_object({'x-zoo': 'zoo'})
-    _add_custom_non_auth_headers(remove=('x-zoo',))
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    method='PUT'
+    expires_in='100000'
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    body='zoo'
+
+    # compute the signature with 'x-amz-foo=bar' in the headers...
+    request_headers = {'x-amz-foo':'bar'}
+    url = key.generate_url(expires_in, method=method, headers=request_headers)
+
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+
+    # avoid sending 'x-amz-foo=bar' in the headers
+    request_headers.pop('x-amz-foo')
+
+    res =_make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path,
+                           body=body, request_headers=request_headers, secure=s3.main.is_secure)
+
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
 
 
 @tag('auth_aws4')
@@ -1397,12 +1416,28 @@ def test_object_create_missing_signed_custom_header_aws4():
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_missing_signed_header_aws4():
     check_aws4_support()
-    key = _setup_bad_object()
-    _add_custom_non_auth_headers(remove=('Content-MD5',))
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    method='PUT'
+    expires_in='100000'
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    body='zoo'
+
+    # compute the signature...
+    request_headers = {}
+    url = key.generate_url(expires_in, method=method, headers=request_headers)
+
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+
+    # 'X-Amz-Expires' is missing
+    target = r'&X-Amz-Expires=' + expires_in
+    path = re.sub(target, '', path)
+
+    res =_make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path,
+                           body=body, request_headers=request_headers, secure=s3.main.is_secure)
+
+    eq(res.status, 403)
+    eq(res.reason, 'Forbidden')
 
 
 @tag('auth_aws4')
