@@ -226,6 +226,7 @@ def test_object_create_bad_md5_empty():
 @attr(method='put')
 @attr(operation='create w/non-graphics in MD5')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_md5_unreadable():
     key = _setup_bad_object({'Content-MD5': '\x07'})
@@ -293,6 +294,7 @@ def test_object_create_bad_expect_none():
 @attr(assertion='garbage, but S3 succeeds!')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_strict_rfc2616')
 def test_object_create_bad_expect_unreadable():
     key = _setup_bad_object({'Expect': '\x07'})
     key.set_contents_from_string('bar')
@@ -350,6 +352,7 @@ def test_object_create_bad_contentlength_none():
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
@@ -424,6 +427,7 @@ def test_object_create_bad_contenttype_none():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_strict_rfc2616')
 def test_object_create_bad_contenttype_unreadable():
     key = _setup_bad_object({'Content-Type': '\x08'})
 
@@ -441,6 +445,7 @@ def test_object_create_bad_contenttype_unreadable():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_strict_rfc2616')
 def test_object_create_bad_authorization_unreadable():
     key = _setup_bad_object({'Authorization': '\x07'})
 
@@ -557,6 +562,7 @@ def test_bucket_create_bad_expect_empty():
 # this is a really long test..
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_strict_rfc2616')
 def test_bucket_create_bad_expect_unreadable():
     _add_custom_headers({'Expect': '\x07'})
     bucket = get_new_bucket()
@@ -622,6 +628,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(operation='create w/non-graphic content length')
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_unreadable():
     _add_custom_headers({'Content-Length': '\x07'})
@@ -639,6 +646,7 @@ def test_bucket_create_bad_contentlength_unreadable():
 @attr(assertion='fails 403')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('fails_strict_rfc2616')
 def test_bucket_create_bad_authorization_unreadable():
     _add_custom_headers({'Authorization': '\x07'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
@@ -753,6 +761,7 @@ def test_object_create_bad_ua_empty_aws2():
 @attr(method='put')
 @attr(operation='create w/non-graphic user agent')
 @attr(assertion='succeeds')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_unreadable_aws2():
     key = _setup_bad_object({'User-Agent': '\x07'})
@@ -803,6 +812,7 @@ def test_object_create_bad_date_empty_aws2():
 @attr(method='put')
 @attr(operation='create w/non-graphic date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_unreadable_aws2():
     key = _setup_bad_object({'Date': '\x07'})
@@ -913,6 +923,7 @@ def test_bucket_create_bad_ua_empty_aws2():
 @attr(method='put')
 @attr(operation='create w/non-graphic user agent')
 @attr(assertion='succeeds')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_unreadable_aws2():
     _add_custom_headers({'User-Agent': '\x07'})
@@ -963,6 +974,7 @@ def test_bucket_create_bad_date_empty_aws2():
 @attr(method='put')
 @attr(operation='create w/non-graphic date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_unreadable_aws2():
     _add_custom_headers({'Date': '\x07'})
@@ -1122,6 +1134,7 @@ def test_object_create_bad_ua_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic user agent')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_unreadable_aws4():
     check_aws4_support()
@@ -1210,6 +1223,7 @@ def test_object_create_bad_amz_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_unreadable_aws4():
     check_aws4_support()
@@ -1226,6 +1240,7 @@ def test_object_create_bad_date_unreadable_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic x-amz-date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_unreadable_aws4():
     check_aws4_support()
@@ -1477,6 +1492,7 @@ def test_bucket_create_bad_ua_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic user agent')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_unreadable_aws4():
     check_aws4_support()
@@ -1565,6 +1581,7 @@ def test_bucket_create_bad_amz_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_unreadable_aws4():
     check_aws4_support()
@@ -1581,6 +1598,7 @@ def test_bucket_create_bad_date_unreadable_aws4():
 @attr(method='put')
 @attr(operation='create w/non-graphic x-amz-date')
 @attr(assertion='fails 403')
+@attr('fails_strict_rfc2616')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_unreadable_aws4():
     check_aws4_support()
