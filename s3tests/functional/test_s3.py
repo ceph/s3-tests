@@ -1209,6 +1209,7 @@ def test_object_set_get_metadata_empty_to_unreadable_suffix():
 @attr(method='put')
 @attr(operation='metadata write')
 @attr(assertion='non-priting in-fixes noted and preserved')
+@attr('fails_strict_rfc2616')
 def test_object_set_get_metadata_empty_to_unreadable_infix():
     metadata = 'h\x04w'
     got = _set_get_metadata_unreadable(metadata)
@@ -1247,6 +1248,7 @@ def test_object_set_get_metadata_overwrite_to_unreadable_suffix():
 @attr(method='put')
 @attr(operation='metadata re-write')
 @attr(assertion='non-priting in-fixes noted and preserved')
+@attr('fails_strict_rfc2616')
 def test_object_set_get_metadata_overwrite_to_unreadable_infix():
     metadata = 'h\x04w'
     got = _set_get_metadata_unreadable(metadata)
