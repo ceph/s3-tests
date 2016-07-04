@@ -27,7 +27,7 @@ def writer(bucket, objname, fp, queue):
 
     start = time.time()
     try:
-        key.set_contents_from_file(fp)
+        key.set_contents_from_file(fp, rewind=True)
     except gevent.GreenletExit:
         raise
     except Exception as e:
