@@ -4707,6 +4707,12 @@ def test_bucket_create_special_key_names():
     names = [e.name for e in list(li)]
     eq(names, key_names)
 
+    for name in key_names:
+        key = bucket.get_key(name)
+        eq(key.name, name)
+        content = key.get_contents_as_string()
+        eq(content, name)
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='create and list objects with underscore as prefix, list using prefix')
