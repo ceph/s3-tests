@@ -5922,7 +5922,7 @@ def test_multipart_resend_first_finishes_last():
         lambda: counter.inc()
         )
     mp.upload_part_from_file(fp_dryrun, 1)
-    mp.complete_upload
+    mp.complete_upload()
 
     bucket.delete_key(key_name)
 
