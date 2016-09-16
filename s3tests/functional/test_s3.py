@@ -5051,7 +5051,7 @@ def _check_content_using_range(k, data, step):
 @attr(assertion='successful')
 def test_multipart_upload():
     bucket = get_new_bucket()
-    key="mymultipart"
+    key="mymultipartq"
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
     (upload, data) = _multipart_upload(bucket, key, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'bar'})
@@ -7252,6 +7252,7 @@ def test_encryption_sse_c_multipart_upload():
     key = "multipart_enc"
     content_type = 'text/plain'
     objlen = 30 * 1024 * 1024
+    objlen = 30 * 1024 * 1024
     enc_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
@@ -7425,7 +7426,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     eq(got, 'bar')
 
 
-def _test_sse_kms_customer_write(file_size):
+def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
     """
     Tests Create a file of A's, use it to set_contents_from_file.
     Create a file of B's, use it to re-set_contents_from_file.
@@ -7434,7 +7435,7 @@ def _test_sse_kms_customer_write(file_size):
     bucket = get_new_bucket()
     sse_kms_client_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+        'x-amz-server-side-encryption-aws-kms-key-id': key_id
     }
     key = bucket.new_key('testobj')
     data = 'A'*file_size
@@ -7575,7 +7576,7 @@ def test_sse_kms_multipart_upload():
 
     eq(result.get('x-rgw-object-count', 1), 1)
     eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
-
+    
     k = bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
@@ -7683,3 +7684,59 @@ def test_sse_kms_post_object_authenticated_request():
     key = bucket.get_key("foo.txt")
     got = key.get_contents_as_string(headers=get_headers)
     eq(got, 'bar')
+
+keyid = "d8f40c6d-1c2c-4314-b435-4ef445c6971f"
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-KMS encrypted transfer 1 byte')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_kms_barb_transfer_1b():
+    _test_sse_kms_customer_write(48, key_id = keyid)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-KMS encrypted transfer 1KB')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_kms_barb_transfer_1kb():
+    _test_sse_kms_customer_write(1024, key_id = keyid)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-KMS encrypted transfer 1MB')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_kms_barb_transfer_1MB():
+    _test_sse_kms_customer_write(1024*1024, key_id = keyid)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_kms_barb_transfer_13b():
+    _test_sse_kms_customer_write(13, key_id = keyid)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='data write from file (w/100-Continue)')
+@attr(assertion='succeeds and returns written data')
+@attr('stress')
+def test_object_write_file_prrr():
+    # boto Key.set_contents_from_file / .send_file uses Expect:
+    # 100-Continue, so this test exercises that (though a bit too
+    # subtly)
+    bucket = get_new_bucket()
+    for rozmiar in range(1,1000,1):
+        key = bucket.new_key('plikus')
+        data = StringIO('bar')
+        dataarr = [random.randint(0,255) for _ in xrange(rozmiar)]
+        data = "".join( chr( val ) for val in dataarr )
+        key.set_contents_from_string(data)
+        got = key.get_contents_as_string()
+        eq(got, data)
