@@ -7103,3 +7103,31 @@ def test_versioned_concurrent_object_create_and_remove():
 
     eq(_count_bucket_versioned_objs(bucket), 0)
     eq(len(bucket.get_all_keys()), 0)
+
+def test_bucket_lifecycle():
+    bucket = get_new_bucket()
+    key = bucket.new_key('test_foo')
+
+    lccfg = boto.s3.lifecycle.Lifecycle()
+    lccfg.add_rule('rule-1', 'test', 'Enabled', 1)
+    lccfg.add_rule('rule-2', 'abc', 'Enabled', 10)
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_lifecycle_config)
+    eq(e.status, 404)
+
+    bucket.configure_lifecycle(lccfg)
+    lccfg_new = bucket.get_lifecycle_config()
+
+    eq(len(lccfg_new), 2)
+    eq(len(lccfg), len(lccfg_new))
+
+    for i in xrange(len(lccfg_new)):
+        eq(lccfg_new[i].id, lccfg[i].id)
+        eq(lccfg_new[i].prefix, lccfg[i].prefix)
+        eq(lccfg_new[i].status, lccfg[i].status)
+        eq(lccfg_new[i].transition, lccfg[i].transition)
+
+    bucket.delete_lifecycle_configuration()
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_lifecycle_config)
+    eq(e.status, 404)
