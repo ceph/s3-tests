@@ -5160,7 +5160,6 @@ def _check_key_content(src, dst):
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
-@attr('fails_on_rgw')
 def test_multipart_copy_small():
     (src_bucket, src_key) = _create_key_with_random_content('foo')
     dst_bucket = get_new_bucket()
@@ -5175,7 +5174,6 @@ def test_multipart_copy_small():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
-@attr('fails_on_rgw')
 def test_multipart_copy_special_names():
     src_bucket = get_new_bucket()
     dst_bucket = get_new_bucket()
@@ -5230,7 +5228,6 @@ def test_multipart_upload():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
-@attr('fails_on_rgw')
 def test_multipart_copy_special_names():
     src_bucket = get_new_bucket()
     dst_bucket = get_new_bucket()
@@ -5244,6 +5241,9 @@ def test_multipart_copy_special_names():
         eq(key2.size, size)
         _check_key_content(src_key, key2)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copies of versioned objects')
 def test_multipart_copy_versioned():
     src_bucket = get_new_bucket()
     dst_bucket = get_new_bucket()
