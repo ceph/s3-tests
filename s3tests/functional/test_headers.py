@@ -996,6 +996,7 @@ def test_bucket_create_bad_date_none_aws2():
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
+    eq(e.message, 'AWS authentication requires a valid Date or x-amz-date header')
 
 
 @tag('auth_aws2')
