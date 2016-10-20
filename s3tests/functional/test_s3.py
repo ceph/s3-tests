@@ -2287,6 +2287,37 @@ def test_post_object_upload_size_below_minimum():
 	r = requests.post(url, files = payload)
 	eq(r.status_code, 400)
 
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='authenticated browser based upload via POST request')
+@attr(assertion='empty conditions return appropriate error response')
+def test_post_object_empty_conditions():
+	bucket = get_new_bucket()
+
+	url = _get_post_url(s3.main, bucket)
+
+	utc = pytz.utc
+	expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
+
+	policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
+	"conditions": [\
+        { }\
+	]\
+	}
+
+	json_policy_document = json.JSONEncoder().encode(policy_document)
+	policy = base64.b64encode(json_policy_document)
+	conn = s3.main
+	signature = base64.b64encode(hmac.new(conn.aws_secret_access_key, policy, sha).digest())
+
+	payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , conn.aws_access_key_id),\
+	("acl" , "private"),("signature" , signature),("policy" , policy),\
+	("Content-Type" , "text/plain"),('file', ('bar'))])
+
+	r = requests.post(url, files = payload)
+	eq(r.status_code, 400)
+
+
 
 @attr(resource='object')
 @attr(method='get')
