@@ -4727,6 +4727,7 @@ def test_bucket_create_special_key_names():
         eq(key.name, name)
         content = key.get_contents_as_string()
         eq(content, name)
+        key.set_acl('private')
 
 @attr(resource='bucket')
 @attr(method='get')
