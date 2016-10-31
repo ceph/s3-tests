@@ -2310,7 +2310,7 @@ def test_get_object_ifmatch_failed():
     key = bucket.new_key('foo')
     key.set_contents_from_string('bar')
 
-    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Match': 'ABCORZ'})
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Match': '"ABCORZ"'})
     eq(e.status, 412)
     eq(e.reason, 'Precondition Failed')
 
