@@ -5038,7 +5038,7 @@ def test_object_copy_versioning_multipart_upload():
     eq(got, data)
 
     # copy from a non versioned bucket
-    key6 = bucket.copy_key('dstmultipart5', bucket3.name, key5.name)
+    key6 = bucket3.copy_key('dstmultipart5', bucket3.name, key5.name)
     key6 = bucket3.get_key(key6.name)
     eq(key6.metadata['foo'], 'bar')
     eq(key6.content_type, content_type)
