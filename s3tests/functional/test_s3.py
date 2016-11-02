@@ -909,6 +909,45 @@ def test_bucket_delete_nonempty():
     eq(e.reason, 'Conflict')
     eq(e.error_code, 'BucketNotEmpty')
 
+def _do_set_bucket_canned_acl(bucket, canned_acl, i, results):
+    try:
+        bucket.set_canned_acl(canned_acl)
+        results[i] = True
+    except:
+        results[i] = False
+
+    # res = _make_bucket_request('PUT', bucket, policy='public-read')
+    # print res
+    # results[i] = res
+
+
+def _do_set_bucket_canned_acl_concurrent(bucket, canned_acl, num, results):
+    t = []
+    for i in range(num):
+        thr = threading.Thread(target = _do_set_bucket_canned_acl, args=(bucket, canned_acl, i, results))
+        thr.start()
+        t.append(thr)
+    return t
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='concurrent set of acls on a bucket')
+@attr(assertion='works')
+def test_bucket_concurrent_set_canned_acl():
+    bucket = get_new_bucket()
+
+    num_threads = 50 # boto retry defaults to 5 so we need a thread to fail at least 5 times
+                     # this seems like a large enough number to get through retry (if bug
+                     # exists)
+    results = [None] * num_threads
+
+    t = _do_set_bucket_canned_acl_concurrent(bucket, 'public-read', num_threads, results)
+    _do_wait_completion(t)
+
+    for r in results:
+        eq(r, True)
+
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='non-existant bucket')
