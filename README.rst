@@ -56,6 +56,9 @@ service and two different credentials, something like this::
 	access_key = ABCDEFGHIJKLMNOPQRST
 	secret_key = abcdefghijklmnopqrstuvwxyzabcdefghijklmn
 
+	## replace with key id obtained when secret is created, or delete if KMS not tested
+	kms_keyid = 01234567-89ab-cdef-0123-456789abcdef
+
 	[s3 alt]
 	## another user account, used for ACL-related tests
 	user_id = 56789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234
