@@ -8180,14 +8180,15 @@ def test_sse_kms_post_object_authenticated_request():
     got = key.get_contents_as_string(headers=get_headers)
     eq(got, 'bar')
 
-keyid = "d8f40c6d-1c2c-4314-b435-4ef445c6971f"
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='Test SSE-KMS encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_kms_barb_transfer_1b():
-    _test_sse_kms_customer_write(48, key_id = keyid)
+    if 'kms_keyid' not in config['main']:
+        raise SkipTest
+    _test_sse_kms_customer_write(1, key_id = config['main']['kms_keyid'])
 
 
 @attr(resource='object')
@@ -8196,7 +8197,9 @@ def test_sse_kms_barb_transfer_1b():
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_kms_barb_transfer_1kb():
-    _test_sse_kms_customer_write(1024, key_id = keyid)
+    if 'kms_keyid' not in config['main']:
+        raise SkipTest
+    _test_sse_kms_customer_write(1024, key_id = config['main']['kms_keyid'])
 
 
 @attr(resource='object')
@@ -8205,7 +8208,9 @@ def test_sse_kms_barb_transfer_1kb():
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_kms_barb_transfer_1MB():
-    _test_sse_kms_customer_write(1024*1024, key_id = keyid)
+    if 'kms_keyid' not in config['main']:
+        raise SkipTest
+    _test_sse_kms_customer_write(1024*1024, key_id = config['main']['kms_keyid'])
 
 
 @attr(resource='object')
@@ -8214,24 +8219,6 @@ def test_sse_kms_barb_transfer_1MB():
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_kms_barb_transfer_13b():
-    _test_sse_kms_customer_write(13, key_id = keyid)
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='data write from file (w/100-Continue)')
-@attr(assertion='succeeds and returns written data')
-@attr('stress')
-def test_object_write_file_prrr():
-    # boto Key.set_contents_from_file / .send_file uses Expect:
-    # 100-Continue, so this test exercises that (though a bit too
-    # subtly)
-    bucket = get_new_bucket()
-    for rozmiar in range(1,1000,1):
-        key = bucket.new_key('plikus')
-        data = StringIO('bar')
-        dataarr = [random.randint(0,255) for _ in xrange(rozmiar)]
-        data = "".join( chr( val ) for val in dataarr )
-        key.set_contents_from_string(data)
-        got = key.get_contents_as_string()
-        eq(got, data)
+    if 'kms_keyid' not in config['main']:
+        raise SkipTest
+    _test_sse_kms_customer_write(13, key_id = config['main']['kms_keyid'])
