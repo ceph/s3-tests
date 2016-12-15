@@ -318,6 +318,7 @@ def setup():
             'host',
             'port',
             'is_secure',
+            'kms_keyid',
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
