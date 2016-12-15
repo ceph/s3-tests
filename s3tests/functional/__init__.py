@@ -310,6 +310,7 @@ def setup():
             'user_id',
             'display_name',
             'email',
+            'kms_keyid',
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
