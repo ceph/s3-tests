@@ -1038,16 +1038,18 @@ def test_multi_object_delete():
 	key0.set_contents_from_string('foo')
 	key1 = bucket.new_key('key1')
 	key1.set_contents_from_string('bar')
+	key2 = bucket.new_key('_key2_')
+	key2.set_contents_from_string('underscore')
 	stored_keys = bucket.get_all_keys()
-	eq(len(stored_keys), 2)
+	eq(len(stored_keys), 3)
 	result = bucket.delete_keys(stored_keys)
-        eq(len(result.deleted), 2)
+        eq(len(result.deleted), 3)
         eq(len(result.errors), 0)
         eq(len(bucket.get_all_keys()), 0)
 
         # now remove again, should all succeed due to idempotency
         result = bucket.delete_keys(stored_keys)
-        eq(len(result.deleted), 2)
+        eq(len(result.deleted), 3)
         eq(len(result.errors), 0)
         eq(len(bucket.get_all_keys()), 0)
 
