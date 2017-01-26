@@ -170,7 +170,7 @@ def test_object_create_bad_md5_invalid():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidDigest')
 
 
@@ -184,7 +184,7 @@ def test_object_create_bad_md5_wrong():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidDigest')
 
 
@@ -198,7 +198,7 @@ def test_object_create_bad_md5_empty():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidDigest')
 
 
@@ -284,7 +284,7 @@ def test_object_create_bad_contentlength_empty():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, None)
 
 
@@ -298,7 +298,7 @@ def test_object_create_bad_contentlength_negative():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
 
 
 @attr(resource='object')
@@ -324,7 +324,7 @@ def test_object_create_bad_contentlength_unreadable():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, None)
 
 
@@ -342,7 +342,7 @@ def test_object_create_bad_contentlength_mismatch_above():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'RequestTimeout')
 
 
@@ -358,8 +358,7 @@ def test_object_create_bad_contentlength_mismatch_below():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
     eq(e.status, 400)
-    # dho is 'Bad request', which doesn't match the http response code
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'BadDigest')
 
 
@@ -448,7 +447,7 @@ def test_object_create_bad_authorization_invalid():
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidArgument')
 
 
@@ -721,7 +720,7 @@ def test_bucket_create_bad_contentlength_empty():
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, conn)
 
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, None)
 
 
@@ -734,7 +733,7 @@ def test_bucket_create_bad_contentlength_negative():
     _add_custom_headers({'Content-Length': -1})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
 
 
 @attr(resource='bucket')
@@ -757,7 +756,7 @@ def test_bucket_create_bad_contentlength_unreadable():
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, None)
 
 
@@ -801,7 +800,7 @@ def test_bucket_create_bad_authorization_invalid():
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
     eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidArgument')
 
 
