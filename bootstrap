@@ -12,9 +12,18 @@ if [ -f /etc/debian_version ]; then
         echo "$0: missing required DEB packages. Installing via sudo." 1>&2
         sudo apt-get -y install $missing
     fi
-fi
-if [ -f /etc/redhat-release ]; then
-    for package in python-pip python-virtualenv python-devel libevent-devel; do
+elif [ -f /etc/fedora-release ]; then
+    for package in python-pip python2-virtualenv python-devel libevent-devel; do
+        if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
+            missing="${missing:+$missing }$package"
+        fi
+    done
+    if [ -n "$missing" ]; then
+        echo "$0: missing required RPM packages. Installing via sudo." 1>&2
+        sudo yum -y install $missing
+    fi
+elif [ -f /etc/redhat-release ]; then
+    for package in python2-pip python-virtualenv python-devel libevent-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
@@ -30,8 +39,8 @@ virtualenv --no-site-packages --distribute virtualenv
 # avoid pip bugs
 ./virtualenv/bin/pip install --upgrade pip
 
-# work-around change in pip 1.5 (and more recent)
-./virtualenv/bin/pip install setuptools --upgrade
+# slightly old version of setuptools; newer fails w/ requests 0.14.0
+./virtualenv/bin/pip install setuptools==32.3.1
 
 ./virtualenv/bin/pip install -r requirements.txt
 
