@@ -33,7 +33,7 @@ virtualenv --no-site-packages --distribute virtualenv
 ./virtualenv/bin/pip install --upgrade pip
 
 # work-around change in pip 1.5
-./virtualenv/bin/pip install setuptools --no-use-wheel --upgrade
+./virtualenv/bin/pip install setuptools --upgrade
 
 ./virtualenv/bin/pip install -r requirements.txt
 
