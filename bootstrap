@@ -23,7 +23,7 @@ elif [ -f /etc/fedora-release ]; then
         sudo yum -y install $missing
     fi
 elif [ -f /etc/redhat-release ]; then
-    for package in python2-pip python-virtualenv python-devel libevent-devel libxml2-devel libxslt-devel zlib-devel; do
+    for package in python-virtualenv python-devel libevent-devel libxml2-devel libxslt-devel zlib-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
