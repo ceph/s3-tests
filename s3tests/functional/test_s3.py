@@ -7093,6 +7093,29 @@ def test_encrypted_transfer_13b():
 
 
 @attr(resource='object')
+@attr(method='head')
+@attr(operation='Test SSE-C encrypted does perform head properly')
+@attr(assertion='success')
+@attr('encryption')
+def test_encryption_sse_c_method_head():
+    bucket = get_new_bucket()
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*1000
+    key.set_contents_from_string(data, headers=sse_client_headers)
+
+    res = _make_request('HEAD', bucket, key, authenticated=True)
+    eq(res.status, 400)
+
+    res = _make_request('HEAD', bucket, key, authenticated=True, request_headers=sse_client_headers)
+    eq(res.status, 200)
+
+
+@attr(resource='object')
 @attr(method='put')
 @attr(operation='write encrypted with SSE-C and read without SSE-C')
 @attr(assertion='operation fails')
@@ -7478,6 +7501,27 @@ def test_sse_kms_transfer_1MB():
 @attr('encryption')
 def test_sse_kms_transfer_13b():
     _test_sse_kms_customer_write(13)
+
+
+@attr(resource='object')
+@attr(method='head')
+@attr(operation='Test SSE-KMS encrypted does perform head properly')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_kms_method_head():
+    bucket = get_new_bucket()
+    sse_kms_client_headers = {
+        'x-amz-server-side-encryption': 'aws:kms',
+        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*1000
+    key.set_contents_from_string(data, headers=sse_kms_client_headers)
+
+    res = _make_request('HEAD', bucket, key, authenticated=True)
+    eq(res.status, 200)
+    eq(res.getheader('x-amz-server-side-encryption'), 'aws:kms')
+    eq(res.getheader('x-amz-server-side-encryption-aws-kms-key-id'), 'testkey-1')
 
 
 @attr(resource='object')
