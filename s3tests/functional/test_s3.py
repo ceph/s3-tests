@@ -7359,7 +7359,7 @@ def test_encryption_sse_c_multipart_upload():
     eq(result.get('x-rgw-object-count', 1), 1)
     eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
 
-    k = bucket.get_key(key)
+    k = bucket.get_key(key, headers=enc_headers)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
     test_string = k.get_contents_as_string(headers=enc_headers)
@@ -7458,7 +7458,7 @@ def test_encryption_sse_c_multipart_bad_download():
     eq(result.get('x-rgw-object-count', 1), 1)
     eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
 
-    k = bucket.get_key(key)
+    k = bucket.get_key(key, headers=put_headers)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
     e = assert_raises(boto.exception.S3ResponseError,
@@ -7512,7 +7512,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
 
-    key = bucket.get_key("foo.txt")
+    key = bucket.get_key("foo.txt", headers=get_headers)
     got = key.get_contents_as_string(headers=get_headers)
     eq(got, 'bar')
 
