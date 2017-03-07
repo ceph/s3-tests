@@ -2437,13 +2437,14 @@ def test_get_object_ifmodifiedsince_failed():
     for k in bucket.get_all_keys():
         key = k
 
-    mtime = time.strptime(key.last_modified, '%Y-%m-%dT%H:%M:%S.%fZ')
+    mtime = datetime.datetime.strptime(key.last_modified, '%Y-%m-%dT%H:%M:%S.%fZ')
 
-    after = time.ctime(time.mktime(mtime) + 1)
+    after = mtime + datetime.timedelta(seconds=1)
+    after_str = time.strftime("%a, %d %b %Y %H:%M:%S GMT", after.timetuple())
 
     time.sleep(1)
 
-    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Modified-Since': after})
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_key, 'foo', headers={'If-Modified-Since': after_str})
     eq(e.status, 304)
     eq(e.reason, 'Not Modified')
 
