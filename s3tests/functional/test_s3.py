@@ -7340,8 +7340,8 @@ def create_lifecycle(days = None, prefix = 'test/', rules = None):
     else:
         for rule in rules:
             expiration = boto.s3.lifecycle.Expiration(days=rule['days'])
-            rule = boto.s3.lifecycle.Rule(id=rule['prefix'], prefix=rule['prefix'],
-                                          status='Enabled', expiration=expiration)
+            rule = boto.s3.lifecycle.Rule(id=rule['id'], prefix=rule['prefix'],
+                                          status=rule['status'], expiration=expiration)
             lifecycle.append(rule)
     return lifecycle
 
@@ -7358,8 +7358,8 @@ def set_lifecycle(rules = None):
 @attr('lifecycle')
 def test_lifecycle_set():
     bucket = get_new_bucket()
-    lifecycle = create_lifecycle(rules=[{'days': 1, 'prefix': 'test1/'},
-                                        {'days': 2, 'prefix': 'test2/'}])
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 1, 'prefix': 'test1/', 'status':'Enabled'},
+                                        {'id': 'rule2', 'days': 2, 'prefix': 'test2/', 'status':'Disabled'}])
     eq(bucket.configure_lifecycle(lifecycle), True)
 
 @attr(resource='bucket')
@@ -7367,8 +7367,8 @@ def test_lifecycle_set():
 @attr(operation='get lifecycle config')
 @attr('lifecycle')
 def test_lifecycle_get():
-    bucket = set_lifecycle(rules=[{'days': 31, 'prefix': 'test1/'},
-                                  {'days': 120, 'prefix': 'test2/'}])
+    bucket = set_lifecycle(rules=[{'id': 'test1/', 'days': 31, 'prefix': 'test1/', 'status': 'Enabled'},
+                                  {'id': 'test2/', 'days': 120, 'prefix': 'test2/', 'status':'Enabled'}])
     current = bucket.get_lifecycle_config()
     eq(current[0].expiration.days, 31)
     eq(current[0].id, 'test1/')
@@ -7384,8 +7384,8 @@ def test_lifecycle_get():
 @attr('lifecycle')
 @attr('fails_on_aws')
 def test_lifecycle_expiration():
-    bucket = set_lifecycle(rules=[{'days': 2, 'prefix': 'expire1/'},
-                                  {'days': 6, 'prefix': 'expire3/'}])
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'days': 6, 'prefix': 'expire3/', 'status': 'Enabled'}])
     _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                       'keep2/bar', 'expire3/foo', 'expire3/bar'])
     # Get list of all keys
@@ -7404,3 +7404,65 @@ def test_lifecycle_expiration():
     eq(len(expire1_keys), 4)
     eq(len(keep2_keys), 4)
     eq(len(expire3_keys), 2)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='id too long in lifecycle rule')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_id_too_long():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 256*'a', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='same id')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_same_id():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'},
+                                        {'id': 'rule1', 'days': 2, 'prefix': 'test2/', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='invalid status in lifecycle rule')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_invalid_status():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'disabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'invalid'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='rules conflicted in lifecycle')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_rules_conflicted():
+    bucket = get_new_bucket()
+    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'},
+                                        {'id': 'rule2', 'days': 3, 'prefix': 'test3/', 'status': 'Enabled'},
+                                        {'id': 'rule3', 'days': 5, 'prefix': 'test1/abc', 'status': 'Enabled'}])
+    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidRequest')
+
