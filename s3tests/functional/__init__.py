@@ -401,7 +401,7 @@ def get_new_bucket(target=None, name=None, headers=None):
     bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
     return bucket
 
-def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
+def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None, iso_date=None):
     """
     issue a request for a specified method, on a specified <bucket,key>,
     with a specified (optional) body (encrypted per the connection), and
@@ -424,7 +424,7 @@ def _make_request(method, bucket, key, body=None, authenticated=False, response_
             urlobj = bucket
         else:
             raise RuntimeError('Unable to find bucket name')
-        url = urlobj.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
+        url = urlobj.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers, iso_date=iso_date)
         o = urlparse(url)
         path = o.path + '?' + o.query
     else:

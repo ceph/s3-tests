@@ -2881,6 +2881,20 @@ def test_object_raw_get_x_amz_expires_not_expired():
 @tag('auth_aws4')
 @attr(resource='object')
 @attr(method='get')
+@attr(operation='x-amz-expires check not expired, but current time is out of skew time limit (15min)')
+@attr(assertion='succeeds')
+def test_object_raw_get_x_amz_expires_not_expired_but_skew_time():
+    check_aws4_support()
+    (bucket, key) = _setup_request('public-read', 'public-read')
+
+    iso_date = datetime.utcfromtimestamp(time.now() - 20*60)
+    res = _make_request('GET', bucket, key, authenticated=True, expires_in=100000, iso_date=iso_date)
+    eq(res.status, 200)
+
+
+@tag('auth_aws4')
+@attr(resource='object')
+@attr(method='get')
 @attr(operation='check x-amz-expires value out of range zero')
 @attr(assertion='fails 403')
 def test_object_raw_get_x_amz_expires_out_range_zero():
