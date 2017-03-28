@@ -71,6 +71,9 @@ s3:
     access_key: AWS_ACCESS_KEY
     secret_key: AWS_SECRET_KEY
 
+## If KMS is tested, this if barbican key id. Optional.
+   kms_keyid: barbican_key_id
+
   alt:
 ## Another user accout, used for ACL-related tests.
 
