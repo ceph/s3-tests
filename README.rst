@@ -37,6 +37,10 @@ service and two different credentials, something like this::
 	## say "no" to disable TLS
 	is_secure = yes
 
+	## use this to override a different calling format style
+	## available values are ordinary (default), subdomain, vhost and absolute
+	calling_format = ordinary
+
 	[fixtures]
 	## all the buckets created will start with this prefix;
 	## {random} will be filled with random characters to pad
