@@ -879,6 +879,18 @@ def test_bucket_notexist():
     eq(e.reason, 'Not Found')
     eq(e.error_code, 'NoSuchBucket')
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='non-existant bucket')
+@attr(assertion='fails 404')
+def test_bad_bucket_name_notexist():
+    # generate a bad bucket name (ends_nonalpha)
+    name = get_new_bucket_name() + '-'
+    print 'Trying bucket {name!r}'.format(name=name)
+    e = assert_raises(boto.exception.S3ResponseError, s3.main.get_bucket, name)
+    eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchBucket')
 
 @attr(resource='bucket')
 @attr(method='delete')
