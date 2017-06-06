@@ -810,6 +810,47 @@ def test_bucket_list_return_data():
         _compare_dates(key.last_modified, key_data['last_modified'])
 
 
+@attr(resource='object')
+@attr(method='head')
+@attr(operation='compare w/bucket list when bucket versioning is configured')
+@attr(assertion='return same metadata')
+def test_bucket_list_return_data_versioning():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key_names = ['bar', 'baz', 'foo']
+    bucket = _create_keys(bucket=bucket, keys=key_names)
+    # grab the data from each key individually
+    data = {}
+    for key_name in key_names:
+        key = bucket.get_key(key_name)
+        acl = key.get_acl()
+        data.update({
+            key_name: {
+                'user_id': acl.owner.id,
+                'display_name': acl.owner.display_name,
+                'etag': key.etag,
+                'last_modified': key.last_modified,
+                'size': key.size,
+                'md5': key.md5,
+                'content_encoding': key.content_encoding,
+                'version_id': key.version_id
+            }
+        })
+
+    # now grab the data from each key through list
+    li = bucket.list_versions()
+    for key in li:
+        key_data = data[key.name]
+        eq(key.content_encoding, key_data['content_encoding'])
+        eq(key.owner.display_name, key_data['display_name'])
+        eq(key.etag, key_data['etag'])
+        eq(key.md5, key_data['md5'])
+        eq(key.size, key_data['size'])
+        eq(key.owner.id, key_data['user_id'])
+        _compare_dates(key.last_modified, key_data['last_modified'])
+        eq(key.version_id, key_data['version_id'])
+
+
 @attr(resource='object.metadata')
 @attr(method='head')
 @attr(operation='modification-times')
