@@ -8733,3 +8733,38 @@ def test_bucket_policy_another_bucket():
 
     b2 = new_conn.get_bucket(bucket2.name)
     b2.get_all_keys()
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Test put condition operator end with ifExists')
+@attr('policy')
+def test_bucket_policy_set_condition_operator_end_with_IfExists():
+    bucket = _create_keys(keys=['foo'])
+    policy = '''{
+      "Version":"2012-10-17",
+      "Statement": [{
+        "Sid": "Allow Public Access to All Objects",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": "s3:GetObject",
+        "Condition": {
+                    "StringLikeIfExists": {
+                        "aws:Referer": "http://www.example.com/*"
+                    }
+                },
+        "Resource": "arn:aws:s3:::%s/*"
+      }
+     ]
+    }''' % bucket.name
+    eq(bucket.set_policy(policy), True)
+    res = _make_request('GET', bucket.name, bucket.get_key("foo"),
+                        request_headers={'referer': 'http://www.example.com/'})
+    eq(res.status, 200)
+    res = _make_request('GET', bucket.name, bucket.get_key("foo"),
+                        request_headers={'referer': 'http://www.example.com/index.html'})
+    eq(res.status, 200)
+    res = _make_request('GET', bucket.name, bucket.get_key("foo"))
+    eq(res.status, 200)
+    res = _make_request('GET', bucket.name, bucket.get_key("foo"),
+                        request_headers={'referer': 'http://example.com'})
+    eq(res.status, 403)
