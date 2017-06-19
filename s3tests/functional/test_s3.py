@@ -7583,6 +7583,8 @@ def generate_lifecycle_body(rules):
             if 'ExpiredObjectDeleteMarker' in rule['Expiration'].keys():
                 body += '<Expiration><ExpiredObjectDeleteMarker>%s</ExpiredObjectDeleteMarker></Expiration>' \
                         % rule['Expiration']['ExpiredObjectDeleteMarker']
+            elif 'Date' in rule['Expiration'].keys():
+                body += '<Expiration><Date>%s</Date></Expiration>' % rule['Expiration']['Date']
             else:
                 body += '<Expiration><Days>%d</Days></Expiration>' % rule['Expiration']['Days']
         if 'NoncurrentVersionExpiration' in rule.keys():
@@ -7594,6 +7596,73 @@ def generate_lifecycle_body(rules):
         body += '</Rule>'
     body += '</LifecycleConfiguration>'
     return body
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with expiration date')
+@attr('lifecycle')
+def test_lifecycle_set_date():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Prefix': 'test1/', 'Status': 'Enabled',
+         'Expiration': {'Date': '2017-09-27'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with not iso8601 date')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_set_invalid_date():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Prefix': 'test1/', 'Status': 'Enabled',
+         'Expiration': {'Date': '20200101'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 400)
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with date')
+@attr('lifecycle')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_date():
+    bucket = get_new_bucket()
+    _create_keys(bucket=bucket, keys=['past/foo', 'future/bar'])
+    init_keys = bucket.get_all_keys()
+    rules = [
+        {'ID': 'rule1', 'Prefix': 'past/', 'Status': 'Enabled',
+         'Expiration': {'Date': '2015-01-01'}},
+        {'ID': 'rule2', 'Prefix': 'future/', 'Status': 'Enabled',
+         'Expiration': {'Date': '2030-01-01'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    time.sleep(20)
+    expire_keys = bucket.get_all_keys()
+    eq(len(init_keys), 2)
+    eq(len(expire_keys), 1)
 
 
 @attr(resource='bucket')
