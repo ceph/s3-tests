@@ -13,6 +13,7 @@ import socket
 import ssl
 import os
 import re
+from email.utils import formatdate
 
 from urlparse import urlparse
 
@@ -468,6 +469,28 @@ def test_object_create_bad_authorization_empty():
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
     eq(e.error_code, 'AccessDenied')
+
+@tag('auth_common')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/date and x-amz-date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_date_and_amz_date():
+    date = formatdate(usegmt=True)
+    key = _setup_bad_object({'Date': date, 'X-Amz-Date': date})
+    key.set_contents_from_string('bar')
+
+@tag('auth_common')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/x-amz-date and no date')
+@attr(assertion='succeeds')
+@nose.with_setup(teardown=_clear_custom_headers)
+def test_object_create_amz_date_and_no_date():
+    date = formatdate(usegmt=True)
+    key = _setup_bad_object({'X-Amz-Date': date}, ('Date',))
+    key.set_contents_from_string('bar')
 
 
 # the teardown is really messed up here. check it out
