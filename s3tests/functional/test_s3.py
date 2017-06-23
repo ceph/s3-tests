@@ -9382,3 +9382,73 @@ def test_ldg_acl_verifying_with_write_and_read_acp_perm_to_target_bucket():
     target_bucket.set_acl(tpolicy)
     result = source_bucket.enable_logging(target_bucket.name, "log/")
     eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Test HTTP PUT API which is called to enable rgw bucket logging!')
+@attr(assertion='bucket logging enabled')
+@attr('logging')
+def test_http_put_api_enable_bucket_logging():
+    bucket = get_new_bucket()
+    tpolicy = bucket.get_acl()
+    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(write_grant)
+    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(read_grant)
+    bucket.set_acl(tpolicy)
+    result = bucket.enable_logging(bucket.name, "log/")
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test HTTP GET API which is called to get bucket logging info that is enabled!')
+@attr(assertion='get bucket logging enabled info include target bucket and target prefix')
+@attr('logging')
+def test_http_get_api_bucket_logging_enabled():
+    bucket = get_new_bucket()
+    tpolicy = bucket.get_acl()
+    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(write_grant)
+    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(read_grant)
+    bucket.set_acl(tpolicy)
+    result = bucket.enable_logging(bucket.name, "log/")
+    if result == True:
+        bl = bucket.get_logging_status()
+        eq(bl.target, bucket.name)
+        eq(bl.prefix, "log/")
+        eq(str(bl), '<BucketLoggingStatus: %s/%s (%s)>' % (bucket.name, "log/", ""))
+    else:
+        raise SkipTest
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test HTTP GET API which is called to get bucket logging info that is disabled!')
+@attr(assertion='get bucket logging disabled info')
+@attr('logging')
+def test_http_get_api_bucket_logging_disabled():
+    bucket = get_new_bucket()
+    bl = bucket.get_logging_status()
+    eq(bl.target, None)
+    eq(bl.prefix, None)
+    eq(str(bl), '<BucketLoggingStatus: Disabled>')
+
+@attr(resource='bucket')
+@attr(method='delete')
+@attr(operation='Test HTTP DELETE API which is called to disable rgw bucket logging!')
+@attr(assertion='bucket logging disabled')
+@attr('logging')
+def test_http_del_api_disable_bucket_logging():
+    bucket = get_new_bucket()
+    tpolicy = bucket.get_acl()
+    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(write_grant)
+    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
+    tpolicy.acl.add_grant(read_grant)
+    bucket.set_acl(tpolicy)
+    result = bucket.enable_logging(bucket.name, "log/")
+    if result == True:
+        result = bucket.disable_logging()
+        eq(result, True)
+    else:
+        raise SkipTest
