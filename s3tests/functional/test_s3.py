@@ -37,6 +37,8 @@ from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
+from .utils import check_aws2_support
+from .utils import check_aws4_support
 from .utils import generate_random
 from .utils import region_sync_meta
 import AnonymousAuth
@@ -89,10 +91,6 @@ def check_grants(got, want):
         eq(g.email_address, w.pop('email_address'))
         eq(g.type, w.pop('type'))
         eq(w, {})
-
-def check_aws4_support():
-    if 'S3_USE_SIGV4' not in os.environ:
-        raise SkipTest
 
 def tag(*tags):
     def wrap(func):
@@ -1404,11 +1402,13 @@ def test_post_object_anonymous_request():
 	eq(got, 'bar')
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 def test_post_object_authenticated_request():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1441,11 +1441,13 @@ def test_post_object_authenticated_request():
 	got = key.get_contents_as_string()
 	eq(got, 'bar')
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request, bad access key')
 @attr(assertion='fails')
 def test_post_object_authenticated_request_bad_access_key():
+	check_aws2_support()
 	bucket = get_new_bucket()
 	bucket.set_acl('public-read-write')
 
@@ -1514,11 +1516,13 @@ def test_post_object_set_invalid_success_code():
 	eq(r.content,'')
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 def test_post_object_upload_larger_than_chunk():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1554,11 +1558,13 @@ def test_post_object_upload_larger_than_chunk():
 	eq(got, foo_string)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 def test_post_object_set_key_from_filename():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1592,11 +1598,13 @@ def test_post_object_set_key_from_filename():
 	eq(got, 'bar')
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with status 204')
 def test_post_object_ignored_header():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1627,11 +1635,13 @@ def test_post_object_ignored_header():
 	eq(r.status_code, 204)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with status 204')
 def test_post_object_case_insensitive_condition_fields():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1662,11 +1672,13 @@ def test_post_object_case_insensitive_condition_fields():
 	eq(r.status_code, 204)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds with escaped leading $ and returns written data')
 def test_post_object_escaped_field_values():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1700,11 +1712,13 @@ def test_post_object_escaped_field_values():
 	eq(got, 'bar')
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns redirect url')
 def test_post_object_success_redirect_action():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1744,11 +1758,13 @@ def test_post_object_success_redirect_action():
 	                                                             key = key.name, etag = key.etag.strip('"')))
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid signature error')
 def test_post_object_invalid_signature():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1779,11 +1795,13 @@ def test_post_object_invalid_signature():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with access key does not exist error')
 def test_post_object_invalid_access_key():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1814,11 +1832,13 @@ def test_post_object_invalid_access_key():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid expiration error')
 def test_post_object_invalid_date_format():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1849,11 +1869,13 @@ def test_post_object_invalid_date_format():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with missing key error')
 def test_post_object_no_key_specified():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1883,11 +1905,13 @@ def test_post_object_no_key_specified():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with missing signature error')
 def test_post_object_missing_signature():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1918,11 +1942,13 @@ def test_post_object_missing_signature():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with extra input fields policy error')
 def test_post_object_missing_policy_condition():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1952,11 +1978,13 @@ def test_post_object_missing_policy_condition():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds using starts-with restriction on metadata header')
 def test_post_object_user_specified_header():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -1990,11 +2018,13 @@ def test_post_object_user_specified_header():
 	eq(key.get_metadata('foo'), 'barclamp')
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy condition failed error due to missing field in POST request')
 def test_post_object_request_missing_policy_specified_field():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2026,11 +2056,13 @@ def test_post_object_request_missing_policy_specified_field():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with conditions must be list error')
 def test_post_object_condition_is_case_sensitive():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2061,11 +2093,13 @@ def test_post_object_condition_is_case_sensitive():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with expiration must be string error')
 def test_post_object_expires_is_case_sensitive():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2096,11 +2130,13 @@ def test_post_object_expires_is_case_sensitive():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy expired error')
 def test_post_object_expired_policy():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2131,11 +2167,13 @@ def test_post_object_expired_policy():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails using equality restriction on metadata header')
 def test_post_object_invalid_request_field_value():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2167,11 +2205,13 @@ def test_post_object_invalid_request_field_value():
 	eq(r.status_code, 403)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy missing expiration error')
 def test_post_object_missing_expires_condition():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2202,11 +2242,13 @@ def test_post_object_missing_expires_condition():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with policy missing conditions error')
 def test_post_object_missing_conditions_list():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2230,11 +2272,13 @@ def test_post_object_missing_conditions_list():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with allowable upload size exceeded error')
 def test_post_object_upload_size_limit_exceeded():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2265,11 +2309,13 @@ def test_post_object_upload_size_limit_exceeded():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid content length error')
 def test_post_object_missing_content_length_argument():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2300,11 +2346,13 @@ def test_post_object_missing_content_length_argument():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with invalid JSON error')
 def test_post_object_invalid_content_length_argument():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2335,11 +2383,13 @@ def test_post_object_invalid_content_length_argument():
 	eq(r.status_code, 400)
 
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='fails with upload size less than minimum allowable error')
 def test_post_object_upload_size_below_minimum():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
@@ -2369,11 +2419,13 @@ def test_post_object_upload_size_below_minimum():
 	r = requests.post(url, files = payload)
 	eq(r.status_code, 400)
 
+@tag('auth_aws2')
 @attr(resource='object')
 @attr(method='post')
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='empty conditions return appropriate error response')
 def test_post_object_empty_conditions():
+	check_aws2_support()
 	bucket = get_new_bucket()
 
 	url = _get_post_url(s3.main, bucket)
