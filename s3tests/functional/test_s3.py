@@ -9304,7 +9304,7 @@ def test_delete_tags_obj_public():
 @attr(operation='LDG acl verifying')
 @attr(assertion='failed and return 400, error code is InvalidTargetBucketForLogging')
 @attr('logging')
-def test_ldg_acl_verifying_without_write_and_read_acp_perm_to_target_bucket():
+def test_ldg_without_write_and_read_acp_perm_to_target_bucket():
     source_bucket = get_new_bucket()
     target_bucket = get_new_bucket()
     try:
@@ -9319,7 +9319,7 @@ def test_ldg_acl_verifying_without_write_and_read_acp_perm_to_target_bucket():
 @attr(operation='LDG acl verifying')
 @attr(assertion='failed and return 400, error code is InvalidTargetBucketForLogging')
 @attr('logging')
-def test_ldg_acl_verifying_without_write_and_read_acp_perm_to_target_bucket_same_with_source_bucket():
+def test_ldg_without_write_and_read_acp_perm_to_target_bucket_same_with_source_bucket():
     source_bucket = get_new_bucket()
     try:
         source_bucket.enable_logging(source_bucket.name, "log/")
@@ -9333,13 +9333,34 @@ def test_ldg_acl_verifying_without_write_and_read_acp_perm_to_target_bucket_same
 @attr(operation='LDG acl verifying')
 @attr(assertion='failed and return 400, error code is InvalidTargetBucketForLogging')
 @attr('logging')
-def test_ldg_acl_verifying_with_write_perm_to_target_bucket():
+def test_ldg_with_write_perm_to_target_bucket():
     source_bucket = get_new_bucket()
     target_bucket = get_new_bucket()
     tpolicy = target_bucket.get_acl()
     write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = target_bucket.LoggingGroup)
     tpolicy.acl.add_grant(write_grant)
     target_bucket.set_acl(tpolicy)
+    check_grants(
+        tpolicy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=tpolicy.owner.id,
+                display_name=tpolicy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/s3/LogDelivery',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
     try:
         source_bucket.enable_logging(target_bucket.name, "log/")
     except boto.exception.S3ResponseError, e:
@@ -9352,13 +9373,34 @@ def test_ldg_acl_verifying_with_write_perm_to_target_bucket():
 @attr(operation='LDG acl verifying')
 @attr(assertion='failed and return 400, error code is InvalidTargetBucketForLogging')
 @attr('logging')
-def test_ldg_acl_verifying_with_read_acp_perm_to_target_bucket():
+def test_ldg_with_read_acp_perm_to_target_bucket():
     source_bucket = get_new_bucket()
     target_bucket = get_new_bucket()
     tpolicy = target_bucket.get_acl()
     read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = target_bucket.LoggingGroup)
     tpolicy.acl.add_grant(read_grant)
     target_bucket.set_acl(tpolicy)
+    check_grants(
+        tpolicy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=tpolicy.owner.id,
+                display_name=tpolicy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='READ_ACP',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/s3/LogDelivery',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
     try:
         source_bucket.enable_logging(target_bucket.name, "log/")
     except boto.exception.S3ResponseError, e:
@@ -9366,20 +9408,52 @@ def test_ldg_acl_verifying_with_read_acp_perm_to_target_bucket():
 	eq(e.reason, 'Bad Request')
 	eq(e.error_code, 'InvalidTargetBucketForLogging')
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='LDG acl verifying')
-@attr(assertion='success, bucket logging enabled')
-@attr('logging')
-def test_ldg_acl_verifying_with_write_and_read_acp_perm_to_target_bucket():
-    source_bucket = get_new_bucket()
-    target_bucket = get_new_bucket()
+def add_ldg_grant(target_bucket):
     tpolicy = target_bucket.get_acl()
     write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = target_bucket.LoggingGroup)
     tpolicy.acl.add_grant(write_grant)
     read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = target_bucket.LoggingGroup)
     tpolicy.acl.add_grant(read_grant)
     target_bucket.set_acl(tpolicy)
+    check_grants(
+        tpolicy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=tpolicy.owner.id,
+                display_name=tpolicy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+                ),
+            dict(
+                permission='WRITE',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/s3/LogDelivery',
+                email_address=None,
+                type='Group',
+                ),
+            dict(
+                permission='READ_ACP',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/s3/LogDelivery',
+                email_address=None,
+                type='Group',
+                ),
+            ],
+        )
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='LDG acl verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_ldg_with_write_and_read_acp_perm_to_target_bucket():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
     result = source_bucket.enable_logging(target_bucket.name, "log/")
     eq(result, True)
 
@@ -9390,12 +9464,7 @@ def test_ldg_acl_verifying_with_write_and_read_acp_perm_to_target_bucket():
 @attr('logging')
 def test_http_put_api_enable_bucket_logging():
     bucket = get_new_bucket()
-    tpolicy = bucket.get_acl()
-    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(write_grant)
-    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(read_grant)
-    bucket.set_acl(tpolicy)
+    add_ldg_grant(bucket)
     result = bucket.enable_logging(bucket.name, "log/")
     eq(result, True)
 
@@ -9406,12 +9475,7 @@ def test_http_put_api_enable_bucket_logging():
 @attr('logging')
 def test_http_get_api_bucket_logging_enabled():
     bucket = get_new_bucket()
-    tpolicy = bucket.get_acl()
-    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(write_grant)
-    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(read_grant)
-    bucket.set_acl(tpolicy)
+    add_ldg_grant(bucket)
     result = bucket.enable_logging(bucket.name, "log/")
     if result == True:
         bl = bucket.get_logging_status()
@@ -9440,15 +9504,374 @@ def test_http_get_api_bucket_logging_disabled():
 @attr('logging')
 def test_http_del_api_disable_bucket_logging():
     bucket = get_new_bucket()
-    tpolicy = bucket.get_acl()
-    write_grant = boto.s3.acl.Grant(permission = "WRITE", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(write_grant)
-    read_grant = boto.s3.acl.Grant(permission = "READ_ACP", type = "Group", uri = bucket.LoggingGroup)
-    tpolicy.acl.add_grant(read_grant)
-    bucket.set_acl(tpolicy)
+    add_ldg_grant(bucket)
     result = bucket.enable_logging(bucket.name, "log/")
     if result == True:
         result = bucket.disable_logging()
         eq(result, True)
     else:
         raise SkipTest
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_without_grant():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_with_id():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "CanonicalUser", 
+                                  id = config.alt.user_id, display_name = config.alt.display_name)
+    target_grants.append(req_grant)
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_with_uri():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "WRITE_ACP", type = "Group", 
+                                  uri = "http://acs.amazonaws.com/groups/global/AllUsers")
+    target_grants.append(req_grant)
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_with_email_address():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "WRITE_ACP", type = "AmazonCustomerByEmail", 
+                                  email_address = config.alt.email)
+    target_grants.append(req_grant)
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_without_grantee_type():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "WRITE", id = config.alt.user_id,
+                                  display_name = config.alt.display_name)
+    target_grants.append(req_grant)
+    try:
+        bucket.enable_logging(bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_without_permission():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(type = "CanonicalUser", id = config.alt.user_id,
+                                  display_name = config.alt.display_name)
+    target_grants.append(req_grant)
+    try:
+        bucket.enable_logging(bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_without_display_name():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "CanonicalUser",
+                                  id = config.alt.user_id)
+    target_grants.append(req_grant)
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_with_error_display_name():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    random_display_name = gen_rand_string(8, string.ascii_lowercase + string.ascii_uppercase + string.digits)
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "CanonicalUser",
+                                  id = config.alt.user_id, display_name = random_display_name)
+    target_grants.append(req_grant)
+    result = source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    eq(result, True)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is InvalidArgument')
+@attr('logging')
+def test_target_grants_without_id():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "CanonicalUser",
+                                  display_name = config.alt.display_name)
+    target_grants.append(req_grant)
+    try:
+        source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is InvalidArgument')
+@attr('logging')
+def test_target_grants_with_error_id():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    random_id = gen_rand_string(8, string.ascii_lowercase + string.ascii_uppercase + string.digits)
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "CanonicalUser", 
+                                  id = random_id)
+    target_grants.append(req_grant)
+    try:
+        source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is InvalidArgument')
+@attr('logging')
+def test_target_grants_without_uri():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "Group")
+    target_grants.append(req_grant)
+    try:
+        bucket.enable_logging(bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is InvalidArgument')
+@attr('logging')
+def test_target_grants_with_error_uri():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "Group", 
+                                  uri = "http://acs.amazonaws.com/groups/global/AllUser")
+    target_grants.append(req_grant)
+    try:
+        bucket.enable_logging(bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is UnresolvableGrantByEmailAddress')
+@attr('logging')
+def test_target_grants_without_email_address():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    target_grants = []
+    req_grant = boto.s3.acl.Grant(permission = "WRITE_ACP", type = "AmazonCustomerByEmail")
+    target_grants.append(req_grant)
+    try:
+        bucket.enable_logging(bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+	eq(e.status, 400)
+	eq(e.reason, 'Bad Request')
+	eq(e.error_code, 'UnresolvableGrantByEmailAddress')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants in req xml related verifying')
+@attr(assertion='failed and return 400, error code is UnresolvableGrantByEmailAddress')
+@attr('logging')
+def test_target_grants_with_error_email_address():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    target_grants = []
+    random_email = gen_rand_string(8, string.ascii_lowercase + string.ascii_uppercase + string.digits) \
+                    + config.alt.email[config.alt.email.find('@'):] 
+    req_grant = boto.s3.acl.Grant(permission = "READ", type = "AmazonCustomerByEmail", 
+                                  email_address = random_email)
+    target_grants.append(req_grant)
+    try:
+        source_bucket.enable_logging(target_bucket.name, "log/", grants = target_grants)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'UnresolvableGrantByEmailAddress')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_target_bucket_only():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (target_bucket.name)
+    try:
+        source_bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='success, bucket logging enabled')
+@attr('logging')
+def test_target_grants_with_target_bucket_and_empty_target_prefix():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n    <TargetPrefix></TargetPrefix>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (target_bucket.name)
+    result = source_bucket.set_xml_logging(req_xml)
+    eq(result, True)
+    
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_both_empty_target_bucket_and_target_prefix():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket></TargetBucket>\n    <TargetPrefix></TargetPrefix>\n  </LoggingEnabled>\n</BucketLoggingStatus>'
+    try:
+        source_bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'InvalidTargetBucketForLogging')
+    
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_grant_tag_only():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n    <TargetPrefix>log/</TargetPrefix>\n    <TargetGrants>\n      <Grant>\n      </Grant>\n    </TargetGrants>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (bucket.name)
+    try:
+        bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'MalformedXML') 
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_grantee_tag():
+    bucket = get_new_bucket()
+    add_ldg_grant(bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n    <TargetPrefix>log/</TargetPrefix>\n    <TargetGrants>\n      <Grant>\n        <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Group">\n        </Grantee>\n      </Grant>\n    </TargetGrants>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (bucket.name)
+    try:
+        bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'MalformedXML') 
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_permission_tag():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n    <TargetPrefix>log/</TargetPrefix>\n    <TargetGrants>\n      <Grant>\n        <Permission>READ</Permission>\n      </Grant>\n    </TargetGrants>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (target_bucket.name)
+    try:
+        source_bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'MalformedXML')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Target Grants xml format related verifying')
+@attr(assertion='failed and return 400, error code is MalformedXML')
+@attr('logging')
+def test_target_grants_with_grantee_and_permission_tag():
+    source_bucket = get_new_bucket()
+    target_bucket = get_new_bucket()
+    add_ldg_grant(target_bucket)
+    req_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<BucketLoggingStatus xmlns="http://doc.s3.amazonaws.com/2006-03-01">\n  <LoggingEnabled>\n    <TargetBucket>%s</TargetBucket>\n    <TargetPrefix>log/</TargetPrefix>\n    <TargetGrants>\n      <Grant>\n        <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Group">\n        </Grantee>\n        <Permission>READ</Permission>\n      </Grant>\n    </TargetGrants>\n  </LoggingEnabled>\n</BucketLoggingStatus>' % (target_bucket.name)
+    try:
+        source_bucket.set_xml_logging(req_xml)
+    except boto.exception.S3ResponseError, e:
+        eq(e.status, 400)
+        eq(e.reason, 'Bad Request')
+        eq(e.error_code, 'MalformedXML')
