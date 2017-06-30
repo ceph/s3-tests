@@ -8568,6 +8568,23 @@ def test_sse_kms_barb_transfer_13b():
         raise SkipTest
     _test_sse_kms_customer_write(13, key_id = config['main']['kms_keyid'])
 
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='write encrypted with SSE-KMS and read with SSE-KMS')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_sse_kms_read_declare():
+    bucket = get_new_bucket()
+    sse_kms_client_headers = {
+        'x-amz-server-side-encryption': 'aws:kms',
+        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=sse_kms_client_headers)
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string, headers=sse_kms_client_headers)
+    eq(e.status, 400)
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='Test Bucket Policy')
