@@ -8435,6 +8435,9 @@ def test_sse_kms_method_head():
     eq(res.status, 200)
     eq(res.getheader('x-amz-server-side-encryption'), 'aws:kms')
     eq(res.getheader('x-amz-server-side-encryption-aws-kms-key-id'), 'testkey-1')
+    
+    res = _make_request('HEAD', bucket, key, authenticated=True, request_headers=sse_kms_client_headers)
+    eq(res.status, 400)
 
 
 @attr(resource='object')
