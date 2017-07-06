@@ -278,6 +278,29 @@ def test_bucket_list_delimiter_alt():
     eq(len(prefixes), 2)
     eq(prefix_names, ['ba', 'ca'])
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='prefixes starting with underscore')
+def test_bucket_list_delimiter_prefix_underscore():
+    bucket = _create_keys(keys=['_obj1_','_under1/bar', '_under1/baz/xyzzy', '_under2/thud', '_under2/bla'])
+
+    delim = '/'
+    marker = ''
+    prefix = ''
+    marker = validate_bucket_list(bucket, prefix, delim, '', 1, True, ['_obj1_'], [], '_obj1_')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, True, [], ['_under1/'], '_under1/')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, False, [], ['_under2/'], None)
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 2, True, ['_obj1_'], ['_under1/'], '_under1/')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 2, False, [], ['_under2/'], None)
+
+    prefix = '_under1/'
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 1, True, ['_under1/bar'], [], '_under1/bar')
+    marker = validate_bucket_list(bucket, prefix, delim, marker, 1, False, [], ['_under1/baz/'], None)
+
+    marker = validate_bucket_list(bucket, prefix, delim, '', 2, False, ['_under1/bar'], ['_under1/baz/'], None)
 
 @attr(resource='bucket')
 @attr(method='get')
