@@ -7501,13 +7501,13 @@ def test_lifecycle_expiration():
     # Get list of all keys
     init_keys = bucket.get_all_keys()
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(35)
+    time.sleep(6)
     expire1_keys = bucket.get_all_keys()
     # Wait for next expiration cycle
-    time.sleep(15)
+    time.sleep(2)
     keep2_keys = bucket.get_all_keys()
     # Wait for final expiration cycle
-    time.sleep(25)
+    time.sleep(8)
     expire3_keys = bucket.get_all_keys()
 
     eq(len(init_keys), 6)
