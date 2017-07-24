@@ -5,7 +5,7 @@ bunch >=1.0.0
 # 0.14 switches to libev, that means bootstrap needs to change too
 gevent >=1.0
 isodate >=0.4.4
-requests ==0.14.0
+requests >=2.18.1
 pytz >=2011k
 ordereddict
 httplib2
