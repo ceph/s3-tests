@@ -5760,8 +5760,8 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
     r = func(url, headers=headers)
     eq(r.status_code, expect_status)
 
-    assert r.headers['access-control-allow-origin'] == expect_allow_origin
-    assert r.headers['access-control-allow-methods'] == expect_allow_methods
+    assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
+    assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
 
     
 
