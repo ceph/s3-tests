@@ -113,6 +113,9 @@ def connect(conf):
             raise RuntimeError(
                 'calling_format unknown: %r' % raw_calling_format
                 )
+    if conf.has_key('debug'):
+        kwargs['debug']=conf['debug']
+        boto.set_stream_logger('boto')
     # TODO test vhost calling format
     conn = boto.s3.connection.S3Connection(**kwargs)
     return conn
