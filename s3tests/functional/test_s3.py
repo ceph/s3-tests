@@ -8928,7 +8928,7 @@ def test_bucket_policy_another_bucket():
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='Test put condition operator end with ifExists')
-@attr('policy')
+@attr('bucket-policy')
 def test_bucket_policy_set_condition_operator_end_with_IfExists():
     bucket = _create_keys(keys=['foo'])
     policy = '''{
@@ -8958,6 +8958,123 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     eq(res.status, 200)
     res = _make_request('GET', bucket.name, bucket.get_key("foo"),
                         request_headers={'referer': 'http://example.com'})
+    eq(res.status, 403)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test listbucket with prefix')
+@attr('bucket-policy')
+def test_bucket_policy_list_bucket_with_prefix():
+    bucket = _create_keys(keys=['foo','folder/foo1','folder/foo2','folder/foo3','foo2'])
+    tag_conditional = {"StringEquals": {
+        "s3:prefix" : "folder"
+    }}
+
+    resource = _make_arn_resource(bucket.name)
+    policy_document = make_json_policy("s3:ListBucket",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    eq(bucket.set_policy(policy_document), True)
+
+    new_conn = _get_alt_connection()
+
+    # boto2 cannot give me a bucket object without doing a get bucket :/
+    res = new_conn.make_request('GET', bucket.name, query_args = 'prefix=folder')
+    eq(res.status, 200)
+    ns = {"aws" : "http://s3.amazonaws.com/doc/2006-03-01/"}
+    keys = ET.fromstring(res.read()).findall('.//aws:Key', ns)
+    eq(len(keys), 3)
+
+    res = new_conn.make_request('GET', bucket.name, query_args = 'prefix=somethingelse')
+    eq(res.status, 403)
+
+    res = new_conn.make_request('GET', bucket.name)
+    eq(res.status, 403)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test listbucket with maxkeys')
+@attr('bucket-policy')
+def test_bucket_policy_list_bucket_with_maxkeys():
+    bucket = _create_keys(keys=['key'+str(i) for i in range(8)])
+
+    list_conditional = {"NumericLessThanEquals": {
+        "s3:max-keys" : "6"
+    }}
+
+    resource = _make_arn_resource(bucket.name)
+    policy_document = make_json_policy("s3:ListBucket",
+                                       resource,
+                                       conditions=list_conditional)
+
+
+    eq(bucket.set_policy(policy_document), True)
+
+    new_conn = _get_alt_connection()
+
+
+    res = new_conn.make_request('GET', bucket.name, query_args = 'max-keys=6')
+    eq(res.status, 200)
+    ns = {"aws" : "http://s3.amazonaws.com/doc/2006-03-01/"}
+    keys = ET.fromstring(res.read()).findall('.//aws:Key', ns)
+    eq(len(keys), 6)
+
+    res = new_conn.make_request('GET', bucket.name, query_args = 'max-keys=5')
+    eq(res.status, 200)
+    ns = {"aws" : "http://s3.amazonaws.com/doc/2006-03-01/"}
+    keys = ET.fromstring(res.read()).findall('.//aws:Key', ns)
+    eq(len(keys), 5)
+
+    res = new_conn.make_request('GET', bucket.name, query_args = 'max-keys=7')
+    eq(res.status, 403)
+
+    res = new_conn.make_request('GET', bucket.name)
+    eq(res.status, 403)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test listbucket with delimiter')
+@attr('bucket-policy')
+def test_bucket_policy_list_bucket_with_delimiter():
+    bucket = _create_keys(keys=['key/'+str(i) for i in range(5)])
+
+    list_conditional = {"StringEquals": {
+        "s3:delimiter" : "/"
+    }}
+
+    resource = _make_arn_resource(bucket.name)
+    policy_document = make_json_policy("s3:ListBucket",
+                                       resource,
+                                       conditions=list_conditional)
+    eq(bucket.set_policy(policy_document), True)
+
+    new_conn = _get_alt_connection()
+
+    # specifying a delimiter will list contents without the delimiter
+    res = new_conn.make_request('GET', bucket.name, query_args = 'delimiter=/')
+    eq(res.status, 200)
+    ns = {"aws" : "http://s3.amazonaws.com/doc/2006-03-01/"}
+    keys = ET.fromstring(res.read()).findall('.//aws:Key', ns)
+    eq(len(keys), 0)
+
+    # now lets upload some keys again
+    bucket2 = _create_keys(keys=['key'+str(i) for i in range(5)])
+    resource = _make_arn_resource(bucket2.name)
+    policy2 = make_json_policy("s3:ListBucket",
+                               resource,
+                               conditions=list_conditional)
+    eq(bucket2.set_policy(policy2), True)
+    res = new_conn.make_request('GET', bucket2.name, query_args = 'delimiter=/')
+    eq(res.status, 200)
+    ns = {"aws" : "http://s3.amazonaws.com/doc/2006-03-01/"}
+    keys = ET.fromstring(res.read()).findall('.//aws:Key', ns)
+    eq(len(keys), 5)
+
+    res = new_conn.make_request('GET', bucket.name)
     eq(res.status, 403)
 
 
