@@ -7567,6 +7567,7 @@ def test_lifecycle_get_no_id():
 @attr(method='put')
 @attr(operation='test lifecycle expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_expiration():
     bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'expire1/', 'status': 'Enabled'},
@@ -7727,6 +7728,7 @@ def test_lifecycle_set_invalid_date():
 @attr(method='put')
 @attr(operation='test lifecycle expiration with date')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_expiration_date():
     bucket = get_new_bucket()
@@ -7775,6 +7777,7 @@ def test_lifecycle_set_noncurrent():
 @attr(method='put')
 @attr(operation='test lifecycle non-current version expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_noncur_expiration():
     bucket = get_new_bucket()
@@ -7859,6 +7862,7 @@ def test_lifecycle_set_empty_filter():
 @attr(method='put')
 @attr(operation='test lifecycle delete marker expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_deletemarker_expiration():
     bucket = get_new_bucket()
@@ -7911,6 +7915,7 @@ def test_lifecycle_set_multipart():
 @attr(method='put')
 @attr(operation='test lifecycle multipart expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_multipart_expiration():
     bucket = get_new_bucket()
