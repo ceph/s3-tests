@@ -6768,6 +6768,72 @@ def test_versioned_object_acl():
     k = bucket.new_key(keyname)
     check_grants(k.get_acl().acl.grants, default_policy)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='change acl on an object with no version specified changes latest version')
+@attr(assertion='works')
+@attr('versioning')
+def test_versioned_object_acl_no_version_specified():
+    bucket = get_new_bucket()
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    keyname = 'foo'
+
+    key0 = bucket.new_key(keyname)
+    key0.set_contents_from_string('bar')
+    key1 = bucket.new_key(keyname)
+    key1.set_contents_from_string('bla')
+    key2 = bucket.new_key(keyname)
+    key2.set_contents_from_string('zxc')
+
+    stored_keys = []
+    for key in bucket.list_versions():
+        stored_keys.insert(0, key)
+
+    k2 = stored_keys[2]
+
+    policy = bucket.get_acl(key_name=k2.name, version_id=k2.version_id)
+
+    default_policy = [
+        dict(
+            permission='FULL_CONTROL',
+            id=policy.owner.id,
+            display_name=policy.owner.display_name,
+            uri=None,
+            email_address=None,
+            type='CanonicalUser',
+        ),
+    ]
+
+    print repr(policy)
+    check_grants(policy.acl.grants, default_policy)
+
+    bucket.set_canned_acl('public-read', key_name=k2.name)
+
+    policy = bucket.get_acl(key_name=k2.name, version_id=k2.version_id)
+    print repr(policy)
+    check_grants(
+        policy.acl.grants,
+        [
+            dict(
+                permission='FULL_CONTROL',
+                id=policy.owner.id,
+                display_name=policy.owner.display_name,
+                uri=None,
+                email_address=None,
+                type='CanonicalUser',
+            ),
+            dict(
+                permission='READ',
+                id=None,
+                display_name=None,
+                uri='http://acs.amazonaws.com/groups/global/AllUsers',
+                email_address=None,
+                type='Group',
+            ),
+        ],
+    )
 
 def _do_create_object(bucket, objname, i):
     k = bucket.new_key(objname)
