@@ -87,6 +87,19 @@ based on their attributes::
 	S3TEST_CONF=aws.conf ./virtualenv/bin/nosetests -a '!fails_on_aws'
 
 
+Docker
+======
+
+Andrew Gaul publishes unofficial Docker images at
+https://hub.docker.com/r/andrewgaul/s3-tests/ .  You can configure s3-tests by
+passing in a bind mount for the configuration file and using the NOSETESTS_ATTR
+environment variable to set nose attributes.  For example:
+
+```
+sudo docker run --name=s3-tests --mount type=bind,source=/path/to/aws.conf,destination=/s3test.conf,readonly --env 'NOSETESTS_ATTR=!fails_on_aws' andrewgaul/s3-tests
+```
+
+
 TODO
 ====
 
