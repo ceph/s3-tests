@@ -8376,7 +8376,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
     key = bucket.new_key('testobj')
     data = 'A'*file_size
     key.set_contents_from_string(data, headers=sse_kms_client_headers)
-    rdata = key.get_contents_as_string(headers=sse_kms_client_headers)
+    rdata = key.get_contents_as_string()
     eq(data, rdata)
 
 
@@ -8435,6 +8435,9 @@ def test_sse_kms_method_head():
     eq(res.status, 200)
     eq(res.getheader('x-amz-server-side-encryption'), 'aws:kms')
     eq(res.getheader('x-amz-server-side-encryption-aws-kms-key-id'), 'testkey-1')
+    
+    res = _make_request('HEAD', bucket, key, authenticated=True, request_headers=sse_kms_client_headers)
+    eq(res.status, 400)
 
 
 @attr(resource='object')
@@ -8452,28 +8455,6 @@ def test_sse_kms_present():
     data = 'A'*100
     key.set_contents_from_string(data, headers=sse_kms_client_headers)
     result = key.get_contents_as_string()
-    eq(data, result)
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-KMS but read with other key')
-@attr(assertion='operation fails')
-@attr('encryption')
-def test_sse_kms_other_key():
-    bucket = get_new_bucket()
-    sse_kms_client_headers_A = {
-        'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
-    }
-    sse_kms_client_headers_B = {
-        'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-2'
-    }
-    key = bucket.new_key('testobj')
-    data = 'A'*100
-    key.set_contents_from_string(data, headers=sse_kms_client_headers_A)
-    result = key.get_contents_as_string(headers=sse_kms_client_headers_B)
     eq(data, result)
 
 
@@ -8537,13 +8518,13 @@ def test_sse_kms_multipart_upload():
     k = bucket.get_key(key)
     eq(k.metadata['foo'], 'bar')
     eq(k.content_type, content_type)
-    test_string = k.get_contents_as_string(headers=enc_headers)
+    test_string = k.get_contents_as_string()
     eq(len(test_string), k.size)
     eq(data, test_string)
     eq(test_string, data)
 
-    _check_content_using_range_enc(k, data, 1000000, enc_headers=enc_headers)
-    _check_content_using_range_enc(k, data, 10000000, enc_headers=enc_headers)
+    _check_content_using_range(k, data, 1000000)
+    _check_content_using_range(k, data, 10000000)
 
 
 @attr(resource='object')
@@ -8639,7 +8620,7 @@ def test_sse_kms_post_object_authenticated_request():
     }
 
     key = bucket.get_key("foo.txt")
-    got = key.get_contents_as_string(headers=get_headers)
+    got = key.get_contents_as_string()
     eq(got, 'bar')
 
 @attr(resource='object')
@@ -8684,6 +8665,23 @@ def test_sse_kms_barb_transfer_13b():
     if 'kms_keyid' not in config['main']:
         raise SkipTest
     _test_sse_kms_customer_write(13, key_id = config['main']['kms_keyid'])
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='write encrypted with SSE-KMS and read with SSE-KMS')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_sse_kms_read_declare():
+    bucket = get_new_bucket()
+    sse_kms_client_headers = {
+        'x-amz-server-side-encryption': 'aws:kms',
+        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+    }
+    key = bucket.new_key('testobj')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=sse_kms_client_headers)
+    e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string, headers=sse_kms_client_headers)
+    eq(e.status, 400)
 
 @attr(resource='bucket')
 @attr(method='get')
