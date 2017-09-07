@@ -7537,20 +7537,20 @@ def test_lifecycle_get():
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_expiration():
-    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'expire1/', 'status': 'Enabled'},
-                                  {'id':'rule2', 'days': 6, 'prefix': 'expire3/', 'status': 'Enabled'}])
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 1, 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'days': 4, 'prefix': 'expire3/', 'status': 'Enabled'}])
     _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                       'keep2/bar', 'expire3/foo', 'expire3/bar'])
     # Get list of all keys
     init_keys = bucket.get_all_keys()
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(6)
+    time.sleep(28)
     expire1_keys = bucket.get_all_keys()
     # Wait for next expiration cycle
-    time.sleep(2)
+    time.sleep(10)
     keep2_keys = bucket.get_all_keys()
     # Wait for final expiration cycle
-    time.sleep(8)
+    time.sleep(20)
     expire3_keys = bucket.get_all_keys()
 
     eq(len(init_keys), 6)
