@@ -4513,22 +4513,6 @@ def test_bucket_acl_revoke_all():
     eq(len(policy.acl.grants), 0)
 
 
-# TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
-# http://tracker.newdream.net/issues/984
-@attr(resource='bucket.log')
-@attr(method='put')
-@attr(operation='set/enable/disable logging target')
-@attr(assertion='operations succeed')
-@attr('fails_on_rgw')
-def test_logging_toggle():
-    bucket = get_new_bucket()
-    log_bucket = get_new_bucket(targets.main.default, bucket.name + '-log')
-    log_bucket.set_as_logging_target()
-    bucket.enable_logging(target_bucket=log_bucket, target_prefix=bucket.name)
-    bucket.disable_logging()
-    # NOTE: this does not actually test whether or not logging works
-
-
 def _setup_access(bucket_acl, object_acl):
     """
     Simple test fixture: create a bucket with given ACL, with objects:
