@@ -81,8 +81,8 @@ def check_grants(got, want):
     in any order.
     """
     eq(len(got), len(want))
-    got = sorted(got, key=operator.attrgetter('id'))
-    want = sorted(want, key=operator.itemgetter('id'))
+    got = sorted(got, key=operator.attrgetter('id', 'permission'))
+    want = sorted(want, key=operator.itemgetter('id', 'permission'))
     for g, w in zip(got, want):
         w = dict(w)
         eq(g.permission, w.pop('permission'))
