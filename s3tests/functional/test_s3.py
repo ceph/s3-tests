@@ -7728,10 +7728,24 @@ def generate_lifecycle_body(rules):
         if 'Prefix' in rule.keys():
             body += '<Prefix>%s</Prefix>' % rule['Prefix']
         if 'Filter' in rule.keys():
-            prefix_str= '' # AWS supports empty filters
+
+            filter_str= '' # AWS supports empty filters
             if 'Prefix' in rule['Filter'].keys():
-                prefix_str = '<Prefix>%s</Prefix>' % rule['Filter']['Prefix']
-            body += '<Filter>%s</Filter>' % prefix_str
+                filter_str += '<Prefix>%s</Prefix>' % rule['Filter']['Prefix']
+
+            # There will be no actual TagSet in XML, but it is easier to
+            # specify multiple Tags in a list this way
+            if 'TagSet' in rule['Filter']:
+                for tag in rule['Filter']['TagSet']:
+                    # For now we'll only generate a Tag when we have both Key and a Val
+                    key = tag.get('Key','')
+                    value = tag.get('Value', '')
+                    filter_str += '<Tag><Key>%s</Key><Value>%s</Value></Tag>' % key,value
+
+            if 'And' in rule['Filter']:
+                filter_str = '<And>%s</And>' % filter_str
+
+            body += '<Filter>%s</Filter>' % filter_str
 
         if 'Expiration' in rule.keys():
             if 'ExpiredObjectDeleteMarker' in rule['Expiration'].keys():
