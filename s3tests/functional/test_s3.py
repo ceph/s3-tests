@@ -894,6 +894,21 @@ def test_bucket_list_return_data_versioning():
         eq(key.version_id, key_data['version_id'])
 
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list keys after marker when bucket versioning is configured')
+@attr(assertion='marker list on versioning bucket')
+def test_bucket_list_marker_versioning():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key_names = ['bar', 'baz', 'foo']
+    bucket = _create_keys(bucket=bucket, keys=key_names)
+    li = bucket.get_all_keys(marker='baz')
+    eq(li.marker, 'baz')
+    names = [e.name for e in li]
+    eq(names, ['foo'])
+
+
 @attr(resource='object.metadata')
 @attr(method='head')
 @attr(operation='modification-times')
