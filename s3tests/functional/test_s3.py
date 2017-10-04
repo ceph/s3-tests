@@ -28,6 +28,7 @@ import re
 
 import xml.etree.ElementTree as ET
 
+from collections import namedtuple
 from email.Utils import formatdate
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
@@ -7492,7 +7493,8 @@ def create_lifecycle(days = None, prefix = 'test/', rules = None):
     else:
         for rule in rules:
             expiration = boto.s3.lifecycle.Expiration(days=rule['days'])
-            rule = boto.s3.lifecycle.Rule(id=rule['id'], prefix=rule['prefix'],
+            _id = rule.get('id',None)
+            rule = boto.s3.lifecycle.Rule(id=_id, prefix=rule['prefix'],
                                           status=rule['status'], expiration=expiration)
             lifecycle.append(rule)
     return lifecycle
@@ -7529,27 +7531,59 @@ def test_lifecycle_get():
     eq(current[1].id, 'test2/')
     eq(current[1].prefix, 'test2/')
 
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get lifecycle config no id')
+@attr('lifecycle')
+def test_lifecycle_get_no_id():
+    Rule = namedtuple('Rule',['prefix','status','days'])
+    rules = {'rule1' : Rule('test1/','Enabled',31),
+             'rule2' : Rule('test2/','Enabled',120)}
+    bucket = set_lifecycle(rules=[{'days': rules['rule1'].days ,
+                                   'prefix': rules['rule1'].prefix,
+                                   'status': rules['rule1'].status},
+                                  {'days': rules['rule2'].days,
+                                   'prefix': rules['rule2'].prefix,
+                                   'status': rules['rule2'].status}])
+    current_lc = bucket.get_lifecycle_config()
+    # We can't guarantee the order of XML, since the id is random, let's walk
+    # through the rules and validate that both were present
+    for lc_rule in current_lc:
+        if lc_rule.expiration.days == rules['rule1'].days:
+            eq(lc_rule.prefix, rules['rule1'].prefix)
+            assert len(lc_rule.id) > 0
+        elif lc_rule.expiration.days == rules['rule2'].days:
+            eq(lc_rule.prefix, rules['rule2'].prefix)
+            assert len(lc_rule.id) > 0
+        else:
+            # neither of the rules we supplied, something wrong
+            assert False
+
+
 # The test harnass for lifecycle is configured to treat days as 2 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_expiration():
-    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'expire1/', 'status': 'Enabled'},
-                                  {'id':'rule2', 'days': 6, 'prefix': 'expire3/', 'status': 'Enabled'}])
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'days': 1, 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'days': 4, 'prefix': 'expire3/', 'status': 'Enabled'}])
     _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                       'keep2/bar', 'expire3/foo', 'expire3/bar'])
     # Get list of all keys
     init_keys = bucket.get_all_keys()
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(6)
+    time.sleep(28)
     expire1_keys = bucket.get_all_keys()
     # Wait for next expiration cycle
-    time.sleep(2)
+    time.sleep(10)
     keep2_keys = bucket.get_all_keys()
     # Wait for final expiration cycle
-    time.sleep(8)
+    time.sleep(20)
     expire3_keys = bucket.get_all_keys()
 
     eq(len(init_keys), 6)
@@ -7622,7 +7656,15 @@ def test_lifecycle_rules_conflicted():
 def generate_lifecycle_body(rules):
     body = '<?xml version="1.0" encoding="UTF-8"?><LifecycleConfiguration>'
     for rule in rules:
-        body += '<Rule><ID>%s</ID><Prefix>%s</Prefix><Status>%s</Status>' % (rule['ID'], rule['Prefix'], rule['Status'])
+        body += '<Rule><ID>%s</ID><Status>%s</Status>' % (rule['ID'], rule['Status'])
+        if 'Prefix' in rule.keys():
+            body += '<Prefix>%s</Prefix>' % rule['Prefix']
+        if 'Filter' in rule.keys():
+            prefix_str= '' # AWS supports empty filters
+            if 'Prefix' in rule['Filter'].keys():
+                prefix_str = '<Prefix>%s</Prefix>' % rule['Filter']['Prefix']
+            body += '<Filter>%s</Filter>' % prefix_str
+
         if 'Expiration' in rule.keys():
             if 'ExpiredObjectDeleteMarker' in rule['Expiration'].keys():
                 body += '<Expiration><ExpiredObjectDeleteMarker>%s</ExpiredObjectDeleteMarker></Expiration>' \
@@ -7686,6 +7728,7 @@ def test_lifecycle_set_invalid_date():
 @attr(method='put')
 @attr(operation='test lifecycle expiration with date')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_expiration_date():
     bucket = get_new_bucket()
@@ -7734,6 +7777,7 @@ def test_lifecycle_set_noncurrent():
 @attr(method='put')
 @attr(operation='test lifecycle non-current version expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_noncur_expiration():
     bucket = get_new_bucket()
@@ -7774,12 +7818,51 @@ def test_lifecycle_set_deletemarker():
     eq(res.status, 200)
     eq(res.reason, 'OK')
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with Filter')
+@attr('lifecycle')
+def test_lifecycle_set_filter():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Filter': {'Prefix': 'foo'}, 'Status': 'Enabled', 'Expiration': {'ExpiredObjectDeleteMarker': 'true'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with empty Filter')
+@attr('lifecycle')
+def test_lifecycle_set_empty_filter():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Filter': {}, 'Status': 'Enabled', 'Expiration': {'ExpiredObjectDeleteMarker': 'true'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+
 
 # The test harnass for lifecycle is configured to treat days as 1 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle delete marker expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_deletemarker_expiration():
     bucket = get_new_bucket()
@@ -7832,6 +7915,7 @@ def test_lifecycle_set_multipart():
 @attr(method='put')
 @attr(operation='test lifecycle multipart expiration')
 @attr('lifecycle')
+@attr('lifecycle_expiration')
 @attr('fails_on_aws')
 def test_lifecycle_multipart_expiration():
     bucket = get_new_bucket()
