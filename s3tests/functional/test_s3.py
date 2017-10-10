@@ -8127,9 +8127,9 @@ def test_encryption_key_no_sse_c():
     }
     key = bucket.new_key('testobj')
     data = 'A'*100
-    key.set_contents_from_string(data, headers=sse_client_headers)
-    rdata = key.get_contents_as_string()
-    eq(data, rdata)
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.set_contents_from_string, data, headers=sse_client_headers)
+    eq(e.status, 400)
 
 
 def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
@@ -8475,9 +8475,9 @@ def test_sse_kms_not_declared():
     }
     key = bucket.new_key('testobj')
     data = 'A'*100
-    key.set_contents_from_string(data, headers=sse_kms_client_headers)
-    rdata = key.get_contents_as_string()
-    eq(data, rdata)
+    e = assert_raises(boto.exception.S3ResponseError,
+                      key.set_contents_from_string, data, headers=sse_kms_client_headers)
+    eq(e.status, 400)
 
 
 @attr(resource='object')
