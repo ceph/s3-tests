@@ -8737,6 +8737,28 @@ def test_sse_kms_read_declare():
     e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string, headers=sse_kms_client_headers)
     eq(e.status, 400)
 
+def _make_arn_resource(path="*"):
+    return "arn:aws:s3:::{}".format(path)
+
+def make_json_policy(action, resource, principal={"AWS": "*"}, conditions=None):
+
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": principal,
+            "Action": action,
+            "Resource": [
+                resource
+            ],
+        }]
+    }
+
+    if conditions is not None:
+        policy["Statement"]["Condition"] = conditions
+
+    return json.dumps(policy)
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='Test Bucket Policy')
@@ -9273,28 +9295,13 @@ def test_put_obj_with_tags():
     res_tagset = _get_obj_tags(bucket, key.name)
     eq(input_tagset.to_dict(), res_tagset.to_dict())
 
-def _make_arn_resource(path="*"):
-    return "arn:aws:s3:::{}".format(path)
-
-def make_json_policy(action, resource, principal={"AWS": "*"}):
-    return json.dumps(
-    {
-        "Version": "2012-10-17",
-        "Statement": [{
-        "Effect": "Allow",
-        "Principal": principal,
-        "Action": action,
-        "Resource": [
-            resource
-          ]
-        }]
-    })
 
 @attr(resource='object')
 @attr(method='get')
 @attr(operation='Test GetObjTagging public read')
 @attr(assertion='success')
 @attr('tagging')
+@attr('bucket-policy')
 def test_get_tags_acl_public():
     bucket, key = _create_key_with_random_content('testputtagsacl')
 
@@ -9315,6 +9322,7 @@ def test_get_tags_acl_public():
 @attr(operation='Test PutObjTagging public wrote')
 @attr(assertion='success')
 @attr('tagging')
+@attr('bucket-policy')
 def test_put_tags_acl_public():
     bucket, key = _create_key_with_random_content('testputtagsacl')
 
