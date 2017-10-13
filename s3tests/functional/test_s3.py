@@ -8754,8 +8754,11 @@ def make_json_policy(action, resource, principal={"AWS": "*"}, conditions=None):
         }]
     }
 
-    if conditions is not None:
-        policy["Statement"]["Condition"] = conditions
+    # Currently lets only support adding a common conditional to every
+    # statement in this function
+    for statement in policy["Statement"]:
+        if conditions is not None:
+            statement["Condition"] = conditions
 
     return json.dumps(policy)
 
