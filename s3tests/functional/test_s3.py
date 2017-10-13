@@ -9346,6 +9346,7 @@ def test_put_tags_acl_public():
 @attr(operation='Test DeleteObjTagging public')
 @attr(assertion='success')
 @attr('tagging')
+@attr('bucket-policy')
 def test_delete_tags_obj_public():
     bucket, key = _create_key_with_random_content('testputtagsacl')
 
