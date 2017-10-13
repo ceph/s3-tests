@@ -9535,3 +9535,59 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
     eq(res.status, 403)
 
 
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Test ExistingObjectTag conditional on put object tagging')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_tagging_existing_tag():
+
+    bucket = _create_keys(keys=['publictag','privatetag','invalidtag'])
+
+
+    tag_conditional = {"StringEquals": {
+        "s3:ExistingObjectTag/security" : "public"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:PutObjectTagging",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+    input_tagset = S3TestTagSet()
+    input_tagset.add_tag('security','public')
+    input_tagset.add_tag('foo','bar')
+
+    res = _put_obj_tags(bucket, 'publictag', input_tagset.to_xml())
+    eq(res.status, 200)
+
+    input_tagset2 = S3TestTagSet()
+    input_tagset2.add_tag('security','private')
+
+    res = _put_obj_tags(bucket, 'privatetag', input_tagset2.to_xml())
+    eq(res.status, 200)
+
+    new_conn = _get_alt_connection()
+    # PUT requests with object tagging are a bit wierd, if you forget to put
+    # the tag which is supposed to be existing anymore well, well subsequent
+    # put requests will fail
+    testtagset1 = S3TestTagSet()
+    testtagset1.add_tag('security','public')
+    testtagset1.add_tag('foo','bar')
+    res = _put_obj_tags_conn(new_conn, bucket.name, 'publictag', testtagset1.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags_conn(new_conn, bucket.name, 'privatetag', testtagset1.to_xml())
+    eq(res.status, 403)
+
+    testtagset2 = S3TestTagSet()
+    testtagset2.add_tag('security','private')
+    res = _put_obj_tags_conn(new_conn, bucket.name, 'publictag', testtagset2.to_xml())
+    eq(res.status, 200)
+
+    # Now try putting the original tags again, this should fail
+    res = _put_obj_tags_conn(new_conn, bucket.name, 'publictag', testtagset1.to_xml())
+    eq(res.status, 403)
