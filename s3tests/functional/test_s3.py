@@ -9078,6 +9078,40 @@ def test_bucket_policy_list_bucket_with_delimiter():
     eq(res.status, 403)
 
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Test put bucket acl with canned acl conditionals')
+@attr('bucket-policy')
+def test_bucket_policy_list_put_bucket_acl_canned_acl():
+    bucket = _create_keys(keys=['key/'+str(i) for i in range(5)])
+
+    policy_conditional = {"StringEquals": {
+        "s3:x-amz-acl" : "bucket-owner-full-control"
+    }}
+
+    resource = _make_arn_resource(bucket.name)
+    policy_document = make_json_policy("s3:PutBucketAcl",resource,
+                                       conditions=policy_conditional)
+    eq(bucket.set_policy(policy_document), True)
+
+    new_conn = _get_alt_connection()
+
+    # This doesn't make that much sense as a standalone bucket policy, however
+    # this is useful when this is used as an object level policy
+    headers = {"x-amz-acl":"bucket-owner-full-control"}
+    res = new_conn.make_request('PUT', bucket.name, query_args = 'acl', headers=headers)
+
+    eq(res.status, 200)
+
+    # now lets upload some keys again
+    headers = {"x-amz-acl":"public-read"}
+    res = new_conn.make_request('PUT', bucket.name, query_args = 'acl', headers=headers)
+
+    eq(res.status, 403)
+
+
+
+
 def _tags_from_dict(d):
     tag_list = []
     for k,v in d.items():
