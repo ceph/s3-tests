@@ -9111,6 +9111,43 @@ def test_bucket_policy_list_put_bucket_acl_canned_acl():
 
 
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='Test put bucket acl with acl grant headers')
+@attr('bucket-policy')
+def test_bucket_policy_list_put_bucket_acl_grants():
+    bucket = _create_keys(keys=['key/'+str(i) for i in range(5)])
+
+
+    owner_id_str = "id="+config.main.user_id
+    policy_conditional = {"StringEquals": {
+        "s3:x-amz-grant-full-control" : owner_id_str
+    }}
+
+    resource = _make_arn_resource(bucket.name)
+    policy_document = make_json_policy("s3:PutBucketAcl",resource,
+                                       conditions=policy_conditional)
+    eq(bucket.set_policy(policy_document), True)
+
+    new_conn = _get_alt_connection()
+
+    headers = {"x-amz-grant-full-control": owner_id_str}
+    res = new_conn.make_request('PUT', bucket.name, query_args = 'acl', headers=headers)
+
+    eq(res.status, 200)
+
+    # user trying to elevate himself as the owner
+    headers = {"x-amz-grant-full-control": "id=" + config.alt.user_id }
+    res = new_conn.make_request('PUT', bucket.name, query_args = 'acl', headers=headers)
+
+    eq(res.status, 403)
+
+    headers = {"x-amz-grant-read": owner_id_str}
+    res = new_conn.make_request('PUT', bucket.name, query_args = 'acl', headers=headers)
+
+    eq(res.status, 403)
+
+
 
 def _tags_from_dict(d):
     tag_list = []
