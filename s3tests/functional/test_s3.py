@@ -9779,3 +9779,47 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     # Now try putting the original tags again, this should fail
     res = _put_obj_tags_conn(new_conn, bucket.name, 'publictag', testtagset1.to_xml())
     eq(res.status, 403)
+
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test copy-source conditional on put obj')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_copy_source():
+
+    bucket_source = _create_keys(keys=['public/foo', 'public/bar', 'private/foo'])
+    src_resource = _make_arn_resource("{}/{}".format(bucket_source.name, "*"))
+    # lets make the source objects public for now
+    policy_document = make_json_policy("s3:GetObject",
+                                       src_resource
+    )
+
+    bucket_source.set_policy(policy_document)
+
+    bucket = get_new_bucket()
+
+    tag_conditional = {"StringLike": {
+        "s3:x-amz-copy-source" : bucket_source.name + "/public/*"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:PutObject",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+
+    new_conn = _get_alt_connection()
+    alt_bucket = new_conn.get_bucket(bucket.name, validate=False)
+    key = alt_bucket.copy_key('new_foo', bucket_source.name, 'public/foo')
+    # This is possible because we are still the owner, see the grants with
+    # policy on how to do this right
+    eq(key.get_contents_as_string(), 'public/foo')
+
+    key = alt_bucket.copy_key('new_foo2', bucket_source.name, 'public/bar')
+    eq(key.get_contents_as_string(), 'public/bar')
+
+    check_access_denied(alt_bucket.copy_key,'new_foo2', bucket_source.name, 'private/foo')
