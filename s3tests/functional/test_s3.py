@@ -9823,3 +9823,43 @@ def test_bucket_policy_put_obj_copy_source():
     eq(key.get_contents_as_string(), 'public/bar')
 
     check_access_denied(alt_bucket.copy_key,'new_foo2', bucket_source.name, 'private/foo')
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test copy-source conditional on put obj')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_copy_source_meta():
+
+    bucket_source = _create_keys(keys=['public/foo', 'public/bar'])
+    src_resource = _make_arn_resource("{}/{}".format(bucket_source.name, "*"))
+    # lets make the source objects public for now
+    policy_document = make_json_policy("s3:GetObject",
+                                       src_resource
+    )
+
+    bucket_source.set_policy(policy_document)
+
+    bucket = get_new_bucket()
+
+    tag_conditional = {"StringEquals": {
+        "s3:x-amz-metadata-directive" : "COPY"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:PutObject",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+
+    new_conn = _get_alt_connection()
+    alt_bucket = new_conn.get_bucket(bucket.name, validate=False)
+    key = alt_bucket.copy_key('new_foo', bucket_source.name, 'public/foo', headers={"x-metadata-directive" : "COPY"})
+    # This is possible because we are still the owner, see the grants with
+    # policy on how to do this right
+    eq(key.get_contents_as_string(), 'public/foo')
+
+    check_access_denied(alt_bucket.copy_key, 'new_foo2', bucket_source.name, 'public/bar', metadata={"foo" : "bar"})
