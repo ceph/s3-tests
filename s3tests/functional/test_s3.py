@@ -9863,3 +9863,43 @@ def test_bucket_policy_put_obj_copy_source_meta():
     eq(key.get_contents_as_string(), 'public/foo')
 
     check_access_denied(alt_bucket.copy_key, 'new_foo2', bucket_source.name, 'public/bar', metadata={"foo" : "bar"})
+
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test put obj with canned-acl not to be public')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_acl():
+
+    bucket = get_new_bucket()
+
+    tag_conditional = {"StringNotLike": {
+        "s3:x-amz-acl" : "public*"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:PutObject",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+
+    new_conn = _get_alt_connection()
+    alt_bucket = new_conn.get_bucket(bucket.name, validate=False)
+
+    key1 ='private-key'
+    obj1 = bucket.new_key(key1)
+
+    # if we want to be really pedantic, we should check that this doesn't raise
+    # and mark failure, however if this does raise nose will mark it as an
+    # ERROR anyway
+    obj1.set_contents_from_string(key1)
+
+    key2 = 'public-key'
+    headers = {"x-amz-acl":"public-read"}
+    # so there is no way to create a key and set canned acl in the same request in boto2 :(
+    res = new_conn.make_request('PUT', bucket.name, key2, headers=headers, data=key2)
+    eq(res.status, 403)
