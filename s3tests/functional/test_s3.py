@@ -8970,14 +8970,14 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
 @attr('bucket-policy')
 def test_bucket_policy_list_bucket_with_prefix():
     bucket = _create_keys(keys=['foo','folder/foo1','folder/foo2','folder/foo3','foo2'])
-    tag_conditional = {"StringEquals": {
+    conditional = {"StringEquals": {
         "s3:prefix" : "folder"
     }}
 
     resource = _make_arn_resource(bucket.name)
-    policy_document = make_json_policy("s3:ListBucket",
-                                       resource,
-                                       conditions=tag_conditional)
+    p = Policy()
+    s = Statement("s3:ListBucket", resource, condition=conditional)
+    policy_document = p.add_statement(s).to_json()
 
     eq(bucket.set_policy(policy_document), True)
 
