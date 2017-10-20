@@ -10056,3 +10056,58 @@ def test_bucket_policy_put_obj_request_obj_tag():
 
     headers = {"x-amz-tagging" : "security=public"}
     key1.set_contents_from_string(key1_str, headers=headers)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Test ExistingObjectTag conditional on get object acl')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_get_obj_acl_existing_tag():
+
+    bucket = _create_keys(keys=['publictag','privatetag','invalidtag'])
+
+
+    tag_conditional = {"StringEquals": {
+        "s3:ExistingObjectTag/security" : "public"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:GetObjectAcl",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+    input_tagset = S3TestTagSet()
+    input_tagset.add_tag('security','public')
+    input_tagset.add_tag('foo','bar')
+
+    input_tagset2 = S3TestTagSet()
+    input_tagset2.add_tag('security','private')
+
+    input_tagset3 = S3TestTagSet()
+    input_tagset3.add_tag('security1','public')
+
+    res = _put_obj_tags(bucket, 'publictag', input_tagset.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'privatetag', input_tagset2.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'invalidtag', input_tagset3.to_xml())
+    eq(res.status, 200)
+
+    new_conn = _get_alt_connection()
+    res = new_conn.make_request("GET",bucket.name, 'publictag', query_args='acl')
+    eq(res.status, 200)
+
+    # A get object itself should fail since we allowed only GetObjectTagging
+    res = new_conn.make_request("GET",bucket.name, 'publictag')
+    eq(res.status, 403)
+
+    res = new_conn.make_request("GET",bucket.name, 'privatetag', query_args='tagging')
+    eq(res.status, 403)
+
+    res = new_conn.make_request("GET",bucket.name, 'invalidtag', query_args='tagging')
+    eq(res.status, 403)
