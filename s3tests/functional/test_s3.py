@@ -39,6 +39,7 @@ from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 from boto.s3.tagging import TagSet
 
+import utils
 from .utils import assert_raises
 from .utils import generate_random
 from .utils import region_sync_meta
@@ -9915,3 +9916,63 @@ def test_bucket_policy_put_obj_acl():
     # so there is no way to create a key and set canned acl in the same request in boto2 :(
     res = new_conn.make_request('PUT', bucket.name, key2, headers=headers, data=key2)
     eq(res.status, 403)
+
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test put obj with amz-grant back to bucket-owner')
+@attr(assertion='success')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_grant():
+
+    bucket1 = get_new_bucket()
+    bucket2 = get_new_bucket()
+
+    # In normal cases a key owner would be the uploader of a key in first case
+    # we explicitly require that the bucket owner is granted full control over
+    # the object uploaded by any user, the second bucket is where no such
+    # policy is enforced meaning that the uploader still retains ownership
+
+    owner_id_str = "id=" + config.main.user_id
+    grantee_id_str = "id=" + config.alt.user_id
+    s3_conditional = {"StringEquals": {
+        "s3:x-amz-grant-full-control" : owner_id_str
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket1.name, "*"))
+    policy_document = make_json_policy("s3:PutObject",
+                                       resource,
+                                       conditions=s3_conditional)
+
+    resource = _make_arn_resource("{}/{}".format(bucket2.name, "*"))
+    policy_document2 = make_json_policy("s3:PutObject", resource)
+
+    bucket1.set_policy(policy_document)
+    bucket2.set_policy(policy_document2)
+
+    new_conn = _get_alt_connection()
+
+    key1 = 'key1'
+    headers = {"x-amz-grant-full-control": owner_id_str }
+    res = new_conn.make_request('PUT', bucket1.name, key1, headers=headers, data=key1)
+    eq(res.status, 200)
+
+    key2 = 'key2'
+    res = new_conn.make_request('PUT', bucket2.name, key2, data=key2)
+    eq(res.status, 200)
+
+    acl1 = bucket1.get_acl(key_name=key1)
+
+    # user 1 is trying to get acl for the object from user2 where ownership
+    # wasn't transferred
+    check_access_denied(bucket2.get_acl, key_name=key2)
+
+    acl2 = new_conn.get_bucket(bucket2.name, validate=False).get_acl(key_name=key2)
+
+    # With the full control grant, the owner of the object is the granted
+    # original bucket owner
+    eq(utils.get_grantee(acl1, "FULL_CONTROL"), config.main.user_id)
+
+    # Normal case without any restrictions, owner is the uploader
+    eq(utils.get_grantee(acl2, "FULL_CONTROL"), config.alt.user_id)
