@@ -9890,7 +9890,7 @@ def test_bucket_policy_put_obj_acl():
     p = Policy()
     resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
     s1 = Statement("s3:PutObject",resource)
-    s2 = Statement("s3:PutOBject", resource, effect="Deny", condition=conditional)
+    s2 = Statement("s3:PutObject", resource, effect="Deny", condition=conditional)
 
     policy_document = p.add_statement(s1).add_statement(s2).to_json()
 
