@@ -10022,3 +10022,37 @@ def test_bucket_policy_put_obj_enc():
 
 
     key1.set_contents_from_string(key1_str, headers=sse_client_headers)
+
+
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='put obj with RequestObjectTag')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_put_obj_request_obj_tag():
+
+    bucket = get_new_bucket()
+
+    tag_conditional = {"StringEquals": {
+        "s3:RequestObjectTag/security" : "public"
+    }}
+
+    p = Policy()
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+
+    s1 = Statement("s3:PutObject", resource, effect="Allow", condition=tag_conditional)
+    policy_document = p.add_statement(s1).to_json()
+
+    bucket.set_policy(policy_document)
+
+    new_conn = _get_alt_connection()
+    bucket1 = new_conn.get_bucket(bucket.name, validate=False)
+    key1_str ='testobj'
+    key1  = bucket1.new_key(key1_str)
+    check_access_denied(key1.set_contents_from_string, key1_str)
+
+    headers = {"x-amz-tagging" : "security=public"}
+    key1.set_contents_from_string(key1_str, headers=headers)
