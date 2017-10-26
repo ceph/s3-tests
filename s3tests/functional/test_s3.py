@@ -5888,6 +5888,29 @@ def test_cors_origin_wildcard():
     _cors_request_and_check(requests.get, url, {'Origin': 'example.origin'}, 200, '*', 'GET')
 
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='check cors response when Access-Control-Request-Headers is set in option request')
+@attr(assertion='returning cors header')
+def test_cors_header_option():
+    cfg = CORSConfiguration()
+    bucket = get_new_bucket()
+
+    bucket.set_acl('public-read')
+
+    cfg.add_rule('GET', '*',allowed_header="x-amz-meta-header1")
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
+    bucket.set_cors(cfg)
+
+    time.sleep(3)
+
+    url = _get_post_url(s3.main, bucket)
+    obj_url = '{u}/{o}'.format(u=url, o='bar')
+    _cors_request_and_check(requests.options, obj_url, {'Origin': 'example.origin','Access-Control-Request-Headers':'x-amz-meta-header2','Access-Control-Request-Method':'GET'}, 403, None, None)
+
 class FakeFile(object):
     """
     file that simulates seek, tell, and current character
