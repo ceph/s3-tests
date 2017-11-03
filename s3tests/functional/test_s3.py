@@ -5351,9 +5351,14 @@ def test_multipart_copy_invalid_range():
     bucket, key = _create_key_with_random_content('source', size=5)
     upload = bucket.initiate_multipart_upload('dest')
     e = assert_raises(boto.exception.S3ResponseError, copy_part, bucket.name, key.name, bucket, 'dest', upload.id, 0, 0, 21)
-    eq(e.status, 400)
-    eq(e.reason, 'Bad Request')
-    eq(e.error_code, 'InvalidArgument')
+    valid_status = [400, 416]
+    if not e.status in valid_status:
+       raise AssertionError("Invalid response " + str(status))
+    valid_reason = ['Bad Request', 'Requested Range Not Satisfiable']
+    if not e.reason in valid_reason:
+       raise AssertionError("Invalid reason " + e.reason )
+    # no standard error code defined 
+    # eq(e.error_code, 'InvalidArgument')
 
 @attr(resource='object')
 @attr(method='put')
