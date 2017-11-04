@@ -7588,7 +7588,7 @@ def test_lifecycle_get_no_id():
             assert False
 
 
-# The test harnass for lifecycle is configured to treat days as 2 second intervals.
+# The test harness for lifecycle is configured to treat days as 10 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle expiration')
