@@ -7798,7 +7798,6 @@ def test_lifecycle_set_noncurrent():
     eq(res.reason, 'OK')
 
 
-# The test harnass for lifecycle is configured to treat days as 2 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle non-current version expiration')
@@ -7883,7 +7882,6 @@ def test_lifecycle_set_empty_filter():
 
 
 
-# The test harnass for lifecycle is configured to treat days as 1 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle delete marker expiration')
@@ -7936,7 +7934,6 @@ def test_lifecycle_set_multipart():
     eq(res.reason, 'OK')
 
 
-# The test harnass for lifecycle is configured to treat days as 1 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle multipart expiration')
