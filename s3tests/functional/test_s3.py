@@ -44,7 +44,7 @@ from .utils import assert_raises
 from .utils import generate_random
 from .utils import region_sync_meta
 
-from .policy import Policy, Statement
+from .policy import Policy, Statement, make_json_policy
 
 import AnonymousAuth
 
@@ -8743,28 +8743,6 @@ def test_sse_kms_read_declare():
 
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
-
-def make_json_policy(action, resource, principal={"AWS": "*"}, conditions=None):
-
-    policy = {
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": principal,
-            "Action": action,
-            "Resource": [
-                resource
-            ],
-        }]
-    }
-
-    # Currently lets only support adding a common conditional to every
-    # statement in this function
-    for statement in policy["Statement"]:
-        if conditions is not None:
-            statement["Condition"] = conditions
-
-    return json.dumps(policy)
 
 @attr(resource='bucket')
 @attr(method='get')
