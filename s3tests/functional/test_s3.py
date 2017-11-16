@@ -7358,6 +7358,40 @@ def test_versioned_object_acl():
     k = bucket.new_key(keyname)
     check_grants(k.get_acl().acl.grants, default_policy)
 
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='change acl on an object with no version')
+@attr(assertion='works')
+@attr('versioning')
+def test_versioned_object_acl_no_version():
+    bucket = get_new_bucket()
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    keyname = 'foo'
+
+    key0 = bucket.new_key(keyname)
+    key0.set_contents_from_string('bar')
+
+    check_configure_versioning_retry(bucket, False, "Suspended")
+
+    key1 = bucket.new_key(keyname)
+    key1.set_contents_from_string('bla')
+
+    bucket.set_canned_acl('public-read', key_name=keyname)
+
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key2 = bucket.new_key(keyname)
+    key2.set_contents_from_string('zxc')
+
+    l = bucket.get_all_keys()
+    eq(len(l), 1)
+
+    l1 = bucket.get_all_versions()
+    eq(len(l1), 3)
+
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='change acl on an object with no version specified changes latest version')
