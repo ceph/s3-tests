@@ -5785,6 +5785,8 @@ def test_set_cors():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchCORSConfiguration')
 
     bucket.set_cors(cfg)
     new_cfg = bucket.get_cors()
@@ -5806,6 +5808,8 @@ def test_set_cors():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchCORSConfiguration')
 
 def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
     r = func(url, headers=headers)
@@ -5833,6 +5837,8 @@ def test_cors_origin_response():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchCORSConfiguration')
 
     bucket.set_cors(cfg)
 
@@ -5897,6 +5903,8 @@ def test_cors_origin_wildcard():
 
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
+    eq(e.reason, 'Not Found')
+    eq(e.error_code, 'NoSuchCORSConfiguration')
 
     bucket.set_cors(cfg)
 
