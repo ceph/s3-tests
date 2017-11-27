@@ -34,6 +34,7 @@ from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
 from nose.tools import eq_ as eq
+from nose.tools import assert_is_none
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 from boto.s3.tagging import TagSet
@@ -9315,3 +9316,68 @@ def test_delete_tags_obj_public():
     tags = _get_obj_tags(bucket, key.name)
     eq(len(tags),0)
     #eq(input_tagset, res_tagset)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='test whether a correct version-id returned')
+@attr(assertion='version-id is same as bucket list')
+def test_versioning_bucket_atomic_upload_return_version_id():
+    # for versioning-enabled-bucket, an non-empty version-id should return
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key_name = 'bar'
+    key = bucket.new_key(key_name)
+    key.set_contents_from_string(key_name)
+    # list_verions will return an non-empty version-id
+    li = bucket.list_versions()
+    for k in li:
+        eq(key.version_id, k.version_id)
+
+    # for versioning-default-bucket, no version-id should return.
+    bucket = get_new_bucket()
+    key_name = 'baz'
+    key = bucket.new_key(key_name)
+    key.set_contents_from_string(key_name)
+    assert_is_none(key.version_id)
+
+    # for versioning-suspended-bucket, no version-id should return.
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, False, "Suspended")
+    key_name = 'foo'
+    key = bucket.new_key(key_name)
+    key.set_contents_from_string(key_name)
+    assert_is_none(key.version_id)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='test whether a correct version-id returned')
+@attr(assertion='version-id is same as bucket list')
+def test_versioning_bucket_multipart_upload_return_version_id():
+    content_type='text/bla'
+    objlen = 30 * 1024 * 1024
+
+    # for versioning-enabled-bucket, an non-empty version-id should return
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+    key_name = 'bar'
+    (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'baz'})
+    res = upload.complete_upload()
+    # list_verions will return an non-empty version-id
+    li = bucket.list_versions()
+    for k in li:
+        eq(k.version_id, res.version_id)
+
+    # for versioning-default-bucket, no version-id should return.
+    bucket = get_new_bucket()
+    key_name = 'baz'
+    (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'baz'})
+    res = upload.complete_upload()
+    assert_is_none(res.version_id)
+
+    # for versioning-suspended-bucket, no version-id should return
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, False, "Suspended")
+    key_name = 'foo'
+    (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'baz'})
+    res = upload.complete_upload()
+    assert_is_none(res.version_id)
