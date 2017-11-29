@@ -5345,6 +5345,7 @@ def test_multipart_copy_small():
     eq(key2.size, size)
     _check_key_content(src_key, key2)
 
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with an invalid range')
@@ -5354,12 +5355,13 @@ def test_multipart_copy_invalid_range():
     e = assert_raises(boto.exception.S3ResponseError, copy_part, bucket.name, key.name, bucket, 'dest', upload.id, 0, 0, 21)
     valid_status = [400, 416]
     if not e.status in valid_status:
-       raise AssertionError("Invalid response " + str(status))
+        raise AssertionError("Invalid response " + str(e.status))
     valid_reason = ['Bad Request', 'Requested Range Not Satisfiable']
     if not e.reason in valid_reason:
-       raise AssertionError("Invalid reason " + e.reason )
+        raise AssertionError("Invalid reason " + e.reason )
     # no standard error code defined 
     # eq(e.error_code, 'InvalidArgument')
+
 
 @attr(resource='object')
 @attr(method='put')
