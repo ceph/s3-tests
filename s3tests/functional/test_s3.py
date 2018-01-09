@@ -7737,10 +7737,9 @@ def generate_lifecycle_body(rules):
             # specify multiple Tags in a list this way
             if 'TagSet' in rule['Filter']:
                 for tag in rule['Filter']['TagSet']:
-                    # For now we'll only generate a Tag when we have both Key and a Val
-                    key = tag.get('Key','')
-                    value = tag.get('Value', '')
-                    filter_str += '<Tag><Key>%s</Key><Value>%s</Value></Tag>' % key,value
+                    filter_str += '<Tag><Key>{k}</Key><Value>{v}</Value></Tag>'.format(
+                        k = tag.get('Key',''),
+                        v = tag.get('Value',''))
 
             if 'And' in rule['Filter']:
                 filter_str = '<And>%s</And>' % filter_str
@@ -7936,6 +7935,95 @@ def test_lifecycle_set_empty_filter():
     eq(res.reason, 'OK')
 
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with Tagging')
+@attr('lifecycle')
+def test_lifecycle_set_tagging():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1',
+         'Filter': {'TagSet': [{'Key':'foo','Value':'bar'}]},
+         'Status': 'Enabled',
+         'Expiration': {'Days': 2}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with Tagging')
+@attr('lifecycle')
+def test_lifecycle_set_filter_prefix_tagging():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1',
+         'Filter': {'TagSet': [{'Key':'foo','Value':'bar'}],
+                    'And': True,
+                    'Prefix': 'foo'},
+         'Status': 'Enabled',
+         'Expiration': {'Days': 2}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set invalid lifecycle config with tagging')
+@attr('lifecycle')
+def test_lifecycle_set_filter_invalid_prefix_tagging():
+    bucket = get_new_bucket()
+    # This should fail as no AND XML tag is generated
+    rules = [
+        {'ID': 'rule1',
+         'Filter': {'TagSet': [{'Key':'foo','Value':'bar'}],
+                    'Prefix': 'foo'},
+         'Status': 'Enabled',
+         'Expiration': {'Days': 2}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 400)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set invalid lifecycle config with tagging')
+@attr('lifecycle')
+def test_lifecycle_set_filter_invalid_tagging():
+    bucket = get_new_bucket()
+    # This should fail as no AND XML tag is generated
+    rules = [
+        {'ID': 'rule1',
+         'Filter': {'TagSet': [{'Key':'foo','Value':'bar'},
+                               {'Key':'foo2','Value':'bar2'}]},
+         'Status': 'Enabled',
+         'Expiration': {'Days': 2}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 400)
 
 
 @attr(resource='bucket')
@@ -8964,6 +9052,7 @@ class S3TestTagSet(TagSet):
     '''
     version of TagSet that supports comparision, so that we can compare tagsets
     '''
+
     def to_dict(self):
         d = dict()
         for tag in self:
@@ -9367,6 +9456,7 @@ def test_delete_tags_obj_public():
     eq(len(tags),0)
     #eq(input_tagset, res_tagset)
 
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='test whether a correct version-id returned')
@@ -9431,3 +9521,83 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'baz'})
     res = upload.complete_upload()
     assert_is_none(res.version_id)
+=======
+
+
+# We could create multiple test cases instead of one with all variations Since
+# each of the test cases would atleast take around 30s of execution, lets just
+# have one with most expire variations
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_tagging():
+
+    bucket = get_new_bucket()
+
+    rules = [
+        {'ID': 'rule1',
+         'Filter': {'TagSet': [{'Key':'foo','Value':'bar'},
+                               {'Key': 'foo2','Value':'bar2'}],
+                    'And': True,
+                    'Prefix': 'expire'},
+         'Status': 'Enabled',
+         'Expiration': {'Days': 1}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+    expire_tagset = S3TestTagSet()
+    expire_tagset.add_tag('foo','bar')
+    expire_tagset.add_tag('foo2','bar2')
+
+    expire_more_tagset = S3TestTagSet()
+    expire_more_tagset.add_tag('foo','bar')
+    expire_more_tagset.add_tag('foo2','bar2')
+    expire_more_tagset.add_tag('foo3','bar3')
+
+    expire_less_tagset = S3TestTagSet()
+    expire_less_tagset.add_tag('foo','bar')
+
+    _create_keys(bucket=bucket, keys=['expirepass/alltags', 'expirefail/notags', 'expirepass/moretags',
+                                      'keep/foo', 'expirefail/lesstags'])
+
+
+    # Additional object upload case with putobj directly vs put_object_tagging
+    # as the mtime would be the same with put object whereas Put Object tagging
+    # might catch the case when the bucket index and object do not have the
+    # same mtimes
+    put_obj_tag_headers = {
+        'x-amz-tagging' : str(expire_tagset)
+    }
+    key = bucket.new_key('expirepass/putobjtags')
+    data = 'A'*100
+    key.set_contents_from_string(data, headers=put_obj_tag_headers)
+
+    res = _put_obj_tags(bucket, 'expirepass/alltags', expire_tagset.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'expirepass/moretags', expire_more_tagset.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'expirefail/lesstags', expire_less_tagset.to_xml())
+    eq(res.status, 200)
+
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(30)
+    expire1_keys = bucket.get_all_keys()
+    eq(len(init_keys), 6)
+    eq(len(expire1_keys), 3)
