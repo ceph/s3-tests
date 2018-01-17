@@ -9429,3 +9429,53 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     (upload, data) = _multipart_upload(bucket, key_name, objlen, headers={'Content-Type': content_type}, metadata={'foo': 'baz'})
     res = upload.complete_upload()
     assert_is_none(res.version_id)
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Test ExistingObjectTag conditional on get object')
+@attr(assertion='success')
+@attr('tagging')
+@attr('bucket-policy')
+def test_bucket_policy_get_obj_existing_tag():
+
+    bucket = _create_keys(keys=['publictag','privatetag','invalidtag'])
+
+
+    tag_conditional = {"StringEquals": {
+        "s3:ExistingObjectTag/security" : "public"
+    }}
+
+    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
+    policy_document = make_json_policy("s3:GetObject",
+                                       resource,
+                                       conditions=tag_conditional)
+
+    bucket.set_policy(policy_document)
+    input_tagset = S3TestTagSet()
+    input_tagset.add_tag('security','public')
+    input_tagset.add_tag('foo','bar')
+
+    input_tagset2 = S3TestTagSet()
+    input_tagset2.add_tag('security','private')
+
+    input_tagset3 = S3TestTagSet()
+    input_tagset3.add_tag('security1','public')
+
+    res = _put_obj_tags(bucket, 'publictag', input_tagset.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'privatetag', input_tagset2.to_xml())
+    eq(res.status, 200)
+
+    res = _put_obj_tags(bucket, 'invalidtag', input_tagset3.to_xml())
+    eq(res.status, 200)
+
+    new_conn = _get_alt_connection()
+    res = new_conn.make_request("GET",bucket.name, 'publictag')
+    eq(res.status, 200)
+
+    res = new_conn.make_request("GET",bucket.name, 'privatetag')
+    eq(res.status, 403)
+
+    res = new_conn.make_request("GET",bucket.name, 'invalidtag')
+    eq(res.status, 403)
