@@ -5848,10 +5848,11 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
     r = func(url, headers=headers)
     eq(r.status_code, expect_status)
 
-    assert r.headers['access-control-allow-origin'] == expect_allow_origin
-    assert r.headers['access-control-allow-methods'] == expect_allow_methods
+    if ('access-control-allow-origin' in r.headers.keys()):
+        assert r.headers['access-control-allow-origin'] == expect_allow_origin
 
-    
+    if ('access-control-allow-methods' in r.headers.keys()):
+        assert r.headers['access-control-allow-methods'] == expect_allow_methods
 
 @attr(resource='bucket')
 @attr(method='get')
