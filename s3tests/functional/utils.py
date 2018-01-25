@@ -52,3 +52,12 @@ def region_sync_meta(targets, region):
         if conf.sync_meta_wait:
             time.sleep(conf.sync_meta_wait)
 
+
+def get_grantee(policy, permission):
+    '''
+    Given an object/bucket policy, extract the grantee with the required permission
+    '''
+
+    for g in policy.acl.grants:
+        if g.permission == permission:
+            return g.id
