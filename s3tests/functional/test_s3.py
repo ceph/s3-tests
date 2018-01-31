@@ -5709,6 +5709,83 @@ def test_list_multipart_upload():
     upload2.cancel_upload()
     upload3.cancel_upload()
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='list multi-part uploads')
+def test_list_multipart_upload_many():
+    bucket = get_new_bucket()
+    mb = 1024 * 1024
+    upload1, data = _multipart_upload(bucket, "foo", 5 * mb)
+    upload2, data = _multipart_upload(bucket, "bar", 5 * mb)
+    upload3, data = _multipart_upload(bucket, "baz", 5 * mb)
+    upload4, data = _multipart_upload(bucket, "asd", 5 * mb)
+    upload5, data = _multipart_upload(bucket, "haha", 5 * mb)
+
+    l = bucket.get_all_multipart_uploads(max_uploads=2)
+    eq(len(l), 2)
+
+    l = bucket.get_all_multipart_uploads(max_uploads=4)
+    eq(len(l), 4)
+ 
+    l = bucket.get_all_multipart_uploads()
+    eq(len(l), 5)
+
+    upload1.cancel_upload()
+    upload2.cancel_upload()
+    upload3.cancel_upload()
+    upload4.cancel_upload()
+    upload5.cancel_upload()
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='list multi-part uploads prefix')
+def test_list_multipart_upload_prefix():
+    bucket = get_new_bucket()
+    mb = 1024 * 1024
+    upload1, data = _multipart_upload(bucket, "photos/2006/January/sample.jpg", 5 * mb)
+    upload2, data = _multipart_upload(bucket, "photos/2006/February/sample.jpg", 5 * mb)
+    upload3, data = _multipart_upload(bucket, "sample.wmv", 5 * mb)
+    upload4, data = _multipart_upload(bucket, "sample.jpg", 5 * mb)
+
+    l = bucket.get_all_multipart_uploads(prefix='photos')
+    l = list(l)
+    eq(len(l), 2)
+
+    index = dict([("photos/2006/January/sample.jpg", 1),
+                  ("photos/2006/February/sample.jpg", 1)])
+    for upload in l:
+        index[upload.key_name] -= 1;
+
+    for k, c in index.items():
+        eq(c, 0)
+
+    upload1.cancel_upload()
+    upload2.cancel_upload()
+    upload3.cancel_upload()
+    upload4.cancel_upload()
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='list multi-part uploads delimiter')
+def test_list_multipart_upload_delimiter():
+    bucket = get_new_bucket()
+    mb = 1024 * 1024
+    upload1, data = _multipart_upload(bucket, "photos/2006/January/sample.jpg", 5 * mb)
+    upload2, data = _multipart_upload(bucket, "photos/2006/February/sample.jpg", 5 * mb)
+    upload3, data = _multipart_upload(bucket, "sample.jpg", 5 * mb)
+    upload4, data = _multipart_upload(bucket, "sample.wmv", 5 * mb)
+
+    l = bucket.get_all_multipart_uploads(delimiter='/')
+    eq(len(l), 3)
+ 
+    prefix = getattr(l[-1], "CommonPrefixes.Prefix")
+    eq(prefix, "photos/")
+
+    upload1.cancel_upload()
+    upload2.cancel_upload()
+    upload3.cancel_upload()
+    upload4.cancel_upload()
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multi-part upload with missing part')
