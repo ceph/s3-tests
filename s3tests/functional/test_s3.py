@@ -6401,6 +6401,29 @@ def test_ranged_request_response_code():
 @attr(method='get')
 @attr(operation='range')
 @attr(assertion='returns correct data, 206')
+def test_ranged_big_request_response_code():
+
+    bucket = get_new_bucket()
+    key = bucket.new_key('testobj')
+    string = os.urandom(8 * 1024 * 1024)
+    key.set_contents_from_string(string)
+
+    key.open('r', headers={'Range': 'bytes=3145728-5242880'})
+    status = key.resp.status
+    content_range = key.resp.getheader('Content-Range')
+    fetched_content = ''
+    for data in key:
+        fetched_content += data;
+    key.close()
+
+    eq(fetched_content, string[3145728:5242881])
+    eq(status, 206)
+    eq(content_range, 'bytes 3145728-5242880/8388608')
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='range')
+@attr(assertion='returns correct data, 206')
 def test_ranged_request_skip_leading_bytes_response_code():
     content = 'testcontent'
 
