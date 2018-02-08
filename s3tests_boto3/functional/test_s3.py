@@ -5618,6 +5618,34 @@ def test_multipart_copy_invalid_range():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 416)
     eq(error_code, 'InvalidRange')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copies without x-amz-copy-source-range')
+def test_multipart_copy_without_range():
+    client = get_client()
+    src_key = 'source'
+    src_bucket_name = _create_key_with_random_content(src_key, size=10)
+    dest_bucket_name = get_new_bucket_name()
+    get_new_bucket(name=dest_bucket_name)
+    dest_key = "mymultipartcopy"
+
+    response = client.create_multipart_upload(Bucket=dest_bucket_name, Key=dest_key)
+    upload_id = response['UploadId']
+    parts = []
+
+    copy_source = {'Bucket': src_bucket_name, 'Key': src_key}
+    part_num = 1
+    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=9) 
+
+    response = client.upload_part_copy(Bucket=dest_bucket_name, Key=dest_key, CopySource=copy_source, PartNumber=part_num, UploadId=upload_id)
+
+    parts.append({'ETag': response['CopyPartResult'][u'ETag'], 'PartNumber': part_num})
+    client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
+    eq(response['ContentLength'], 10)
+    _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
     
 @attr(resource='object')
 @attr(method='put')
