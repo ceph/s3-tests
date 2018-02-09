@@ -5177,7 +5177,15 @@ def test_object_copy_versioned_bucket():
     bucket2 = get_new_bucket()
     check_configure_versioning_retry(bucket2, True, "Enabled")
     key4 = bucket2.copy_key('bar321foo3', bucket.name, key.name, src_version_id = key.version_id)
-    key4 = bucket2.get_key(key4.name)
+    
+    #check response include the x-amz-copy-source_verion_id and source_verion_id 
+    eq(key4.source_version_id,key.version_id)
+    key4_res_version_id = key4.version_id
+    
+    #recheck version_id
+    key4 = bucket2.get_key(key4.name)   
+    eq(key4.version_id, key4_res_version_id)
+    
     eq(key4.size, size)
     got = key4.get_contents_as_string()
     eq(got, data)
@@ -5186,13 +5194,16 @@ def test_object_copy_versioned_bucket():
     bucket3 = get_new_bucket()
     key5 = bucket3.copy_key('bar321foo4', bucket.name, key.name , src_version_id = key.version_id)
     key5 = bucket3.get_key(key5.name)
+    eq(key5.version_id, None)
     eq(key5.size, size)
     got = key5.get_contents_as_string()
     eq(got, data)
 
     # copy from a non versioned bucket
     key6 = bucket.copy_key('foo123bar2', bucket3.name, key5.name)
+    key6_res_version_id = key6.version_id
     key6 = bucket.get_key(key6.name)
+    eq(key6_res_version_id, key6.version_id)
     eq(key6.size, size)
     got = key6.get_contents_as_string()
     eq(got, data)
