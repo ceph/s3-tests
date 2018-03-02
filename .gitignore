@@ -12,3 +12,7 @@
 /virtualenv
 
 config.yaml
+
+splunk.log
+
+nosetests.xml
