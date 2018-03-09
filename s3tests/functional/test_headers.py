@@ -308,6 +308,7 @@ def test_object_create_bad_expect_unreadable():
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
+@attr('skip_for_splunk')
 def test_object_create_bad_contentlength_empty():
     key = _setup_bad_object({'Content-Length': ''})
 
@@ -354,6 +355,7 @@ def test_object_create_bad_contentlength_none():
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
 @attr('fails_strict_rfc2616')
+@attr('skip_for_splunk')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_unreadable():
     key = _setup_bad_object({'Content-Length': '\x07'})
@@ -652,6 +654,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
 @attr('fails_strict_rfc2616')
+@attr('skip_for_splunk')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_unreadable():
     _add_custom_headers({'Content-Length': '\x07'})
