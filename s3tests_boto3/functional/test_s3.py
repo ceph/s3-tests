@@ -634,6 +634,62 @@ def _get_status_and_error_code(response):
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
+@attr(assertion='bucket list unordered')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+def test_bucket_list_unordered():
+    # boto3.set_stream_logger(name='botocore')
+    keys_in = ['ado', 'bot', 'cob', 'dog', 'emu', 'fez', 'gnu', 'hex',
+               'abc/ink', 'abc/jet', 'abc/kin', 'abc/lax', 'abc/mux',
+               'def/nim', 'def/owl', 'def/pie', 'def/qed', 'def/rye',
+               'ghi/sew', 'ghi/tor', 'ghi/uke', 'ghi/via', 'ghi/wit',
+               'xix', 'yak', 'zoo']
+    bucket_name = _create_objects(keys=keys_in)
+    client = get_client()
+
+    # adds the unordered query parameter
+    def add_unordered(**kwargs):
+        kwargs['params']['url'] += "&allow-unordered=true"
+    client.meta.events.register('before-call.s3.ListObjects', add_unordered)
+
+    # test simple retrieval
+    response = client.list_objects(Bucket=bucket_name, MaxKeys=1000)
+    unordered_keys_out = _get_keys(response)
+    eq(len(keys_in), len(unordered_keys_out))
+    eq(keys_in.sort(), unordered_keys_out.sort())
+
+    # test retrieval with prefix
+    response = client.list_objects(Bucket=bucket_name,
+                                   MaxKeys=1000,
+                                   Prefix="abc/")
+    unordered_keys_out = _get_keys(response)
+    eq(5, len(unordered_keys_out))
+
+    # test incremental retrieval with marker
+    response = client.list_objects(Bucket=bucket_name, MaxKeys=6)
+    unordered_keys_out = _get_keys(response)
+    eq(6, len(unordered_keys_out))
+
+    # now get the next bunch
+    response = client.list_objects(Bucket=bucket_name,
+                                   MaxKeys=6,
+                                   Marker=unordered_keys_out[-1])
+    unordered_keys_out2 = _get_keys(response)
+    eq(6, len(unordered_keys_out2))
+
+    # make sure there's no overlap between the incremental retrievals
+    intersect = set(unordered_keys_out).intersection(unordered_keys_out2)
+    eq(0, len(intersect))
+
+    # verify that unordered used with delimiter results in error
+    e = assert_raises(ClientError,
+                      client.list_objects, Bucket=bucket_name, Delimiter="/")
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(error_code, 'InvalidArgument')
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys')
 @attr(assertion='invalid max_keys')
 def test_bucket_list_maxkeys_invalid():
     key_names = ['bar', 'baz', 'foo', 'quxx']
