@@ -59,6 +59,7 @@ from . import (
     get_new_bucket,
     get_new_bucket_name,
     s3,
+    mfa,
     targets,
     config,
     get_prefix,
@@ -6687,14 +6688,24 @@ def check_versioning(bucket, status):
         eq(status, None)
 
 # amazon is eventual consistent, retry a bit if failed
-def check_configure_versioning_retry(bucket, status, expected_string):
-    bucket.configure_versioning(status)
+def check_configure_versioning_retry(bucket, status, expected_string, mfa_delete=None, mfa_token=None, check_err=None):
+    if not check_err:
+        bucket.configure_versioning(status, mfa_delete = mfa_delete, mfa_token = mfa_token)
+    else:
+        e = assert_raises(boto.exception.S3ResponseError, bucket.configure_versioning, status, mfa_delete = mfa_delete, mfa_token = mfa_token)
+        eq(e.status, check_err)
+        # actual operation failed, don't check for anything
+        return
 
     read_status = None
+    mfa_status = None
 
     for i in xrange(5):
         try:
-            read_status = bucket.get_versioning_status()['Versioning']
+            ver_status = bucket.get_versioning_status()
+            read_status = ver_status['Versioning']
+            if mfa_delete is not None:
+                mfa_status = ver_status['MfaDelete']
         except KeyError:
             read_status = None
 
@@ -6704,6 +6715,13 @@ def check_configure_versioning_retry(bucket, status, expected_string):
         time.sleep(1)
 
     eq(expected_string, read_status)
+    if mfa_delete is not None:
+        if mfa_delete:
+            mfa_expected = 'Enabled'
+        else:
+            mfa_expected = 'Disabled'
+
+        eq(mfa_expected, mfa_status)
 
 
 @attr(resource='bucket')
@@ -6719,6 +6737,131 @@ def test_versioning_bucket_create_suspend():
     check_configure_versioning_retry(bucket, True, "Enabled")
     check_configure_versioning_retry(bucket, True, "Enabled")
     check_configure_versioning_retry(bucket, False, "Suspended")
+
+
+def create_versioned_obj(bucket, name, s = 'foo'):
+    k = bucket.new_key(name)
+    k.set_contents_from_string(s)
+
+    return bucket.get_key(name)
+
+
+
+@attr(resource='bucket')
+@attr(method='modify')
+@attr(operation='check mfa on bucket and objects')
+@attr(assertion='simple mfa functionality')
+@attr('mfa')
+def test_mfa_simple():
+    if not mfa['main'].configured():
+        raise SkipTest
+
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    unversioned_k = bucket.new_key('unversioned')
+    unversioned_k.set_contents_from_string('asd')
+
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = True, mfa_token = mfa['main'].get_next_token())
+
+    k = create_versioned_obj(bucket, 'versioned')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete_key, k.name, version_id = k.version_id)
+    eq(e.status, 403)
+
+    bucket.delete_key(k.name, version_id = k.version_id, mfa_token = mfa['main'].get_next_token())
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete_key, unversioned_k.name, version_id = 'null')
+    eq(e.status, 403)
+
+    bucket.delete_key('foo') # delete marker creation is fine
+
+    # cannot modify mfa and versioning status without mfa token
+    check_configure_versioning_retry(bucket, True, "", mfa_delete = False, check_err = 403)
+    check_configure_versioning_retry(bucket, False, "", check_err = 403)
+
+    # disable mfa, see that delete is now back to normal
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = False, mfa_token = mfa['main'].get_next_token())
+
+    k = create_versioned_obj(bucket, 'versioned')
+    bucket.delete_key(k.name, version_id = k.version_id)
+
+
+@attr(resource='bucket')
+@attr(method='delete')
+@attr(operation='check mfa on bucket and objects')
+@attr(assertion='multi object delete mfa functionality')
+@attr('mfa')
+def test_mfa_multi_obj_delete():
+    if not mfa['main'].configured():
+        raise SkipTest
+
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    unversioned_k = bucket.new_key('unversioned')
+    unversioned_k.set_contents_from_string('asd')
+
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = True, mfa_token = mfa['main'].get_next_token())
+
+    k = create_versioned_obj(bucket, 'versioned')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete_key, k.name, version_id = k.version_id)
+    eq(e.status, 403)
+
+    stored_keys = []
+    for key in bucket.list_versions():
+        stored_keys.insert(0, key)
+
+    eq(len(stored_keys), 2)
+
+    result = bucket.delete_keys(stored_keys, mfa_token = mfa['main'].get_next_token())
+    eq(len(result.deleted), 2)
+    eq(len(result.errors), 0)
+
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = False, mfa_token = mfa['main'].get_next_token())
+
+@attr(resource='bucket')
+@attr(method='config')
+@attr(operation='create versioned bucket')
+@attr(assertion='can create and suspend bucket versioning')
+@attr('mfa')
+def test_mfa_reuse_fails():
+    if not mfa['main'].configured():
+        raise SkipTest
+
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = True, mfa_token = mfa['main'].get_next_token())
+
+    k1 = create_versioned_obj(bucket, 'versioned')
+    k2 = create_versioned_obj(bucket, 'versioned')
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete_key, k1.name, version_id = k1.version_id)
+
+    mfa_token = mfa['main'].get_next_token()
+
+    bucket.delete_key(k1.name, version_id = k1.version_id, mfa_token = mfa_token)
+    e = assert_raises(boto.exception.S3ResponseError, bucket.delete_key, k1.name, version_id = k1.version_id, mfa_token = mfa_token)
+
+    # disable mfa, see that delete is now back to normal
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = False, mfa_token = mfa['main'].get_next_token())
+
+@attr(resource='bucket')
+@attr(method='config')
+@attr(operation='create versioned bucket')
+@attr(assertion='can create and suspend bucket versioning')
+@attr('mfa')
+def test_mfa_alt_fails():
+    if not mfa['main'].configured():
+        raise SkipTest
+
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = True, mfa_token = mfa['main'].get_next_token())
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = False, mfa_token = mfa['alt'].get_next_token(), check_err = 403)
+    check_configure_versioning_retry(bucket, True, "Enabled", mfa_delete = False, mfa_token = mfa['main'].get_next_token())
 
 
 def check_head_obj_content(key, content):
