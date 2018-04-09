@@ -862,6 +862,7 @@ def test_bucket_list_return_data():
 @attr(method='head')
 @attr(operation='compare w/bucket list when bucket versioning is configured')
 @attr(assertion='return same metadata')
+@attr('versioning')
 def test_bucket_list_return_data_versioning():
     bucket = get_new_bucket()
     check_configure_versioning_retry(bucket, True, "Enabled")
