@@ -698,7 +698,6 @@ def test_bucket_list_maxkeys_invalid():
     eq(e.error_code, 'InvalidArgument')
 
 
-@attr('fails_on_rgw')
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
