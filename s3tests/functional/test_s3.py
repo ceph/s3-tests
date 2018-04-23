@@ -25,6 +25,8 @@ import itertools
 import string
 import random
 import re
+import hashlib
+from base64 import encodestring
 
 import xml.etree.ElementTree as ET
 
@@ -9236,11 +9238,12 @@ def _get_obj_tags(bucket, key_name):
     # our _make_request doesn't sign query args, let's piggy back on boto
     return _get_obj_tags_conn(bucket.connection, bucket.name, key_name)
 
-def _put_obj_tags_conn(conn, bucket_name, key_name, tag_str):
-    return conn.make_request('PUT',bucket_name, key_name, query_args='tagging', data=tag_str)
+def _put_obj_tags_conn(conn, bucket_name, key_name, tag_str, tag_headers=None):
+    return conn.make_request('PUT', bucket_name, key_name, headers=tag_headers,
+                             query_args='tagging', data=tag_str)
 
-def _put_obj_tags(bucket, key_name, tag_str):
-    return _put_obj_tags_conn(bucket.connection, bucket.name, key_name, tag_str)
+def _put_obj_tags(bucket, key_name, tag_str, tag_headers=None):
+    return _put_obj_tags_conn(bucket.connection, bucket.name, key_name, tag_str, tag_headers)
 
 def _delete_obj_tags(bucket, key_name):
     return bucket.connection.make_request('DELETE', bucket.name, key_name, query_args='tagging')
@@ -9392,6 +9395,24 @@ def test_put_modify_tags():
     eq(res.status, 200)
     res2_tagset = _get_obj_tags(bucket, key.name)
     eq(input2_tagset, res2_tagset)
+
+    input3_tagset = S3TestTagSet()
+    input3_tagset.add_tag('key4', 'val4')
+    digest = encodestring(hashlib.md5(input3_tagset.to_xml().encode('utf-8').strip()).digest()).strip()
+    tagging_headers_correct = {
+        'Content-MD5': digest
+    }
+    res = _put_obj_tags(bucket, key.name, input3_tagset.to_xml(), tagging_headers_correct)
+    eq(res.status, 200)
+
+    digest = encodestring(hashlib.md5('bad-md5').digest()).strip()
+    tagging_headers_bad = {
+        'Content-MD5': digest
+    }
+    res = _put_obj_tags(bucket, key.name, input3_tagset.to_xml(), tagging_headers_bad)
+    eq(res.status, 400)
+    eq(parse_s3_errorcode(res.read()), 'BadDigest')
+
 
 @attr(resource='object')
 @attr(method='get')
