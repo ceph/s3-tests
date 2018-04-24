@@ -9562,6 +9562,11 @@ def test_get_tags_acl_public():
 def test_put_tags_acl_public():
     bucket, key = _create_key_with_random_content('testputtagsacl')
 
+    new_conn = _get_alt_connection()
+    input_tagset = _create_simple_tagset(10)
+    res = _put_obj_tags_conn(new_conn, bucket.name, key.name, input_tagset.to_xml())
+    eq(res.status, 403)
+
     resource = _make_arn_resource("{}/{}".format(bucket.name, key.name))
     #principal = {"AWS": "s3test2"} This needs a tenanted user?
     policy_document = make_json_policy("s3:PutObjectTagging",
