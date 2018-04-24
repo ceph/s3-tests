@@ -10090,7 +10090,8 @@ def test_bucket_policy_put_obj_request_obj_tag():
     resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
 
     s1 = Statement("s3:PutObject", resource, effect="Allow", condition=tag_conditional)
-    policy_document = p.add_statement(s1).to_json()
+    s2 = Statement("s3:PutObjectTagging", resource, effect="Allow")
+    policy_document = p.add_statement(s1).add_statement(s2).to_json()
 
     bucket.set_policy(policy_document)
 
