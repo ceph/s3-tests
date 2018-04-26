@@ -91,6 +91,9 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
                             ))
                         # key.set_canned_acl('private')
                         bucket.delete_key(key.name, version_id = key.version_id)
+                        uploads_list = bucket.get_all_multipart_uploads()
+                        for mp in uploads_list:
+                            mp.cancel_upload()
                     bucket.delete()
                     success = True
                 except boto.exception.S3ResponseError as e:
