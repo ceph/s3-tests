@@ -46,7 +46,7 @@ Follow these steps:
 
       `./bootstrap`
 
-  3. Configure splunk.conf (s3tests/splunk.conf ).
+  3. Configure splunk.conf (s3-tests/splunk.conf ).
 
      You will need to configure splunk.conf with the location of the service and two different credentials. 
      Usually you just need to configure it **ONCE**(unless the host changes, access key pairs rotates, etc). For example:
@@ -98,7 +98,7 @@ Follow these steps:
 
      <img width="716" alt="screen shot 2018-02-22 at 5 40 56 pm 1" src="https://user-images.githubusercontent.com/26911671/37020371-64180abc-20d0-11e8-9aeb-e1d752185816.png">
 
-  4. Configure setup.cfg (s3tests/setup.cfg).
+  4. Configure setup.cfg (s3-tests/setup.cfg).
 
      Standard ini-style config files. Put your nose tests configuration in a [nosetests] section. Options are the same as on the command line, with the – prefix removed. For options that are simple switches, you must supply a value:
 
@@ -158,7 +158,7 @@ Debugging
 ---------
 You can either send test-generated log files (splunk.log, nosetests.xml) to Splunk or do your own debugging. Skip this section if you send log files to Splunk. Zip or tar the files before sending them.
 
-* **nosetests.xml( s3tests/nosetests.xml )**
+* **nosetests.xml( s3-tests/nosetests.xml )**
 
   This is the detailed logging, with a summary (for example, how many tests gets run, how many get skipped, erorrs, failure) of the test execution. Also, it provides failed-tests-related stack-trace, assertion-error statements etc. It also includes how long each individual test unit takes to complete.
 
@@ -166,9 +166,9 @@ You can either send test-generated log files (splunk.log, nosetests.xml) to Splu
 
   <img width="726" alt="screen shot 2018-02-22 at 6 24 27 pm" src="https://user-images.githubusercontent.com/26911671/37020495-c9f98b9e-20d0-11e8-9c92-0ddb1f88a6ff.png">
 
-* **splunk.log( s3tests/splunk.log )**
+* **splunk.log( s3-tests/splunk.log )**
 
-  You can also look at the splunk.log file generated during tests execution in your s3tests directory. This log file includes non-xml format stdout (for example, print statements) and logging statements (for example, boto debug logging) captured for failed tests, together with stacktrace and assertion introspection, etc. It looks similar to the success/failure scenario screenshots provided above in "Test Result" section.
+  You can also look at the splunk.log file generated during tests execution in your s3-tests directory. This log file includes non-xml format stdout (for example, print statements) and logging statements (for example, boto debug logging) captured for failed tests, together with stacktrace and assertion introspection, etc. It looks similar to the success/failure scenario screenshots provided above in "Test Result" section.
 
   **Note:** Each time that you execute the test suite, splunk.log gets appended if there are any failed test.
     
