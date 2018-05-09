@@ -3148,7 +3148,7 @@ def test_bucket_create_naming_bad_short_empty():
     # resource (with slash), hence their error response is different
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, '')
     eq(e.status, 405)
-    eq(e.reason, 'Method Not Allowed')
+    assert e.reason in ('Method Not Allowed', 'Not Allowed')
     eq(e.error_code, 'MethodNotAllowed')
 
 
@@ -4902,7 +4902,15 @@ def test_bucket_recreate_not_overriding():
     names = [e.name for e in list(li)]
     eq(names, key_names)
 
-    bucket2 = get_new_bucket(targets.main.default, bucket.name)
+    # like test_bucket_create_exists
+    # aws-s3 default region allows recreation of buckets
+    # but all other regions fail with BucketAlreadyOwnedByYou.
+    try:
+        get_new_bucket(targets.main.default, bucket.name)
+    except boto.exception.S3CreateError, e:
+        eq(e.status, 409)
+        eq(e.reason, 'Conflict')
+        eq(e.error_code, 'BucketAlreadyOwnedByYou')
 
     li = bucket.list()
 
@@ -7661,12 +7669,18 @@ def test_lifecycle_get():
     bucket = set_lifecycle(rules=[{'id': 'test1/', 'days': 31, 'prefix': 'test1/', 'status': 'Enabled'},
                                   {'id': 'test2/', 'days': 120, 'prefix': 'test2/', 'status':'Enabled'}])
     current = bucket.get_lifecycle_config()
-    eq(current[0].expiration.days, 31)
-    eq(current[0].id, 'test1/')
-    eq(current[0].prefix, 'test1/')
-    eq(current[1].expiration.days, 120)
-    eq(current[1].id, 'test2/')
-    eq(current[1].prefix, 'test2/')
+    # We can't guarantee the order of XML, since the id is random, let's walk
+    # through the rules and validate that both were present
+    for rule in current:
+        if rule.expiration.days == 31:
+            eq(rule.prefix, 'test1/')
+            eq(rule.id, 'test1/')
+        elif rule.expiration.days == 120:
+            eq(rule.prefix, 'test2/')
+            eq(rule.id, 'test2/')
+        else:
+            # neither of the rules we supplied, something wrong
+            assert False
 
 
 
@@ -8148,7 +8162,10 @@ def test_encryption_sse_c_method_head():
     res = _make_request('HEAD', bucket, key, authenticated=True)
     eq(res.status, 400)
 
-    res = _make_request('HEAD', bucket, key, authenticated=True, request_headers=sse_client_headers)
+    # Pre-signed URL generation using SSE with specific customer-provided encryption keys doesn't work for SigV2
+    # https://aws.amazon.com/blogs/developer/generating-amazon-s3-pre-signed-urls-with-sse-part-1/
+    # Therefore, using the header authentication way of boto2
+    res = bucket.connection.make_request('HEAD', bucket.name, key, headers=sse_client_headers)
     eq(res.status, 200)
 
 
