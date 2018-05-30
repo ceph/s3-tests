@@ -2,7 +2,7 @@
 set -e
 
 if [ -f /etc/debian_version ]; then
-    for package in python-pip python-virtualenv python-dev libevent-dev; do
+    for package in python-pip python-virtualenv python-dev libevent-dev libffi-dev; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
             missing="${missing:+$missing }$package"
@@ -13,7 +13,7 @@ if [ -f /etc/debian_version ]; then
         sudo apt-get -y install $missing
     fi
 elif [ -f /etc/fedora-release ]; then
-    for package in python-pip python2-virtualenv python-devel libevent-devel; do
+    for package in python-pip python2-virtualenv python-devel libevent-devel libffi-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
@@ -23,7 +23,7 @@ elif [ -f /etc/fedora-release ]; then
         sudo yum -y install $missing
     fi
 elif [ -f /etc/redhat-release ]; then
-    for package in python2-pip python-virtualenv python-devel libevent-devel; do
+    for package in python2-pip python-virtualenv python-devel libevent-devel libffi-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
