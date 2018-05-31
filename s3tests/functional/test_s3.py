@@ -49,7 +49,7 @@ from .policy import Policy, Statement, make_json_policy
 import AnonymousAuth
 
 from email.header import decode_header
-from ordereddict import OrderedDict
+from collections import OrderedDict
 
 from boto.s3.cors import CORSConfiguration
 from urllib import quote_plus
