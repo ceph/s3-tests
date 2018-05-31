@@ -314,7 +314,7 @@ def test_object_create_bad_contentlength_empty():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
     eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, None)
+    eq(e.error_code, 'BadRequest')
 
 
 @tag('auth_common')
@@ -361,7 +361,7 @@ def test_object_create_bad_contentlength_unreadable():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 400)
     eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, None)
+    eq(e.error_code, 'BadRequest')
 
 
 @tag('auth_common')
@@ -658,7 +658,7 @@ def test_bucket_create_bad_contentlength_unreadable():
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
     eq(e.status, 400)
     eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, None)
+    eq(e.error_code, 'BadRequest')
 
 
 # the teardown is really messed up here. check it out
