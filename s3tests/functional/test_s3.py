@@ -7005,7 +7005,7 @@ def test_versioning_obj_plain_null_version_overwrite():
     e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
     eq(e.status, 404)
     eq(e.reason, 'Not Found')
-    eq(e.error_code, 'NoSuchKey')
+    eq(e.error_code, 'NoSuchVersion')
 
     k = []
     for key in bucket.list_versions():
@@ -7047,7 +7047,7 @@ def test_versioning_obj_plain_null_version_overwrite_suspended():
     e = assert_raises(boto.exception.S3ResponseError, key.get_contents_as_string)
     eq(e.status, 404)
     eq(e.reason, 'Not Found')
-    eq(e.error_code, 'NoSuchKey')
+    eq(e.error_code, 'NoSuchVersion')
 
     k = []
     for key in bucket.list_versions():
