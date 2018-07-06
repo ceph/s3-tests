@@ -12,6 +12,7 @@ from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
 from .utils import region_sync_meta
+from ..abscallingformat import AbsoluteCallingFormat, abs_get_path
 
 s3 = bunch.Bunch()
 config = bunch.Bunch()
@@ -24,6 +25,7 @@ calling_formats = dict(
     ordinary=boto.s3.connection.OrdinaryCallingFormat(),
     subdomain=boto.s3.connection.SubdomainCallingFormat(),
     vhost=boto.s3.connection.VHostCallingFormat(),
+    absolute='absolute',
     )
 
 def get_prefix():
@@ -328,6 +330,10 @@ def setup():
         targets[name] = RegionsConn()
 
         for (k, conf) in regions.iteritems():
+            if conf.calling_format == 'absolute':
+                boto.s3.connection.S3Connection.get_path = abs_get_path
+                conf.calling_format = AbsoluteCallingFormat(conf.host, conf.port, conf.is_secure)
+
             conn = boto.s3.connection.S3Connection(
                 aws_access_key_id=cfg.get(section, 'access_key'),
                 aws_secret_access_key=cfg.get(section, 'secret_key'),
@@ -413,8 +419,20 @@ def _make_request(method, bucket, key, body=None, authenticated=False, response_
     If the request or response headers are None, then default values will be
     provided by later methods.
     """
+    conn = bucket.connection
+    # We're doing type introspection here and kind of expecting that these classes do not change their names
+    # suddenly, given that boto2 will not have much more new development updates, this should be generally ok
+    # in general this wouldn't affect OrdinaryCallingFormat
+    calling_format_type = type(conn.calling_format).__name__
+    non_path_style = set(['AbsoluteCallingFormat','SubdomainCallingFormat','VHostCallingFormat'])
+    # If path style is default, determine from the calling format type
+    path_style = path_style and (calling_format_type not in non_path_style)
+    is_absolute = calling_format_type == 'AbsoluteCallingFormat'
+
     if not path_style:
+        print("non path style request found for bucket %s method %s" % (bucket.name, method))
         conn = bucket.connection
+        request_headers = request_headers or dict()
         request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
 
     if authenticated:
@@ -428,6 +446,8 @@ def _make_request(method, bucket, key, body=None, authenticated=False, response_
         url = urlobj.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
         o = urlparse(url)
         path = o.path + '?' + o.query
+        if is_absolute:
+            path = o.scheme + ":" + path
     else:
         bucketobj = None
         if key is not None:
