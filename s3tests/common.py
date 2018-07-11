@@ -58,6 +58,29 @@ def nuke_bucket(bucket):
                 key.set_canned_acl('private')
                 key.delete()
                 deleted_cnt += 1
+        # Delete old versioned keys
+        deleted_cnt = 1
+        while deleted_cnt:
+            deleted_cnt = 0
+            for key in bucket.list_versions():
+                print 'Cleaning bucket {bucket} key {key} version {verion}'.format(
+                    bucket=bucket,
+                    key=key,
+                    version=key.version_id,
+                    )
+                key.set_canned_acl('private')
+                key.delete()
+                deleted_cnt += 1
+        # Delete all multiparts
+        deleted_cnt = 1
+        while deleted_cnt:
+            deleted_cnt = 0
+            for mp in bucket.list_multipart_uploads():
+                print 'Cleaning bucket {bucket} multipart {mp}'.format(
+                    bucket=bucket,
+                    mp=str(mp),
+                    )
+                mp.cancel_upload()
         bucket.delete()
     except boto.exception.S3ResponseError as e:
         # TODO workaround for buggy rgw that fails to send
