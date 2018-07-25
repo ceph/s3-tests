@@ -7816,6 +7816,15 @@ def generate_lifecycle_body(rules):
         if 'AbortIncompleteMultipartUpload' in rule.keys():
             body += '<AbortIncompleteMultipartUpload><DaysAfterInitiation>%d</DaysAfterInitiation>' \
                     '</AbortIncompleteMultipartUpload>' % rule['AbortIncompleteMultipartUpload']['DaysAfterInitiation']
+        if 'Transition' in rule.keys():
+            if 'Date' in rule['Transition'].keys():
+                body += '<Transition><Date>%s</Date>' % rule['Transition']['Date']
+            else:
+                body += '<Transition><Days>%d</Days>' % rule['Transition']['Days']
+            body += '<StorageClass>%s</StorageClass></Transition>' % rule['Transition']['StorageClass']
+        if 'NoncurrentVersionTransition' in rule.keys():
+            body += '<NoncurrentVersionTransition><NoncurrentDays>%d</NoncurrentDays><StorageClass>%s</StorageClass>' \
+                    '</NoncurrentVersionTransition>' % (rule['NoncurrentVersionTransition']['Days'], rule['NoncurrentVersionTransition']['StorageClass'])
         body += '</Rule>'
     body += '</LifecycleConfiguration>'
     return body
@@ -8072,6 +8081,57 @@ def test_lifecycle_multipart_expiration():
     expire_keys = bucket.get_all_multipart_uploads()
     eq(len(init_keys), 2)
     eq(len(expire_keys), 1)
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with transition')
+@attr('lifecycle')
+def test_lifecycle_set_transition():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Prefix': 'test1/', 'Status': 'Enabled',
+         'Transition': {'Days': 2, 'StorageClass': 'STANDARD_IA'}},
+        {'ID': 'rule2', 'Prefix': 'test2/', 'Status': 'Enabled',
+         'Transition': {'Days': 3, 'StorageClass': 'ONEZONE_IA'}},
+        {'ID': 'rule3', 'Prefix': 'test3/', 'Status': 'Enabled',
+         'Transition': {'Days': 4, 'StorageClass': 'GLACIER'}},
+        {'ID': 'rule4', 'Prefix': 'test4/', 'Status': 'Enabled',
+         'Transition': {'Date': '2030-01-01', 'StorageClass': 'GLACIER'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with non-current transition')
+@attr('lifecycle')
+def test_lifecycle_set_noncur_transition():
+    bucket = get_new_bucket()
+    rules = [
+        {'ID': 'rule1', 'Prefix': 'test1/', 'Status': 'Enabled',
+         'NoncurrentVersionTransition': {'Days': 2, 'StorageClass': 'STANDARD_IA'}},
+        {'ID': 'rule2', 'Prefix': 'test2/', 'Status': 'Enabled',
+         'NoncurrentVersionTransition': {'Days': 3, 'StorageClass': 'ONEZONE_IA'}},
+        {'ID': 'rule3', 'Prefix': 'test3/', 'Status': 'Enabled',
+         'NoncurrentVersionTransition': {'Days': 4, 'StorageClass': 'GLACIER'}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
 
 
 def _test_encryption_sse_customer_write(file_size):
