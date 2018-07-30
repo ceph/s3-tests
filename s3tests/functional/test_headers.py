@@ -370,7 +370,6 @@ def test_object_create_bad_contentlength_unreadable():
 @attr(operation='create w/content length too long')
 @attr(assertion='fails 400')
 @nose.with_setup(teardown=_clear_custom_headers)
-@attr('fails_on_rgw')
 def test_object_create_bad_contentlength_mismatch_above():
     content = 'bar'
     length = len(content) + 1
