@@ -5867,6 +5867,23 @@ def test_set_cors():
     e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
     eq(e.status, 404)
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set cors rule more than 100')
+@attr(assertion='failed')
+def test_set_cors_101_rules():
+    bucket = get_new_bucket()
+    cfg = CORSConfiguration()
+    for i in range(1 , 102):
+      cfg.add_rule('GET', 'prefix%s*' % (i,))
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.get_cors)
+    eq(e.status, 404)
+
+    e = assert_raises(boto.exception.S3ResponseError, bucket.set_cors, cfg)
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidRequest')
+
 def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
     r = func(url, headers=headers)
     eq(r.status_code, expect_status)
