@@ -34,7 +34,7 @@ elif [ -f /etc/redhat-release ]; then
     fi
 fi
 
-virtualenv --no-site-packages --distribute virtualenv
+virtualenv -p python2 --no-site-packages --distribute virtualenv
 
 # avoid pip bugs
 ./virtualenv/bin/pip install --upgrade pip
