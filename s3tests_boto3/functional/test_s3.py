@@ -5387,6 +5387,7 @@ def test_object_copy_key_not_found():
 @attr(method='put')
 @attr(operation='copy object to/from versioned bucket')
 @attr(assertion='works')
+@attr('versioning')
 def test_object_copy_versioned_bucket():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5502,6 +5503,7 @@ def _multipart_upload(bucket_name, key, size, part_size=5*1024*1024, client=None
 @attr(method='put')
 @attr(operation='test copy object of a multipart upload')
 @attr(assertion='successful')
+@attr('versioning')
 def test_object_copy_versioning_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5837,6 +5839,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies of versioned objects')
+@attr('versioning')
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
     dest_bucket_name = get_new_bucket()
@@ -6229,6 +6232,7 @@ def test_100_continue():
 @attr(method='put')
 @attr(operation='set cors')
 @attr(assertion='succeeds')
+@attr('cors')
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6268,6 +6272,7 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
 @attr(method='get')
 @attr(operation='check cors response when origin header set')
 @attr(assertion='returning cors header')
+@attr('cors')
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6347,6 +6352,7 @@ def test_cors_origin_response():
 @attr(method='get')
 @attr(operation='check cors response when origin is set to wildcard')
 @attr(assertion='returning cors header')
+@attr('cors')
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6376,6 +6382,7 @@ def test_cors_origin_wildcard():
 @attr(method='get')
 @attr(operation='check cors response when Access-Control-Request-Headers is set in option request')
 @attr(assertion='returning cors header')
+@attr('cors')
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -9744,6 +9751,7 @@ def test_delete_tags_obj_public():
 @attr(method='put')
 @attr(operation='test whether a correct version-id returned')
 @attr(assertion='version-id is same as bucket list')
+@attr('versioning')
 def test_versioning_bucket_atomic_upload_return_version_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9777,6 +9785,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
 @attr(method='put')
 @attr(operation='test whether a correct version-id returned')
 @attr(assertion='version-id is same as bucket list')
+@attr('versioning')
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
