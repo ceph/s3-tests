@@ -3276,27 +3276,6 @@ def test_bucket_create_naming_bad_long_254():
 def test_bucket_create_naming_bad_long_255():
     _test_bucket_create_naming_bad_long(255)
 
-'''
-# Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list w/251 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
-def test_bucket_list_long_name():
-    prefix = get_new_bucket_name()
-    length = 251
-    num = length - len(prefix)
-    bucket = get_new_bucket(targets.main.default, '{prefix}{name}'.format(
-            prefix=prefix,
-            name=num*'a',
-            ))
-    got = bucket.list()
-    got = list(got)
-    eq(got, [])
-'''
-
 
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
