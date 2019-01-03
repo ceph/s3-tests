@@ -29,6 +29,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from collections import namedtuple
+from collections import defaultdict
 from email.Utils import formatdate
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
@@ -7629,10 +7630,21 @@ def create_lifecycle(days = None, prefix = 'test/', rules = None):
         lifecycle.append(rule)
     else:
         for rule in rules:
-            expiration = boto.s3.lifecycle.Expiration(days=rule['days'])
+            expiration = None
+            transition = None
+            try:
+                expiration = boto.s3.lifecycle.Expiration(days=rule['days'])
+            except:
+                pass
+
+            try:
+                transition = rule['transition']
+            except:
+                pass
+
             _id = rule.get('id',None)
             rule = boto.s3.lifecycle.Rule(id=_id, prefix=rule['prefix'],
-                                          status=rule['status'], expiration=expiration)
+                                          status=rule['status'], expiration=expiration, transition=transition)
             lifecycle.append(rule)
     return lifecycle
 
@@ -7641,6 +7653,16 @@ def set_lifecycle(rules = None):
     lifecycle = create_lifecycle(rules=rules)
     bucket.configure_lifecycle(lifecycle)
     return bucket
+
+def lc_transition(days=None, date=None, storage_class=None):
+    return boto.s3.lifecycle.Transition(days=days, date=date, storage_class=storage_class)
+
+def lc_transitions(transitions=None):
+    result = boto.s3.lifecycle.Transitions()
+    for t in transitions:
+        result.add_transition(days=t.days, date=t.date, storage_class=t.storage_class)
+
+    return result
 
 
 @attr(resource='bucket')
@@ -7728,6 +7750,94 @@ def test_lifecycle_expiration():
     eq(len(keep2_keys), 4)
     eq(len(expire3_keys), 2)
 
+def list_bucket_storage_class(bucket):
+    result = defaultdict(list)
+    for k in bucket.get_all_versions():
+        result[k.storage_class].append(k)
+
+    return result
+
+
+# The test harness for lifecycle is configured to treat days as 10 second intervals.
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('fails_on_aws')
+def test_lifecycle_transition():
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'transition': lc_transition(days=1, storage_class='FOOCLASS'), 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'transition': lc_transition(days=4, storage_class='BARCLASS'), 'prefix': 'expire3/', 'status': 'Enabled'}])
+    _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                      'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    eq(len(init_keys), 6)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 4)
+    eq(len(expire1_keys['FOOCLASS']), 2)
+    eq(len(expire1_keys['BARCLASS']), 0)
+
+    # Wait for next expiration cycle
+    time.sleep(10)
+    keep2_keys = list_bucket_storage_class(bucket)
+    eq(len(keep2_keys['STANDARD']), 4)
+    eq(len(keep2_keys['FOOCLASS']), 2)
+    eq(len(keep2_keys['BARCLASS']), 0)
+
+    # Wait for final expiration cycle
+    time.sleep(20)
+    expire3_keys = list_bucket_storage_class(bucket)
+    eq(len(expire3_keys['STANDARD']), 2)
+    eq(len(expire3_keys['FOOCLASS']), 2)
+    eq(len(expire3_keys['BARCLASS']), 2)
+
+# The test harness for lifecycle is configured to treat days as 10 second intervals.
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('fails_on_aws')
+def test_lifecycle_transition_single_rule_multi_trans():
+    bucket = set_lifecycle(rules=[
+        {'id': 'rule1',
+         'transition': lc_transitions([
+                lc_transition(days=1, storage_class='FOOCLASS'),
+                lc_transition(days=4, storage_class='BARCLASS')]),
+        'prefix': 'expire1/',
+        'status': 'Enabled'}])
+
+    _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                      'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    eq(len(init_keys), 6)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 4)
+    eq(len(expire1_keys['FOOCLASS']), 2)
+    eq(len(expire1_keys['BARCLASS']), 0)
+
+    # Wait for next expiration cycle
+    time.sleep(10)
+    keep2_keys = list_bucket_storage_class(bucket)
+    eq(len(keep2_keys['STANDARD']), 4)
+    eq(len(keep2_keys['FOOCLASS']), 2)
+    eq(len(keep2_keys['BARCLASS']), 0)
+
+    # Wait for final expiration cycle
+    time.sleep(20)
+    expire3_keys = list_bucket_storage_class(bucket)
+    eq(len(expire3_keys['STANDARD']), 4)
+    eq(len(expire3_keys['FOOCLASS']), 0)
+    eq(len(expire3_keys['BARCLASS']), 2)
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='id too long in lifecycle rule')
@@ -7813,6 +7923,14 @@ def generate_lifecycle_body(rules):
         if 'NoncurrentVersionExpiration' in rule.keys():
             body += '<NoncurrentVersionExpiration><NoncurrentDays>%d</NoncurrentDays></NoncurrentVersionExpiration>' % \
                     rule['NoncurrentVersionExpiration']['NoncurrentDays']
+        if 'NoncurrentVersionTransition' in rule.keys():
+            for t in rule['NoncurrentVersionTransition']:
+                body += '<NoncurrentVersionTransition>'
+                body += '<NoncurrentDays>%d</NoncurrentDays>' % \
+                    t['NoncurrentDays']
+                body += '<StorageClass>%s</StorageClass>' % \
+                    t['StorageClass']
+                body += '</NoncurrentVersionTransition>'
         if 'AbortIncompleteMultipartUpload' in rule.keys():
             body += '<AbortIncompleteMultipartUpload><DaysAfterInitiation>%d</DaysAfterInitiation>' \
                     '</AbortIncompleteMultipartUpload>' % rule['AbortIncompleteMultipartUpload']['DaysAfterInitiation']
@@ -7935,6 +8053,106 @@ def test_lifecycle_noncur_expiration():
     eq(len(init_keys), 6)
     eq(len(expire_keys), 4)
 
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config with noncurrent version expiration')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+def test_lifecycle_set_noncurrent_transition():
+    bucket = get_new_bucket()
+    rules = [
+        {
+            'ID': 'rule1',
+            'Prefix': 'test1/',
+            'Status': 'Enabled',
+            'NoncurrentVersionTransition': [
+                {
+                    'NoncurrentDays': 2,
+                    'StorageClass': 'FOOCLASS'
+                },
+                {
+                    'NoncurrentDays': 4,
+                    'StorageClass': 'BARCLASS'
+                }
+            ],
+            'NoncurrentVersionExpiration': {
+                'NoncurrentDays': 6
+            }
+        },
+        {'ID': 'rule2', 'Prefix': 'test2/', 'Status': 'Disabled', 'NoncurrentVersionExpiration': {'NoncurrentDays': 3}}
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    res = bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle non-current version expiration')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('lifecycle_transition')
+@attr('fails_on_aws')
+def test_lifecycle_noncur_transition():
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    rules = [
+        {
+            'ID': 'rule1',
+            'Prefix': 'test1/',
+            'Status': 'Enabled',
+            'NoncurrentVersionTransition': [
+                {
+                    'NoncurrentDays': 1,
+                    'StorageClass': 'FOOCLASS'
+                },
+                {
+                    'NoncurrentDays': 3,
+                    'StorageClass': 'BARCLASS'
+                }
+            ],
+            'NoncurrentVersionExpiration': {
+                'NoncurrentDays': 5
+            }
+        }
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+
+    create_multiple_versions(bucket, "test1/a", 3)
+    create_multiple_versions(bucket, "test1/b", 3)
+    init_keys = bucket.get_all_versions()
+    eq(len(init_keys), 6)
+
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys['FOOCLASS']), 4)
+    eq(len(expire1_keys['BARCLASS']), 0)
+
+    time.sleep(20)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys['FOOCLASS']), 0)
+    eq(len(expire1_keys['BARCLASS']), 4)
+
+    time.sleep(20)
+    expire_keys = bucket.get_all_versions()
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys['FOOCLASS']), 0)
+    eq(len(expire1_keys['BARCLASS']), 0)
 
 @attr(resource='bucket')
 @attr(method='put')
