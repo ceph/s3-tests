@@ -5335,12 +5335,19 @@ def _multipart_copy(src_bucketname, src_keyname, dst_bucket, dst_keyname, size, 
 
     return upload
 
-def _create_key_with_random_content(keyname, size=7*1024*1024, bucket=None):
+def _populate_key(keyname, size=7*1024*1024, bucket=None, storage_class=None):
     if bucket is None:
         bucket = get_new_bucket()
     key = bucket.new_key(keyname)
-    data = StringIO(str(generate_random(size, size).next()))
+    if storage_class:
+        key.storage_class = storage_class
+    data_str = str(generate_random(size, size).next())
+    data = StringIO(data_str)
     key.set_contents_from_file(fp=data)
+    return (bucket, key, data_str)
+
+def _create_key_with_random_content(keyname, size=7*1024*1024, bucket=None):
+    bucket, key, _ = _populate_key(keyname, size, bucket)
     return (bucket, key)
 
 @attr(resource='object')
@@ -5758,6 +5765,30 @@ def test_multipart_upload_incorrect_etag():
     eq(e.status, 400)
     eq(e.reason.lower(), 'bad request') # some proxies vary the case
     eq(e.error_code, 'InvalidPart')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='test create object with storage class')
+@attr('storage_class')
+@attr('fails_on_aws')
+def test_object_storage_class():
+    sc = configured_storage_classes()
+    if len(sc) < 3:
+        raise SkipTest
+
+    bucket = get_new_bucket()
+
+    for storage_class in sc:
+        kname = 'foo-' + storage_class
+        k, _, data = _populate_key(kname, bucket=bucket, size=9*1024*1024, storage_class=storage_class)
+
+        read_key = bucket.get_key(kname)
+
+        eq(read_key.storage_class, storage_class)
+        read_data = read_key.get_contents_as_string()
+
+        equal = data == read_data # avoid spamming log if data not equal
+        eq(equal, True)
 
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
