@@ -5799,6 +5799,14 @@ def copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, storag
                     query_args=query_args, headers=headers)
             eq(res.status, 200)
 
+def _populate_multipart_key(bucket, kname, size, storage_class=None):
+    (upload, data) = _multipart_upload(bucket, kname, size, storage_class=storage_class)
+    upload.complete_upload()
+
+    k = bucket.get_key(kname)
+
+    return (k, data)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='test create object with storage class')
@@ -5867,22 +5875,50 @@ def test_object_modify_storage_class():
     _do_test_object_modify_storage_class(_populate_key, size=9*1024*1024)
 
 
-def _populate_multipart_upload(bucket, kname, size, storage_class=None):
-    (upload, data) = _multipart_upload(bucket, kname, size, storage_class=storage_class)
-    upload.complete_upload()
-
-    k = bucket.get_key(kname)
-
-    return (k, data)
-
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='test changing objects storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
 def test_object_modify_storage_class_multipart():
-    do_test_object_modify_storage_class(_populate_multipart_upload, size=11*1024*1024)
+    _do_test_object_modify_storage_class(_populate_multipart_key, size=11*1024*1024)
 
+def _do_test_object_storage_class_copy(obj_write_func, size):
+    sc = configured_storage_classes()
+    if len(sc) < 2:
+        raise SkipTest
+
+    src_bucket = get_new_bucket()
+    dest_bucket = get_new_bucket()
+    kname = 'foo'
+
+    src_key, data = obj_write_func(src_bucket, kname, size)
+    verify_object(src_bucket, src_key, data)
+
+    for new_storage_class in sc:
+        if new_storage_class == src_key.storage_class:
+            continue
+
+        dest_key = dest_bucket.get_key('foo-' + new_storage_class, validate=False)
+
+        copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, new_storage_class)
+        verify_object(dest_bucket, dest_key, data, new_storage_class)
+
+@attr(resource='object')
+@attr(method='copy')
+@attr(operation='test copy object to object with different storage class')
+@attr('storage_class')
+@attr('fails_on_aws')
+def test_object_storage_class_copy():
+    _do_test_object_storage_class_copy(_populate_key, size=9*1024*1024)
+
+@attr(resource='object')
+@attr(method='copy')
+@attr(operation='test changing objects storage class')
+@attr('storage_class')
+@attr('fails_on_aws')
+def test_object_storage_class_copy_multipart():
+    _do_test_object_storage_class_copy(_populate_multipart_key, size=9*1024*1024)
 
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
