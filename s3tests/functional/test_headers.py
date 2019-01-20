@@ -11,7 +11,6 @@ import random
 import string
 import socket
 import ssl
-import os
 import re
 from email.utils import formatdate
 
@@ -21,9 +20,10 @@ from boto.s3.connection import S3Connection
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
+from .utils import check_aws2_support
+from .utils import check_aws4_support
 import AnonymousAuth
 
 from email.header import decode_header
@@ -1091,15 +1091,6 @@ def test_bucket_create_bad_date_before_epoch_aws2():
 #
 # AWS4 specific tests
 #
-
-def check_aws4_support():
-    if 'S3_USE_SIGV4' not in os.environ:
-       raise SkipTest
-
-def check_aws2_support():
-    if 'S3_USE_SIGV4' in os.environ:
-       raise SkipTest
-
 
 @tag('auth_aws4')
 @attr(resource='object')

@@ -1,8 +1,10 @@
+import os
 import random
 import requests
 import string
 import time
 
+from nose.plugins.skip import SkipTest
 from nose.tools import eq_ as eq
 
 def assert_raises(excClass, callableObj, *args, **kwargs):
@@ -19,6 +21,14 @@ def assert_raises(excClass, callableObj, *args, **kwargs):
         else:
             excName = str(excClass)
         raise AssertionError("%s not raised" % excName)
+
+def check_aws4_support():
+    if 'S3_USE_SIGV4' not in os.environ:
+       raise SkipTest
+
+def check_aws2_support():
+    if 'S3_USE_SIGV4' in os.environ:
+       raise SkipTest
 
 def generate_random(size, part_size=5*1024*1024):
     """
