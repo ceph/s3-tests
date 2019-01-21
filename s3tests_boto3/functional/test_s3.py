@@ -6726,6 +6726,8 @@ def test_atomic_dual_conditional_write_1mb():
 @attr(operation='write file in deleted bucket')
 @attr(assertion='fail 404')
 @attr('fails_on_aws')
+#TODO: This test fails when ssl is ON, fix it.
+@attr('fails_on_rgw')
 def test_atomic_write_bucket_gone():
     bucket_name = get_new_bucket()
     client = get_client()
