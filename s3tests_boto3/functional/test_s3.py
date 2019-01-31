@@ -5102,6 +5102,38 @@ def test_bucket_recreate_not_overriding():
     objs_list = get_objects_list(bucket_name)
     eq(key_names, objs_list)
 
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all objects in a bucket using list_objects_v2')
+@attr(assertion='returns all expected objects')
+
+def test_listobjects_v2():
+    client = get_client()
+    bucket_names = []
+    for i in xrange(5):
+        bucket_name = get_new_bucket_name()
+        bucket_names.append(bucket_name)
+
+    for name in bucket_names:
+        client.create_bucket(Bucket=name)
+
+    response = client.list_buckets()
+    bucket_dicts = response['Buckets']
+    buckets_list = []
+
+    buckets_list = get_buckets_list()
+
+    for name in bucket_names:
+        if name in buckets_list:
+            response1 = client.list_objects_v2(Bucket=name)
+            print response1
+        else:
+            raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
+
+
+    
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create and list objects with special names')
