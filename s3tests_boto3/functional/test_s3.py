@@ -3479,6 +3479,20 @@ def check_grants(got, want):
         eq(g['Grantee'].pop('EmailAddress', None), w['EmailAddress'])
         eq(g, {'Grantee': {}})
 
+# test_bucket_acl_nonexistent_bucket
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get acl')
+@attr(assertion='raise NoSuchBucket')
+def test_bucket_acl_nonexistent_bucket():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    # do not create bucket_name
+    e = assert_raises(ClientError, client.get_bucket_acl, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+    eq(error_code, 'NoSuchBucket')
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='default acl')
