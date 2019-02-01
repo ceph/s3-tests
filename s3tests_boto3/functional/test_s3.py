@@ -5117,6 +5117,10 @@ def test_listobjects_v2():
 
     for name in bucket_names:
         client.create_bucket(Bucket=name)
+        
+    for i in bucket_names:
+        for j in range(5):
+            client.put_object(Bucket=i, Key=j)
 
     response = client.list_buckets()
     bucket_dicts = response['Buckets']
