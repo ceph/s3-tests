@@ -5137,36 +5137,28 @@ def test_listobjects_v2():
 
 
 def test_contentslistobjects_v2():
-	client = get_client()
+    client = get_client()
     bucket_names = []
     for i in xrange(5):
         bucket_name = get_new_bucket_name()
         bucket_names.append(bucket_name)
-
     for name in bucket_names:
         client.create_bucket(Bucket=name)
-
     for i in bucket_names:
     	for j in range(5):
-    		client.put_object(Bucket=i, Key=j)
-
+    		client.put_object(Bucket=i, Key=str(j))
     response = client.list_buckets()
     bucket_dicts = response['Buckets']
     buckets_list = []
-
     buckets_list = get_buckets_list()
-
     for name in bucket_names:
         if name in buckets_list:
             s3_result = client.list_objects_v2(Bucket=name,Prefix='/',Delimiter='/')
         else:
         	raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
-
     if 'Contents' not in s3_result:
     	return []
-
     list = []
-
     while s3_result['IsTruncated']:
     	continuation_key = s3_result['NextContinuationToken']
     	s3_result = client.list_objects_v2(Bucket=name,prefix='/',Delimiter='/',ContinuationToken = continuation_key)
