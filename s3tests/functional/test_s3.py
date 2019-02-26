@@ -2776,9 +2776,9 @@ def test_append_object():
     o = urlparse(url)
     path = o.path + '?' + o.query
     path1 = path + '&append&position=0'
-    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc')
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
     path2 = path + '&append&position=3'
-    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc')
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
     eq(res.status, 200)
     eq(res.reason, 'OK')
 
@@ -2801,7 +2801,7 @@ def test_append_normal_object():
     o = urlparse(url)
     path = o.path + '?' + o.query
     path = path + '&append&position=3'
-    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path, body='abc')
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path, body='abc', secure=s3.main.is_secure)
     eq(res.status, 409)
 
 
@@ -2819,9 +2819,9 @@ def test_append_object_position_wrong():
     o = urlparse(url)
     path = o.path + '?' + o.query
     path1 = path + '&append&position=0'
-    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc')
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
     path2 = path + '&append&position=9'
-    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc')
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
     eq(res.status, 409)
     eq(int(res.getheader('x-rgw-next-append-position')), 3)
 
