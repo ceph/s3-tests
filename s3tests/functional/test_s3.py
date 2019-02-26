@@ -1209,6 +1209,58 @@ def test_object_write_expires():
     eq(key2.expires, expires)
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='correct robots tag header')
+def test_object_write_robots_tag():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    robots_tag = 'googlebot: noarchive'
+    key.set_contents_from_string('bar', headers = {'X-Robots-Tag': robots_tag })
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['x-robots-tag'], robots_tag)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content encoding header')
+def test_object_write_content_encoding():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_encoding = 'gzip'
+    key.set_contents_from_string('bar', headers = {'Content-Encoding': 'gzip'})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-encoding'], content_encoding)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content disposition header')
+def test_object_write_content_disposition():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_disposition = u'filename=sample.txt'
+    key.set_contents_from_string('bar', headers = {'Content-disposition': content_disposition})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-disposition'], content_disposition)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='write key')
+@attr(assertion='corrects content language header')
+def test_object_write_content_language():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    content_language = 'de'
+    key.set_contents_from_string('bar', headers = {'Content-Language': content_language})
+    key2 = bucket.get_key('foo')
+    remote_metadata = key2._get_remote_metadata()
+    eq(remote_metadata['content-language'], content_language)
+
+@attr(resource='object')
 @attr(method='all')
 @attr(operation='complete object life cycle')
 @attr(assertion='read back what we wrote and rewrote')
@@ -1340,6 +1392,15 @@ def test_object_set_get_metadata_empty_to_unreadable_prefix():
     got = _set_get_metadata_unreadable(metadata)
     eq(got, [(metadata, 'utf-8')])
 
+@attr(resource='object.metadata')
+@attr(method='put')
+@attr(operation='metadata write')
+@attr(assertion='non-printing prefixes noted and preserved')
+@attr('fails_strict_rfc2616')
+def test_object_set_get_metadata_bencoding_unreadable_suffix():
+    metadata = 5 * '\x04'
+    got = _set_get_metadata_unreadable(metadata)
+    eq(got, [(metadata, 'utf-8')])
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -5025,6 +5086,18 @@ def test_object_copy_to_itself_with_metadata():
     key2 = bucket2.get_key('foo123bar')
     md = key2.get_metadata('foo')
     eq(md, 'bar')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='verifying x-amz-copy-src URL encoding and decoding')
+@attr(assertion='works')
+def test_object_copy_url_encoding():
+    buckets = [get_new_bucket(), get_new_bucket()]
+    key = buckets[0].new_key('foobar with %-sign')
+    key.set_contents_from_string('foo')
+    key.copy(buckets[1], 'foobar123')
+    key2 = buckets[1].get_key('foobar123')
+    eq(key2.get_contents_as_string(), 'foo')
 
 @attr(resource='object')
 @attr(method='put')
