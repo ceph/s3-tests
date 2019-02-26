@@ -66,6 +66,7 @@ from . import (
     is_slow_backend,
     _make_request,
     _make_bucket_request,
+    _make_raw_request,
     )
 
 
@@ -2761,6 +2762,69 @@ def test_put_object_ifnonmatch_overwrite_existed_failed():
     got_old_data = key.get_contents_as_string()
     eq(got_old_data, 'bar')
 
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='append object')
+@attr(assertion='success')
+@attr('fails_on_aws')
+@attr('appendobject')
+def test_append_object():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    expires_in = 100000
+    url = key.generate_url(expires_in, method='PUT')
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+    path1 = path + '&append&position=0'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
+    path2 = path + '&append&position=3'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
+    eq(res.status, 200)
+    eq(res.reason, 'OK')
+
+    key = bucket.get_key('foo')
+    eq(key.size, 6) 
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='append to normal object')
+@attr(assertion='fails 409')
+@attr('fails_on_aws')
+@attr('appendobject')
+def test_append_normal_object():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    key.set_contents_from_string('abc')
+    expires_in = 100000
+    url = key.generate_url(expires_in, method='PUT')
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+    path = path + '&append&position=3'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path, body='abc', secure=s3.main.is_secure)
+    eq(res.status, 409)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='append position not right')
+@attr(assertion='fails 409')
+@attr('fails_on_aws')
+@attr('appendobject')
+def test_append_object_position_wrong():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    expires_in = 100000
+    url = key.generate_url(expires_in, method='PUT')
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+    path1 = path + '&append&position=0'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
+    path2 = path + '&append&position=9'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
+    eq(res.status, 409)
+    eq(int(res.getheader('x-rgw-next-append-position')), 3)
 
 def _setup_request(bucket_acl=None, object_acl=None):
     """
