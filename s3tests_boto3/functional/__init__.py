@@ -339,6 +339,9 @@ def get_config_host():
 def get_config_port():
     return config.default_port
 
+def get_config_endpoint():
+    return config.default_endpoint
+
 def get_main_aws_access_key():
     return config.main_access_key
 
