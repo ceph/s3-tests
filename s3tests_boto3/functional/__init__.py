@@ -219,7 +219,6 @@ def get_client(client_config=None):
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
@@ -229,7 +228,6 @@ def get_v2_client():
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version='s3'))
     return client
 
@@ -242,7 +240,6 @@ def get_alt_client(client_config=None):
                         aws_secret_access_key=config.alt_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
@@ -255,7 +252,6 @@ def get_tenant_client(client_config=None):
                         aws_secret_access_key=config.tenant_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
@@ -265,7 +261,6 @@ def get_unauthenticated_client():
                         aws_secret_access_key='',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version=UNSIGNED))
     return client
 
@@ -275,7 +270,6 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         aws_secret_access_key='roflmao',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version='s3v4'))
     return client
 
@@ -303,11 +297,10 @@ def get_new_bucket_resource(name=None):
     reset ACLs and such.
     """
     s3 = boto3.resource('s3', 
-                        use_ssl=False,
-                        verify=False,
-                        endpoint_url=config.default_endpoint,
                         aws_access_key_id=config.main_access_key,
-                        aws_secret_access_key=config.main_secret_key)
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure)
     if name is None:
         name = get_new_bucket_name()
     bucket = s3.Bucket(name)
