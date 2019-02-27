@@ -6189,7 +6189,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
             )
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if(is_secure == True):
+    if is_secure:
         s = ssl.wrap_socket(s);
     s.settimeout(5)
     s.connect((host, port))

@@ -155,7 +155,7 @@ def setup():
     # vars from the DEFAULT section
     config.default_host = defaults.get("host")
     config.default_port = int(defaults.get("port"))
-    config.default_is_secure = defaults.get("is_secure")
+    config.default_is_secure = cfg.getboolean('DEFAULT', "is_secure")
 
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
