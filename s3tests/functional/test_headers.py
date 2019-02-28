@@ -1415,7 +1415,7 @@ def test_object_create_bad_amz_date_before_epoch_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'RequestTimeTooSkewed')
 
 
 @tag('auth_aws4')
@@ -1773,4 +1773,4 @@ def test_bucket_create_bad_amz_date_before_epoch_aws4():
 
     eq(e.status, 403)
     eq(e.reason, 'Forbidden')
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'RequestTimeTooSkewed')
