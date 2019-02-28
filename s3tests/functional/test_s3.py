@@ -5473,7 +5473,7 @@ def test_multipart_copy_invalid_range():
     e = assert_raises(boto.exception.S3ResponseError, copy_part, bucket.name, key.name, bucket, 'dest', upload.id, 0, 0, 21)
     valid_status = [400, 416]
     if not e.status in valid_status:
-       raise AssertionError("Invalid response " + str(status))
+       raise AssertionError("Invalid response " + str(e.status))
     valid_reason = ['Bad Request', 'Requested Range Not Satisfiable']
     if not e.reason in valid_reason:
        raise AssertionError("Invalid reason " + e.reason )
