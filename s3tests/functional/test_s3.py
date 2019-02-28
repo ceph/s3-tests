@@ -9402,6 +9402,7 @@ def test_bucket_policy_acl():
 @attr(operation='Test Bucket Policy for a user belonging to a different tenant')
 @attr(assertion='succeeds')
 @attr('bucket-policy')
+@attr('tenants')
 def test_bucket_policy_different_tenant():
     bucket = get_new_bucket()
     key = bucket.new_key('asdf')
