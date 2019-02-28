@@ -5473,7 +5473,7 @@ def test_multipart_copy_invalid_range():
     e = assert_raises(boto.exception.S3ResponseError, copy_part, bucket.name, key.name, bucket, 'dest', upload.id, 0, 0, 21)
     valid_status = [400, 416]
     if not e.status in valid_status:
-       raise AssertionError("Invalid response " + str(status))
+       raise AssertionError("Invalid response " + str(e.status))
     valid_reason = ['Bad Request', 'Requested Range Not Satisfiable']
     if not e.reason in valid_reason:
        raise AssertionError("Invalid reason " + e.reason )
@@ -5498,22 +5498,6 @@ def test_multipart_copy_without_range():
     key2 = dst_bucket.get_key(dst_keyname)
     eq(key2.size, 10)
     _check_key_content(src_key, key2)
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies with single small part')
-def test_multipart_copy_special_names():
-    src_bucket = get_new_bucket()
-    dst_bucket = get_new_bucket()
-    dst_keyname = "mymultipart"
-    size = 1
-    for name in (' ', '_', '__', '?versionId'):
-        (src_bucket, src_key) = _create_key_with_random_content(name, bucket=src_bucket)
-        copy = _multipart_copy(src_bucket.name, src_key.name, dst_bucket, dst_keyname, size)
-        copy.complete_upload()
-        key2 = dst_bucket.get_key(dst_keyname)
-        eq(key2.size, size)
-        _check_key_content(src_key, key2)
 
 def _check_content_using_range(k, data, step):
     objlen = k.size
