@@ -4445,6 +4445,7 @@ def _get_acl_header(user=None, perms=None):
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
+@attr('aws4_boto_header_ordering_bug')
 def test_object_header_acl_grants():
     bucket = get_new_bucket()
     headers = _get_acl_header()
@@ -4505,6 +4506,7 @@ def test_object_header_acl_grants():
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
+@attr('aws4_boto_header_ordering_bug')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
     bucket = get_new_bucket(targets.main.default, get_prefix(), headers)
@@ -5453,6 +5455,7 @@ def _check_key_content(src, dst):
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
+@attr('aws4_boto_header_ordering_bug')
 def test_multipart_copy_small():
     (src_bucket, src_key) = _create_key_with_random_content('foo')
     dst_bucket = get_new_bucket()
@@ -5467,6 +5470,7 @@ def test_multipart_copy_small():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with an invalid range')
+@attr('aws4_boto_header_ordering_bug')
 def test_multipart_copy_invalid_range():
     bucket, key = _create_key_with_random_content('source', size=5)
     upload = bucket.initiate_multipart_upload('dest')
@@ -5483,6 +5487,7 @@ def test_multipart_copy_invalid_range():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies without x-amz-copy-source-range')
+#@attr('aws4_boto_header_ordering_bug')
 def test_multipart_copy_without_range():
     (src_bucket, src_key) = _create_key_with_random_content('source', size=10)
     dst_bucket = get_new_bucket()
@@ -5556,6 +5561,7 @@ def test_multipart_upload():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
+@attr('aws4_boto_header_ordering_bug')
 def test_multipart_copy_special_names():
     src_bucket = get_new_bucket()
     dst_bucket = get_new_bucket()
@@ -5572,6 +5578,7 @@ def test_multipart_copy_special_names():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies of versioned objects')
+@attr('aws4_boto_header_ordering_bug')
 def test_multipart_copy_versioned():
     src_bucket = get_new_bucket()
     dst_bucket = get_new_bucket()
@@ -8569,6 +8576,7 @@ def _test_encryption_sse_customer_write(file_size):
 @attr(operation='Test SSE-C encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encrypted_transfer_1b():
     _test_encryption_sse_customer_write(1)
 
@@ -8578,6 +8586,7 @@ def test_encrypted_transfer_1b():
 @attr(operation='Test SSE-C encrypted transfer 1KB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encrypted_transfer_1kb():
     _test_encryption_sse_customer_write(1024)
 
@@ -8587,6 +8596,7 @@ def test_encrypted_transfer_1kb():
 @attr(operation='Test SSE-C encrypted transfer 1MB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encrypted_transfer_1MB():
     _test_encryption_sse_customer_write(1024*1024)
 
@@ -8596,6 +8606,7 @@ def test_encrypted_transfer_1MB():
 @attr(operation='Test SSE-C encrypted transfer 13 bytes')
 @attr(assertion='success')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encrypted_transfer_13b():
     _test_encryption_sse_customer_write(13)
 
@@ -8605,6 +8616,7 @@ def test_encrypted_transfer_13b():
 @attr(operation='Test SSE-C encrypted does perform head properly')
 @attr(assertion='success')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_method_head():
     bucket = get_new_bucket()
     sse_client_headers = {
@@ -8628,6 +8640,7 @@ def test_encryption_sse_c_method_head():
 @attr(operation='write encrypted with SSE-C and read without SSE-C')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_present():
     bucket = get_new_bucket()
     sse_client_headers = {
@@ -8647,6 +8660,7 @@ def test_encryption_sse_c_present():
 @attr(operation='write encrypted with SSE-C but read with other key')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_other_key():
     bucket = get_new_bucket()
     sse_client_headers_A = {
@@ -8672,6 +8686,7 @@ def test_encryption_sse_c_other_key():
 @attr(operation='write encrypted with SSE-C, but md5 is bad')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_invalid_md5():
     bucket = get_new_bucket()
     sse_client_headers = {
@@ -8724,6 +8739,7 @@ def test_encryption_sse_c_no_key():
 @attr(operation='Do not declare SSE-C but provide key and MD5')
 @attr(assertion='operation successfull, no encryption')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_key_no_sse_c():
     bucket = get_new_bucket()
     sse_client_headers = {
@@ -8778,6 +8794,7 @@ def _check_content_using_range_enc(k, data, step, enc_headers=None):
 @attr(operation='complete multi-part upload')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_multipart_upload():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -8815,6 +8832,7 @@ def test_encryption_sse_c_multipart_upload():
 @attr(operation='multipart upload with bad key for uploading chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -8843,6 +8861,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 @attr(operation='multipart upload with bad md5 for chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -8871,6 +8890,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 @attr(operation='complete multi-part upload and download with bad key')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_multipart_bad_download():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -8909,6 +8929,7 @@ def test_encryption_sse_c_multipart_bad_download():
 @attr(operation='authenticated browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
+@attr('aws4_boto_header_ordering_bug')
 def test_encryption_sse_c_post_object_authenticated_request():
     bucket = get_new_bucket()
 
@@ -8979,6 +9000,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
 @attr(operation='Test SSE-KMS encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_transfer_1b():
     _test_sse_kms_customer_write(1)
 
@@ -8988,6 +9010,7 @@ def test_sse_kms_transfer_1b():
 @attr(operation='Test SSE-KMS encrypted transfer 1KB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_transfer_1kb():
     _test_sse_kms_customer_write(1024)
 
@@ -8997,6 +9020,7 @@ def test_sse_kms_transfer_1kb():
 @attr(operation='Test SSE-KMS encrypted transfer 1MB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_transfer_1MB():
     _test_sse_kms_customer_write(1024*1024)
 
@@ -9006,6 +9030,7 @@ def test_sse_kms_transfer_1MB():
 @attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_transfer_13b():
     _test_sse_kms_customer_write(13)
 
@@ -9015,6 +9040,7 @@ def test_sse_kms_transfer_13b():
 @attr(operation='Test SSE-KMS encrypted does perform head properly')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_method_head():
     bucket = get_new_bucket()
     sse_kms_client_headers = {
@@ -9039,6 +9065,7 @@ def test_sse_kms_method_head():
 @attr(operation='write encrypted with SSE-KMS and read without SSE-KMS')
 @attr(assertion='operation success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_present():
     bucket = get_new_bucket()
     sse_kms_client_headers = {
@@ -9057,6 +9084,7 @@ def test_sse_kms_present():
 @attr(operation='declare SSE-KMS but do not provide key_id')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_no_key():
     bucket = get_new_bucket()
     sse_kms_client_headers = {
@@ -9073,6 +9101,7 @@ def test_sse_kms_no_key():
 @attr(operation='Do not declare SSE-KMS but provide key_id')
 @attr(assertion='operation successfull, no encryption')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_not_declared():
     bucket = get_new_bucket()
     sse_kms_client_headers = {
@@ -9090,6 +9119,7 @@ def test_sse_kms_not_declared():
 @attr(operation='complete KMS multi-part upload')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_multipart_upload():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -9126,6 +9156,7 @@ def test_sse_kms_multipart_upload():
 @attr(operation='multipart KMS upload with bad key_id for uploading chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_multipart_invalid_chunks_1():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -9150,6 +9181,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
 @attr(operation='multipart KMS upload with unexistent key_id for chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_multipart_invalid_chunks_2():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -9174,6 +9206,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
 @attr(operation='authenticated KMS browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_post_object_authenticated_request():
     bucket = get_new_bucket()
 
@@ -9222,6 +9255,7 @@ def test_sse_kms_post_object_authenticated_request():
 @attr(operation='Test SSE-KMS encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_barb_transfer_1b():
     if 'kms_keyid' not in config['main']:
         raise SkipTest
@@ -9233,6 +9267,7 @@ def test_sse_kms_barb_transfer_1b():
 @attr(operation='Test SSE-KMS encrypted transfer 1KB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_barb_transfer_1kb():
     if 'kms_keyid' not in config['main']:
         raise SkipTest
@@ -9244,6 +9279,7 @@ def test_sse_kms_barb_transfer_1kb():
 @attr(operation='Test SSE-KMS encrypted transfer 1MB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_barb_transfer_1MB():
     if 'kms_keyid' not in config['main']:
         raise SkipTest
@@ -9255,6 +9291,7 @@ def test_sse_kms_barb_transfer_1MB():
 @attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
 @attr(assertion='success')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_barb_transfer_13b():
     if 'kms_keyid' not in config['main']:
         raise SkipTest
@@ -9265,6 +9302,7 @@ def test_sse_kms_barb_transfer_13b():
 @attr(operation='write encrypted with SSE-KMS and read with SSE-KMS')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('kms')
 def test_sse_kms_read_declare():
     bucket = get_new_bucket()
     sse_kms_client_headers = {
@@ -9364,6 +9402,7 @@ def test_bucket_policy_acl():
 @attr(operation='Test Bucket Policy for a user belonging to a different tenant')
 @attr(assertion='succeeds')
 @attr('bucket-policy')
+@attr('tenants')
 def test_bucket_policy_different_tenant():
     bucket = get_new_bucket()
     key = bucket.new_key('asdf')
@@ -10498,6 +10537,7 @@ def test_bucket_policy_put_obj_grant():
 @attr(assertion='success')
 @attr('encryption')
 @attr('bucket-policy')
+@attr('aws4_boto_header_ordering_bug')
 def test_bucket_policy_put_obj_enc():
 
     bucket = get_new_bucket()
