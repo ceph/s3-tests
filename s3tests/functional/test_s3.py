@@ -3264,7 +3264,7 @@ def check_good_bucket_name(name, _prefix=None):
             ))
 
 
-def _test_bucket_create_naming_good_long(length):
+def _test_bucket_create_naming_bad_long(length):
     """
     Attempt to create a bucket whose name (including the
     prefix) is of a specified length.
@@ -3272,10 +3272,14 @@ def _test_bucket_create_naming_good_long(length):
     prefix = get_new_bucket_name()
     assert len(prefix) < 255
     num = length - len(prefix)
-    get_new_bucket(targets.main.default, '{prefix}{name}'.format(
+    e = assert_raises(boto.exception.S3ResponseError, get_new_bucket,
+          targets.main.default, '{prefix}{name}'.format(
             prefix=prefix,
             name=num*'a',
             ))
+    eq(e.status, 400)
+    eq(e.reason.lower(), 'bad request') # some proxies vary the case
+    eq(e.error_code, 'InvalidBucketName')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3284,9 +3288,8 @@ def _test_bucket_create_naming_good_long(length):
 @attr(method='put')
 @attr(operation='create w/250 byte name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
-def test_bucket_create_naming_good_long_250():
-    _test_bucket_create_naming_good_long(250)
+def test_bucket_create_naming_bad_long_250():
+    _test_bucket_create_naming_bad_long(250)
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3295,9 +3298,8 @@ def test_bucket_create_naming_good_long_250():
 @attr(method='put')
 @attr(operation='create w/251 byte name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
-def test_bucket_create_naming_good_long_251():
-    _test_bucket_create_naming_good_long(251)
+def test_bucket_create_naming_bad_long_251():
+    _test_bucket_create_naming_bad_long(251)
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3306,9 +3308,8 @@ def test_bucket_create_naming_good_long_251():
 @attr(method='put')
 @attr(operation='create w/252 byte name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
-def test_bucket_create_naming_good_long_252():
-    _test_bucket_create_naming_good_long(252)
+def test_bucket_create_naming_bad_long_252():
+    _test_bucket_create_naming_bad_long(252)
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3317,8 +3318,8 @@ def test_bucket_create_naming_good_long_252():
 @attr(method='put')
 @attr(operation='create w/253 byte name')
 @attr(assertion='fails with subdomain')
-def test_bucket_create_naming_good_long_253():
-    _test_bucket_create_naming_good_long(253)
+def test_bucket_create_naming_bad_long_253():
+    _test_bucket_create_naming_bad_long(253)
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3327,8 +3328,8 @@ def test_bucket_create_naming_good_long_253():
 @attr(method='put')
 @attr(operation='create w/254 byte name')
 @attr(assertion='fails with subdomain')
-def test_bucket_create_naming_good_long_254():
-    _test_bucket_create_naming_good_long(254)
+def test_bucket_create_naming_bad_long_254():
+    _test_bucket_create_naming_bad_long(254)
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3337,27 +3338,8 @@ def test_bucket_create_naming_good_long_254():
 @attr(method='put')
 @attr(operation='create w/255 byte name')
 @attr(assertion='fails with subdomain')
-def test_bucket_create_naming_good_long_255():
-    _test_bucket_create_naming_good_long(255)
-
-# Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list w/251 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
-def test_bucket_list_long_name():
-    prefix = get_new_bucket_name()
-    length = 251
-    num = length - len(prefix)
-    bucket = get_new_bucket(targets.main.default, '{prefix}{name}'.format(
-            prefix=prefix,
-            name=num*'a',
-            ))
-    got = bucket.list()
-    got = list(got)
-    eq(got, [])
+def test_bucket_create_naming_bad_long_255():
+    _test_bucket_create_naming_bad_long(255)
 
 
 # AWS does not enforce all documented bucket restrictions.
@@ -3382,14 +3364,12 @@ def test_bucket_create_naming_bad_punctuation():
     check_bad_bucket_name('alpha!soup')
 
 
-# test_bucket_create_naming_dns_* are valid but not recommended
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create w/underscore in name')
-@attr(assertion='succeeds')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
+@attr(assertion='fails')
 def test_bucket_create_naming_dns_underscore():
-    check_good_bucket_name('foo_bar')
+    check_bad_bucket_name('foo_bar')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3398,12 +3378,11 @@ def test_bucket_create_naming_dns_underscore():
 @attr(method='put')
 @attr(operation='create w/100 byte name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 def test_bucket_create_naming_dns_long():
     prefix = get_prefix()
     assert len(prefix) < 50
     num = 100 - len(prefix)
-    check_good_bucket_name(num * 'a')
+    check_bad_bucket_name(num * 'a')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3412,9 +3391,8 @@ def test_bucket_create_naming_dns_long():
 @attr(method='put')
 @attr(operation='create w/dash at end of name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 def test_bucket_create_naming_dns_dash_at_end():
-    check_good_bucket_name('foo-')
+    check_bad_bucket_name('foo-')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3423,9 +3401,8 @@ def test_bucket_create_naming_dns_dash_at_end():
 @attr(method='put')
 @attr(operation='create w/.. in name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 def test_bucket_create_naming_dns_dot_dot():
-    check_good_bucket_name('foo..bar')
+    check_bad_bucket_name('foo..bar')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3434,9 +3411,8 @@ def test_bucket_create_naming_dns_dot_dot():
 @attr(method='put')
 @attr(operation='create w/.- in name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 def test_bucket_create_naming_dns_dot_dash():
-    check_good_bucket_name('foo.-bar')
+    check_bad_bucket_name('foo.-bar')
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -3445,9 +3421,8 @@ def test_bucket_create_naming_dns_dot_dash():
 @attr(method='put')
 @attr(operation='create w/-. in name')
 @attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 def test_bucket_create_naming_dns_dash_dot():
-    check_good_bucket_name('foo-.bar')
+    check_bad_bucket_name('foo-.bar')
 
 
 @attr(resource='bucket')
