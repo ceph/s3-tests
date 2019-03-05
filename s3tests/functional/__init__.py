@@ -8,6 +8,8 @@ import itertools
 import os
 import random
 import string
+import pyotp
+import time
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
@@ -16,6 +18,7 @@ from .utils import region_sync_meta
 s3 = bunch.Bunch()
 config = bunch.Bunch()
 targets = bunch.Bunch()
+mfa = bunch.Bunch()
 
 # this will be assigned by setup()
 prefix = None
@@ -248,6 +251,42 @@ class RegionsConn:
         else:
             self.secondaries.append(conn)
 
+class MFAManager:
+    def __init__(self, conf, section):
+        self.is_configured = False
+        try:
+            self.serial = conf.get(section, 'totp_serial')
+            self.seed = conf.get(section, 'totp_seed')
+            self.totp_seconds = conf.getint(section, 'totp_seconds')
+            self.last_use = 0
+
+            self.totp = pyotp.TOTP(self.seed, interval=self.totp_seconds)
+
+            self.is_configured = True
+        except:
+            pass
+
+
+    def configured(self):
+        return self.is_configured
+
+    def wait_window(self):
+        cur_time = int(time.time())
+        next_time = self.last_use + self.totp_seconds
+
+        if next_time > cur_time:
+            time.sleep(next_time - cur_time)
+
+    def get_next_token(self, wait=True):
+        if wait:
+            self.wait_window()
+
+        ret = [self.serial, self.totp.now()]
+        self.last_use = int(time.time())
+        return ret
+
+
+
 
 # nosetests --processes=N with N>1 is safe
 _multiprocess_can_split_ = True
@@ -351,6 +390,8 @@ def setup():
                 targets[name].set_default(temp_targetConn)
 
         s3[name] = targets[name].default.connection
+
+        mfa[name] = MFAManager(cfg, section)
 
     # WARNING! we actively delete all buckets we see with the prefix
     # we've chosen! Choose your prefix with care, and don't reuse
