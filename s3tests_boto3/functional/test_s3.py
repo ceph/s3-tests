@@ -5131,7 +5131,9 @@ def test_listobjects_v2():
     for name in bucket_names:
         if name in buckets_list:
             response1 = client.list_objects_v2(Bucket=name)
-            print response1
+            d = json.loads(response1)
+            if d['KeyCount'] != 5:
+            	raise ValueError
         else:
             raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
