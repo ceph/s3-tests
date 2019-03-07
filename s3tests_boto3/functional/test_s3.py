@@ -50,6 +50,7 @@ from . import (
     get_config_is_secure,
     get_config_host,
     get_config_port,
+    get_config_endpoint,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_main_display_name,
@@ -1360,18 +1361,8 @@ def test_object_write_file():
     eq(body, 'bar')
 
 def _get_post_url(bucket_name):
-    protocol='http'
-    is_secure = get_config_is_secure()
-
-    if is_secure is True:
-        protocol='https'
-
-    host = get_config_host()
-    port = get_config_port()
-
-    url = '{protocol}://{host}:{port}/{bucket_name}'.format(protocol=protocol,\
-                host=host, port=port, bucket_name=bucket_name)
-    return url
+    endpoint = get_config_endpoint()
+    return '{endpoint}/{bucket_name}'.format(endpoint=endpoint, bucket_name=bucket_name)
 
 @attr(resource='object')
 @attr(method='post')
@@ -6189,7 +6180,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
             )
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if(is_secure == True):
+    if is_secure:
         s = ssl.wrap_socket(s);
     s.settimeout(5)
     s.connect((host, port))

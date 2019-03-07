@@ -155,7 +155,10 @@ def setup():
     # vars from the DEFAULT section
     config.default_host = defaults.get("host")
     config.default_port = int(defaults.get("port"))
-    config.default_is_secure = defaults.get("is_secure")
+    config.default_is_secure = cfg.getboolean('DEFAULT', "is_secure")
+
+    proto = 'https' if config.default_is_secure else 'http'
+    config.default_endpoint = "%s://%s:%d" % (proto, config.default_host, config.default_port)
 
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
@@ -211,27 +214,20 @@ def get_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version='s3v4')
 
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
 def get_v2_client():
-
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version='s3'))
     return client
 
@@ -239,14 +235,11 @@ def get_alt_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version='s3v4')
 
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.alt_access_key,
                         aws_secret_access_key=config.alt_secret_key,
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
@@ -254,40 +247,29 @@ def get_tenant_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version='s3v4')
 
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.tenant_access_key,
                         aws_secret_access_key=config.tenant_secret_key,
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=client_config)
     return client
 
 def get_unauthenticated_client():
-
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id='',
                         aws_secret_access_key='',
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version=UNSIGNED))
     return client
 
 def get_bad_auth_client(aws_access_key_id='badauth'):
-
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     client = boto3.client(service_name='s3',
                         aws_access_key_id=aws_access_key_id,
                         aws_secret_access_key='roflmao',
-                        endpoint_url=endpoint_url,
+                        endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
-                        verify=False,
                         config=Config(signature_version='s3v4'))
     return client
 
@@ -314,14 +296,11 @@ def get_new_bucket_resource(name=None):
     Always recreates a bucket from scratch. This is useful to also
     reset ACLs and such.
     """
-    endpoint_url = "http://%s:%d" % (config.default_host, config.default_port)
-
     s3 = boto3.resource('s3', 
-                        use_ssl=False,
-                        verify=False,
-                        endpoint_url=endpoint_url, 
                         aws_access_key_id=config.main_access_key,
-                        aws_secret_access_key=config.main_secret_key)
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure)
     if name is None:
         name = get_new_bucket_name()
     bucket = s3.Bucket(name)
@@ -352,6 +331,9 @@ def get_config_host():
 
 def get_config_port():
     return config.default_port
+
+def get_config_endpoint():
+    return config.default_endpoint
 
 def get_main_aws_access_key():
     return config.main_access_key
