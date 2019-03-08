@@ -155,6 +155,45 @@ def test_bucket_list_many():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys')
+@attr(assertion='pagination w/max_keys=2, no marker')
+@attr('list-objects-v2')
+def test_bucket_listv2_many():
+    bucket_name = _create_objects(keys=['foo', 'bar', 'baz'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=2)
+    keys = _get_keys(response)
+    eq(len(keys), 2)
+    eq(keys, ['bar', 'baz'])
+    eq(response['IsTruncated'], True)
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='baz',MaxKeys=2)
+    keys = _get_keys(response)
+    eq(len(keys), 1)
+    eq(response['IsTruncated'], False)
+    eq(keys, ['foo'])
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='keycount in listobjectsv2')
+@attr('list-objects-v2')
+def test_basic_key_count():
+    client = get_client()
+    bucket_names = []
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+    for j in range(5):
+            client.put_object(Bucket=bucket_name, Key=str(j))
+    response1 = client.list_objects_v2(Bucket=bucket_name)
+    eq(response1['KeyCount'], 5)
+
+ 
+ 
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list')
 @attr(assertion='prefixes in multi-component object names')
 def test_bucket_list_delimiter_basic():
@@ -162,6 +201,24 @@ def test_bucket_list_delimiter_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/')
+    eq(response['Delimiter'], '/')
+    keys = _get_keys(response)
+    eq(keys, ['asdf'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 2)
+    eq(prefixes, ['foo/', 'quux/'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='prefixes in multi-component object names')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_basic():
+    bucket_name = _create_objects(keys=['foo/bar', 'foo/bar/xyzzy', 'quux/thud', 'asdf'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/')
     eq(response['Delimiter'], '/')
     keys = _get_keys(response)
     eq(keys, ['asdf'])
@@ -189,6 +246,26 @@ def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
     eq(prefixes, check_prefixes)
 
     return response['NextMarker']
+
+def validate_bucket_listv2(bucket_name, prefix, delimiter, continuation_token, max_keys,
+                         is_truncated, check_objs, check_prefixes, next_continuation_token):
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter=delimiter, StartAfter=continuation_token, MaxKeys=max_keys, Prefix=prefix)
+    eq(response['IsTruncated'], is_truncated)
+    if 'NextContinuationToken' not in response:
+        response['NextContinuationToken'] = None
+    eq(response['NextContinuationToken'], next_continuation_token)
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+
+    eq(len(keys), len(check_objs))
+    eq(len(prefixes), len(check_prefixes))
+    eq(keys, check_objs)
+    eq(prefixes, check_prefixes)
+
+    return response['NextContinuationToken']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -218,6 +295,42 @@ def test_bucket_list_delimiter_prefix():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
+@attr(assertion='prefixes in multi-component object names')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_prefix():
+    bucket_name = _create_objects(keys=['asdf', 'boo/bar', 'boo/baz/xyzzy', 'cquux/thud', 'cquux/bla'])
+
+    delim = '/'
+    continuation_token = ''
+    prefix = ''
+
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['asdf'], [], 'asdf')
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, True, [], ['boo/'], 'boo/')
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['cquux/'], None)
+
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, True, ['asdf'], ['boo/'], 'boo/')
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 2, False, [], ['cquux/'], None)
+
+    prefix = 'boo/'
+
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['boo/bar'], [], 'boo/bar')
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['boo/baz/'], None)
+
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, False, ['boo/bar'], ['boo/baz/'], None)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='prefix and delimiter handling when object ends with delimiter')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_prefix_ends_with_delimiter():
+    bucket_name = _create_objects(keys=['asdf/'])
+    validate_bucket_listv2(bucket_name, 'asdf/', '/', '', 1000, False, ['asdf/'], [], None)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
 @attr(assertion='prefix and delimiter handling when object ends with delimiter')
 def test_bucket_list_delimiter_prefix_ends_with_delimiter():
     bucket_name = _create_objects(keys=['asdf/'])
@@ -232,6 +345,26 @@ def test_bucket_list_delimiter_alt():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='a')
+    eq(response['Delimiter'], 'a')
+
+    keys = _get_keys(response)
+    # foo contains no 'a' and so is a complete key
+    eq(keys, ['foo'])
+
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 2)
+    eq(prefixes, ['ba', 'ca'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(assertion='non-slash delimiter characters')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_alt():
+    bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='a')
     eq(response['Delimiter'], 'a')
 
     keys = _get_keys(response)
@@ -270,12 +403,57 @@ def test_bucket_list_delimiter_prefix_underscore():
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
+@attr(assertion='prefixes starting with underscore')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_prefix_underscore():
+    bucket_name = _create_objects(keys=['_obj1_','_under1/bar', '_under1/baz/xyzzy', '_under2/thud', '_under2/bla'])
+
+    delim = '/'
+    continuation_token = ''
+    prefix = ''
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['_obj1_'], [], '_obj1_')
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, True, [], ['_under1/'], '_under1/')
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under2/'], None)
+
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, True, ['_obj1_'], ['_under1/'], '_under1/')
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 2, False, [], ['_under2/'], None)
+
+    prefix = '_under1/'
+
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['_under1/bar'], [], '_under1/bar')
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under1/baz/'], None)
+
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, False, ['_under1/bar'], ['_under1/baz/'], None)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
 @attr(assertion='percentage delimiter characters')
 def test_bucket_list_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='%')
+    eq(response['Delimiter'], '%')
+    keys = _get_keys(response)
+    # foo contains no 'a' and so is a complete key
+    eq(keys, ['foo'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 2)
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    eq(prefixes, ['b%', 'c%'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(assertion='percentage delimiter characters')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_percentage():
+    bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='%')
     eq(response['Delimiter'], '%')
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
@@ -307,6 +485,25 @@ def test_bucket_list_delimiter_whitespace():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(assertion='whitespace delimiter characters')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_whitespace():
+    bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter=' ')
+    eq(response['Delimiter'], ' ')
+    keys = _get_keys(response)
+    # foo contains no 'a' and so is a complete key
+    eq(keys, ['foo'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 2)
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    eq(prefixes, ['b ', 'c '])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list')
 @attr(assertion='dot delimiter characters')
 def test_bucket_list_delimiter_dot():
@@ -314,6 +511,25 @@ def test_bucket_list_delimiter_dot():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='.')
+    eq(response['Delimiter'], '.')
+    keys = _get_keys(response)
+    # foo contains no 'a' and so is a complete key
+    eq(keys, ['foo'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 2)
+    # bar, baz, and cab should be broken up by the 'a' delimiters
+    eq(prefixes, ['b.', 'c.'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(assertion='dot delimiter characters')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_dot():
+    bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='.')
     eq(response['Delimiter'], '.')
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
@@ -343,6 +559,23 @@ def test_bucket_list_delimiter_unreadable():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(assertion='non-printable delimiter can be specified')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_unreadable():
+    key_names=['bar', 'baz', 'cab', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='\x0a')
+    eq(response['Delimiter'], '\x0a')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list')
 @attr(assertion='empty delimiter can be specified')
 def test_bucket_list_delimiter_empty():
@@ -351,6 +584,24 @@ def test_bucket_list_delimiter_empty():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='')
+    # putting an empty value into Delimiter will not return a value in the response
+    eq('Delimiter' in response, False)
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(assertion='empty delimiter can be specified')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_empty():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='')
     # putting an empty value into Delimiter will not return a value in the response
     eq('Delimiter' in response, False)
 
@@ -379,6 +630,57 @@ def test_bucket_list_delimiter_none():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(assertion='unspecified delimiter defaults to none')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_none():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name)
+    # putting an empty value into Delimiter will not return a value in the response
+    eq('Delimiter' in response, False)
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr('list-objects-v2')
+def test_bucket_listv2_fetchowner_notempty():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, FetchOwner=True)
+    objs_list = response['Contents']
+    eq('Owner' in objs_list[0], True)
+
+@attr('list-objects-v2')
+def test_bucket_listv2_fetchowner_defaultempty():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name)
+    objs_list = response['Contents']
+    eq('Owner' in objs_list[0], False)
+
+@attr('list-objects-v2')
+def test_bucket_listv2_fetchowner_empty():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, FetchOwner= False)
+    objs_list = response['Contents']
+    eq('Owner' in objs_list[0], False)
+
+
+
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list')
 @attr(assertion='unused delimiter is not found')
 def test_bucket_list_delimiter_not_exist():
@@ -397,6 +699,24 @@ def test_bucket_list_delimiter_not_exist():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(assertion='unused delimiter is not found')
+@attr('list-objects-v2')
+def test_bucket_listv2_delimiter_not_exist():
+    key_names = ['bar', 'baz', 'cab', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/')
+    # putting an empty value into Delimiter will not return a value in the response
+    eq(response['Delimiter'], '/')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='returns only objects under prefix')
 def test_bucket_list_prefix_basic():
@@ -405,6 +725,24 @@ def test_bucket_list_prefix_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='foo/')
+    eq(response['Prefix'], 'foo/')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['foo/bar', 'foo/baz'])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='returns only objects under prefix')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_basic():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='foo/')
     eq(response['Prefix'], 'foo/')
 
     keys = _get_keys(response)
@@ -432,6 +770,24 @@ def test_bucket_list_prefix_alt():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='prefixes w/o delimiters')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_alt():
+    key_names = ['bar', 'baz', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='ba')
+    eq(response['Prefix'], 'ba')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['bar', 'baz'])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='empty prefix returns everything')
 def test_bucket_list_prefix_empty():
@@ -440,6 +796,24 @@ def test_bucket_list_prefix_empty():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='')
+    eq(response['Prefix'], '')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='empty prefix returns everything')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_empty():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='')
     eq(response['Prefix'], '')
 
     keys = _get_keys(response)
@@ -466,6 +840,24 @@ def test_bucket_list_prefix_none():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='unspecified prefix returns everything')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_none():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='')
+    eq(response['Prefix'], '')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, key_names)
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='nonexistent prefix returns nothing')
 def test_bucket_list_prefix_not_exist():
@@ -483,6 +875,24 @@ def test_bucket_list_prefix_not_exist():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='nonexistent prefix returns nothing')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_not_exist():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='d')
+    eq(response['Prefix'], 'd')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, [])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='non-printable prefix can be specified')
 def test_bucket_list_prefix_unreadable():
@@ -491,6 +901,24 @@ def test_bucket_list_prefix_unreadable():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='\x0a')
+    eq(response['Prefix'], '\x0a')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, [])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list under prefix with list-objects-v2')
+@attr(assertion='non-printable prefix can be specified')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_unreadable():
+    key_names = ['foo/bar', 'foo/baz', 'quux']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Prefix='\x0a')
     eq(response['Prefix'], '\x0a')
 
     keys = _get_keys(response)
@@ -518,6 +946,25 @@ def test_bucket_list_prefix_delimiter_basic():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list-objects-v2 under prefix w/delimiter')
+@attr(assertion='returns only objects directly under prefix')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_delimiter_basic():
+    key_names = ['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/', Prefix='foo/')
+    eq(response['Prefix'], 'foo/')
+    eq(response['Delimiter'], '/')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['foo/bar'])
+    eq(prefixes, ['foo/baz/'])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='non-slash delimiters')
 def test_bucket_list_prefix_delimiter_alt():
@@ -526,6 +973,21 @@ def test_bucket_list_prefix_delimiter_alt():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='a', Prefix='ba')
+    eq(response['Prefix'], 'ba')
+    eq(response['Delimiter'], 'a')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['bar'])
+    eq(prefixes, ['baza'])
+
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_delimiter_alt():
+    key_names = ['bar', 'bazar', 'cab', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='a', Prefix='ba')
     eq(response['Prefix'], 'ba')
     eq(response['Delimiter'], 'a')
 
@@ -552,6 +1014,23 @@ def test_bucket_list_prefix_delimiter_prefix_not_exist():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list-objects-v2 under prefix w/delimiter')
+@attr(assertion='finds nothing w/unmatched prefix')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
+    key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='d', Prefix='/')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, [])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='over-ridden slash ceases to be a delimiter')
 def test_bucket_list_prefix_delimiter_delimiter_not_exist():
@@ -568,6 +1047,23 @@ def test_bucket_list_prefix_delimiter_delimiter_not_exist():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list-objects-v2 under prefix w/delimiter')
+@attr(assertion='over-ridden slash ceases to be a delimiter')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
+    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='z', Prefix='b')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['b/a/c', 'b/a/g', 'b/a/r'])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='finds nothing w/unmatched prefix and delimiter')
 def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
@@ -576,6 +1072,23 @@ def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='z', Prefix='y')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, [])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list-objects-v2 under prefix w/delimiter')
+@attr(assertion='finds nothing w/unmatched prefix and delimiter')
+@attr('list-objects-v2')
+def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
+    key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='z', Prefix='y')
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
@@ -605,6 +1118,28 @@ def test_bucket_list_maxkeys_one():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='pagination w/max_keys=1, marker')
+@attr('list-objects-v2')
+def test_bucket_listv2_maxkeys_one():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+    eq(response['IsTruncated'], True)
+
+    keys = _get_keys(response)
+    eq(keys, key_names[0:1])
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter=key_names[0])
+    eq(response['IsTruncated'], False)
+
+    keys = _get_keys(response)
+    eq(keys, key_names[1:])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='pagination w/max_keys=0')
 def test_bucket_list_maxkeys_zero():
@@ -620,6 +1155,22 @@ def test_bucket_list_maxkeys_zero():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='pagination w/max_keys=0')
+@attr('list-objects-v2')
+def test_bucket_listv2_maxkeys_zero():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=0)
+
+    eq(response['IsTruncated'], False)
+    keys = _get_keys(response)
+    eq(keys, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='pagination w/o max_keys')
 def test_bucket_list_maxkeys_none():
@@ -628,6 +1179,22 @@ def test_bucket_list_maxkeys_none():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name)
+    eq(response['IsTruncated'], False)
+    keys = _get_keys(response)
+    eq(keys, key_names)
+    eq(response['MaxKeys'], 1000)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='pagination w/o max_keys')
+@attr('list-objects-v2')
+def test_bucket_listv2_maxkeys_none():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name)
     eq(response['IsTruncated'], False)
     keys = _get_keys(response)
     eq(keys, key_names)
@@ -691,6 +1258,64 @@ def test_bucket_list_unordered():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='bucket list unordered')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+@attr('list-objects-v2')
+def test_bucket_listv2_unordered():
+    # boto3.set_stream_logger(name='botocore')
+    keys_in = ['ado', 'bot', 'cob', 'dog', 'emu', 'fez', 'gnu', 'hex',
+               'abc/ink', 'abc/jet', 'abc/kin', 'abc/lax', 'abc/mux',
+               'def/nim', 'def/owl', 'def/pie', 'def/qed', 'def/rye',
+               'ghi/sew', 'ghi/tor', 'ghi/uke', 'ghi/via', 'ghi/wit',
+               'xix', 'yak', 'zoo']
+    bucket_name = _create_objects(keys=keys_in)
+    client = get_client()
+
+    # adds the unordered query parameter
+    def add_unordered(**kwargs):
+        kwargs['params']['url'] += "&allow-unordered=true"
+    client.meta.events.register('before-call.s3.ListObjects', add_unordered)
+
+    # test simple retrieval
+    response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1000)
+    unordered_keys_out = _get_keys(response)
+    eq(len(keys_in), len(unordered_keys_out))
+    eq(keys_in.sort(), unordered_keys_out.sort())
+
+    # test retrieval with prefix
+    response = client.list_objects_v2(Bucket=bucket_name,
+                                   MaxKeys=1000,
+                                   Prefix="abc/")
+    unordered_keys_out = _get_keys(response)
+    eq(5, len(unordered_keys_out))
+
+    # test incremental retrieval with marker
+    response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=6)
+    unordered_keys_out = _get_keys(response)
+    eq(6, len(unordered_keys_out))
+
+    # now get the next bunch
+    response = client.list_objects_v2(Bucket=bucket_name,
+                                   MaxKeys=6,
+                                   StartAfter=unordered_keys_out[-1])
+    unordered_keys_out2 = _get_keys(response)
+    eq(6, len(unordered_keys_out2))
+
+    # make sure there's no overlap between the incremental retrievals
+    intersect = set(unordered_keys_out).intersection(unordered_keys_out2)
+    eq(0, len(intersect))
+
+    # verify that unordered used with delimiter results in error
+    e = assert_raises(ClientError,
+                      client.list_objects, Bucket=bucket_name, Delimiter="/")
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(error_code, 'InvalidArgument')
+
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='invalid max_keys')
 def test_bucket_list_maxkeys_invalid():
@@ -709,6 +1334,8 @@ def test_bucket_list_maxkeys_invalid():
     eq(status, 400)
     eq(error_code, 'InvalidArgument')
 
+
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
@@ -723,6 +1350,19 @@ def test_bucket_list_marker_none():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='no pagination, no continuationtoken')
+@attr('list-objects-v2')
+def test_bucket_listv2_continuationtoken_none():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name)
+    eq(response['ContinuationToken'], '')
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='no pagination, empty marker')
 def test_bucket_list_marker_empty():
@@ -732,6 +1372,22 @@ def test_bucket_list_marker_empty():
 
     response = client.list_objects(Bucket=bucket_name, Marker='')
     eq(response['Marker'], '')
+    eq(response['IsTruncated'], False)
+    keys = _get_keys(response)
+    eq(keys, key_names)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='no pagination, empty continuationtoken')
+@attr('list-objects-v2')
+def test_bucket_listv2_continuationtoken_empty():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken='')
+    eq(response['ContinuationToken'], '')
     eq(response['IsTruncated'], False)
     keys = _get_keys(response)
     eq(keys, key_names)
@@ -753,6 +1409,22 @@ def test_bucket_list_marker_unreadable():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='non-printing startafter')
+@attr('list-objects-v2')
+def test_bucket_listv2_startafter_unreadable():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='\x0a')
+    eq(response['StartAfter'], '\x0a')
+    eq(response['IsTruncated'], False)
+    keys = _get_keys(response)
+    eq(keys, key_names)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='marker not-in-list')
 def test_bucket_list_marker_not_in_list():
@@ -762,6 +1434,21 @@ def test_bucket_list_marker_not_in_list():
 
     response = client.list_objects(Bucket=bucket_name, Marker='blah')
     eq(response['Marker'], 'blah')
+    keys = _get_keys(response)
+    eq(keys, [ 'foo','quxx'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='startafter not-in-list')
+@attr('list-objects-v2')
+def test_bucket_listv2_startafter_not_in_list():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='blah')
+    eq(response['StartAfter'], 'blah')
     keys = _get_keys(response)
     eq(keys, ['foo', 'quxx'])
 
@@ -776,6 +1463,22 @@ def test_bucket_list_marker_after_list():
 
     response = client.list_objects(Bucket=bucket_name, Marker='zzz')
     eq(response['Marker'], 'zzz')
+    keys = _get_keys(response)
+    eq(response['IsTruncated'], False)
+    eq(keys, [])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='startafter after list')
+@attr('list-objects-v2')
+def test_bucket_listv2_startafter_after_list():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='zzz')
+    eq(response['StartAfter'], 'zzz')
     keys = _get_keys(response)
     eq(response['IsTruncated'], False)
     eq(keys, [])
@@ -901,6 +1604,19 @@ def test_bucket_list_objects_anonymous():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all objects (anonymous) with list-objects-v2')
+@attr(assertion='succeeds')
+@attr('list-objects-v2')
+def test_bucket_listv2_objects_anonymous():
+    bucket_name = get_new_bucket() 
+    client = get_client()
+    client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
+
+    unauthenticated_client = get_unauthenticated_client()
+    unauthenticated_client.list_objects_v2(Bucket=bucket_name)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all objects (anonymous)')
 @attr(assertion='fails')
 def test_bucket_list_objects_anonymous_fail():
@@ -915,6 +1631,21 @@ def test_bucket_list_objects_anonymous_fail():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all objects (anonymous) with list-objects-v2')
+@attr(assertion='fails')
+@attr('list-objects-v2')
+def test_bucket_listv2_objects_anonymous_fail():
+    bucket_name = get_new_bucket() 
+
+    unauthenticated_client = get_unauthenticated_client()
+    e = assert_raises(ClientError, unauthenticated_client.list_objects_v2, Bucket=bucket_name)
+
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='non-existant bucket')
 @attr(assertion='fails 404')
 def test_bucket_notexist():
@@ -922,6 +1653,21 @@ def test_bucket_notexist():
     client = get_client()
 
     e = assert_raises(ClientError, client.list_objects, Bucket=bucket_name)
+
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+    eq(error_code, 'NoSuchBucket')
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='non-existant bucket with list-objects-v2')
+@attr(assertion='fails 404')
+@attr('list-objects-v2')
+def test_bucketv2_notexist():
+    bucket_name = get_new_bucket_name() 
+    client = get_client()
+
+    e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
@@ -1092,6 +1838,32 @@ def test_multi_object_delete():
     eq(len(response['Deleted']), 3)
     assert 'Errors' not in response
     response = client.list_objects(Bucket=bucket_name)
+    assert 'Contents' not in response
+
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects with list-objects-v2')
+@attr(assertion='deletes multiple objects with a single call')
+@attr('list-objects-v2')
+def test_multi_objectv2_delete():
+    key_names = ['key0', 'key1', 'key2']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+    response = client.list_objects_v2(Bucket=bucket_name)
+    eq(len(response['Contents']), 3)
+    
+    objs_dict = _make_objs_dict(key_names=key_names)
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+
+    eq(len(response['Deleted']), 3)
+    assert 'Errors' not in response
+    response = client.list_objects_v2(Bucket=bucket_name)
+    assert 'Contents' not in response
+
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+    eq(len(response['Deleted']), 3)
+    assert 'Errors' not in response
+    response = client.list_objects_v2(Bucket=bucket_name)
     assert 'Contents' not in response
 
 @attr(resource='object')
@@ -4787,6 +5559,38 @@ def test_access_bucket_private_object_private():
 
 @attr(resource='object')
 @attr(method='ACLs')
+@attr(operation='set bucket/object acls: private/private with list-objects-v2')
+@attr(assertion='public has no access to bucket or objects')
+@attr('list-objects-v2')
+def test_access_bucket_private_objectv2_private():
+    # all the test_access_* tests follow this template
+    bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='private')
+
+    alt_client = get_alt_client()
+    # acled object read fail
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key1)
+    # default object read fail
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
+    # bucket read fail
+    check_access_denied(alt_client.list_objects_v2, Bucket=bucket_name)
+
+    # acled object write fail
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='barcontent')
+    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used 
+    # anymore. This can be solved either by:
+    # 1) putting an empty string ('') in the 'Body' field of those put_object calls
+    # 2) getting a new client hence the creation of alt_client{2,3} for the tests below
+    # TODO: Test it from another host and on AWS, Report this to Amazon, if findings are identical
+
+    alt_client2 = get_alt_client()
+    # default object write fail
+    check_access_denied(alt_client2.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
+    # bucket write fail
+    alt_client3 = get_alt_client()
+    check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
+
+@attr(resource='object')
+@attr(method='ACLs')
 @attr(operation='set bucket/object acls: private/public-read')
 @attr(assertion='public can only read readable object')
 def test_access_bucket_private_object_publicread():
@@ -4811,6 +5615,31 @@ def test_access_bucket_private_object_publicread():
 
 @attr(resource='object')
 @attr(method='ACLs')
+@attr(operation='set bucket/object acls: private/public-read with list-objects-v2')
+@attr(assertion='public can only read readable object')
+@attr('list-objects-v2')
+def test_access_bucket_private_objectv2_publicread():
+
+    bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read')
+    alt_client = get_alt_client()
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+
+    body = _get_body(response)
+
+    # a should be public-read, b gets default (private)
+    eq(body, 'foocontent')
+
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
+    alt_client2 = get_alt_client()
+    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client2.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
+
+    alt_client3 = get_alt_client()
+    check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
+    check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
+
+@attr(resource='object')
+@attr(method='ACLs')
 @attr(operation='set bucket/object acls: private/public-read/write')
 @attr(assertion='public can only read the readable object')
 def test_access_bucket_private_object_publicreadwrite():
@@ -4831,6 +5660,31 @@ def test_access_bucket_private_object_publicreadwrite():
 
     alt_client3 = get_alt_client()
     check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
+    check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
+
+@attr(resource='object')
+@attr(method='ACLs')
+@attr(operation='set bucket/object acls: private/public-read/write with list-objects-v2')
+@attr(assertion='public can only read the readable object')
+@attr('list-objects-v2')
+def test_access_bucket_private_objectv2_publicreadwrite():
+    bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
+    alt_client = get_alt_client()
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+
+    body = _get_body(response)
+
+    # a should be public-read-only ... because it is in a private bucket
+    # b gets default (private)
+    eq(body, 'foocontent')
+
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
+    alt_client2 = get_alt_client()
+    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client2.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
+
+    alt_client3 = get_alt_client()
+    check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -7878,6 +8732,41 @@ def test_lifecycle_expiration():
     expire3_objects = response['Contents']
 
     eq(len(init_objects), 6)
+    eq(len(expire1_objects), 6)
+    eq(len(keep2_objects), 6)
+    eq(len(expire3_objects), 6)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with list-objects-v2')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+@attr('list-objects-v2')
+def test_lifecyclev2_expiration():
+    bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                        'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    client = get_client()
+    rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'expire1/', 'Status':'Enabled'},
+           {'ID': 'rule2', 'Expiration': {'Days': 4}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    response = client.list_objects_v2(Bucket=bucket_name)
+    init_objects = response['Contents']
+
+    time.sleep(28)
+    response = client.list_objects_v2(Bucket=bucket_name)
+    expire1_objects = response['Contents']
+
+    time.sleep(10)
+    response = client.list_objects_v2(Bucket=bucket_name)
+    keep2_objects = response['Contents']
+
+    time.sleep(20)
+    response = client.list_objects_v2(Bucket=bucket_name)
+    expire3_objects = response['Contents']
+
+    eq(len(init_objects), 6)
     eq(len(expire1_objects), 4)
     eq(len(keep2_objects), 4)
     eq(len(expire3_objects), 2)
@@ -9152,6 +10041,36 @@ def test_bucket_policy():
     response = alt_client.list_objects(Bucket=bucket_name)
     eq(len(response['Contents']), 1)
 
+@attr('bucket-policy')
+@attr('list-objects-v2')
+def test_bucketv2_policy():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'asdf'
+    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ]
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+    alt_client = get_alt_client()
+    response = alt_client.list_objects_v2(Bucket=bucket_name)
+    eq(len(response['Contents']), 1)
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='Test Bucket Policy and ACL')
@@ -9184,6 +10103,46 @@ def test_bucket_policy_acl():
 
     alt_client = get_alt_client()
     e = assert_raises(ClientError, alt_client.list_objects, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+    client.delete_bucket_policy(Bucket=bucket_name)
+    client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test Bucket Policy and ACL with list-objects-v2')
+@attr(assertion='fails')
+@attr('bucket-policy')
+@attr('list-objects-v2')
+def test_bucketv2_policy_acl():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'asdf'
+    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document =  json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Deny",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ]
+        }]
+     })
+
+    client.put_bucket_acl(Bucket=bucket_name, ACL='authenticated-read')
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+    alt_client = get_alt_client()
+    e = assert_raises(ClientError, alt_client.list_objects_v2, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
     eq(error_code, 'AccessDenied')
@@ -9241,6 +10200,55 @@ def test_bucket_policy_different_tenant():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='Test Bucket Policy for a user belonging to a different tenant')
+@attr(assertion='succeeds')
+@attr('bucket-policy')
+# TODO: remove this fails_on_rgw when I fix it
+@attr('fails_on_rgw')
+@attr('list-objects-v2')
+def test_bucketv2_policy_different_tenant():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'asdf'
+    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+
+    resource1 = "arn:aws:s3::*:" + bucket_name
+    resource2 = "arn:aws:s3::*:" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ]
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+    # TODO: figure out how to change the bucketname
+    def change_bucket_name(**kwargs):
+        kwargs['params']['url'] = "http://localhost:8000/:{bucket_name}?encoding-type=url".format(bucket_name=bucket_name)
+        kwargs['params']['url_path'] = "/:{bucket_name}".format(bucket_name=bucket_name)
+        kwargs['params']['context']['signing']['bucket'] = ":{bucket_name}".format(bucket_name=bucket_name)
+        print kwargs['request_signer']
+        print kwargs
+
+    #bucket_name = ":" + bucket_name
+    tenant_client = get_tenant_client()
+    tenant_client.meta.events.register('before-call.s3.ListObjects', change_bucket_name)
+    response = tenant_client.list_objects_v2(Bucket=bucket_name)
+    #alt_client = get_alt_client()
+    #response = alt_client.list_objects_v2(Bucket=bucket_name)
+
+    eq(len(response['Contents']), 1)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='Test Bucket Policy on another bucket')
 @attr(assertion='succeeds')
 @attr('bucket-policy')
@@ -9278,6 +10286,48 @@ def test_bucket_policy_another_bucket():
 
     alt_client = get_alt_client()
     response = alt_client.list_objects(Bucket=bucket_name2)
+    eq(len(response['Contents']), 1)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test Bucket Policy on another bucket with list-objects-v2')
+@attr(assertion='succeeds')
+@attr('bucket-policy')
+@attr('list-objects-v2')
+def test_bucketv2_policy_another_bucket():
+    bucket_name = get_new_bucket()
+    bucket_name2 = get_new_bucket()
+    client = get_client()
+    key = 'asdf'
+    key2 = 'abcd'
+    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+    client.put_object(Bucket=bucket_name2, Key=key2, Body='abcd')
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "arn:aws:s3:::*",
+            "arn:aws:s3:::*/*"
+          ]
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    response = client.get_bucket_policy(Bucket=bucket_name)
+    response_policy = response['Policy']
+
+    client.put_bucket_policy(Bucket=bucket_name2, Policy=response_policy)
+
+    alt_client = get_alt_client()
+    response = alt_client.list_objects_v2(Bucket=bucket_name)
+    eq(len(response['Contents']), 1)
+
+    alt_client = get_alt_client()
+    response = alt_client.list_objects_v2(Bucket=bucket_name2)
     eq(len(response['Contents']), 1)
 
 @attr(resource='bucket')
