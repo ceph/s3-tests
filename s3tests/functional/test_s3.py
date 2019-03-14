@@ -7281,7 +7281,25 @@ def test_versioning_obj_plain_null_version_overwrite_suspended():
 
     eq(len(k), 0)
 
+@attr(resource='object')
+@attr(method='create')
+@attr(operation='create versioned object, read not exist null version')
+@attr(assertion='read null version behaves correctly')
+@attr('versioning')
+def test_versioning_obj_read_not_exist_null():
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
 
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    content = 'fooz'
+    objname = 'testobj'
+
+    key = bucket.new_key(objname)
+    key.set_contents_from_string(content)
+
+    key = bucket.get_key(objname, version_id='null')
+    eq(key, None)
 
 @attr(resource='object')
 @attr(method='create')
