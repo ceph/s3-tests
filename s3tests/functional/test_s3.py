@@ -8782,7 +8782,7 @@ def test_encryption_sse_c_multipart_upload():
     bucket = get_new_bucket()
     key = "multipart_enc"
     content_type = 'text/plain'
-    objlen = 30 * 1024 * 1024
+    objlen = 1 + 30 * 1024 * 1024 # not a multiple of the 4k encryption block size
     enc_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
@@ -8796,7 +8796,7 @@ def test_encryption_sse_c_multipart_upload():
     result = _head_bucket(bucket)
 
     eq(result.get('x-rgw-object-count', 1), 1)
-    eq(result.get('x-rgw-bytes-used', 30 * 1024 * 1024), 30 * 1024 * 1024)
+    eq(result.get('x-rgw-bytes-used', objlen), objlen)
 
     k = bucket.get_key(key, headers=enc_headers)
     eq(k.metadata['foo'], 'bar')
@@ -8809,6 +8809,37 @@ def test_encryption_sse_c_multipart_upload():
     _check_content_using_range_enc(k, data, 1000000, enc_headers=enc_headers)
     _check_content_using_range_enc(k, data, 10000000, enc_headers=enc_headers)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload with unaligned part size')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_unaligned_multipart_upload():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    partlen = 1 + 5 * 1024 * 1024 # not a multiple of the 4k encryption block size
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    (upload, data) = _multipart_upload_enc(bucket, key, objlen, part_size=partlen,
+                                           init_headers=enc_headers, part_headers=enc_headers)
+    upload.complete_upload()
+    result = _head_bucket(bucket)
+
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', objlen), objlen)
+
+    k = bucket.get_key(key, headers=enc_headers)
+    eq(k.content_type, content_type)
+    test_string = k.get_contents_as_string(headers=enc_headers)
+    eq(len(test_string), k.size)
+    eq(data, test_string)
+    eq(test_string, data)
 
 @attr(resource='object')
 @attr(method='put')
