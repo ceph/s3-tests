@@ -1,7 +1,7 @@
 from boto.s3.connection import S3Connection
 from boto.exception import BotoServerError
 from boto.s3.key import Key
-from httplib import BadStatusLine
+from http.client import BadStatusLine
 from optparse import OptionParser
 from .. import common
 
@@ -59,7 +59,7 @@ def descend_graph(decision_graph, node_name, prng):
     except IndexError:
         decision = {}
 
-    for key, choices in node['set'].iteritems():
+    for key, choices in node['set'].items():
         if key in decision:
             raise DecisionGraphError("Node %s tried to set '%s', but that key was already set by a lower node!" %(node_name, key))
         decision[key] = make_choice(choices, prng)
@@ -85,7 +85,7 @@ def descend_graph(decision_graph, node_name, prng):
             num_reps = prng.randint(size_min, size_max)
             if header in [h for h, v in decision['headers']]:
                     raise DecisionGraphError("Node %s tried to add header '%s', but that header already exists!" %(node_name, header))
-            for _ in xrange(num_reps):
+            for _ in range(num_reps):
                 decision['headers'].append([header, value])
 
     return decision
@@ -113,7 +113,7 @@ def make_choice(choices, prng):
         if value == 'null' or value == 'None':
             value = ''
 
-        for _ in xrange(weight):
+        for _ in range(weight):
             weighted_choices.append(value)
 
     return prng.choice(weighted_choices)
@@ -137,7 +137,8 @@ def expand(decision, value, prng):
 
 class RepeatExpandingFormatter(string.Formatter):
     charsets = {
-        'printable_no_whitespace': string.printable.translate(None, string.whitespace),
+        'printable_no_whitespace': string.printable.translate(
+            "".maketrans('', '', string.whitespace)),
         'printable': string.printable,
         'punctuation': string.punctuation,
         'whitespace': string.whitespace,
@@ -188,14 +189,15 @@ class RepeatExpandingFormatter(string.Formatter):
 
         if charset_arg == 'binary' or charset_arg == 'binary_no_whitespace':
             num_bytes = length + 8
-            tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
-            tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
+            tmplist = [self.prng.getrandbits(64) for _ in range(num_bytes // 8)]
+            tmpstring = struct.pack((num_bytes // 8) * 'Q', *tmplist)
             if charset_arg == 'binary_no_whitespace':
-                tmpstring = ''.join(c for c in tmpstring if c not in string.whitespace)
+                tmpstring = ''.join([c] for c in tmpstring if c not in bytes(
+                    string.whitespace, 'utf-8'))
             return tmpstring[0:length]
         else:
             charset = self.charsets[charset_arg]
-            return ''.join([self.prng.choice(charset) for _ in xrange(length)]) # Won't scale nicely
+            return ''.join([self.prng.choice(charset) for _ in range(length)]) # Won't scale nicely
 
 
 def parse_options():
@@ -281,29 +283,29 @@ def _main():
     if options.seedfile:
         FH = open(options.seedfile, 'r')
         request_seeds = [int(line) for line in FH if line != '\n']
-        print>>OUT, 'Seedfile: %s' %options.seedfile
-        print>>OUT, 'Number of requests: %d' %len(request_seeds)
+        print('Seedfile: %s' %options.seedfile, file=OUT)
+        print('Number of requests: %d' %len(request_seeds), file=OUT)
     else:
         if options.seed:
-            print>>OUT, 'Initial Seed: %d' %options.seed
-        print>>OUT, 'Number of requests: %d' %options.num_requests
+            print('Initial Seed: %d' %options.seed, file=OUT)
+        print('Number of requests: %d' %options.num_requests, file=OUT)
         random_list = randomlist(options.seed)
         request_seeds = itertools.islice(random_list, options.num_requests)
 
-    print>>OUT, 'Decision Graph: %s' %options.graph_filename
+    print('Decision Graph: %s' %options.graph_filename, file=OUT)
 
     graph_file = open(options.graph_filename, 'r')
     decision_graph = yaml.safe_load(graph_file)
 
     constants = populate_buckets(s3_connection, alt_connection)
-    print>>VERBOSE, "Test Buckets/Objects:"
-    for key, value in constants.iteritems():
-        print>>VERBOSE, "\t%s: %s" %(key, value)
+    print("Test Buckets/Objects:", file=VERBOSE)
+    for key, value in constants.items():
+        print("\t%s: %s" %(key, value), file=VERBOSE)
 
-    print>>OUT, "Begin Fuzzing..."
-    print>>VERBOSE, '='*80
+    print("Begin Fuzzing...", file=OUT)
+    print('='*80, file=VERBOSE)
     for request_seed in request_seeds:
-        print>>VERBOSE, 'Seed is: %r' %request_seed
+        print('Seed is: %r' %request_seed, file=VERBOSE)
         prng = random.Random(request_seed)
         decision = assemble_decision(decision_graph, prng)
         decision.update(constants)
@@ -321,46 +323,46 @@ def _main():
         except KeyError:
             headers = {}
 
-        print>>VERBOSE, "%r %r" %(method[:100], path[:100])
-        for h, v in headers.iteritems():
-            print>>VERBOSE, "%r: %r" %(h[:50], v[:50])
-        print>>VERBOSE, "%r\n" % body[:100]
+        print("%r %r" %(method[:100], path[:100]), file=VERBOSE)
+        for h, v in headers.items():
+            print("%r: %r" %(h[:50], v[:50]), file=VERBOSE)
+        print("%r\n" % body[:100], file=VERBOSE)
 
-        print>>DEBUG, 'FULL REQUEST'
-        print>>DEBUG, 'Method: %r' %method
-        print>>DEBUG, 'Path: %r' %path
-        print>>DEBUG, 'Headers:'
-        for h, v in headers.iteritems():
-            print>>DEBUG, "\t%r: %r" %(h, v)
-        print>>DEBUG, 'Body: %r\n' %body
+        print('FULL REQUEST', file=DEBUG)
+        print('Method: %r' %method, file=DEBUG)
+        print('Path: %r' %path, file=DEBUG)
+        print('Headers:', file=DEBUG)
+        for h, v in headers.items():
+            print("\t%r: %r" %(h, v), file=DEBUG)
+        print('Body: %r\n' %body, file=DEBUG)
 
         failed = False # Let's be optimistic, shall we?
         try:
             response = s3_connection.make_request(method, path, data=body, headers=headers, override_num_retries=1)
             body = response.read()
-        except BotoServerError, e:
+        except BotoServerError as e:
             response = e
             body = e.body
             failed = True
-        except BadStatusLine, e:
-            print>>OUT, 'FAILED: failed to parse response (BadStatusLine); probably a NUL byte in your request?'
-            print>>VERBOSE, '='*80
+        except BadStatusLine as e:
+            print('FAILED: failed to parse response (BadStatusLine); probably a NUL byte in your request?', file=OUT)
+            print('='*80, file=VERBOSE)
             continue
 
         if failed:
-            print>>OUT, 'FAILED:'
+            print('FAILED:', file=OUT)
             OLD_VERBOSE = VERBOSE
             OLD_DEBUG = DEBUG
             VERBOSE = DEBUG = OUT
-        print>>VERBOSE, 'Seed was: %r' %request_seed
-        print>>VERBOSE, 'Response status code: %d %s' %(response.status, response.reason)
-        print>>DEBUG, 'Body:\n%s' %body
-        print>>VERBOSE, '='*80
+        print('Seed was: %r' %request_seed, file=VERBOSE)
+        print('Response status code: %d %s' %(response.status, response.reason), file=VERBOSE)
+        print('Body:\n%s' %body, file=DEBUG)
+        print('='*80, file=VERBOSE)
         if failed:
             VERBOSE = OLD_VERBOSE
             DEBUG = OLD_DEBUG
 
-    print>>OUT, '...done fuzzing'
+    print('...done fuzzing', file=OUT)
 
     if options.cleanup:
         common.teardown()

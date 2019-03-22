@@ -1,21 +1,20 @@
-from __future__ import print_function
 import sys
-import ConfigParser
+import configparser
 import boto.exception
 import boto.s3.connection
-import bunch
+import munch
 import itertools
 import os
 import random
 import string
-from httplib import HTTPConnection, HTTPSConnection
-from urlparse import urlparse
+from http.client import HTTPConnection, HTTPSConnection
+from urllib.parse import urlparse
 
 from .utils import region_sync_meta
 
-s3 = bunch.Bunch()
-config = bunch.Bunch()
-targets = bunch.Bunch()
+s3 = munch.Munch()
+config = munch.Munch()
+targets = munch.Munch()
 
 # this will be assigned by setup()
 prefix = None
@@ -69,7 +68,7 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
         if bucket.name.startswith(prefix):
             print('Cleaning bucket {bucket}'.format(bucket=bucket))
             success = False
-            for i in xrange(2):
+            for i in range(2):
                 try:
                     try:
                         iterator = iter(bucket.list_versions())
@@ -116,12 +115,12 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
 def nuke_prefixed_buckets(prefix):
     # If no regions are specified, use the simple method
     if targets.main.master == None:
-        for name, conn in s3.items():
+        for name, conn in list(s3.items()):
             print('Deleting buckets on {name}'.format(name=name))
             nuke_prefixed_buckets_on_conn(prefix, name, conn)
     else: 
 		    # First, delete all buckets on the master connection 
-		    for name, conn in s3.items():
+		    for name, conn in list(s3.items()):
 		        if conn == targets.main.master.connection:
 		            print('Deleting buckets on {name} (master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
@@ -131,7 +130,7 @@ def nuke_prefixed_buckets(prefix):
 		    print('region-sync in nuke_prefixed_buckets')
 		
 		    # Now delete remaining buckets on any other connection 
-		    for name, conn in s3.items():
+		    for name, conn in list(s3.items()):
 		        if conn != targets.main.master.connection:
 		            print('Deleting buckets on {name} (non-master)'.format(name=name))
 		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
@@ -149,46 +148,46 @@ class TargetConfig:
         self.sync_meta_wait = 0
         try:
             self.api_name = cfg.get(section, 'api_name')
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             pass
         try:
             self.port = cfg.getint(section, 'port')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
         try:
             self.host=cfg.get(section, 'host')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             raise RuntimeError(
                 'host not specified for section {s}'.format(s=section)
                 )
         try:
             self.is_master=cfg.getboolean(section, 'is_master')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         try:
             self.is_secure=cfg.getboolean(section, 'is_secure')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         try:
             raw_calling_format = cfg.get(section, 'calling_format')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             raw_calling_format = 'ordinary'
 
         try:
             self.sync_agent_addr = cfg.get(section, 'sync_agent_addr')
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             pass
 
         try:
             self.sync_agent_port = cfg.getint(section, 'sync_agent_port')
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             pass
 
         try:
             self.sync_meta_wait = cfg.getint(section, 'sync_meta_wait')
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+        except (configparser.NoSectionError, configparser.NoOptionError):
             pass
 
 
@@ -208,7 +207,7 @@ class TargetConnection:
 
 class RegionsInfo:
     def __init__(self):
-        self.m = bunch.Bunch()
+        self.m = munch.Munch()
         self.master = None
         self.secondaries = []
 
@@ -226,21 +225,21 @@ class RegionsInfo:
         return self.m[name]
     def get(self):
         return self.m
-    def iteritems(self):
-        return self.m.iteritems()
+    def items(self):
+        return self.m.items()
 
 regions = RegionsInfo()
 
 
 class RegionsConn:
     def __init__(self):
-        self.m = bunch.Bunch()
+        self.m = munch.Munch()
         self.default = None
         self.master = None
         self.secondaries = []
 
-    def iteritems(self):
-        return self.m.iteritems()
+    def items(self):
+        return self.m.items()
 
     def set_default(self, conn):
         self.default = conn
@@ -260,7 +259,7 @@ _multiprocess_can_split_ = True
 
 def setup():
 
-    cfg = ConfigParser.RawConfigParser()
+    cfg = configparser.RawConfigParser()
     try:
         path = os.environ['S3TEST_CONF']
     except KeyError:
@@ -268,8 +267,7 @@ def setup():
             'To run tests, point environment '
             + 'variable S3TEST_CONF to a config file.',
             )
-    with file(path) as f:
-        cfg.readfp(f)
+    cfg.read(path)
 
     global prefix
     global targets
@@ -277,19 +275,19 @@ def setup():
 
     try:
         template = cfg.get('fixtures', 'bucket prefix')
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
 
     try:
         slow_backend = cfg.getboolean('fixtures', 'slow backend')
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         slow_backend = False
 
     # pull the default_region out, if it exists
     try:
         default_region = cfg.get('fixtures', 'default_region')
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         default_region = None
 
     s3.clear()
@@ -315,7 +313,7 @@ def setup():
         if len(regions.get()) == 0:
             regions.add("default", TargetConfig(cfg, section))
 
-        config[name] = bunch.Bunch()
+        config[name] = munch.Munch()
         for var in [
             'user_id',
             'display_name',
@@ -329,12 +327,12 @@ def setup():
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 pass
 
         targets[name] = RegionsConn()
 
-        for (k, conf) in regions.iteritems():
+        for (k, conf) in regions.items():
             conn = boto.s3.connection.S3Connection(
                 aws_access_key_id=cfg.get(section, 'access_key'),
                 aws_secret_access_key=cfg.get(section, 'secret_key'),
@@ -475,7 +473,7 @@ def _make_raw_request(host, port, method, path, body=None, request_headers=None,
     if request_headers is None:
         request_headers = {}
 
-    c = class_(host, port, strict=True, timeout=timeout)
+    c = class_(host, port=port, timeout=timeout)
 
     # TODO: We might have to modify this in future if we need to interact with
     # how httplib.request handles Accept-Encoding and Host.

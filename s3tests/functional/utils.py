@@ -28,11 +28,11 @@ def generate_random(size, part_size=5*1024*1024):
     chunk = 1024
     allowed = string.ascii_letters
     for x in range(0, size, part_size):
-        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
+        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in range(chunk)])
         s = ''
         left = size - x
         this_part_size = min(left, part_size)
-        for y in range(this_part_size / chunk):
+        for y in range(this_part_size // chunk):
             s = s + strpart
         s = s + strpart[:(this_part_size % chunk)]
         yield s
@@ -42,7 +42,7 @@ def generate_random(size, part_size=5*1024*1024):
 # syncs all the regions except for the one passed in
 def region_sync_meta(targets, region):
 
-    for (k, r) in targets.iteritems():
+    for (k, r) in targets.items():
         if r == region:
             continue
         conf = r.conf

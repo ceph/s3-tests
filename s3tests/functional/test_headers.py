@@ -1,10 +1,9 @@
-from cStringIO import StringIO
+from io import StringIO
 import boto.connection
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 import boto.utils
-import bunch
 import nose
 import operator
 import random
@@ -15,7 +14,7 @@ import os
 import re
 from email.utils import formatdate
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from boto.s3.connection import S3Connection
 
@@ -24,7 +23,7 @@ from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
-import AnonymousAuth
+from . import AnonymousAuth
 
 from email.header import decode_header
 

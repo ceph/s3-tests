@@ -289,7 +289,7 @@ def test_object_create_bad_contentlength_mismatch_above():
     key_name = 'foo'
     headers = {'Content-Length': str(length)}
     add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
-    client.meta.events.register('before-sign.s3.PutObject', add_headers_before_sign)
+    client.meta.events.register('before-sign.s3.PutObject', add_headers)
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body=content)
     status, error_code = _get_status_and_error_code(e.response)

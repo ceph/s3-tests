@@ -3,14 +3,14 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
-import ConfigParser
+import configparser
 import os
-import bunch
+import munch
 import random
 import string
 import itertools
 
-config = bunch.Bunch
+config = munch.Munch
 
 # this will be assigned by setup()
 prefix = None
@@ -125,17 +125,17 @@ def nuke_prefixed_buckets(prefix, client=None):
             for obj in delete_markers:
                 response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
             try:
-                client.delete_bucket(Bucket=bucket_name)
-            except ClientError, e:
+                response = client.delete_bucket(Bucket=bucket_name)
+            except ClientError:
                 # if DELETE times out, the retry may see NoSuchBucket
-                if e.response['Error']['Code'] != 'NoSuchBucket':
-                    raise e
+                if response['Error']['Code'] != 'NoSuchBucket':
+                    raise ClientError
                 pass
 
     print('Done with cleanup of buckets in tests.')
 
 def setup():
-    cfg = ConfigParser.RawConfigParser()
+    cfg = configparser.RawConfigParser()
     try:
         path = os.environ['S3TEST_CONF']
     except KeyError:
@@ -143,8 +143,7 @@ def setup():
             'To run tests, point environment '
             + 'variable S3TEST_CONF to a config file.',
             )
-    with file(path) as f:
-        cfg.readfp(f)
+    cfg.read(path)
 
     if not cfg.defaults():
         raise RuntimeError('Your config file is missing the DEFAULT section!')
@@ -175,16 +174,17 @@ def setup():
     config.main_email = cfg.get('s3 main',"email")
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         config.main_kms_keyid = 'testkey-1'
+
     try:
         config.main_kms_keyid2 = cfg.get('s3 main',"kms_keyid2")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         config.main_kms_keyid2 = 'testkey-2'
 
     try:
         config.main_api_name = cfg.get('s3 main',"api_name")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         config.main_api_name = ""
         pass
 
@@ -203,7 +203,7 @@ def setup():
     # vars from the fixtures section
     try:
         template = cfg.get('fixtures', "bucket prefix")
-    except (ConfigParser.NoOptionError):
+    except (configparser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
 

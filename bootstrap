@@ -4,56 +4,52 @@ set -e
 virtualenv="virtualenv"
 declare -a packages
 if [ -f /etc/debian_version ]; then
-    packages=(debianutils python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
+    packages=(debianutils python3-pip python3-virtualenv python3-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
     for package in ${packages[@]}; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
             missing="${missing:+$missing }$package"
         fi
     done
+
     if [ -n "$missing" ]; then
         echo "$0: missing required DEB packages. Installing via sudo." 1>&2
         sudo apt-get -y install $missing
     fi
-else 
-    packages=(which libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
-    if [ -f /etc/fedora-release ]; then
-        packages+=(python2-pip python2-virtualenv python2-devel)
-    elif [ -f /etc/redhat-release ]; then
-        unset ${GREP_OPTIONS}
-        eval $(cat /etc/os-release | grep VERSION_ID)
-        if [ ${VERSION_ID:0:1} -lt 8 ]; then
-            packages+=(python-virtualenv python-devel)
-        else
-            packages+=(python2-virtualenv python2-devel)
-            virtualenv="virtualenv-2"
-        fi
-    fi
-
+elif [ -f /etc/redhat-release ]; then
+    packages=(which python3-virtualenv python36-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
     for package in ${packages[@]}; do
+        # When the package is python36-devel we change it to python3-devel on Fedora
+        if [[ ${package} == "python36-devel" && -f /etc/fedora-release ]]; then
+                package=python36
+        fi
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
     done
 
     if [ -n "$missing" ]; then
-        echo "$0: missing required RPM packages. Installing via sudo." 1>&2
+        echo "$0: Missing required RPM packages: ${missing}." 1>&2
         sudo yum -y install $missing
     fi
+else
+    echo "s3-tests can only be run on Red Hat, Centos, Fedora, Ubunutu, or Debian platforms"
+    exit 1
 fi
 
-${virtualenv} --python=$(which python2) --no-site-packages --distribute virtualenv
+# s3-tests only works on python 3.6 not newer versions of python3
+${virtualenv} --python=$(which python3.6) --no-site-packages --distribute virtualenv
 
 # avoid pip bugs
-./virtualenv/bin/pip install --upgrade pip
+./virtualenv/bin/pip3 install --upgrade pip
 
 # slightly old version of setuptools; newer fails w/ requests 0.14.0
-./virtualenv/bin/pip install setuptools==32.3.1
+./virtualenv/bin/pip3 install setuptools==32.3.1
 
-./virtualenv/bin/pip install -r requirements.txt
+./virtualenv/bin/pip3 install -r requirements.txt
 
 # forbid setuptools from using the network because it'll try to use
 # easy_install, and we really wanted pip; next line will fail if pip
 # requirements.txt does not match setup.py requirements -- sucky but
 # good enough for now
-./virtualenv/bin/python setup.py develop
+./virtualenv/bin/python3 setup.py develop
