@@ -1,4 +1,3 @@
-
 import sys
 import configparser
 import boto.exception
@@ -262,8 +261,7 @@ def setup():
             'To run tests, point environment '
             + 'variable S3TEST_CONF to a config file.',
             )
-    with file(path) as f:
-        cfg.readfp(f)
+    cfg.read(path)
 
     global prefix
     global targets
