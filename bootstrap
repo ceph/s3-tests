@@ -20,7 +20,7 @@ elif [ -f /etc/fedora-release ]; then
     done
     if [ -n "$missing" ]; then
         echo "$0: missing required RPM packages. Installing via sudo." 1>&2
-        sudo yum -y install $missing
+        sudo dnf -y install $missing
     fi
 elif [ -f /etc/redhat-release ]; then
     for package in python-virtualenv python-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
