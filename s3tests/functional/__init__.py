@@ -467,7 +467,7 @@ def _make_raw_request(host, port, method, path, body=None, request_headers=None,
     if request_headers is None:
         request_headers = {}
 
-    c = class_(host, port, strict=True, timeout=timeout)
+    c = class_(host, port=port, timeout=timeout)
 
     # TODO: We might have to modify this in future if we need to interact with
     # how httplib.request handles Accept-Encoding and Host.
