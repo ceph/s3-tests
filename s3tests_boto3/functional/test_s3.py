@@ -8616,6 +8616,101 @@ def test_encryption_sse_c_unaligned_multipart_upload():
     size = response['ContentLength']
     eq(len(body), size)
 
+def _make_range_str(start, end):
+    return 'bytes={0}-{1}'.format(start, end)
+
+def _get_ranged_obj(client, bucket_name, key, data, enc_headers, start, end):
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
+    client.meta.events.register('before-call.s3.GetObject', lf)
+    response = client.get_object(Bucket=bucket_name, Key=key,
+                                 Range=_make_range_str(start,end))
+
+    body = _get_body(response)
+    eq(body, data[start:end+1])
+    size = response['ContentLength']
+    eq(len(body), end - start + 1)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload with unaligned part size with ranged get')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_upload_ranged_get():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024 + 1
+    partlen = 5 * 1024 * 1024 # not a multiple of the 4k encryption block size
+    metadata = {'foo': 'bar'}
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    resend_parts = []
+
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
+            part_size=partlen, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
+
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
+    client.meta.events.register('before-call.s3.CompleteMultipartUpload', lf)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.head_bucket(Bucket=bucket_name)
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    eq(rgw_object_count, 1)
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    eq(rgw_bytes_used, objlen)
+
+    # 3 cases: - part_size -1 , part_size, part_size + 1
+    # HTTP range is end-end inclusive, so subtract 1 for endpoint
+    for i in range(-1,2):
+        _get_ranged_obj(client, bucket_name, key, data, enc_headers, 0, partlen - i)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload with unaligned part size with ranged get')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_unaligned_multipart_upload_ranged_get():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    partlen = 1 + 5 * 1024 * 1024 # not a multiple of the 4k encryption block size
+    metadata = {'foo': 'bar'}
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    resend_parts = []
+
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
+            part_size=partlen, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
+
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
+    client.meta.events.register('before-call.s3.CompleteMultipartUpload', lf)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.head_bucket(Bucket=bucket_name)
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    eq(rgw_object_count, 1)
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    eq(rgw_bytes_used, objlen)
+
+    # 3 cases: - part_size -1 , part_size, part_size + 1
+    # HTTP range is end-end inclusive, so subtract 1 for endpoint
+    _get_ranged_obj(client, bucket_name, key, data, enc_headers, 0, partlen - 1)
+    _get_ranged_obj(client, bucket_name, key, data, enc_headers, 0, partlen)
+    _get_ranged_obj(client, bucket_name, key, data, enc_headers, 0, partlen + 1)
+
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multipart upload with bad key for uploading chunks')
