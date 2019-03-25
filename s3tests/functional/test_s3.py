@@ -8841,6 +8841,75 @@ def test_encryption_sse_c_unaligned_multipart_upload():
     eq(data, test_string)
     eq(test_string, data)
 
+def _make_range_str(start, end):
+    return 'bytes={0}-{1}'.format(start, end)
+
+def _get_ranged_obj(bucket, key, data, enc_headers, start, end):
+    enc_headers['Range']=_make_range_str(start,end)
+    k = bucket.get_key(key, headers=enc_headers)
+    body = k.get_contents_as_string(headers=enc_headers)
+    eq(body, data[start:end+1])
+    eq(len(body), end - start + 1)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload with unaligned part size with ranged get')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_upload_ranged_get():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024 + 1
+    partlen = 5 * 1024 * 1024 # not a multiple of the 4k encryption block size
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    (upload, data) = _multipart_upload_enc(bucket, key, objlen, part_size=partlen,
+                                           init_headers=enc_headers, part_headers=enc_headers)
+    upload.complete_upload()
+    result = _head_bucket(bucket)
+
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', objlen), objlen)
+
+    # 3 cases: - part_size -1 , part_size, part_size + 1
+    # HTTP range is end-end inclusive, so subtract 1 for endpoint
+    for i in range(-1,2):
+        _get_ranged_obj(bucket, key, data, enc_headers, 0, partlen - i)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload with unaligned part size with ranged get')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_unaligned_multipart_upload_ranged_get():
+    bucket = get_new_bucket()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    partlen = 1 + 5 * 1024 * 1024 # not a multiple of the 4k encryption block size
+    metadata = {'foo': 'bar'}
+    enc_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+        'Content-Type': content_type
+    }
+    (upload, data) = _multipart_upload_enc(bucket, key, objlen, part_size=partlen,
+                                           init_headers=enc_headers, part_headers=enc_headers)
+    upload.complete_upload()
+    result = _head_bucket(bucket)
+
+    eq(result.get('x-rgw-object-count', 1), 1)
+    eq(result.get('x-rgw-bytes-used', objlen), objlen)
+
+    for i in range(-1,2):
+        _get_ranged_obj(bucket, key, data, enc_headers, 0, partlen - i)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multipart upload with bad key for uploading chunks')
