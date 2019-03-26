@@ -9326,6 +9326,7 @@ def test_encryption_sse_c_multipart_upload():
     key = "multipart_enc"
     content_type = 'text/plain'
     objlen = 30 * 1024 * 1024
+    partlen = 5*1024*1024
     metadata = {'foo': 'bar'}
     enc_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
@@ -9336,7 +9337,7 @@ def test_encryption_sse_c_multipart_upload():
     resend_parts = []
 
     (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
-            part_size=5*1024*1024, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
+            part_size=partlen, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
     client.meta.events.register('before-call.s3.CompleteMultipartUpload', lf)
@@ -9362,6 +9363,8 @@ def test_encryption_sse_c_multipart_upload():
 
     _check_content_using_range_enc(client, bucket_name, key, data, size, 1000000, enc_headers=enc_headers)
     _check_content_using_range_enc(client, bucket_name, key, data, size, 10000000, enc_headers=enc_headers)
+    for i in range(-1,2):
+        _check_content_using_range_enc(client, bucket_name, key, data, size, partlen + i, enc_headers=enc_headers)
 
 @pytest.mark.encryption
 def test_encryption_sse_c_unaligned_multipart_upload():
@@ -9404,6 +9407,11 @@ def test_encryption_sse_c_unaligned_multipart_upload():
     assert body == data
     size = response['ContentLength']
     assert len(body) == size
+
+    _check_content_using_range_enc(client, bucket_name, key, data, size, 1000000, enc_headers=enc_headers)
+    _check_content_using_range_enc(client, bucket_name, key, data, size, 10000000, enc_headers=enc_headers)
+    for i in range(-1,2):
+        _check_content_using_range_enc(client, bucket_name, key, data, size, partlen + i, enc_headers=enc_headers)
 
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
