@@ -9302,9 +9302,7 @@ def _multipart_upload_enc(client, bucket_name, key, size, part_size, init_header
 
     return (upload_id, s, parts)
 
-def _check_content_using_range_enc(client, bucket_name, key, data, step, enc_headers=None):
-    response = client.get_object(Bucket=bucket_name, Key=key)
-    size = response['ContentLength']
+def _check_content_using_range_enc(client, bucket_name, key, data, size, step, enc_headers=None):
     for ofs in range(0, size, step):
         toread = size - ofs
         if toread > step:
@@ -9362,8 +9360,8 @@ def test_encryption_sse_c_multipart_upload():
     size = response['ContentLength']
     assert len(body) == size
 
-    _check_content_using_range_enc(client, bucket_name, key, data, 1000000, enc_headers=enc_headers)
-    _check_content_using_range_enc(client, bucket_name, key, data, 10000000, enc_headers=enc_headers)
+    _check_content_using_range_enc(client, bucket_name, key, data, size, 1000000, enc_headers=enc_headers)
+    _check_content_using_range_enc(client, bucket_name, key, data, size, 10000000, enc_headers=enc_headers)
 
 @pytest.mark.encryption
 def test_encryption_sse_c_unaligned_multipart_upload():
