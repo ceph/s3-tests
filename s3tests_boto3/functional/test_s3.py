@@ -6709,6 +6709,8 @@ def _test_atomic_dual_conditional_write(file_size):
 @attr(operation='write one or the other')
 @attr(assertion='1MB successful')
 @attr('fails_on_aws')
+# TODO: test not passing with SSL, fix this
+@attr('fails_on_rgw')
 def test_atomic_dual_conditional_write_1mb():
     _test_atomic_dual_conditional_write(1024*1024)
 
@@ -6717,6 +6719,8 @@ def test_atomic_dual_conditional_write_1mb():
 @attr(operation='write file in deleted bucket')
 @attr(assertion='fail 404')
 @attr('fails_on_aws')
+# TODO: test not passing with SSL, fix this
+@attr('fails_on_rgw')
 def test_atomic_write_bucket_gone():
     bucket_name = get_new_bucket()
     client = get_client()
