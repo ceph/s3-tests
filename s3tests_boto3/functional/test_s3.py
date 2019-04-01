@@ -12,7 +12,7 @@ import threading
 import re
 import pytz
 from io import StringIO
-from ordereddict import OrderedDict
+from collections import OrderedDict
 import requests
 import json
 import base64
