@@ -8022,11 +8022,9 @@ def test_lifecycle_expiration_days0():
 
     eq(len(expire_objects), 0)
 
-def setup_lifecycle_expiration_test(bucket_name, rule_id, delta_days,
+
+def setup_lifecycle_expiration(bucket_name, rule_id, delta_days,
                                     rule_prefix):
-    """
-    Common setup for lifecycle expiration header checks:
-    """
     rules=[{'ID': rule_id,
             'Expiration': {'Days': delta_days}, 'Prefix': rule_prefix,
             'Status':'Enabled'}]
@@ -8066,7 +8064,7 @@ def test_lifecycle_expiration_header_put():
     client = get_client()
 
     now = datetime.datetime.now(None)
-    response = setup_lifecycle_expiration_test(
+    response = setup_lifecycle_expiration(
         bucket_name, 'rule1', 1, 'days1/')
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
@@ -8083,7 +8081,7 @@ def test_lifecycle_expiration_header_head():
     client = get_client()
 
     now = datetime.datetime.now(None)
-    response = setup_lifecycle_expiration_test(
+    response = setup_lifecycle_expiration(
         bucket_name, 'rule1', 1, 'days1/')
 
     # stat the object, check header
