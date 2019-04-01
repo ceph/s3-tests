@@ -17,7 +17,7 @@ import requests
 import json
 import base64
 import hmac
-import sha
+import hashlib
 import xml.etree.ElementTree as ET
 import time
 import operator
@@ -1410,7 +1410,7 @@ def test_post_object_authenticated_request():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1450,7 +1450,7 @@ def test_post_object_authenticated_no_content_type():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1491,7 +1491,7 @@ def test_post_object_authenticated_request_bad_access_key():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , 'foo'),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1565,7 +1565,7 @@ def test_post_object_upload_larger_than_chunk():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     foo_string = 'foo' * 1024*1024
 
@@ -1606,7 +1606,7 @@ def test_post_object_set_key_from_filename():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "${filename}"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1646,7 +1646,7 @@ def test_post_object_ignored_header():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1682,7 +1682,7 @@ def test_post_object_case_insensitive_condition_fields():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     foo_string = 'foo' * 1024*1024
 
@@ -1720,7 +1720,7 @@ def test_post_object_escaped_field_values():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1763,7 +1763,7 @@ def test_post_object_success_redirect_action():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1805,7 +1805,7 @@ def test_post_object_invalid_signature():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())[::-1]
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))[::-1]
 
     payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1841,7 +1841,7 @@ def test_post_object_invalid_access_key():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id[::-1]),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1877,7 +1877,7 @@ def test_post_object_invalid_date_format():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1912,7 +1912,7 @@ def test_post_object_no_key_specified():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -1948,7 +1948,7 @@ def test_post_object_missing_signature():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("policy" , policy),\
@@ -1983,7 +1983,7 @@ def test_post_object_missing_policy_condition():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2020,7 +2020,7 @@ def test_post_object_user_specified_header():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2059,7 +2059,7 @@ def test_post_object_request_missing_policy_specified_field():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2095,7 +2095,7 @@ def test_post_object_condition_is_case_sensitive():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2131,7 +2131,7 @@ def test_post_object_expires_is_case_sensitive():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2167,7 +2167,7 @@ def test_post_object_expired_policy():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key", "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2204,7 +2204,7 @@ def test_post_object_invalid_request_field_value():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
@@ -2239,7 +2239,7 @@ def test_post_object_missing_expires_condition():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2267,7 +2267,7 @@ def test_post_object_missing_conditions_list():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2303,7 +2303,7 @@ def test_post_object_upload_size_limit_exceeded():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2339,7 +2339,7 @@ def test_post_object_missing_content_length_argument():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2375,7 +2375,7 @@ def test_post_object_invalid_content_length_argument():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2411,7 +2411,7 @@ def test_post_object_upload_size_below_minimum():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -2443,7 +2443,7 @@ def test_post_object_empty_conditions():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -8721,7 +8721,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -9033,7 +9033,7 @@ def test_sse_kms_post_object_authenticated_request():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -9628,7 +9628,7 @@ def test_post_object_tags_authenticated_request():
     aws_secret_access_key = get_main_aws_secret_key()
     aws_access_key_id = get_main_aws_access_key()
 
-    signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
+    signature = base64.b64encode(hmac.digest(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1))
 
     payload = OrderedDict([ 
         ("key" , "foo.txt"),

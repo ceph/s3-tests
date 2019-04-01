@@ -15,7 +15,6 @@ import os
 import requests
 import base64
 import hmac
-import sha
 import pytz
 import json
 import httplib2
