@@ -2,7 +2,7 @@ import sys
 import configparser
 import boto.exception
 import boto.s3.connection
-import bunch
+import munch
 import itertools
 import os
 import random
@@ -12,9 +12,9 @@ from urllib.parse import urlparse
 
 from .utils import region_sync_meta
 
-s3 = bunch.Bunch()
-config = bunch.Bunch()
-targets = bunch.Bunch()
+s3 = munch.Munch()
+config = munch.Munch()
+targets = munch.Munch()
 
 # this will be assigned by setup()
 prefix = None
@@ -201,7 +201,7 @@ class TargetConnection:
 
 class RegionsInfo:
     def __init__(self):
-        self.m = bunch.Bunch()
+        self.m = munch.Munch()
         self.master = None
         self.secondaries = []
 
@@ -227,7 +227,7 @@ regions = RegionsInfo()
 
 class RegionsConn:
     def __init__(self):
-        self.m = bunch.Bunch()
+        self.m = munch.Munch()
         self.default = None
         self.master = None
         self.secondaries = []
@@ -307,7 +307,7 @@ def setup():
         if len(regions.get()) == 0:
             regions.add("default", TargetConfig(cfg, section))
 
-        config[name] = bunch.Bunch()
+        config[name] = munch.Munch()
         for var in [
             'user_id',
             'display_name',

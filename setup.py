@@ -16,7 +16,7 @@ setup(
         'boto >=2.0b4',
         'boto3 >=1.0.0',
         'PyYAML',
-        'bunch >=1.0.0',
+        'munch >=2.0.0',
         'gevent >=1.0',
         'isodate >=0.4.4',
         ],

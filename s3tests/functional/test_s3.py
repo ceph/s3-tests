@@ -3,7 +3,6 @@ import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 import boto.s3.lifecycle
-import bunch
 import datetime
 import time
 import email.utils
