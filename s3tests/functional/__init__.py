@@ -219,8 +219,8 @@ class RegionsInfo:
         return self.m[name]
     def get(self):
         return self.m
-    def iteritems(self):
-        return iter(self.m.items())
+    def items(self):
+        return self.m.items()
 
 regions = RegionsInfo()
 
@@ -232,8 +232,8 @@ class RegionsConn:
         self.master = None
         self.secondaries = []
 
-    def iteritems(self):
-        return iter(self.m.items())
+    def items(self):
+        return self.m.items()
 
     def set_default(self, conn):
         self.default = conn
