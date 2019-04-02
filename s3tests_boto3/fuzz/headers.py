@@ -137,7 +137,8 @@ def expand(decision, value, prng):
 
 class RepeatExpandingFormatter(string.Formatter):
     charsets = {
-        'printable_no_whitespace': string.printable.translate(None, string.whitespace),
+        'printable_no_whitespace': string.printable.translate(
+            "".maketrans('', '', string.whitespace)),
         'printable': string.printable,
         'punctuation': string.punctuation,
         'whitespace': string.whitespace,
