@@ -490,7 +490,7 @@ def generate_random(size, part_size=5*1024*1024):
         s = ''
         left = size - x
         this_part_size = min(left, part_size)
-        for y in range(this_part_size / chunk):
+        for y in range(this_part_size // chunk):
             s = s + strpart
         if this_part_size > len(s):
             s = s + strpart[0:this_part_size - len(s)]
