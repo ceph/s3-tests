@@ -27,7 +27,7 @@ def get_random_files(quantity, mean, stddev, seed):
            list of file handles
     """
     file_generator = realistic.files(mean, stddev, seed)
-    return [file_generator.next() for _ in xrange(quantity)]
+    return [next(file_generator) for _ in range(quantity)]
 
 
 def upload_objects(bucket, files, seed):
@@ -43,9 +43,9 @@ def upload_objects(bucket, files, seed):
     name_generator = realistic.names(15, 4, seed=seed)
 
     for fp in files:
-        print >> sys.stderr, 'sending file with size %dB' % fp.size
+        print('sending file with size %dB' % fp.size, file=sys.stderr)
         key = Key(bucket)
-        key.key = name_generator.next()
+        key.key = next(name_generator)
         key.set_contents_from_file(fp, rewind=True)
         key.set_acl('public-read')
         keys.append(key)
@@ -94,18 +94,18 @@ def _main():
 
     bucket.set_acl('public-read')
     keys = []
-    print >> OUTFILE, 'bucket: %s' % bucket.name
-    print >> sys.stderr, 'setup complete, generating files'
+    print('bucket: %s' % bucket.name, file=OUTFILE)
+    print('setup complete, generating files', file=sys.stderr)
     for profile in common.config.file_generation.groups:
         seed = random.random()
         files = get_random_files(profile[0], profile[1], profile[2], seed)
         keys += upload_objects(bucket, files, seed)
 
-    print >> sys.stderr, 'finished sending files. generating urls'
+    print('finished sending files. generating urls', file=sys.stderr)
     for key in keys:
-        print >> OUTFILE, key.generate_url(0, query_auth=False)
+        print(key.generate_url(0, query_auth=False), file=OUTFILE)
 
-    print >> sys.stderr, 'done'
+    print('done', file=sys.stderr)
 
 
 def main():

@@ -2,7 +2,7 @@ import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
 from botocore.handlers import disable_signing
-import ConfigParser
+import configparser
 import os
 import bunch
 import random
@@ -128,7 +128,7 @@ def nuke_prefixed_buckets(prefix, client=None):
     print('Done with cleanup of buckets in tests.')
 
 def setup():
-    cfg = ConfigParser.RawConfigParser()
+    cfg = configparser.RawConfigParser()
     try:
         path = os.environ['S3TEST_CONF']
     except KeyError:
@@ -168,13 +168,13 @@ def setup():
     config.main_email = cfg.get('s3 main',"email")
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         config.main_kms_keyid = None
         pass
 
     try:
         config.main_api_name = cfg.get('s3 main',"api_name")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
+    except (configparser.NoSectionError, configparser.NoOptionError):
         config.main_api_name = ""
         pass
 
@@ -193,7 +193,7 @@ def setup():
     # vars from the fixtures section
     try:
         template = cfg.get('fixtures', "bucket prefix")
-    except (ConfigParser.NoOptionError):
+    except (configparser.NoOptionError):
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
 
