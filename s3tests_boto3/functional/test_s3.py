@@ -3419,10 +3419,12 @@ def test_bucket_create_exists():
 @attr(method='get')
 @attr(operation='get location')
 def test_bucket_get_location():
+    location_constraint = get_main_api_name()
+    if not location_constraint
+        raise SkipTest
     bucket_name = get_new_bucket_name()
     client = get_client()
 
-    location_constraint = get_main_api_name()
     client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': location_constraint})
 
     response = client.get_bucket_location(Bucket=bucket_name)
