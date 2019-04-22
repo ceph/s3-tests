@@ -1,6 +1,7 @@
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
+from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
 import ConfigParser
 import os
@@ -123,7 +124,13 @@ def nuke_prefixed_buckets(prefix, client=None):
             delete_markers = get_delete_markers_list(bucket_name, client)
             for obj in delete_markers:
                 response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
-            client.delete_bucket(Bucket=bucket_name)
+            try:
+                client.delete_bucket(Bucket=bucket_name)
+            except ClientError, e:
+                # if DELETE times out, the retry may see NoSuchBucket
+                if e.response['Error']['Code'] != 'NoSuchBucket':
+                    raise e
+                pass
 
     print('Done with cleanup of buckets in tests.')
 
