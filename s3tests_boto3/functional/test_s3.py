@@ -7932,24 +7932,6 @@ def test_lifecycle_invalid_status():
 
 @attr(resource='bucket')
 @attr(method='put')
-@attr(operation='rules conflicted in lifecycle')
-@attr('lifecycle')
-@attr(assertion='fails 400')
-def test_lifecycle_rules_conflicted():
-    bucket_name = get_new_bucket()
-    client = get_client()
-    rules=[{'ID': 'rule1', 'Expiration': {'Days': 2}, 'Prefix': 'test1/', 'Status':'Enabled'},
-           {'ID': 'rule2', 'Expiration': {'Days': 3}, 'Prefix': 'test3/', 'Status':'Enabled'},
-           {'ID': 'rule3', 'Expiration': {'Days': 5}, 'Prefix': 'test1/abc', 'Status':'Enabled'}]
-    lifecycle = {'Rules': rules}
-
-    e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
-
-@attr(resource='bucket')
-@attr(method='put')
 @attr(operation='set lifecycle config with expiration date')
 @attr('lifecycle')
 def test_lifecycle_set_date():
