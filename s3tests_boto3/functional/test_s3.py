@@ -7798,6 +7798,35 @@ def test_lifecycle_get():
     eq(response['Rules'], rules)
 
 @attr(resource='bucket')
+@attr(method='put')
+@attr(operation='modify lifecycle config')
+@attr('lifecycle')
+def test_lifecycle_modify():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    rules1 = [{'ID': 'test1/', 'Expiration': {'Days': 31},
+               'Prefix': 'test1/', 'Status':'Enabled'},
+              {'ID': 'test2/', 'Expiration': {'Days': 120},
+               'Prefix': 'test2/', 'Status':'Enabled'}]
+    lifecycle1 = {'Rules': rules1}
+
+    rules2 = [
+        {'ID': 'rules21', 'Prefix': 'test1/', 'Status': 'Enabled',
+         'AbortIncompleteMultipartUpload': {'DaysAfterInitiation': 2}},
+        {'ID': 'rules22', 'Prefix': 'test2/', 'Status': 'Disabled',
+         'AbortIncompleteMultipartUpload': {'DaysAfterInitiation': 3}}]
+    lifecycle2 = {'Rules': rules2}
+
+
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle1)
+    response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+    eq(response['Rules'], rules1)
+
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle2)
+    response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+    eq(response['Rules'], rules2)
+
+@attr(resource='bucket')
 @attr(method='get')
 @attr(operation='get lifecycle config no id')
 @attr('lifecycle')
