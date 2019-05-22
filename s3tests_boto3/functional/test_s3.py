@@ -6761,10 +6761,10 @@ def test_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
     eq(rgw_bytes_used, objlen)
 
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
     eq(rgw_object_count, 1)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
@@ -7043,10 +7043,10 @@ def test_abort_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id)
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', 0))
     eq(rgw_bytes_used, 0)
 
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 0))
     eq(rgw_object_count, 0)
 
 @attr(resource='object')
@@ -9611,9 +9611,9 @@ def test_encryption_sse_c_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
     eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
     eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
@@ -9728,9 +9728,9 @@ def test_encryption_sse_c_multipart_bad_download():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
     eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
     eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(put_headers))
@@ -9955,9 +9955,9 @@ def test_sse_kms_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
     eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
     eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(part_headers))
