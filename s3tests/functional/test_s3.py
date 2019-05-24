@@ -7669,21 +7669,6 @@ def test_lifecycle_invalid_status():
     eq(e.status, 400)
     eq(e.error_code, 'MalformedXML')
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='rules conflicted in lifecycle')
-@attr('lifecycle')
-@attr(assertion='fails 400')
-def test_lifecycle_rules_conflicted():
-    bucket = get_new_bucket()
-    lifecycle = create_lifecycle(rules=[{'id': 'rule1', 'days': 2, 'prefix': 'test1/', 'status': 'Enabled'},
-                                        {'id': 'rule2', 'days': 3, 'prefix': 'test3/', 'status': 'Enabled'},
-                                        {'id': 'rule3', 'days': 5, 'prefix': 'test1/abc', 'status': 'Enabled'}])
-    e = assert_raises(boto.exception.S3ResponseError, bucket.configure_lifecycle, lifecycle)
-    eq(e.status, 400)
-    eq(e.error_code, 'InvalidRequest')
-
-
 def generate_lifecycle_body(rules):
     body = '<?xml version="1.0" encoding="UTF-8"?><LifecycleConfiguration>'
     for rule in rules:
