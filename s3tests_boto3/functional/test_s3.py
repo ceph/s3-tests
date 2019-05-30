@@ -5450,6 +5450,23 @@ def test_object_copy_versioned_bucket():
     eq(data, body)
     eq(size, response['ContentLength'])
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='copy object to/from versioned bucket with url-encoded name')
+@attr(assertion='works')
+def test_object_copy_versioned_url_encoding():
+    bucket = get_new_bucket_resource()
+    check_configure_versioning_retry(bucket.name, "Enabled", "Enabled")
+    src_key = 'foo?bar'
+    src = bucket.put_object(Key=src_key)
+    src.load() # HEAD request tests that the key exists
+
+    # copy object in the same bucket
+    dst_key = 'bar&foo'
+    dst = bucket.Object(dst_key)
+    dst.copy_from(CopySource={'Bucket': src.bucket_name, 'Key': src.key, 'VersionId': src.version_id})
+    dst.load() # HEAD request tests that the key exists
+
 def generate_random(size, part_size=5*1024*1024):
     """
     Generate the specified number random data.
