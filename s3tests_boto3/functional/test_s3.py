@@ -6409,6 +6409,42 @@ def test_cors_header_option():
 
     _cors_request_and_check(requests.options, obj_url, {'Origin': 'example.origin','Access-Control-Request-Headers':'x-amz-meta-header2','Access-Control-Request-Method':'GET'}, 403, None, None)
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='put tags')
+@attr(assertion='succeeds')
+def test_set_tagging():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    tags={
+        'TagSet': [
+            {
+                'Key': 'Hello',
+                'Value': 'World'
+            },
+        ]
+    }
+
+    e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+    eq(error_code, 'NoSuchTagSetError')
+
+    client.put_bucket_tagging(Bucket=bucket_name, Tagging=tags)
+
+    response = client.get_bucket_tagging(Bucket=bucket_name)
+    eq(len(response['TagSet']), 1)
+    eq(response['TagSet'][0]['Key'], 'Hello')
+    eq(response['TagSet'][0]['Value'], 'World')
+
+    client.delete_bucket_tagging(Bucket=bucket_name)
+    e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+    eq(error_code, 'NoSuchTagSetError')
+
+
 class FakeFile(object):
     """
     file that simulates seek, tell, and current character
