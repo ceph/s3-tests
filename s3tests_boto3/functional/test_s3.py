@@ -397,6 +397,23 @@ def test_bucket_list_delimiter_not_exist():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list delimiter with marker')
+@attr(assertion='find correct keys after marker with delimiter')
+def test_bucket_list_delimiter_with_marker():
+    bucket_name = _create_objects(keys=['abc/0', 'abc0', 'abc1'])
+    client = get_client()
+
+    response = client.list_objects(Bucket=bucket_name, Delimiter='/', Marker='abc/0')
+    # putting an empty value into Delimiter will not return a value in the response
+    eq(response['Delimiter'], '/')
+
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, ['abc0', 'abc1'])
+    eq(prefixes, [])
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='returns only objects under prefix')
 def test_bucket_list_prefix_basic():
