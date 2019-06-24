@@ -5726,6 +5726,39 @@ def test_multipart_copy_invalid_range():
        raise AssertionError("Invalid response " + str(status))
     eq(error_code, 'InvalidRange')
 
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copy with an improperly formatted range')
+def test_multipart_copy_improper_range():
+    client = get_client()
+    src_key = 'source'
+    src_bucket_name = _create_key_with_random_content(src_key, size=5)
+
+    response = client.create_multipart_upload(
+        Bucket=src_bucket_name, Key='dest')
+    upload_id = response['UploadId']
+
+    copy_source = {'Bucket': src_bucket_name, 'Key': src_key}
+    test_ranges = ['{start}-{end}'.format(start=0, end=2),
+                   'bytes={start}'.format(start=0),
+                   'bytes=hello-world',
+                   'bytes=0-bar',
+                   'bytes=hello-',
+                   'bytes=0-2,3-5']
+
+    for test_range in test_ranges:
+        e = assert_raises(ClientError, client.upload_part_copy,
+                          Bucket=src_bucket_name, Key='dest',
+                          UploadId=upload_id,
+                          CopySource=copy_source,
+                          CopySourceRange=test_range,
+                          PartNumber=1)
+        status, error_code = _get_status_and_error_code(e.response)
+        eq(status, 400)
+        eq(error_code, 'InvalidArgument')
+
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies without x-amz-copy-source-range')
