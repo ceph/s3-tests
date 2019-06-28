@@ -7925,6 +7925,31 @@ def test_lifecycle_expiration():
     eq(len(keep2_objects), 4)
     eq(len(expire3_objects), 2)
 
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration on versining enabled bucket')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_versioning_enabled():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    create_multiple_versions(client, bucket_name, "test1/a", 1)
+
+    rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'test1/', 'Status':'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    time.sleep(30)
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    versions = response['Versions']
+    delete_markers = response['DeleteMarkers']
+    eq(len(versions), 1)
+    eq(len(delete_markers), 1)
+
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='id too long in lifecycle rule')
