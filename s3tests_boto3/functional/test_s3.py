@@ -6308,6 +6308,7 @@ def test_object_copy_versioned_bucket():
 @attr(method='put')
 @attr(operation='copy object to/from versioned bucket with url-encoded name')
 @attr(assertion='works')
+@attr('versioning')
 def test_object_copy_versioned_url_encoding():
     bucket = get_new_bucket_resource()
     check_configure_versioning_retry(bucket.name, "Enabled", "Enabled")
@@ -7284,6 +7285,7 @@ def test_cors_header_option():
 @attr(method='put')
 @attr(operation='put tags')
 @attr(assertion='succeeds')
+@attr('tagging')
 def test_set_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
