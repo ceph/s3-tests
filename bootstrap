@@ -13,7 +13,7 @@ if [ -f /etc/debian_version ]; then
         sudo apt-get -y install $missing
     fi
 elif [ -f /etc/fedora-release ]; then
-    for package in python-pip python2-virtualenv python-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
+    for package in python2-pip python2-virtualenv python2-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
