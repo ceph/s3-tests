@@ -10,6 +10,10 @@ port = 8000
 ## say "False" to disable TLS
 is_secure = False
 
+# RGW/S3 archive zone
+host_az = localhost
+port_az = 8000
+
 [fixtures]
 ## all the buckets created will start with this prefix;
 ## {random} will be filled with random characters to pad

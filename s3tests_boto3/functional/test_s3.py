@@ -40,6 +40,7 @@ from .policy import Policy, Statement, make_json_policy
 
 from . import (
     get_client,
+    get_az_client,
     get_prefix,
     get_unauthenticated_client,
     get_bad_auth_client,
@@ -6677,14 +6678,18 @@ def test_multipart_upload():
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
 
-def check_versioning(bucket_name, status):
-    client = get_client()
+def check_versioning(bucket_name, status, client=None):
+    if client == None:
+        client = get_client()
 
     try:
         response = client.get_bucket_versioning(Bucket=bucket_name)
         eq(response['Status'], status)
     except KeyError:
         eq(status, None)
+
+def check_az_versioning(bucket_name, status):
+    check_versioning(bucket_name, status, get_az_client())
 
 # amazon is eventual consistent, retry a bit if failed
 def check_configure_versioning_retry(bucket_name, status, expected_string):
@@ -12133,3 +12138,601 @@ def test_object_lock_uploading_obj():
     eq(response['ObjectLockLegalHoldStatus'], 'ON')
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
+
+
+def _wait_replication_time_az():
+    time.sleep(2)
+
+def _check_archive_zone_support():
+    if 'RGW_S3_USE_AZ' not in os.environ:
+        raise SkipTest
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Create empty bucket')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_create_empty_bucket():
+
+    _check_archive_zone_support()
+
+    # grab number of buckets in non archive zone
+    client = get_client()
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    num_buckets = len(bucket_dict)
+
+    # create bucket in non archive zone
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    # new bucket exists in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets + 1)
+
+    _wait_replication_time_az()
+
+    # new bucket exists in archive zone
+    client_az = get_az_client()
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    found = any(x['Name'] == bucket_name for x in bucket_dict_az)
+    eq(found, True)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Check bucket versioning')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_check_bucket_versioning():
+
+    _check_archive_zone_support()
+
+    # create bucket in non archive-zone
+    client = get_client()
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check non versioned buckets
+    check_versioning(bucket_name, None)
+    check_az_versioning(bucket_name, None)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check object replication')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_object_replication():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-object-replication'
+
+    # create object in non archive-zone
+    bucket_name = _create_objects(keys=[key_name])
+
+    _wait_replication_time_az()
+
+    # check object in non archive zone
+    client = get_client()
+    response = client.list_objects(Bucket=bucket_name)
+    keys = _get_keys(response)
+    eq(len(keys), 1)
+    eq(keys[0], key_name)
+
+    # check object in archive zone
+    client_az = get_az_client()
+    response_az = client_az.list_objects(Bucket=bucket_name)
+    keys_az = _get_keys(response_az)
+    eq(len(keys_az), 1)
+    eq(keys_az[0], key_name)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check object replication versioning')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_object_replication_versioning():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-object-replication-versioning'
+
+    # create object in non archive-zone
+    bucket_name = _create_objects(keys=[key_name])
+
+    _wait_replication_time_az()
+
+    # check object in non archive zone
+    client = get_client()
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    eq(objs_list[0]['Key'], key_name)
+    null = (objs_list[0]['VersionId'] == 'null')
+    eq(null, True)
+
+    # check object in archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    eq(objs_list_az[0]['Key'], key_name)
+    null = (objs_list_az[0]['VersionId'] == 'null')
+    eq(null, False)
+
+    # integrity check
+    eq(objs_list[0]['ETag'], objs_list_az[0]['ETag'])
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Check lazy activation of versioned bucket')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_lazy_activation_of_versioned_bucket():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-lazy-activation-of-versioned-bucket'
+
+    # create bucket in non archive-zone
+    client = get_client()
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check non versioned buckets
+    check_versioning(bucket_name, None)
+    check_az_versioning(bucket_name, None)
+
+    # create object
+    bucket = _create_objects(bucket_name=bucket_name, keys=[key_name])
+
+    _wait_replication_time_az()
+
+    # check lazy versioned buckets
+    check_versioning(bucket_name, None)
+    check_az_versioning(bucket_name, 'Enabled')
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check double object replication versioning')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_double_object_replication_versioning():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-double-object-replication-versioning'
+
+    # create object in non archive-zone
+    bucket_name = _create_objects(keys=[key_name])
+
+    _wait_replication_time_az()
+
+    # check object in non archive zone
+    client = get_client()
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    eq(objs_list[0]['Key'], key_name)
+    null = (objs_list[0]['VersionId'] == 'null')
+    eq(null, True)
+
+    # check object in archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    eq(objs_list_az[0]['Key'], key_name)
+    null = (objs_list_az[0]['VersionId'] == 'null')
+    eq(null, False)
+
+    # integrity check
+    eq(objs_list[0]['ETag'], objs_list_az[0]['ETag'])
+
+    # overwite existing object
+    bucket_name = _create_objects(bucket_name=bucket_name, keys=[key_name])
+
+    _wait_replication_time_az()
+
+    # check object in non archive zone
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    eq(objs_list[0]['Key'], key_name)
+    all_null = (objs_list[0]['VersionId'] == 'null')
+    eq(all_null, True)
+
+    # check objects in archive zone
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 2)
+    same_key_names = all(e['Key'] == key_name for e in objs_list_az)
+    eq(same_key_names, True)
+    any_null = any(objs_list_az[i]['VersionId'] == 'null' for i, _ in enumerate(objs_list_az))
+    eq(any_null, False)
+    same_etag = any(objs_list_az[i]['ETag'] == objs_list[0]['ETag'] for i, _ in enumerate(objs_list_az))
+    eq(same_etag, True)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check deleted object replication')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_deleted_object_replication():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-deleted-object_replication'
+
+    # create object in non archive zone
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
+    response = client.get_object(Bucket=bucket_name, Key=key_name)
+    body = _get_body(response)
+    eq(body, 'bar')
+
+    _wait_replication_time_az()
+
+    # update object in non archive zone
+    client.put_object(Bucket=bucket_name, Key=key_name, Body='soup')
+
+    # update object in non archive zone
+    response = client.get_object(Bucket=bucket_name, Key=key_name)
+    body = _get_body(response)
+    eq(body, 'soup')
+
+    # delete object in non archive zone
+    client.delete_object(Bucket=bucket_name, Key=key_name)
+
+    _wait_replication_time_az()
+
+    # check object in non archive zone
+    response  = client.list_object_versions(Bucket=bucket_name)
+    no_vers = 'Versions' not in response.keys()
+    eq(no_vers, True)
+
+    # check objects in archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    no_dm = 'DeleteMarkers' not in response.keys()
+    eq(no_dm, True)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Check archive zone bucket renaming on empty bucket deletion')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_bucket_renaming_on_empty_bucket_deletion():
+
+    _check_archive_zone_support()
+
+    # grab number of buckets in non archive zone
+    client = get_client()
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    num_buckets = len(bucket_dict)
+
+    # create bucket in non archive zone
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # grab number of buckets in archive zone
+    client_az = get_az_client()
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    num_buckets_naz = len(bucket_dict_az)
+
+    # delete bucket in non archive zone
+    client.delete_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check no new buckets in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets)
+
+    # check non deletion on bucket in an archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    eq(len(bucket_dict_az), num_buckets_naz)
+
+    # check bucket renaming
+    new_bucket_name = bucket_name + '-deleted-'
+    bucket_found = any(b['Name'].startswith(new_bucket_name) for b in bucket_dict_az)
+    eq(bucket_found, True)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check old object version in archive zone')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_old_object_version_in_archive_zone():
+
+    _check_archive_zone_support()
+
+    key_name = "test-key-az-old-object-version-in-archive-zone"
+
+    # grab number of buckets in non archive zone
+    client = get_client()
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    num_buckets = len(bucket_dict)
+
+    # create bucket in non archive zone
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    # create object
+    client.put_object(Bucket=bucket_name, Key=key_name, Body='zero')
+
+    _wait_replication_time_az()
+
+    # save object version in archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    obj_version_id = objs_list_az[0]['VersionId']
+
+    # update object
+    client.put_object(Bucket=bucket_name, Key=key_name, Body='one')
+
+    _wait_replication_time_az()
+
+    # delete object in non archive zone
+    client.delete_object(Bucket=bucket_name, Key=key_name)
+
+    # delete bucket in non archive zone
+    client.delete_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check no buckets in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets)
+
+    # look for new bucket in archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    new_bucket_name = bucket_name + '-deleted-'
+    bucket_found = False
+    new_bucket_name = None
+    for b in bucket_dict_az:
+        if b['Name'].startswith(bucket_name):
+            bucket_found = True
+            new_bucket_name = b['Name']
+            break
+    eq(bucket_found, True)
+
+    # check number of objects in archive zone
+    response_az  = client_az.list_object_versions(Bucket=new_bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 2)
+
+    # check old object version content
+    response_az = client_az.get_object(Bucket=new_bucket_name, Key=key_name, VersionId=obj_version_id)
+    body = _get_body(response_az)
+    eq(body, "zero")
+
+    # check old object version is not latest
+    is_latest = True
+    for o in objs_list_az:
+        if o['VersionId'] == obj_version_id:
+            is_latest = o['IsLatest']
+            break
+    eq(is_latest, False)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Check archive zone force bucket renaming if same bucket name')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_force_bucket_renaming_if_same_bucket_name():
+
+    _check_archive_zone_support()
+
+    bucket_name = get_new_bucket_name()
+
+    # grab number of buckets in non archive zone
+    client = get_client()
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    num_buckets = len(bucket_dict)
+
+    # grab number of buckets in archive zone
+    client_az = get_az_client()
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    num_buckets_az = len(bucket_dict_az)
+
+    # create bucket in archive zone
+    client_az.create_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check number of buckets in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets + 1)
+
+    # check number of buckets in archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    eq(len(bucket_dict_az), num_buckets_az + 1)
+
+    # delete bucket in non archive zone
+    client.delete_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check number of buckets in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets)
+
+    # check number of buckets in archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    eq(len(bucket_dict_az), num_buckets_az + 1)
+
+    # look for new bucket in archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    new_bucket_name = bucket_name + '-deleted-'
+    bucket_found = False
+    new_bucket_name = None
+    for b in bucket_dict_az:
+        if b['Name'].startswith(bucket_name):
+            bucket_found = True
+            new_bucket_name = b['Name']
+            break
+    eq(bucket_found, True)
+
+    # create bucket name collision
+    client.create_bucket(Bucket=new_bucket_name)
+
+    _wait_replication_time_az()
+
+    # check number of buckets in non archive zone
+    response = client.list_buckets()
+    bucket_dict = response['Buckets']
+    eq(len(bucket_dict), num_buckets + 1)
+
+    # check number of buckets in archive zone
+    response_az = client_az.list_buckets()
+    bucket_dict_az = response_az['Buckets']
+    eq(len(bucket_dict_az), num_buckets_az + 2)
+
+
+@attr(resource='object')
+@attr(method='get')
+@attr(operation='Check versioning support in zones')
+@attr(assertion='success')
+@attr('archive-zone')
+def test_archive_zone_versioning_support_in_zones():
+
+    _check_archive_zone_support()
+
+    key_name = 'test-key-az-versioning-support-in-zones'
+
+    # create bucket in non archive-zone
+    client = get_client()
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+
+    _wait_replication_time_az()
+
+    # check non versioned buckets
+    check_versioning(bucket_name, None)
+    check_az_versioning(bucket_name, None)
+
+    # create object
+    client.put_object(Bucket=bucket_name, Key=key_name, Body='zero')
+
+    _wait_replication_time_az()
+
+    # check lazy versioned buckets
+    check_versioning(bucket_name, None)
+    check_az_versioning(bucket_name, 'Enabled')
+
+    # enable bucket versioning on non archive zone
+    client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={'Status': 'Enabled'})
+
+    # check versioned buckets
+    check_versioning(bucket_name, 'Enabled')
+    check_az_versioning(bucket_name, 'Enabled')
+
+    # delete object in non archive zone
+    client.delete_object(Bucket=bucket_name, Key=key_name)
+
+    _wait_replication_time_az()
+
+    # check non archive zone
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    del_markers = response['DeleteMarkers']
+    eq(len(del_markers), 1)
+
+    # check archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    del_markers_az = response_az['DeleteMarkers']
+    eq(len(del_markers_az), 1)
+
+    # delete delete-marker in non archive zone
+    dm_version = del_markers[0]['VersionId']
+    client.delete_object(Bucket=bucket_name, Key=key_name, VersionId=dm_version)
+
+    _wait_replication_time_az()
+
+    # check non archive zone
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    no_dm = 'DeleteMarkers' not in response.keys()
+    eq(no_dm, True)
+
+    # check archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    del_markers_az = response_az['DeleteMarkers']
+    eq(len(del_markers_az), 1)
+
+    # delete delete-marker in archive zone
+    dm_version_az = del_markers_az[0]['VersionId']
+    client_az.delete_object(Bucket=bucket_name, Key=key_name, VersionId=dm_version_az)
+
+    _wait_replication_time_az()
+
+    # check non archive zone
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+    no_dm = 'DeleteMarkers' not in response.keys()
+    eq(no_dm, True)
+
+    # check archive zone
+    client_az = get_az_client()
+    response_az  = client_az.list_object_versions(Bucket=bucket_name)
+    objs_list_az = response_az['Versions']
+    eq(len(objs_list_az), 1)
+    no_dm = 'DeleteMarkers' not in response.keys()
+    eq(no_dm, True)
+
+    # check body in zones
+    obj_version_id = objs_list[0]['VersionId']
+    response = client.get_object(Bucket=bucket_name, Key=key_name, VersionId=obj_version_id)
+    body = _get_body(response)
+    eq(body, "zero")
+
+    obj_version_id_az = objs_list_az[0]['VersionId']
+    response_az = client_az.get_object(Bucket=bucket_name, Key=key_name, VersionId=obj_version_id_az)
+    body_az = _get_body(response_az)
+    eq(body_az, "zero")

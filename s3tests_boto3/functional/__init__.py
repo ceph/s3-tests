@@ -161,11 +161,14 @@ def setup():
 
     # vars from the DEFAULT section
     config.default_host = defaults.get("host")
+    config.default_host_az = defaults.get("host_az")
     config.default_port = int(defaults.get("port"))
+    config.default_port_az = int(defaults.get("port_az"))
     config.default_is_secure = cfg.getboolean('DEFAULT', "is_secure")
 
     proto = 'https' if config.default_is_secure else 'http'
     config.default_endpoint = "%s://%s:%d" % (proto, config.default_host, config.default_port)
+    config.default_endpoint_az = "%s://%s:%d" % (proto, config.default_host_az, config.default_port_az)
 
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
@@ -278,6 +281,18 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
                         config=Config(signature_version='s3v4'))
+    return client
+
+def get_az_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint_az,
+                        use_ssl=config.default_is_secure,
+                        config=client_config)
     return client
 
 bucket_counter = itertools.count(1)
