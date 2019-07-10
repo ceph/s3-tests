@@ -4192,7 +4192,7 @@ def test_bucket_create_exists():
 @attr(operation='get location')
 def test_bucket_get_location():
     location_constraint = get_main_api_name()
-    if not location_constraint
+    if not location_constraint:
         raise SkipTest
     bucket_name = get_new_bucket_name()
     client = get_client()
