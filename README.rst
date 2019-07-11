@@ -54,3 +54,21 @@ You can run only the boto3 tests with::
 
         S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -s -A 'not fails_on_rgw' s3tests_boto3.functional
 
+If you also want to run the archive sync module test cases, included as part of
+the boto3 tests, one configuration with two zones is required. One of the those
+zones will be the archive zone (az). You can set up this configuration
+following the documentation available at:
+
+http://docs.ceph.com/docs/nautilus/radosgw/archive-sync-module/
+
+With the archive sync module enabled, you need to configure 'host_az' and
+'port_az' in your s3test conf (see s3tests.conf.SAMPLE) together with
+RGW_S3_USE_AZ=1 in the environment. Use 'host' and 'port' to configure the non
+archive zone.
+
+If RGW_S3_USE_AZ is not available in the environment the test cases will be
+skipped. It is the default behaviour.
+
+To run the archive zone test cases directly:
+
+        RGW_S3_USE_AZ=1 S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -a 'archive-zone' s3tests_boto3.functional
