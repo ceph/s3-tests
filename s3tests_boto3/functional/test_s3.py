@@ -7937,6 +7937,7 @@ def test_lifecycle_expiration_versioning_enabled():
     client = get_client()
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
     create_multiple_versions(client, bucket_name, "test1/a", 1)
+    client.delete_object(Bucket=bucket_name, Key="test1/a")
 
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'test1/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
