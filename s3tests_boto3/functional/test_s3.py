@@ -1394,6 +1394,23 @@ def test_bucket_listv2_continuationtoken_empty():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list keys with list-objects-v2')
+@attr(assertion='no pagination, non-empty continuationtoken')
+@attr('list-objects-v2')
+def test_bucket_listv2_continuationtoken():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken='baz')
+    eq(response['ContinuationToken'], 'baz')
+    eq(response['IsTruncated'], False)
+    key_names2 = ['foo', 'quxx']
+    keys = _get_keys(response)
+    eq(keys, key_names2)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='non-printing marker')
 def test_bucket_list_marker_unreadable():
