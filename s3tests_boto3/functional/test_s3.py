@@ -8991,7 +8991,7 @@ def test_lifecycle_expiration_days0():
     eq(len(expire_objects), 0)
 
 
-def setup_lifecycle_expiration(bucket_name, rule_id, delta_days,
+def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
                                     rule_prefix):
     rules=[{'ID': rule_id,
             'Expiration': {'Days': delta_days}, 'Prefix': rule_prefix,
@@ -9003,7 +9003,7 @@ def setup_lifecycle_expiration(bucket_name, rule_id, delta_days,
 
     key = rule_prefix + '/foo'
     body = 'bar'
-    response = client.put_object(Bucket=bucket_name, Key=key, Body=bar)
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     return response
 
@@ -9033,7 +9033,7 @@ def test_lifecycle_expiration_header_put():
 
     now = datetime.datetime.now(None)
     response = setup_lifecycle_expiration(
-        bucket_name, 'rule1', 1, 'days1/')
+        client, bucket_name, 'rule1', 1, 'days1/')
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
 @attr(resource='bucket')
@@ -9050,9 +9050,11 @@ def test_lifecycle_expiration_header_head():
 
     now = datetime.datetime.now(None)
     response = setup_lifecycle_expiration(
-        bucket_name, 'rule1', 1, 'days1/')
+        client, bucket_name, 'rule1', 1, 'days1/')
 
     # stat the object, check header
+    key = 'foo'
+    client.put_object(Bucket=bucket_name, Key=key)
     response = client.head_object(Bucket=bucket_name, Key=key)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
