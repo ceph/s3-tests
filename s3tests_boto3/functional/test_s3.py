@@ -8967,30 +8967,6 @@ def test_lifecycle_expiration_date():
     eq(len(init_objects), 2)
     eq(len(expire_objects), 1)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration days 0')
-@attr('lifecycle')
-@attr('lifecycle_expiration')
-def test_lifecycle_expiration_days0():
-    bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
-    client = get_client()
-
-    rules=[{'ID': 'rule1', 'Expiration': {'Days': 0}, 'Prefix': 'days0/',
-            'Status':'Enabled'}]
-    lifecycle = {'Rules': rules}
-    response = client.put_bucket_lifecycle_configuration(
-        Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-
-    time.sleep(20)
-
-    response = client.list_objects(Bucket=bucket_name)
-    expire_objects = response['Contents']
-
-    eq(len(expire_objects), 0)
-
-
 def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
                                     rule_prefix):
     rules=[{'ID': rule_id,
