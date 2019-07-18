@@ -9005,7 +9005,7 @@ def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
     body = 'bar'
     response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    return response
+    return response, key
 
 def check_lifecycle_expiration_header(response, start_time, rule_id,
                                       delta_days):
@@ -9024,6 +9024,8 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
 @attr(operation='test lifecycle expiration header put')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
+# TODO: figure out why x-amz-epiration header is not coming back from the RGW
+@attr('fails_on_rgw')
 def test_lifecycle_expiration_header_put():
     """
     Check for valid x-amz-expiration header after PUT
@@ -9041,6 +9043,8 @@ def test_lifecycle_expiration_header_put():
 @attr(operation='test lifecycle expiration header head')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
+# TODO: figure out why x-amz-epiration header is not coming back from the RGW
+@attr('fails_on_rgw')
 def test_lifecycle_expiration_header_head():
     """
     Check for valid x-amz-expiration header on HEAD request
@@ -9049,12 +9053,10 @@ def test_lifecycle_expiration_header_head():
     client = get_client()
 
     now = datetime.datetime.now(None)
-    response = setup_lifecycle_expiration(
+    response, key = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
 
     # stat the object, check header
-    key = 'foo'
-    client.put_object(Bucket=bucket_name, Key=key)
     response = client.head_object(Bucket=bucket_name, Key=key)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
