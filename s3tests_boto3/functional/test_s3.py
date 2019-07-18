@@ -1402,11 +1402,14 @@ def test_bucket_listv2_continuationtoken():
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
 
-    response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken='baz')
-    eq(response['ContinuationToken'], 'baz')
-    eq(response['IsTruncated'], False)
-    key_names2 = ['foo', 'quxx']
-    keys = _get_keys(response)
+    response1 = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+    next_continuation_token = response1['NextContinuationToken']
+
+    response2 = client.list_objects_v2(Bucket=bucket_name, ContinuationToken=next_continuation_token)
+    eq(response2['ContinuationToken'], next_continuation_token)
+    eq(response2['IsTruncated'], False)
+    key_names2 = ['baz', 'foo', 'quxx']
+    keys = _get_keys(response2)
     eq(keys, key_names2)
 
 @attr(resource='bucket')
@@ -1419,12 +1422,15 @@ def test_bucket_listv2_both_continuationtoken_startafter():
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
 
-    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken='baz')
-    eq(response['ContinuationToken'], 'baz')
-    eq(response['StartAfter'], 'bar')
-    eq(response['IsTruncated'], False)
+    response1 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', MaxKeys=1)
+    next_continuation_token = response1['NextContinuationToken']
+
+    response2 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken=next_continuation_token)
+    eq(response2['ContinuationToken'], next_continuation_token)
+    eq(response2['StartAfter'], 'bar')
+    eq(response2['IsTruncated'], False)
     key_names2 = ['foo', 'quxx']
-    keys = _get_keys(response)
+    keys = _get_keys(response2)
     eq(keys, key_names2)
 
 @attr(resource='bucket')
