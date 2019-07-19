@@ -8945,7 +8945,6 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
 @attr(method='put')
 @attr(operation='test lifecycle expiration header put')
 @attr('lifecycle')
-@attr('lifecycle_expiration')
 def test_lifecycle_expiration_header_put():
     """
     Check for valid x-amz-expiration header after PUT
@@ -8962,7 +8961,6 @@ def test_lifecycle_expiration_header_put():
 @attr(method='head')
 @attr(operation='test lifecycle expiration header head')
 @attr('lifecycle')
-@attr('lifecycle_expiration')
 def test_lifecycle_expiration_header_head():
     """
     Check for valid x-amz-expiration header on HEAD request
