@@ -28,6 +28,7 @@ import random
 import socket
 import ssl
 from collections import namedtuple
+import pdb
 
 from email.header import decode_header
 
@@ -8913,19 +8914,19 @@ def test_lifecycle_expiration_days0():
     eq(len(expire_objects), 0)
 
 
-def setup_lifecycle_expiration(bucket_name, rule_id, delta_days,
-                                    rule_prefix):
+def setup_lifecycle_expiration(bucket_name, rule_id, delta_days, rule_prefix,
+                               key, body):
     rules=[{'ID': rule_id,
             'Expiration': {'Days': delta_days}, 'Prefix': rule_prefix,
             'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
+
+    client = get_client()
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    key = rule_prefix + '/foo'
-    body = 'bar'
-    response = client.put_object(Bucket=bucket_name, Key=key, Body=bar)
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     return response
 
@@ -8935,7 +8936,7 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
     m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
 
     expiration = datetime.datetime.strptime(m.group(1),
-                                            '%a %b %d %H:%M:%S %Y')
+                                            '%a, %d %b %Y %H:%M:%S %Z')
     eq((expiration - start_time).days, delta_days)
     eq(m.group(2), rule_id)
 
@@ -8950,11 +8951,9 @@ def test_lifecycle_expiration_header_put():
     Check for valid x-amz-expiration header after PUT
     """
     bucket_name = get_new_bucket()
-    client = get_client()
-
     now = datetime.datetime.now(None)
-    response = setup_lifecycle_expiration(
-        bucket_name, 'rule1', 1, 'days1/')
+    response = setup_lifecycle_expiration(bucket_name,'rule1', 1, 'days1/',
+                                          'days1/foo', 'foo_body')
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
 @attr(resource='bucket')
@@ -8969,11 +8968,31 @@ def test_lifecycle_expiration_header_head():
     client = get_client()
 
     now = datetime.datetime.now(None)
-    response = setup_lifecycle_expiration(
-        bucket_name, 'rule1', 1, 'days1/')
+    response = setup_lifecycle_expiration(bucket_name, 'rule1', 1, 'days1/',
+                                          'days1/foo', 'foo_body')
 
     # stat the object, check header
-    response = client.head_object(Bucket=bucket_name, Key=key)
+    response = client.head_object(Bucket=bucket_name, Key='days1/foo')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='test lifecycle expiration header get')
+@attr('lifecycle')
+def test_lifecycle_expiration_header_get():
+    """
+    Check for valid x-amz-expiration header on GET request
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    now = datetime.datetime.now(None)
+    response = setup_lifecycle_expiration(bucket_name, 'rule1', 1, 'days1/',
+                                          'days1/foo', 'foo_body')
+
+    # stat the object, check header
+    response = client.get_object(Bucket=bucket_name, Key='days1/foo')
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
