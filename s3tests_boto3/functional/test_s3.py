@@ -8997,6 +8997,79 @@ def test_lifecycle_expiration_header_get():
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
 @attr(resource='bucket')
+@attr(method='get')
+@attr(operation='test lifecycle expiration header tags')
+@attr('lifecycle')
+def test_lifecycle_expiration_header_tags():
+    """
+    Check x-amz-expiration-header object tags interaction
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    lifecycle={
+            "Rules": [
+            {
+                "Filter": {
+                    "Tag": {"Key": "key1", "Value": "tag1"}
+                },
+                "Status": "Enabled",
+                "Expiration": {
+                    "Days": 1
+                },
+                "ID": "rule1"
+                },
+            {
+                "Filter": {
+                    "Tag": {"Key": "key1", "Value": "tag5"}
+                },
+                "Status": "Enabled",
+                "Expiration": {
+                    "Days": 5
+                },
+                "ID": "rule5"
+                }
+            ]
+        }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    key1 = "obj_key1"
+    body1 = "obj_key1_body"
+    response = client.put_object(Bucket=bucket_name, Key=key1, Body=body1)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    tags1={'TagSet': [{'Key': 'key1', 'Value': 'tag1'}]}
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key1,
+                                         Tagging=tags1)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    key2 = "obj_key2"
+    body2 = "obj_key2_body"
+    response = client.put_object(Bucket=bucket_name, Key=key2, Body=body2)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    tags2={'TagSet': [{'Key': 'key1', 'Value': 'tag5'}]}
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key2,
+                                         Tagging=tags2)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    # check expirations
+    response = client.head_object(Bucket=bucket_name, Key=key1)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    eq(m.group(2), "rule1")
+
+    response = client.head_object(Bucket=bucket_name, Key=key2)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    eq(m.group(2), "rule5")
+
+@attr(resource='bucket')
 @attr(method='put')
 @attr(operation='set lifecycle config with noncurrent version expiration')
 @attr('lifecycle')
