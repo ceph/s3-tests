@@ -1394,6 +1394,47 @@ def test_bucket_listv2_continuationtoken_empty():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list keys with list-objects-v2')
+@attr(assertion='no pagination, non-empty continuationtoken')
+@attr('list-objects-v2')
+def test_bucket_listv2_continuationtoken():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response1 = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
+    next_continuation_token = response1['NextContinuationToken']
+
+    response2 = client.list_objects_v2(Bucket=bucket_name, ContinuationToken=next_continuation_token)
+    eq(response2['ContinuationToken'], next_continuation_token)
+    eq(response2['IsTruncated'], False)
+    key_names2 = ['baz', 'foo', 'quxx']
+    keys = _get_keys(response2)
+    eq(keys, key_names2)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list keys with list-objects-v2')
+@attr(assertion='no pagination, non-empty continuationtoken and startafter')
+@attr('list-objects-v2')
+def test_bucket_listv2_both_continuationtoken_startafter():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response1 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', MaxKeys=1)
+    next_continuation_token = response1['NextContinuationToken']
+
+    response2 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken=next_continuation_token)
+    eq(response2['ContinuationToken'], next_continuation_token)
+    eq(response2['StartAfter'], 'bar')
+    eq(response2['IsTruncated'], False)
+    key_names2 = ['foo', 'quxx']
+    keys = _get_keys(response2)
+    eq(keys, key_names2)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='non-printing marker')
 def test_bucket_list_marker_unreadable():
