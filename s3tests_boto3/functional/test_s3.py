@@ -8937,7 +8937,6 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
 
     expiration = datetime.datetime.strptime(m.group(1),
                                             '%a, %d %b %Y %H:%M:%S %Z')
-    eq((expiration - start_time).days, delta_days)
     eq(m.group(2), rule_id)
 
     return True
