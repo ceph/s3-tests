@@ -59,6 +59,8 @@ def check_can_test_website():
             elif e.status == 403 and e.reason == 'SignatureDoesNotMatch' and e.error_code == 'Forbidden':
                 # This is older versions that do not support the website code
                 CAN_WEBSITE = False
+            elif e.status == 501 and e.error_code == 'NotImplemented':
+                CAN_WEBSITE = False
             else:
                 raise RuntimeError("Unknown response in checking if WebsiteConf is supported", e)
         finally:
