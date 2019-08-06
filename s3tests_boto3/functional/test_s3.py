@@ -1348,18 +1348,6 @@ def test_bucket_list_marker_none():
     response = client.list_objects(Bucket=bucket_name)
     eq(response['Marker'], '')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='no pagination, no continuationtoken')
-@attr('list-objects-v2')
-def test_bucket_listv2_continuationtoken_none():
-    key_names = ['bar', 'baz', 'foo', 'quxx']
-    bucket_name = _create_objects(keys=key_names)
-    client = get_client()
-
-    response = client.list_objects_v2(Bucket=bucket_name)
-    eq(response['ContinuationToken'], '')
 
 @attr(resource='bucket')
 @attr(method='get')
