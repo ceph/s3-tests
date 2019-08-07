@@ -1425,9 +1425,8 @@ def test_bucket_listv2_both_continuationtoken_startafter():
     response1 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', MaxKeys=1)
     next_continuation_token = response1['NextContinuationToken']
 
-    response2 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken=next_continuation_token)
+    response2 = client.list_objects_v2(Bucket=bucket_name,  ContinuationToken=next_continuation_token)
     eq(response2['ContinuationToken'], next_continuation_token)
-    eq(response2['StartAfter'], 'bar')
     eq(response2['IsTruncated'], False)
     key_names2 = ['foo', 'quxx']
     keys = _get_keys(response2)
