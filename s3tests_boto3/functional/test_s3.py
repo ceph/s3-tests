@@ -9033,11 +9033,10 @@ def test_lifecycle_expiration_days0():
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
     time.sleep(20)
-
     response = client.list_objects(Bucket=bucket_name)
-    expire_objects = response['Contents']
-
-    eq(len(expire_objects), 0)
+    if 'Contents' in response:
+        expire_objects = response['Contents']
+        eq(len(expire_objects), 0)
 
 
 def setup_lifecycle_expiration(bucket_name, rule_id, delta_days,
