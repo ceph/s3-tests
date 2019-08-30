@@ -12414,7 +12414,7 @@ def test_get_bucket_policy_status():
 @attr(operation='get bucket policy status on a public acl bucket')
 @attr(assertion='succeeds')
 @attr('policy_status')
-def test_get_public_bucket_policy_status():
+def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     client = get_client()
@@ -12427,10 +12427,116 @@ def test_get_public_bucket_policy_status():
 @attr(operation='get bucket policy status on a authenticated acl bucket')
 @attr(assertion='succeeds')
 @attr('policy_status')
-def test_get_authpublic_bucket_policy_status():
+def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='authenticated-read')
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],True)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a public policy bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_publicpolicy_acl_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client = get_client()
+
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],False)
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ]
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],True)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a public policy bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_nonpublicpolicy_acl_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client = get_client()
+
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],False)
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ],
+        "Condition": {
+            "IpAddress":
+            {"aws:SourceIp": "10.0.0.0/32"}
+        }
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],False)
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a public policy bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_nonpublicpolicy_deny_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client = get_client()
+
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],False)
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "NotPrincipal": {"AWS": "arn:aws:iam::s3tenant1:root"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ],
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     eq(resp['PolicyStatus']['IsPublic'],True)
