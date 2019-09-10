@@ -155,6 +155,7 @@ def test_versioning_obj_read_not_exist_null():
 @attr(operation='append object')
 @attr(assertion='success')
 @attr('fails_on_aws')
+@attr('fails_with_subdomain')
 @attr('appendobject')
 def test_append_object():
     bucket = get_new_bucket()
@@ -178,6 +179,7 @@ def test_append_object():
 @attr(operation='append to normal object')
 @attr(assertion='fails 409')
 @attr('fails_on_aws')
+@attr('fails_with_subdomain')
 @attr('appendobject')
 def test_append_normal_object():
     bucket = get_new_bucket()
@@ -197,6 +199,7 @@ def test_append_normal_object():
 @attr(operation='append position not right')
 @attr(assertion='fails 409')
 @attr('fails_on_aws')
+@attr('fails_with_subdomain')
 @attr('appendobject')
 def test_append_object_position_wrong():
     bucket = get_new_bucket()
@@ -953,6 +956,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 @attr(method='get')
 @attr(operation='Test Bucket Policy for a user belonging to a different tenant')
 @attr(assertion='succeeds')
+@attr('fails_with_subdomain')
 @attr('bucket-policy')
 def test_bucket_policy_different_tenant():
     bucket = get_new_bucket()
