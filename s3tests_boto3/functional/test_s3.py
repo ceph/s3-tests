@@ -10003,6 +10003,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
 def test_sse_kms_post_object_authenticated_request():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
 
@@ -10034,7 +10035,7 @@ def test_sse_kms_post_object_authenticated_request():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),
     ('x-amz-server-side-encryption', 'aws:kms'), \
-    ('x-amz-server-side-encryption-aws-kms-key-id', 'testkey-1'), \
+    ('x-amz-server-side-encryption-aws-kms-key-id', kms_keyid), \
     ('file', ('bar'))])
 
     r = requests.post(url, files = payload)
