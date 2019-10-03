@@ -169,11 +169,8 @@ def setup():
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
     except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-        config.main_kms_keyid = 'testkey-1'
-    try:
-        config.main_kms_keyid2 = cfg.get('s3 main',"kms_keyid2")
-    except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
-        config.main_kms_keyid2 = 'testkey-2'
+        config.main_kms_keyid = None
+        pass
 
     try:
         config.main_api_name = cfg.get('s3 main',"api_name")
@@ -299,7 +296,7 @@ def get_new_bucket_resource(name=None):
     Always recreates a bucket from scratch. This is useful to also
     reset ACLs and such.
     """
-    s3 = boto3.resource('s3',
+    s3 = boto3.resource('s3', 
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
@@ -358,9 +355,6 @@ def get_main_api_name():
 
 def get_main_kms_keyid():
     return config.main_kms_keyid
-
-def get_secondary_kms_keyid():
-    return config.main_kms_keyid2
 
 def get_alt_aws_access_key():
     return config.alt_access_key
