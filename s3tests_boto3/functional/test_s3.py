@@ -67,6 +67,7 @@ from . import (
     get_buckets_list,
     get_objects_list,
     get_main_kms_keyid,
+    get_secondary_kms_keyid,
     nuke_prefixed_buckets,
     )
 
@@ -84,7 +85,7 @@ def _bucket_is_empty(bucket):
 @attr(assertion='empty buckets return no contents')
 def test_bucket_list_empty():
     bucket = get_new_bucket_resource()
-    is_empty = _bucket_is_empty(bucket) 
+    is_empty = _bucket_is_empty(bucket)
     eq(is_empty, True)
 
 @attr(resource='bucket')
@@ -95,9 +96,9 @@ def test_bucket_list_distinct():
     bucket1 = get_new_bucket_resource()
     bucket2 = get_new_bucket_resource()
     obj = bucket1.put_object(Body='str', Key='asdf')
-    is_empty = _bucket_is_empty(bucket2) 
+    is_empty = _bucket_is_empty(bucket2)
     eq(is_empty, True)
-    
+
 def _create_objects(bucket=None, bucket_name=None, keys=[]):
     """
     Populate a (specified or new) bucket with objects with
@@ -190,8 +191,8 @@ def test_basic_key_count():
     response1 = client.list_objects_v2(Bucket=bucket_name)
     eq(response1['KeyCount'], 5)
 
- 
- 
+
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
@@ -1536,7 +1537,7 @@ def _compare_dates(datetime1, datetime2):
     """
     changes ms from datetime1 to 0, compares it to datetime2
     """
-    # both times are in datetime format but datetime1 has 
+    # both times are in datetime format but datetime1 has
     # microseconds and datetime2 does not
     datetime1 = datetime1.replace(microsecond=0)
     eq(datetime1, datetime2)
@@ -1644,7 +1645,7 @@ def test_bucket_list_return_data_versioning():
 @attr(operation='list all objects (anonymous)')
 @attr(assertion='succeeds')
 def test_bucket_list_objects_anonymous():
-    bucket_name = get_new_bucket() 
+    bucket_name = get_new_bucket()
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
@@ -1657,7 +1658,7 @@ def test_bucket_list_objects_anonymous():
 @attr(assertion='succeeds')
 @attr('list-objects-v2')
 def test_bucket_listv2_objects_anonymous():
-    bucket_name = get_new_bucket() 
+    bucket_name = get_new_bucket()
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
@@ -1669,7 +1670,7 @@ def test_bucket_listv2_objects_anonymous():
 @attr(operation='list all objects (anonymous)')
 @attr(assertion='fails')
 def test_bucket_list_objects_anonymous_fail():
-    bucket_name = get_new_bucket() 
+    bucket_name = get_new_bucket()
 
     unauthenticated_client = get_unauthenticated_client()
     e = assert_raises(ClientError, unauthenticated_client.list_objects, Bucket=bucket_name)
@@ -1684,7 +1685,7 @@ def test_bucket_list_objects_anonymous_fail():
 @attr(assertion='fails')
 @attr('list-objects-v2')
 def test_bucket_listv2_objects_anonymous_fail():
-    bucket_name = get_new_bucket() 
+    bucket_name = get_new_bucket()
 
     unauthenticated_client = get_unauthenticated_client()
     e = assert_raises(ClientError, unauthenticated_client.list_objects_v2, Bucket=bucket_name)
@@ -1698,7 +1699,7 @@ def test_bucket_listv2_objects_anonymous_fail():
 @attr(operation='non-existant bucket')
 @attr(assertion='fails 404')
 def test_bucket_notexist():
-    bucket_name = get_new_bucket_name() 
+    bucket_name = get_new_bucket_name()
     client = get_client()
 
     e = assert_raises(ClientError, client.list_objects, Bucket=bucket_name)
@@ -1713,7 +1714,7 @@ def test_bucket_notexist():
 @attr(assertion='fails 404')
 @attr('list-objects-v2')
 def test_bucketv2_notexist():
-    bucket_name = get_new_bucket_name() 
+    bucket_name = get_new_bucket_name()
     client = get_client()
 
     e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name)
@@ -1727,7 +1728,7 @@ def test_bucketv2_notexist():
 @attr(operation='non-existant bucket')
 @attr(assertion='fails 404')
 def test_bucket_delete_notexist():
-    bucket_name = get_new_bucket_name() 
+    bucket_name = get_new_bucket_name()
     client = get_client()
 
     e = assert_raises(ClientError, client.delete_bucket, Bucket=bucket_name)
@@ -1837,7 +1838,7 @@ def test_object_read_notexist():
 http_response = None
 
 def get_http_response(**kwargs):
-    global http_response 
+    global http_response
     http_response = kwargs['http_response'].__dict__
 
 @attr(resource='object')
@@ -1874,16 +1875,16 @@ def test_multi_object_delete():
     client = get_client()
     response = client.list_objects(Bucket=bucket_name)
     eq(len(response['Contents']), 3)
-    
+
     objs_dict = _make_objs_dict(key_names=key_names)
-    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
 
     eq(len(response['Deleted']), 3)
     assert 'Errors' not in response
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
 
-    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
     eq(len(response['Deleted']), 3)
     assert 'Errors' not in response
     response = client.list_objects(Bucket=bucket_name)
@@ -1900,16 +1901,16 @@ def test_multi_objectv2_delete():
     client = get_client()
     response = client.list_objects_v2(Bucket=bucket_name)
     eq(len(response['Contents']), 3)
-    
+
     objs_dict = _make_objs_dict(key_names=key_names)
-    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
 
     eq(len(response['Deleted']), 3)
     assert 'Errors' not in response
     response = client.list_objects_v2(Bucket=bucket_name)
     assert 'Contents' not in response
 
-    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict) 
+    response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
     eq(len(response['Deleted']), 3)
     assert 'Errors' not in response
     response = client.list_objects_v2(Bucket=bucket_name)
@@ -3352,7 +3353,7 @@ def test_get_object_ifmodifiedsince_failed():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
     response = client.get_object(Bucket=bucket_name, Key='foo')
     last_modified = str(response['LastModified'])
-    
+
     last_modified = last_modified.split('+')[0]
     mtime = datetime.datetime.strptime(last_modified, '%Y-%m-%d %H:%M:%S')
 
@@ -3588,7 +3589,7 @@ def _setup_bucket_object_acl(bucket_acl, object_acl):
     client.create_bucket(ACL=bucket_acl, Bucket=bucket_name)
     client.put_object(ACL=object_acl, Bucket=bucket_name, Key='foo')
 
-    return bucket_name 
+    return bucket_name
 
 def _setup_bucket_acl(bucket_acl=None):
     """
@@ -4113,9 +4114,9 @@ def test_bucket_list_long_name():
             name=name,
             )
     bucket = get_new_bucket_resource(name=bucket_name)
-    is_empty = _bucket_is_empty(bucket) 
+    is_empty = _bucket_is_empty(bucket)
     eq(is_empty, True)
-    
+
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
 @attr('fails_on_aws')
@@ -4260,7 +4261,7 @@ def test_bucket_get_location():
     if location_constraint == "":
         location_constraint = None
     eq(response['LocationConstraint'], location_constraint)
-    
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='re-create by non-owner')
@@ -4313,7 +4314,7 @@ def test_bucket_acl_default():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     eq(response['Owner']['DisplayName'], display_name)
     eq(response['Owner']['ID'], user_id)
 
@@ -4345,7 +4346,7 @@ def test_bucket_acl_canned_during_create():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -4381,7 +4382,7 @@ def test_bucket_acl_canned():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -4435,7 +4436,6 @@ def test_bucket_acl_canned_publicreadwrite():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
     grants = response['Grants']
     check_grants(
         grants,
@@ -4479,7 +4479,7 @@ def test_bucket_acl_canned_authenticatedread():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -4517,7 +4517,7 @@ def test_object_acl_default():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -4547,7 +4547,7 @@ def test_object_acl_canned_during_create():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -4720,7 +4720,7 @@ def test_object_acl_canned_bucketownerread():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL='public-read-write')
-    
+
     alt_client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
@@ -4766,7 +4766,7 @@ def test_object_acl_canned_bucketownerfullcontrol():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL='public-read-write')
-    
+
     alt_client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
@@ -4813,7 +4813,7 @@ def test_object_acl_full_control_verify_owner():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL='public-read-write')
-    
+
     main_client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     alt_user_id = get_alt_user_id()
@@ -4825,7 +4825,7 @@ def test_object_acl_full_control_verify_owner():
     grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'FULL_CONTROL'}], 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
 
     main_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grant)
-    
+
     grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'READ_ACP'}], 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
 
     alt_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grant)
@@ -4840,7 +4840,7 @@ def add_obj_user_grant(bucket_name, key, grant):
     owned by the main user, not the alt user
     A grant is a dictionary in the form of:
     {u'Grantee': {u'Type': 'type', u'DisplayName': 'name', u'ID': 'id'}, u'Permission': 'PERM'}
-    
+
     """
     client = get_client()
     main_user_id = get_main_user_id()
@@ -4865,7 +4865,7 @@ def test_object_acl_full_control_verify_attributes():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL='public-read-write')
-    
+
     header = {'x-amz-foo': 'bar'}
     # lambda to add any header
     add_header = (lambda **kwargs: kwargs['params']['headers'].update(header))
@@ -4923,7 +4923,7 @@ def add_bucket_user_grant(bucket_name, grant):
 
 def _check_object_acl(permission):
     """
-    Sets the permission on an object then checks to see 
+    Sets the permission on an object then checks to see
     if it was set
     """
     bucket_name = get_new_bucket()
@@ -5307,7 +5307,7 @@ def test_object_header_acl_grants():
     client.put_object(Bucket=bucket_name, Key='foo_key', Body='bar')
 
     response = client.get_object_acl(Bucket=bucket_name, Key='foo_key')
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -5377,7 +5377,7 @@ def test_bucket_header_acl_grants():
     client.create_bucket(Bucket=bucket_name)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
-    
+
     grants = response['Grants']
     alt_user_id = get_alt_user_id()
     alt_display_name = get_alt_display_name()
@@ -5434,7 +5434,7 @@ def test_bucket_header_acl_grants():
 
     # set bucket acl to public-read-write so that teardown can work
     alt_client.put_bucket_acl(Bucket=bucket_name, ACL='public-read-write')
-    
+
 
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
 # would violate the uniqueness requirement of a user's email. As such, DHO users are
@@ -5462,7 +5462,7 @@ def test_bucket_acl_grant_email():
     client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy = grant)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
-    
+
     grants = response['Grants']
     check_grants(
         grants,
@@ -5603,7 +5603,7 @@ def test_access_bucket_private_object_private():
 
     # acled object write fail
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='barcontent')
-    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used 
+    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used
     # anymore. This can be solved either by:
     # 1) putting an empty string ('') in the 'Body' field of those put_object calls
     # 2) getting a new client hence the creation of alt_client{2,3} for the tests below
@@ -5635,7 +5635,7 @@ def test_access_bucket_private_objectv2_private():
 
     # acled object write fail
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='barcontent')
-    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used 
+    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used
     # anymore. This can be solved either by:
     # 1) putting an empty string ('') in the 'Body' field of those put_object calls
     # 2) getting a new client hence the creation of alt_client{2,3} for the tests below
@@ -6295,7 +6295,7 @@ def test_object_copy_key_not_found():
     e = assert_raises(ClientError, client.copy, copy_source, bucket_name, 'bar321foo')
     status = _get_status(e.response)
     eq(status, 404)
-    
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy object to/from versioned bucket')
@@ -6571,7 +6571,7 @@ def _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size, 
     for start_offset in range(0, size, part_size):
         end_offset = min(start_offset + part_size - 1, size - 1)
         part_num = i+1
-        copy_source_range = 'bytes={start}-{end}'.format(start=start_offset, end=end_offset) 
+        copy_source_range = 'bytes={start}-{end}'.format(start=start_offset, end=end_offset)
         response = client.upload_part_copy(Bucket=dest_bucket_name, Key=dest_key, CopySource=copy_source, PartNumber=part_num, UploadId=upload_id, CopySourceRange=copy_source_range)
         parts.append({'ETag': response['CopyPartResult'][u'ETag'], 'PartNumber': part_num})
         i = i+1
@@ -6631,7 +6631,7 @@ def test_multipart_copy_invalid_range():
     upload_id = response['UploadId']
 
     copy_source = {'Bucket': src_bucket_name, 'Key': src_key}
-    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=21) 
+    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=21)
 
     e = assert_raises(ClientError, client.upload_part_copy,Bucket=src_bucket_name, Key='dest', UploadId=upload_id, CopySource=copy_source, CopySourceRange=copy_source_range, PartNumber=1)
     status, error_code = _get_status_and_error_code(e.response)
@@ -6690,7 +6690,7 @@ def test_multipart_copy_without_range():
 
     copy_source = {'Bucket': src_bucket_name, 'Key': src_key}
     part_num = 1
-    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=9) 
+    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=9)
 
     response = client.upload_part_copy(Bucket=dest_bucket_name, Key=dest_key, CopySource=copy_source, PartNumber=part_num, UploadId=upload_id)
 
@@ -6700,7 +6700,7 @@ def test_multipart_copy_without_range():
     response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
     eq(response['ContentLength'], 10)
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
@@ -6896,7 +6896,7 @@ def test_multipart_upload_multiple_sizes():
     objlen = 10*1024*1024
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen)
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    
+
 @attr(assertion='successful')
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
@@ -6910,27 +6910,27 @@ def test_multipart_copy_multiple_sizes():
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
     size = 5*1024*1024+100*1024
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
     size = 5*1024*1024+600*1024
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
     size = 10*1024*1024+100*1024
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
     size = 10*1024*1024+600*1024
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
-    
+
     size = 10*1024*1024
     (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
@@ -6958,7 +6958,7 @@ def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
 def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
     payload=gen_rand_string(5)*1024*1024
     client = get_client()
-        
+
     response = client.create_multipart_upload(Bucket=bucket_name, Key=key)
     upload_id = response['UploadId']
 
@@ -7005,7 +7005,7 @@ def test_multipart_upload_overwrite_existing_object():
     num_parts=2
     client.put_object(Bucket=bucket_name, Key=key, Body=payload)
 
-        
+
     response = client.create_multipart_upload(Bucket=bucket_name, Key=key)
     upload_id = response['UploadId']
 
@@ -7205,7 +7205,7 @@ def test_set_cors():
 
     cors_config ={
         'CORSRules': [
-            {'AllowedMethods': allowed_methods, 
+            {'AllowedMethods': allowed_methods,
              'AllowedOrigins': allowed_origins,
             },
         ]
@@ -7231,7 +7231,7 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
 
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
     assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
-    
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='check cors response when origin header set')
@@ -7243,16 +7243,16 @@ def test_cors_origin_response():
 
     cors_config ={
         'CORSRules': [
-            {'AllowedMethods': ['GET'], 
+            {'AllowedMethods': ['GET'],
              'AllowedOrigins': ['*suffix'],
             },
-            {'AllowedMethods': ['GET'], 
+            {'AllowedMethods': ['GET'],
              'AllowedOrigins': ['start*end'],
             },
-            {'AllowedMethods': ['GET'], 
+            {'AllowedMethods': ['GET'],
              'AllowedOrigins': ['prefix*'],
             },
-            {'AllowedMethods': ['PUT'], 
+            {'AllowedMethods': ['PUT'],
              'AllowedOrigins': ['*.put'],
             }
         ]
@@ -7323,7 +7323,7 @@ def test_cors_origin_wildcard():
 
     cors_config ={
         'CORSRules': [
-            {'AllowedMethods': ['GET'], 
+            {'AllowedMethods': ['GET'],
              'AllowedOrigins': ['*'],
             },
         ]
@@ -7353,7 +7353,7 @@ def test_cors_header_option():
 
     cors_config ={
         'CORSRules': [
-            {'AllowedMethods': ['GET'], 
+            {'AllowedMethods': ['GET'],
              'AllowedOrigins': ['*'],
              'ExposeHeaders': ['x-amz-meta-header1'],
             },
@@ -7823,7 +7823,7 @@ def test_multipart_resend_first_finishes_last():
 
     # clear parts
     parts[:] = []
-    
+
     # ok, now for the actual test
     fp_b = FakeWriteFile(file_size, 'B')
     def upload_fp_b():
@@ -8004,7 +8004,7 @@ def create_multiple_versions(client, bucket_name, key, num_versions, version_ids
         version_ids.append(version_id)
 
     if check_versions:
-        check_obj_versions(client, bucket_name, key, version_ids, contents) 
+        check_obj_versions(client, bucket_name, key, version_ids, contents)
 
     return (version_ids, contents)
 
@@ -8224,13 +8224,13 @@ def overwrite_suspended_versioning_obj(client, bucket_name, key, version_ids, co
             version_ids.pop(i)
             contents.pop(i)
         i += 1
-        
+
     # add new content with 'null' version id to the end
     contents.append(content)
     version_ids.append('null')
 
     return (version_ids, contents)
-        
+
 
 @attr(resource='object')
 @attr(method='create')
@@ -8337,7 +8337,7 @@ def test_versioning_obj_create_overwrite_multipart():
         version_ids.append(version['VersionId'])
 
     version_ids.reverse()
-    check_obj_versions(client, bucket_name, key, version_ids, contents) 
+    check_obj_versions(client, bucket_name, key, version_ids, contents)
 
     for idx in xrange(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
@@ -8428,7 +8428,7 @@ def test_versioning_copy_obj_version():
         response = client.get_object(Bucket=bucket_name, Key=new_key_name)
         body = _get_body(response)
         eq(body, contents[i])
-        
+
     another_bucket_name = get_new_bucket()
 
     for i in xrange(num_versions):
@@ -8438,7 +8438,7 @@ def test_versioning_copy_obj_version():
         response = client.get_object(Bucket=another_bucket_name, Key=new_key_name)
         body = _get_body(response)
         eq(body, contents[i])
-        
+
     new_key_name = 'new_key'
     copy_source = {'Bucket': bucket_name, 'Key': key}
     client.copy_object(Bucket=another_bucket_name, CopySource=copy_source, Key=new_key_name)
@@ -8571,7 +8571,7 @@ def test_versioned_object_acl():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     eq(response['Owner']['DisplayName'], display_name)
     eq(response['Owner']['ID'], user_id)
 
@@ -8644,7 +8644,7 @@ def test_versioned_object_acl_no_version_specified():
 
     display_name = get_main_display_name()
     user_id = get_main_user_id()
-    
+
     eq(response['Owner']['DisplayName'], display_name)
     eq(response['Owner']['ID'], user_id)
 
@@ -8949,7 +8949,7 @@ def test_lifecycle_id_too_long():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(error_code, 'InvalidArgument')
-    
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='same id')
@@ -8966,7 +8966,7 @@ def test_lifecycle_same_id():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(error_code, 'InvalidArgument')
-    
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='invalid status in lifecycle rule')
@@ -8982,7 +8982,7 @@ def test_lifecycle_invalid_status():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(error_code, 'MalformedXML')
-    
+
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 2}, 'Prefix': 'test1/', 'Status':'disabled'}]
     lifecycle = {'Rules': rules}
 
@@ -9596,7 +9596,7 @@ def test_encryption_sse_c_multipart_upload():
     }
     resend_parts = []
 
-    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen, 
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
             part_size=5*1024*1024, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
@@ -9651,7 +9651,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
     }
     resend_parts = []
 
-    e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name, 
+    e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
             key=key, size=objlen, part_size=5*1024*1024, init_headers=init_headers, part_headers=part_headers, metadata=metadata, resend_parts=resend_parts)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
@@ -9683,7 +9683,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     }
     resend_parts = []
 
-    e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name, 
+    e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
             key=key, size=objlen, part_size=5*1024*1024, init_headers=init_headers, part_headers=part_headers, metadata=metadata, resend_parts=resend_parts)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
@@ -9713,7 +9713,7 @@ def test_encryption_sse_c_multipart_bad_download():
     }
     resend_parts = []
 
-    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen, 
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
             part_size=5*1024*1024, init_headers=put_headers, part_headers=put_headers, metadata=metadata, resend_parts=resend_parts)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(put_headers))
@@ -9821,40 +9821,9 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
     eq(body, data)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1 byte')
-@attr(assertion='success')
-@attr('encryption')
-def test_sse_kms_transfer_1b():
-    _test_sse_kms_customer_write(1)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1KB')
-@attr(assertion='success')
-@attr('encryption')
-def test_sse_kms_transfer_1kb():
-    _test_sse_kms_customer_write(1024)
 
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1MB')
-@attr(assertion='success')
-@attr('encryption')
-def test_sse_kms_transfer_1MB():
-    _test_sse_kms_customer_write(1024*1024)
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
-@attr(assertion='success')
-@attr('encryption')
-def test_sse_kms_transfer_13b():
-    _test_sse_kms_customer_write(13)
 
 @attr(resource='object')
 @attr(method='head')
@@ -9862,11 +9831,12 @@ def test_sse_kms_transfer_13b():
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_kms_method_head():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
     sse_kms_client_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
     data = 'A'*1000
     key = 'testobj'
@@ -9877,7 +9847,7 @@ def test_sse_kms_method_head():
 
     response = client.head_object(Bucket=bucket_name, Key=key)
     eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], 'testkey-1')
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_kms_client_headers))
     client.meta.events.register('before-call.s3.HeadObject', lf)
@@ -9891,11 +9861,12 @@ def test_sse_kms_method_head():
 @attr(assertion='operation success')
 @attr('encryption')
 def test_sse_kms_present():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
     sse_kms_client_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1'
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
     data = 'A'*100
     key = 'testobj'
@@ -9955,6 +9926,7 @@ def test_sse_kms_not_declared():
 @attr(assertion='successful')
 @attr('encryption')
 def test_sse_kms_multipart_upload():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
     key = "multipart_enc"
@@ -9963,12 +9935,12 @@ def test_sse_kms_multipart_upload():
     metadata = {'foo': 'bar'}
     enc_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-2',
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
     resend_parts = []
 
-    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen, 
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
             part_size=5*1024*1024, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
@@ -10004,6 +9976,8 @@ def test_sse_kms_multipart_upload():
 @attr(assertion='successful')
 @attr('encryption')
 def test_sse_kms_multipart_invalid_chunks_1():
+    kms_keyid = get_main_kms_keyid()
+    kms_keyid2 = get_secondary_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
     key = "multipart_enc"
@@ -10012,17 +9986,17 @@ def test_sse_kms_multipart_invalid_chunks_1():
     metadata = {'foo': 'bar'}
     init_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1',
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
     part_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-2'
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid2
     }
     resend_parts = []
 
-    _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024, 
-            init_headers=init_headers, part_headers=part_headers, metadata=metadata, 
+    _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024,
+            init_headers=init_headers, part_headers=part_headers, metadata=metadata,
             resend_parts=resend_parts)
 
 
@@ -10032,6 +10006,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
 @attr(assertion='successful')
 @attr('encryption')
 def test_sse_kms_multipart_invalid_chunks_2():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
     key = "multipart_enc"
@@ -10040,7 +10015,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
     metadata = {'foo': 'bar'}
     init_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
-        'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-1',
+        'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
     part_headers = {
@@ -10049,9 +10024,10 @@ def test_sse_kms_multipart_invalid_chunks_2():
     }
     resend_parts = []
 
-    _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024, 
-            init_headers=init_headers, part_headers=part_headers, metadata=metadata, 
+    _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024,
+            init_headers=init_headers, part_headers=part_headers, metadata=metadata,
             resend_parts=resend_parts)
+
 
 @attr(resource='object')
 @attr(method='post')
@@ -10059,6 +10035,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
 def test_sse_kms_post_object_authenticated_request():
+    kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
     client = get_client()
 
@@ -10090,7 +10067,7 @@ def test_sse_kms_post_object_authenticated_request():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),
     ('x-amz-server-side-encryption', 'aws:kms'), \
-    ('x-amz-server-side-encryption-aws-kms-key-id', 'testkey-1'), \
+    ('x-amz-server-side-encryption-aws-kms-key-id', kms_keyid), \
     ('file', ('bar'))])
 
     r = requests.post(url, files = payload)
@@ -10105,7 +10082,7 @@ def test_sse_kms_post_object_authenticated_request():
 @attr(operation='Test SSE-KMS encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
-def test_sse_kms_barb_transfer_1b():
+def test_sse_kms_transfer_1b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
         raise SkipTest
@@ -10117,7 +10094,7 @@ def test_sse_kms_barb_transfer_1b():
 @attr(operation='Test SSE-KMS encrypted transfer 1KB')
 @attr(assertion='success')
 @attr('encryption')
-def test_sse_kms_barb_transfer_1kb():
+def test_sse_kms_transfer_1kb():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
         raise SkipTest
@@ -10129,7 +10106,7 @@ def test_sse_kms_barb_transfer_1kb():
 @attr(operation='Test SSE-KMS encrypted transfer 1MB')
 @attr(assertion='success')
 @attr('encryption')
-def test_sse_kms_barb_transfer_1MB():
+def test_sse_kms_transfer_1MB():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
         raise SkipTest
@@ -10141,7 +10118,7 @@ def test_sse_kms_barb_transfer_1MB():
 @attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
 @attr(assertion='success')
 @attr('encryption')
-def test_sse_kms_barb_transfer_13b():
+def test_sse_kms_transfer_13b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
         raise SkipTest
@@ -10539,7 +10516,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     response = client.get_object(Bucket=bucket_name, Key=key)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    # the 'referer' headers need to be removed for this one 
+    # the 'referer' headers need to be removed for this one
     #response = client.get_object(Bucket=bucket_name, Key=key)
     #eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
@@ -10842,7 +10819,7 @@ def test_post_object_tags_authenticated_request():
 
     signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, sha).digest())
 
-    payload = OrderedDict([ 
+    payload = OrderedDict([
         ("key" , "foo.txt"),
         ("AWSAccessKeyId" , aws_access_key_id),\
         ("acl" , "private"),("signature" , signature),("policy" , policy),\
@@ -10988,7 +10965,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
     for version in versions:
-        eq(version['VersionId'], version_id) 
+        eq(version['VersionId'], version_id)
 
 
     # for versioning-default-bucket, no version-id should return.
@@ -11029,7 +11006,7 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
     for version in versions:
-        eq(version['VersionId'], version_id) 
+        eq(version['VersionId'], version_id)
 
     # for versioning-default-bucket, no version-id should return.
     bucket_name = get_new_bucket()
@@ -11284,7 +11261,7 @@ def test_bucket_policy_put_obj_copy_source():
     response = alt_client.get_object(Bucket=bucket_name2, Key='new_foo')
     body = _get_body(response)
     eq(body, 'public/foo')
-    
+
     copy_source = {'Bucket': bucket_name, 'Key': 'public/bar'}
     alt_client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key='new_foo2')
 
@@ -11344,7 +11321,7 @@ def test_bucket_policy_put_obj_copy_source_meta():
             del kwargs['params']['headers']["x-amz-metadata-directive"]
 
     alt_client.meta.events.register('before-call.s3.CopyObject', remove_header)
-    
+
     copy_source = {'Bucket': src_bucket_name, 'Key': 'public/bar'}
     check_access_denied(alt_client.copy_object, Bucket=bucket_name, CopySource=copy_source, Key='new_foo2', Metadata={"foo": "bar"})
 
@@ -12229,7 +12206,7 @@ def test_object_lock_get_obj_metadata():
     eq(response['ObjectLockMode'], retention['Mode'])
     eq(response['ObjectLockRetainUntilDate'], retention['RetainUntilDate'])
     eq(response['ObjectLockLegalHoldStatus'], legal_hold['Status'])
-    
+
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
