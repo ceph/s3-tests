@@ -12671,3 +12671,33 @@ def test_block_public_policy():
     check_access_denied(client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
 
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='ignore public acls on canned acls')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_ignore_public_acls():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    alt_client = get_alt_client()
+
+    client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
+    # Public bucket should be accessible
+    alt_client.list_objects(Bucket=bucket_name)
+
+    client.put_object(Bucket=bucket_name,Key='key1',Body='abcde',ACL='public-read')
+    resp=alt_client.get_object(Bucket=bucket_name, Key='key1')
+    eq(resp['Body'].read(), 'abcde')
+
+    access_conf = {'BlockPublicAcls': False,
+                   'IgnorePublicAcls': True,
+                   'BlockPublicPolicy': False,
+                   'RestrictPublicBuckets': False}
+
+    client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
+    resource = _make_arn_resource("{}/{}".format(bucket_name, "*"))
+
+    client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
+    # IgnorePublicACLs is true, so regardless this should behave as a private bucket
+    check_access_denied(alt_client.list_objects, Bucket=bucket_name)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key='key1')
