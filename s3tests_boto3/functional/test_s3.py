@@ -5607,14 +5607,12 @@ def test_access_bucket_private_object_private():
     # anymore. This can be solved either by:
     # 1) putting an empty string ('') in the 'Body' field of those put_object calls
     # 2) getting a new client hence the creation of alt_client{2,3} for the tests below
-    # TODO: Test it from another host and on AWS, Report this to Amazon, if findings are identical
+    # This was due to https://tracker.ceph.com/issues/42208
 
-    alt_client2 = get_alt_client()
     # default object write fail
-    check_access_denied(alt_client2.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
     # bucket write fail
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
 @attr(method='ACLs')
@@ -5635,18 +5633,10 @@ def test_access_bucket_private_objectv2_private():
 
     # acled object write fail
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='barcontent')
-    # NOTE: The above put's causes the connection to go bad, therefore the client can't be used
-    # anymore. This can be solved either by:
-    # 1) putting an empty string ('') in the 'Body' field of those put_object calls
-    # 2) getting a new client hence the creation of alt_client{2,3} for the tests below
-    # TODO: Test it from another host and on AWS, Report this to Amazon, if findings are identical
-
-    alt_client2 = get_alt_client()
     # default object write fail
-    check_access_denied(alt_client2.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key2, Body='baroverwrite')
     # bucket write fail
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
 @attr(method='ACLs')
