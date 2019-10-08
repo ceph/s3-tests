@@ -12517,7 +12517,6 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
 def test_get_nonpublicpolicy_deny_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
-    client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     eq(resp['PolicyStatus']['IsPublic'],False)
