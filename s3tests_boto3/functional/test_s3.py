@@ -9619,8 +9619,6 @@ def test_encryption_sse_c_multipart_upload():
 @attr(operation='multipart upload with bad key for uploading chunks')
 @attr(assertion='successful')
 @attr('encryption')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9651,8 +9649,6 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 @attr(operation='multipart upload with bad md5 for chunks')
 @attr(assertion='successful')
 @attr('encryption')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11433,8 +11429,6 @@ def test_bucket_policy_put_obj_grant():
 @attr(assertion='success')
 @attr('encryption')
 @attr('bucket-policy')
-# TODO: remove this 'fails_on_rgw' once I get the test passing
-@attr('fails_on_rgw')
 def test_bucket_policy_put_obj_enc():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -11458,7 +11452,7 @@ def test_bucket_policy_put_obj_enc():
     s2 = Statement("s3:PutObject", resource, effect="Deny", condition=deny_unencrypted_obj)
     policy_document = p.add_statement(s1).add_statement(s2).to_json()
 
-    boto3.set_stream_logger(name='botocore')
+    #boto3.set_stream_logger(name='botocore')
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     key1_str ='testobj'
@@ -11477,10 +11471,6 @@ def test_bucket_policy_put_obj_enc():
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
-    #TODO: why is this a 400 and not passing, it appears boto3 is not parsing the 200 response the rgw sends back properly
-    # DEBUGGING: run the boto2 and compare the requests
-    # DEBUGGING: try to run this with v2 auth (figure out why get_v2_client isn't working) to make the requests similar to what boto2 is doing
-    # DEBUGGING: try to add other options to put_object to see if that makes the response better
     client.put_object(Bucket=bucket_name, Key=key1_str)
 
 @attr(resource='object')
@@ -11489,8 +11479,6 @@ def test_bucket_policy_put_obj_enc():
 @attr(assertion='success')
 @attr('tagging')
 @attr('bucket-policy')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 def test_bucket_policy_put_obj_request_obj_tag():
     bucket_name = get_new_bucket()
     client = get_client()
