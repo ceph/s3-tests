@@ -12635,14 +12635,17 @@ def test_block_public_object_canned_acls():
     # eq(resp['PublicAccessBlockConfiguration']['BlockPublicAcls'], access_conf['BlockPublicAcls'])
     # eq(resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'], access_conf['BlockPublicPolicy'])
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo1', Body='bar', ACL='public-read')
+    #FIXME: use empty body until #42208
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo1', Body='', ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo2', Body='bar', ACL='public-read')
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo2', Body='', ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo3', Body='bar', ACL='authenticated-read')
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo3', Body='', ACL='authenticated-read')
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
+
+
