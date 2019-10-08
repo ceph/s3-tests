@@ -11499,11 +11499,7 @@ def test_bucket_policy_put_obj_request_obj_tag():
     key1_str ='testobj'
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
-    headers = {"x-amz-tagging" : "security=public"}
-    lf = (lambda **kwargs: kwargs['params']['headers'].update(headers))
-    client.meta.events.register('before-call.s3.PutObject', lf)
-    #TODO: why is this a 400 and not passing
-    alt_client.put_object(Bucket=bucket_name, Key=key1_str, Body=key1_str)
+    alt_client.put_object(Bucket=bucket_name, Key=key1_str, Body=key1_str, Tagging='security=public')
 
 @attr(resource='object')
 @attr(method='get')
