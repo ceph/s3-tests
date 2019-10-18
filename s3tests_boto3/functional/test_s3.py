@@ -228,6 +228,44 @@ def test_bucket_listv2_delimiter_basic():
     eq(len(prefixes), 2)
     eq(prefixes, ['foo/', 'quux/'])
 
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='test url encoding')
+@attr('list-objects-v2')
+def test_bucket_listv2_encoding_basic():
+    bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
+    client = get_client()
+
+    response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/', EncodingType='url')
+    eq(response['Delimiter'], '/')
+    keys = _get_keys(response)
+    eq(keys, ['asdf%2Bb'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 3)
+    eq(prefixes, ['foo%2B1/', 'foo/', 'quux%20ab/'])
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='test url encoding')
+@attr('list-objects')
+def test_bucket_list_encoding_basic():
+    bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
+    client = get_client()
+
+    response = client.list_objects(Bucket=bucket_name, Delimiter='/', EncodingType='url')
+    eq(response['Delimiter'], '/')
+    keys = _get_keys(response)
+    eq(keys, ['asdf%2Bb'])
+
+    prefixes = _get_prefixes(response)
+    eq(len(prefixes), 3)
+    eq(prefixes, ['foo%2B1/', 'foo/', 'quux%20ab/'])
+
+
 def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
                          is_truncated, check_objs, check_prefixes, next_marker):
     client = get_client()
