@@ -7093,6 +7093,37 @@ def test_list_multipart_upload():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='multi-part uploads url-encoding')
+@attr(assertion='successful')
+def test_list_multipart_upload_encoding():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key="mymultipart 1/bar"
+    mb = 1024 * 1024
+
+    upload_ids = []
+    (upload_id1, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=5*mb)
+
+    key2="mymultipart+foo/bar"
+    (upload_id2, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key2, size=5*mb)
+
+    response = client.list_multipart_uploads(Bucket=bucket_name, EncodingType="url")
+    uploads = response['Uploads']
+    res_keys = [u['Key'] for u in uploads]
+    eq(["mymultipart%201/bar", "mymultipart%2Bfoo/bar"], res_keys)
+
+    # Now check for 400 for an invalid encoding type
+    e = assert_raises(ClientError, client.list_multipart_uploads, Bucket=bucket_name, EncodingType="foobar")
+    status, ec = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(ec, 'InvalidArgument')
+
+    # cleanup everything
+    client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id1)
+    client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id2)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='multi-part upload with missing part')
 def test_multipart_upload_missing_part():
     bucket_name = get_new_bucket()
