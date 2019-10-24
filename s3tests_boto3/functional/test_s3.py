@@ -64,6 +64,8 @@ from . import (
     get_alt_email,
     get_alt_client,
     get_tenant_client,
+    get_tenant_iam_client,
+    get_tenant_user_id,
     get_buckets_list,
     get_objects_list,
     get_main_kms_keyid,
@@ -12303,3 +12305,24 @@ def test_object_read_unreadable():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(e.response['Error']['Message'], 'Couldn\'t parse the specified URI.')
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='Test User Policy')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_user_policy():
+    client = get_tenant_iam_client()
+
+    policy_document = json.dumps(
+    {"Version":"2012-10-17",
+     "Statement": {
+         "Effect":"Allow",
+         "Action":"*",
+         "Resource":"*"}}
+    )
+    client.put_user_policy(
+        PolicyDocument= policy_document,
+        PolicyName='AllAccessPolicy',
+        UserName=get_tenant_user_id(),
+    )
