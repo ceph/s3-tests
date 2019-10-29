@@ -249,14 +249,21 @@ def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
     return response['NextMarker']
 
 def validate_bucket_listv2(bucket_name, prefix, delimiter, continuation_token, max_keys,
-                         is_truncated, check_objs, check_prefixes, next_continuation_token):
+                         is_truncated, check_objs, check_prefixes, last=False):
     client = get_client()
 
-    response = client.list_objects_v2(Bucket=bucket_name, Delimiter=delimiter, StartAfter=continuation_token, MaxKeys=max_keys, Prefix=prefix)
+    params = dict(Bucket=bucket_name, Delimiter=delimiter, MaxKeys=max_keys, Prefix=prefix)
+    if continuation_token is not None:
+        params['ContinuationToken'] = continuation_token
+    else:
+        params['StartAfter'] = ''
+    response = client.list_objects_v2(**params)
     eq(response['IsTruncated'], is_truncated)
     if 'NextContinuationToken' not in response:
         response['NextContinuationToken'] = None
-    eq(response['NextContinuationToken'], next_continuation_token)
+    if last:
+        eq(response['NextContinuationToken'], None)
+
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
@@ -305,19 +312,19 @@ def test_bucket_listv2_delimiter_prefix():
     continuation_token = ''
     prefix = ''
 
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['asdf'], [], 'asdf')
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, True, [], ['boo/'], 'boo/')
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['cquux/'], None)
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, None, 1, True, ['asdf'], [])
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, True, [], ['boo/'])
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['cquux/'], last=True)
 
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, True, ['asdf'], ['boo/'], 'boo/')
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 2, False, [], ['cquux/'], None)
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, True, ['asdf'], ['boo/'])
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 2, False, [], ['cquux/'], last=True)
 
     prefix = 'boo/'
 
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['boo/bar'], [], 'boo/bar')
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['boo/baz/'], None)
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, None, 1, True, ['boo/bar'], [])
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token, 1, False, [], ['boo/baz/'], last=True)
 
-    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, False, ['boo/bar'], ['boo/baz/'], None)
+    continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, False, ['boo/bar'], ['boo/baz/'], last=True)
 
 
 @attr(resource='bucket')
@@ -327,7 +334,7 @@ def test_bucket_listv2_delimiter_prefix():
 @attr('list-objects-v2')
 def test_bucket_listv2_delimiter_prefix_ends_with_delimiter():
     bucket_name = _create_objects(keys=['asdf/'])
-    validate_bucket_listv2(bucket_name, 'asdf/', '/', '', 1000, False, ['asdf/'], [], None)
+    validate_bucket_listv2(bucket_name, 'asdf/', '/', None, 1000, False, ['asdf/'], [], last=True)
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -412,19 +419,19 @@ def test_bucket_listv2_delimiter_prefix_underscore():
     delim = '/'
     continuation_token = ''
     prefix = ''
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['_obj1_'], [], '_obj1_')
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, True, [], ['_under1/'], '_under1/')
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under2/'], None)
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, None, 1, True, ['_obj1_'], [])
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, True, [], ['_under1/'])
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under2/'], last=True)
 
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, True, ['_obj1_'], ['_under1/'], '_under1/')
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 2, False, [], ['_under2/'], None)
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, True, ['_obj1_'], ['_under1/'])
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 2, False, [], ['_under2/'], last=True)
 
     prefix = '_under1/'
 
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 1, True, ['_under1/bar'], [], '_under1/bar')
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under1/baz/'], None)
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, None, 1, True, ['_under1/bar'], [])
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, continuation_token , 1, False, [], ['_under1/baz/'], last=True)
 
-    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, '', 2, False, ['_under1/bar'], ['_under1/baz/'], None)
+    continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, False, ['_under1/bar'], ['_under1/baz/'], last=True)
 
 
 @attr(resource='bucket')
