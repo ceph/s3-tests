@@ -1,8 +1,11 @@
 #!/bin/sh
 set -e
 
+virtualenv="virtualenv"
+packages=(which) 
 if [ -f /etc/debian_version ]; then
-    for package in python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev; do
+    packages+=(python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
+    for package in ${packages[@]}; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
             missing="${missing:+$missing }$package"
@@ -12,29 +15,34 @@ if [ -f /etc/debian_version ]; then
         echo "$0: missing required DEB packages. Installing via sudo." 1>&2
         sudo apt-get -y install $missing
     fi
-elif [ -f /etc/fedora-release ]; then
-    for package in python2-pip python2-virtualenv python2-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
-        if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
-            missing="${missing:+$missing }$package"
+else 
+    packages+=(libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
+    if [ -f /etc/fedora-release ]; then
+        packages+=(python2-pip python2-virtualenv python2-devel)
+    elif [ -f /etc/redhat-release ]; then
+        unset ${GREP_OPTIONS}
+        eval $(cat /etc/os-release | grep VERSION_ID)
+        if [ ${VERSION_ID:0:1} -lt 8 ]; then
+            packages+=(python-virtualenv python-devel)
+        else
+            packages+=(python2-virtualenv python2-devel)
+            virtualenv="virtualenv-2"
         fi
-    done
-    if [ -n "$missing" ]; then
-        echo "$0: missing required RPM packages. Installing via sudo." 1>&2
-        sudo yum -y install $missing
     fi
-elif [ -f /etc/redhat-release ]; then
-    for package in python-virtualenv python-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
+
+    for package in ${packages[@]}; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
     done
+
     if [ -n "$missing" ]; then
         echo "$0: missing required RPM packages. Installing via sudo." 1>&2
         sudo yum -y install $missing
     fi
 fi
 
-virtualenv --python=$(which python2) --no-site-packages --distribute virtualenv
+${virtualenv} --python=$(which python2) --no-site-packages --distribute virtualenv
 
 # avoid pip bugs
 ./virtualenv/bin/pip install --upgrade pip
