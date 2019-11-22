@@ -1,4 +1,5 @@
 import boto3
+import botocore.handlers
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
@@ -3949,19 +3950,17 @@ def test_bucket_create_naming_bad_starts_nonalpha():
 
 def check_invalid_bucketname(invalid_name):
     """
-    Send a create bucket_request with an invalid bucket name
-    that will bypass the ParamValidationError that would be raised
-    if the invalid bucket name that was passed in normally.
+    Send a create bucket_request with an invalid bucket name after
+    unregistering the client-side validator that would normally
+    raise a ParamValidationError.
     This function returns the status and error code from the failure
     """
     client = get_client()
-    valid_bucket_name = get_new_bucket_name()
-    def replace_bucketname_from_url(**kwargs):
-        url = kwargs['params']['url']
-        new_url = url.replace(valid_bucket_name, invalid_name)
-        kwargs['params']['url'] = new_url
-    client.meta.events.register('before-call.s3.CreateBucket', replace_bucketname_from_url)
+    client.meta.events.unregister('before-parameter-build.s3',
+                                  botocore.handlers.validate_bucket_name)
     e = assert_raises(ClientError, client.create_bucket, Bucket=invalid_name)
+    client.meta.events.register('before-parameter-build.s3',
+                                botocore.handlers.validate_bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     return (status, error_code)
 
