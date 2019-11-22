@@ -6761,11 +6761,12 @@ def test_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
-    eq(rgw_bytes_used, objlen)
+    if 'x-rgw-bytes-used' in response['ResponseMetadata']['HTTPHeaders']:
+        rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+        eq(rgw_bytes_used, objlen)
 
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
-    eq(rgw_object_count, 1)
+        rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+        eq(rgw_object_count, 1)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
     eq(response['ContentType'], content_type)
@@ -7043,11 +7044,15 @@ def test_abort_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id)
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
-    eq(rgw_bytes_used, 0)
+    if 'x-rgw-bytes-used' in response['ResponseMetadata']['HTTPHeaders']:
+        rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+        eq(rgw_bytes_used, 0)
 
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
-    eq(rgw_object_count, 0)
+        rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+        eq(rgw_object_count, 0)
+
+    response = client.list_multipart_uploads(Bucket=bucket_name)
+    eq(response['Uploads'], [])
 
 @attr(resource='object')
 @attr(method='put')
@@ -9611,10 +9616,11 @@ def test_encryption_sse_c_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
-    eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
-    eq(rgw_bytes_used, objlen)
+    if 'x-rgw-object-count' in response['ResponseMetadata']['HTTPHeaders']:
+        rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+        eq(rgw_object_count, 1)
+        rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+        eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
     client.meta.events.register('before-call.s3.GetObject', lf)
@@ -9728,10 +9734,11 @@ def test_encryption_sse_c_multipart_bad_download():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
-    eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
-    eq(rgw_bytes_used, objlen)
+    if 'x-rgw-object-count' in response['ResponseMetadata']['HTTPHeaders']:
+        rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+        eq(rgw_object_count, 1)
+        rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+        eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(put_headers))
     client.meta.events.register('before-call.s3.GetObject', lf)
@@ -9955,10 +9962,11 @@ def test_sse_kms_multipart_upload():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
-    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
-    eq(rgw_object_count, 1)
-    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
-    eq(rgw_bytes_used, objlen)
+    if 'x-rgw-object-count' in response['ResponseMetadata']['HTTPHeaders']:
+        rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count'])
+        eq(rgw_object_count, 1)
+        rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used'])
+        eq(rgw_bytes_used, objlen)
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(part_headers))
     client.meta.events.register('before-call.s3.UploadPart', lf)
