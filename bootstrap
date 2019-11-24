@@ -2,6 +2,7 @@
 set -e
 
 virtualenv="virtualenv"
+declare -a packages
 packages=(which) 
 if [ -f /etc/debian_version ]; then
     packages+=(python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
