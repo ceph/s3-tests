@@ -1,4 +1,5 @@
 import boto3
+import botocore.handlers
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
@@ -977,6 +978,12 @@ def test_bucket_list_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
+    # (Some versions of) botocore will include encoding-type=url
+    # but not decode the reflected Prefix. Work around that.
+    if hasattr(botocore.handlers, 'set_list_objects_encoding_type_url'):
+        client.meta.events.unregister(
+            'before-parameter-build.s3.ListObjects',
+            botocore.handlers.set_list_objects_encoding_type_url)
 
     response = client.list_objects(Bucket=bucket_name, Prefix='\x0a')
     eq(response['Prefix'], '\x0a')
