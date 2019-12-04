@@ -141,9 +141,11 @@ class RandomContentFile(object):
             if self.digest is None:
                 self.digest = self.hash.digest()
                 self.hash = None
+                data = self.digest[:digest_count]
+            else:
+                data = self.digest[-digest_count:]
             self.offset += digest_count
             size -= digest_count
-            data = self.digest[:digest_count]
             r.append(data)
 
         self._mark_chunk()
