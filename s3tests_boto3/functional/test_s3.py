@@ -10869,7 +10869,7 @@ def test_put_obj_with_tags():
     eq(body, data)
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], tagset)
+    eq(response['TagSet'].sort(), tagset.sort())
 
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
