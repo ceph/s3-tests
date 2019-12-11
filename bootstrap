@@ -3,9 +3,8 @@ set -e
 
 virtualenv="virtualenv"
 declare -a packages
-packages=(which) 
 if [ -f /etc/debian_version ]; then
-    packages+=(python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
+    packages=(debianutils python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
     for package in ${packages[@]}; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
@@ -17,7 +16,7 @@ if [ -f /etc/debian_version ]; then
         sudo apt-get -y install $missing
     fi
 else 
-    packages+=(libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
+    packages=(which libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
     if [ -f /etc/fedora-release ]; then
         packages+=(python2-pip python2-virtualenv python2-devel)
     elif [ -f /etc/redhat-release ]; then
