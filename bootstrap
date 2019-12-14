@@ -2,7 +2,7 @@
 set -e
 
 if [ -f /etc/debian_version ]; then
-    for package in python-pip python-virtualenv python-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev; do
+    for package in python3-pip python3-virtualenv python3-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev; do
         if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
             # add a space after old values
             missing="${missing:+$missing }$package"
@@ -13,7 +13,7 @@ if [ -f /etc/debian_version ]; then
         sudo apt-get -y install $missing
     fi
 elif [ -f /etc/fedora-release ]; then
-    for package in python-pip python2-virtualenv python-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
+    for package in python3-pip python3-virtualenv python3-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
@@ -23,7 +23,7 @@ elif [ -f /etc/fedora-release ]; then
         sudo yum -y install $missing
     fi
 elif [ -f /etc/redhat-release ]; then
-    for package in python-virtualenv python-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
+    for package in python3-virtualenv python3-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel; do
         if [ "$(rpm -qa $package 2>/dev/null)" == "" ]; then
             missing="${missing:+$missing }$package"
         fi
@@ -34,13 +34,13 @@ elif [ -f /etc/redhat-release ]; then
     fi
 fi
 
-virtualenv --no-site-packages --distribute virtualenv
+virtualenv --no-site-packages --distribute virtualenv -p /usr/bin/python3
 
 # avoid pip bugs
 ./virtualenv/bin/pip install --upgrade pip
 
 # slightly old version of setuptools; newer fails w/ requests 0.14.0
-./virtualenv/bin/pip install setuptools==32.3.1
+#./virtualenv/bin/pip install setuptools==32.3.1
 
 ./virtualenv/bin/pip install -r requirements.txt
 
@@ -48,4 +48,4 @@ virtualenv --no-site-packages --distribute virtualenv
 # easy_install, and we really wanted pip; next line will fail if pip
 # requirements.txt does not match setup.py requirements -- sucky but
 # good enough for now
-./virtualenv/bin/python setup.py develop
+./virtualenv/bin/python3 setup.py develop

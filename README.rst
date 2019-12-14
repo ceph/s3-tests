@@ -9,7 +9,7 @@ that exposes an S3-like API. The tests use the Boto2 and Boto3 libraries.
 The tests use the Nose test framework. To get started, ensure you have
 the ``virtualenv`` software installed; e.g. on Debian/Ubuntu::
 
-	sudo apt-get install python-virtualenv
+	sudo apt-get install python3-virtualenv
 
 and then run::
 
