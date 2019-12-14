@@ -43,7 +43,7 @@ def upload_objects(bucket, files, seed):
     name_generator = realistic.names(15, 4, seed=seed)
 
     for fp in files:
-        print >> sys.stderr, 'sending file with size %dB' % fp.size
+        sys.stderr.write('sending file with size %dB\n' % fp.size)
         key = Key(bucket)
         key.key = name_generator.next()
         key.set_contents_from_file(fp, rewind=True)
@@ -94,18 +94,18 @@ def _main():
 
     bucket.set_acl('public-read')
     keys = []
-    print >> OUTFILE, 'bucket: %s' % bucket.name
-    print >> sys.stderr, 'setup complete, generating files'
+    OUTFILE.write('bucket: %s\n' % bucket.name)
+    sys.stderr.write('setup complete, generating files\n')
     for profile in common.config.file_generation.groups:
         seed = random.random()
         files = get_random_files(profile[0], profile[1], profile[2], seed)
         keys += upload_objects(bucket, files, seed)
 
-    print >> sys.stderr, 'finished sending files. generating urls'
+    sys.stderr.write('finished sending files. generating urls\n')
     for key in keys:
-        print >> OUTFILE, key.generate_url(0, query_auth=False)
+        OUTFILE.write(key.generate_url(0, query_auth=False) + '\n')
 
-    print >> sys.stderr, 'done'
+    sys.stderr.write('done\n')
 
 
 def main():

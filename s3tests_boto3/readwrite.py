@@ -57,7 +57,7 @@ def reader(bucket, worker_id, file_names, queue, rand):
                         traceback=traceback.format_exc(),
                         ),
                     )
-                print "ERROR:", m
+                print("ERROR:", m)
             else:
                 elapsed = end - start
                 result.update(
@@ -158,16 +158,16 @@ def main():
         for name in ['names', 'contents', 'writer', 'reader']:
             seeds.setdefault(name, rand.randrange(2**32))
 
-        print 'Using random seeds: {seeds}'.format(seeds=seeds)
+        print('Using random seeds: {seeds}'.format(seeds=seeds))
 
         # setup bucket and other objects
         bucket_name = common.choose_bucket_prefix(config.readwrite.bucket, max_len=30)
         bucket = conn.create_bucket(bucket_name)
-        print "Created bucket: {name}".format(name=bucket.name)
+        print("Created bucket: {name}".format(name=bucket.name))
 
         # check flag for deterministic file name creation
         if not config.readwrite.get('deterministic_file_names'):
-            print 'Creating random file names'
+            print('Creating random file names')
             file_names = realistic.names(
                 mean=15,
                 stddev=4,
@@ -176,7 +176,7 @@ def main():
             file_names = itertools.islice(file_names, config.readwrite.files.num)
             file_names = list(file_names)
         else:
-            print 'Creating file names that are deterministic'
+            print('Creating file names that are deterministic')
             file_names = []
             for x in xrange(config.readwrite.files.num):
                 file_names.append('test_file_{num}'.format(num=x))
@@ -191,7 +191,7 @@ def main():
 
         # warmup - get initial set of files uploaded if there are any writers specified
         if config.readwrite.writers > 0:
-            print "Uploading initial set of {num} files".format(num=config.readwrite.files.num)
+            print("Uploading initial set of {num} files".format(num=config.readwrite.files.num))
             warmup_pool = gevent.pool.Pool(size=100)
             for file_name in file_names:
                 fp = next(files)
@@ -204,9 +204,9 @@ def main():
             warmup_pool.join()
 
         # main work
-        print "Starting main worker loop."
-        print "Using file size: {size} +- {stddev}".format(size=config.readwrite.files.size, stddev=config.readwrite.files.stddev)
-        print "Spawning {w} writers and {r} readers...".format(w=config.readwrite.writers, r=config.readwrite.readers)
+        print("Starting main worker loop.")
+        print("Using file size: {size} +- {stddev}".format(size=config.readwrite.files.size, stddev=config.readwrite.files.stddev))
+        print("Spawning {w} writers and {r} readers...".format(w=config.readwrite.writers, r=config.readwrite.readers))
         group = gevent.pool.Group()
         rand_writer = random.Random(seeds['writer'])
 
@@ -246,7 +246,7 @@ def main():
 
         # wait for all the tests to finish
         group.join()
-        print 'post-join, queue size {size}'.format(size=q.qsize())
+        print('post-join, queue size {size}'.format(size=q.qsize()))
 
         if q.qsize() > 0:
             for temp_dict in q:

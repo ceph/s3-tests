@@ -47,9 +47,9 @@ class FileValidator(object):
         self.original_hash, binary = contents[-40:], contents[:-40]
         self.new_hash = hashlib.sha1(binary).hexdigest()
         if not self.new_hash == self.original_hash:
-            print 'original  hash: ', self.original_hash
-            print 'new hash: ', self.new_hash
-            print 'size: ', self._file.tell()
+            print('original  hash: ', self.original_hash)
+            print('new hash: ', self.new_hash)
+            print('size: ', self._file.tell())
             return False
         return True
 
