@@ -20,15 +20,4 @@ setup(
         'gevent >=1.0',
         'isodate >=0.4.4',
         ],
-
-    entry_points={
-        'console_scripts': [
-            's3tests-generate-objects = s3tests.generate_objects:main',
-            's3tests-test-readwrite = s3tests.readwrite:main',
-            's3tests-test-roundtrip = s3tests.roundtrip:main',
-            's3tests-fuzz-headers = s3tests.fuzz.headers:main',
-            's3tests-analysis-rwstats = s3tests.analysis.rwstats:main',
-            ],
-        },
-
     )

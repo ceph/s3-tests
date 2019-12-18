@@ -23,7 +23,6 @@ from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
-from . import AnonymousAuth
 
 from email.header import decode_header
 
