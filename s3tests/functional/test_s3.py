@@ -216,6 +216,29 @@ def test_append_object_position_wrong():
     eq(int(res.getheader('x-rgw-next-append-position')), 3)
 
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='invalid append position')
+@attr(assertion='fails 400')
+@attr('fails_on_aws')
+@attr('fails_with_subdomain')
+@attr('appendobject')
+def test_append_object_position_invalid_str():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+    expires_in = 100000
+    url = key.generate_url(expires_in, method='PUT')
+    o = urlparse(url)
+    path = o.path + '?' + o.query
+    path1 = path + '&append&position='
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
+    eq(res.status, 400)
+    path2 = path + '&append&position=abc'
+    res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
+    eq(res.status, 400)
+
+
+
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
 @attr(resource='bucket.log')
