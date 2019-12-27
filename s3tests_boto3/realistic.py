@@ -47,9 +47,9 @@ class FileValidator(object):
         self.original_hash, binary = contents[-40:], contents[:-40]
         self.new_hash = hashlib.sha1(binary).hexdigest()
         if not self.new_hash == self.original_hash:
-            print 'original  hash: ', self.original_hash
-            print 'new hash: ', self.new_hash
-            print 'size: ', self._file.tell()
+            print('original  hash: ', self.original_hash)
+            print('new hash: ', self.new_hash)
+            print('size: ', self._file.tell())
             return False
         return True
 
@@ -115,7 +115,7 @@ class RandomContentFile(object):
         size = min(self.size, 1*1024*1024) # generate at most 1 MB at a time
         chunks = int(math.ceil(size/8.0))  # number of 8-byte chunks to create
 
-        l = [self.random.getrandbits(64) for _ in xrange(chunks)]
+        l = [self.random.getrandbits(64) for _ in range(chunks)]
         s = struct.pack(chunks*'Q', *l)
         return s
 
@@ -252,7 +252,7 @@ def files2(mean, stddev, seed=None, numfiles=10):
     """
     # pre-compute all the files (and save with TemporaryFiles)
     fs = []
-    for _ in xrange(numfiles):
+    for _ in range(numfiles):
         t = tempfile.SpooledTemporaryFile()
         t.write(generate_file_contents(random.normalvariate(mean, stddev)))
         t.seek(0)
@@ -277,5 +277,5 @@ def names(mean, stddev, charset=None, seed=None):
             length = int(rand.normalvariate(mean, stddev))
             if length > 0:
                 break
-        name = ''.join(rand.choice(charset) for _ in xrange(length))
+        name = ''.join(rand.choice(charset) for _ in range(length))
         yield name

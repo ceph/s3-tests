@@ -57,7 +57,7 @@ def main():
 
 def calculate_stats(options, total, durations, min_time, max_time, errors,
                     success):
-    print 'Calculating statistics...'
+    print('Calculating statistics...')
     
     f = sys.stdin
     if options.input:
@@ -81,13 +81,13 @@ def calculate_stats(options, total, durations, min_time, max_time, errors,
         end = start + duration / float(NANOSECONDS)
 
         if options.verbose:
-            print "[{type}] POSIX time: {start:>18.2f} - {end:<18.2f} " \
+            print("[{type}] POSIX time: {start:>18.2f} - {end:<18.2f} " \
                   "{data:>11.2f} KB".format(
                 type=type_,
                 start=start,
                 end=end,
                 data=data_size / 1024.0, # convert to KB
-                )
+                ))
 
         # update time boundaries
         prev = min_time.setdefault(type_, start)
@@ -106,7 +106,7 @@ def calculate_stats(options, total, durations, min_time, max_time, errors,
         total[type_] = total.get(type_, 0) + data_size
 
 def print_results(total, durations, min_time, max_time, errors, success):
-    for type_ in total.keys():
+    for type_ in list(total.keys()):
         trans_success = success.get(type_, 0)
         trans_fail    = errors.get(type_, 0)
         trans         = trans_success + trans_fail
@@ -121,7 +121,7 @@ def print_results(total, durations, min_time, max_time, errors, success):
         trans_long    = max(durations[type_]) / float(NANOSECONDS)
         trans_short   = min(durations[type_]) / float(NANOSECONDS)
 
-        print OUTPUT_FORMAT.format(
+        print(OUTPUT_FORMAT.format(
             type=type_,
             trans_success=trans_success,
             trans_fail=trans_fail,
@@ -135,7 +135,7 @@ def print_results(total, durations, min_time, max_time, errors, success):
             conc=conc,
             trans_long=trans_long,
             trans_short=trans_short,
-            )
+            ))
 
 if __name__ == '__main__':
     main()

@@ -25,6 +25,7 @@ from nose.tools import assert_true
 from nose.plugins.attrib import attr
 
 from ...functional.utils import assert_raises
+from functools import reduce
 
 _decision_graph = {}
 
@@ -173,21 +174,21 @@ def test_expand_random_binary():
 
 def test_expand_random_printable_no_whitespace():
     prng = random.Random(1)
-    for _ in xrange(1000):
+    for _ in range(1000):
         got = expand({}, '{random 500 printable_no_whitespace}', prng)
         assert_true(reduce(lambda x, y: x and y, [x not in string.whitespace and x in string.printable for x in got]))
 
 
 def test_expand_random_binary_no_whitespace():
     prng = random.Random(1)
-    for _ in xrange(1000):
+    for _ in range(1000):
         got = expand({}, '{random 500 binary_no_whitespace}', prng)
         assert_true(reduce(lambda x, y: x and y, [x not in string.whitespace for x in got]))
 
 
 def test_expand_random_no_args():
     prng = random.Random(1)
-    for _ in xrange(1000):
+    for _ in range(1000):
         got = expand({}, '{random}', prng)
         assert_true(0 <= len(got) <= 1000)
         assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in got]))
@@ -195,7 +196,7 @@ def test_expand_random_no_args():
 
 def test_expand_random_no_charset():
     prng = random.Random(1)
-    for _ in xrange(1000):
+    for _ in range(1000):
         got = expand({}, '{random 10-30}', prng)
         assert_true(10 <= len(got) <= 30)
         assert_true(reduce(lambda x, y: x and y, [x in string.printable for x in got]))
@@ -203,7 +204,7 @@ def test_expand_random_no_charset():
 
 def test_expand_random_exact_length():
     prng = random.Random(1)
-    for _ in xrange(1000):
+    for _ in range(1000):
         got = expand({}, '{random 10 digits}', prng)
         assert_true(len(got) == 10)
         assert_true(reduce(lambda x, y: x and y, [x in string.digits for x in got]))
@@ -300,9 +301,9 @@ def test_weighted_choices():
     prng = random.Random(1)
 
     choices_made = {}
-    for _ in xrange(1000):
+    for _ in range(1000):
         choice = make_choice(graph['weighted_node']['choices'], prng)
-        if choices_made.has_key(choice):
+        if choice in choices_made:
             choices_made[choice] += 1
         else:
             choices_made[choice] = 1
@@ -344,9 +345,9 @@ def test_weighted_set():
     prng = random.Random(1)
 
     choices_made = {}
-    for _ in xrange(1000):
+    for _ in range(1000):
         choice = make_choice(graph['weighted_node']['set']['k1'], prng)
-        if choices_made.has_key(choice):
+        if choice in choices_made:
             choices_made[choice] += 1
         else:
             choices_made[choice] = 1
@@ -392,7 +393,7 @@ def test_expand_headers():
     decision = descend_graph(graph, 'node1', prng)
     expanded_headers = expand_headers(decision, prng)
 
-    for header, value in expanded_headers.iteritems():
+    for header, value in expanded_headers.items():
         if header == 'my-header':
             assert_true(value in ['h1', 'h2', 'h3'])
         elif header.startswith('random-header-'):

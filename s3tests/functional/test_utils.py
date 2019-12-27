@@ -1,6 +1,6 @@
 from nose.tools import eq_ as eq
 
-import utils
+from . import utils
 
 def test_generate():
     FIVE_MB = 5 * 1024 * 1024

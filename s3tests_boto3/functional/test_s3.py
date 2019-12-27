@@ -11,7 +11,7 @@ import datetime
 import threading
 import re
 import pytz
-from cStringIO import StringIO
+from io import StringIO
 from ordereddict import OrderedDict
 import requests
 import json
@@ -1544,7 +1544,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
     read_status = None
 
-    for i in xrange(5):
+    for i in range(5):
         try:
             response = client.get_bucket_versioning(Bucket=bucket_name)
             read_status = response['Status']
@@ -2008,14 +2008,14 @@ def test_object_set_get_unicode_metadata():
     client = get_client()
 
     def set_unicode_metadata(**kwargs):
-        kwargs['params']['headers']['x-amz-meta-meta1'] = u"Hello World\xe9"
+        kwargs['params']['headers']['x-amz-meta-meta1'] = "Hello World\xe9"
 
     client.meta.events.register('before-call.s3.PutObject', set_unicode_metadata)
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     got = response['Metadata']['meta1'].decode('utf-8')
-    eq(got, u"Hello World\xe9")
+    eq(got, "Hello World\xe9")
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -4200,7 +4200,7 @@ def test_bucket_create_exists():
     client.create_bucket(Bucket=bucket_name)
     try:
         response = client.create_bucket(Bucket=bucket_name)
-    except ClientError, e:
+    except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
         eq(e.status, 409)
         eq(e.error_code, 'BucketAlreadyOwnedByYou')
@@ -5726,7 +5726,7 @@ def test_access_bucket_publicread_object_private():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -5753,7 +5753,7 @@ def test_access_bucket_publicread_object_publicread():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
@@ -5783,7 +5783,7 @@ def test_access_bucket_publicread_object_publicreadwrite():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
@@ -5803,7 +5803,7 @@ def test_access_bucket_publicreadwrite_object_private():
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -5825,7 +5825,7 @@ def test_access_bucket_publicreadwrite_object_publicread():
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -5844,7 +5844,7 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, [u'bar', u'foo'])
+    eq(objs, ['bar', 'foo'])
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='bucket')
@@ -5854,7 +5854,7 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
 def test_buckets_create_then_list():
     client = get_client()
     bucket_names = []
-    for i in xrange(5):
+    for i in range(5):
         bucket_name = get_new_bucket_name()
         bucket_names.append(bucket_name)
 
@@ -6347,7 +6347,7 @@ def generate_random(size, part_size=5*1024*1024):
     chunk = 1024
     allowed = string.ascii_letters
     for x in range(0, size, part_size):
-        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
+        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in range(chunk)])
         s = ''
         left = size - x
         this_part_size = min(left, part_size)
@@ -6504,7 +6504,7 @@ def _create_key_with_random_content(keyname, size=7*1024*1024, bucket_name=None,
     if client == None:
         client = get_client()
 
-    data = StringIO(str(generate_random(size, size).next()))
+    data = StringIO(str(next(generate_random(size, size))))
     client.put_object(Bucket=bucket_name, Key=keyname, Body=data)
 
     return bucket_name
@@ -6530,7 +6530,7 @@ def _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size, 
         part_num = i+1
         copy_source_range = 'bytes={start}-{end}'.format(start=start_offset, end=end_offset)
         response = client.upload_part_copy(Bucket=dest_bucket_name, Key=dest_key, CopySource=copy_source, PartNumber=part_num, UploadId=upload_id, CopySourceRange=copy_source_range)
-        parts.append({'ETag': response['CopyPartResult'][u'ETag'], 'PartNumber': part_num})
+        parts.append({'ETag': response['CopyPartResult']['ETag'], 'PartNumber': part_num})
         i = i+1
 
     return (upload_id, parts)
@@ -6618,7 +6618,7 @@ def test_multipart_copy_without_range():
 
     response = client.upload_part_copy(Bucket=dest_bucket_name, Key=dest_key, CopySource=copy_source, PartNumber=part_num, UploadId=upload_id)
 
-    parts.append({'ETag': response['CopyPartResult'][u'ETag'], 'PartNumber': part_num})
+    parts.append({'ETag': response['CopyPartResult']['ETag'], 'PartNumber': part_num})
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
@@ -6650,7 +6650,7 @@ def _check_content_using_range(key, bucket_name, data, step):
     response = client.get_object(Bucket=bucket_name, Key=key)
     size = response['ContentLength']
 
-    for ofs in xrange(0, size, step):
+    for ofs in range(0, size, step):
         toread = size - ofs
         if toread > step:
             toread = step
@@ -6710,7 +6710,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
     read_status = None
 
-    for i in xrange(5):
+    for i in range(5):
         try:
             response = client.get_bucket_versioning(Bucket=bucket_name)
             read_status = response['Status']
@@ -7078,9 +7078,9 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     try:
         data = s.recv(1024)
-    except socket.error, msg:
-        print 'got response: ', msg
-        print 'most likely server doesn\'t support 100-continue'
+    except socket.error as msg:
+        print('got response: ', msg)
+        print('most likely server doesn\'t support 100-continue')
 
     s.close()
     l = data.split(' ')
@@ -7877,7 +7877,7 @@ def create_multiple_versions(client, bucket_name, key, num_versions, version_ids
     contents = contents or []
     version_ids = version_ids or []
 
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         body = 'content-{i}'.format(i=i)
         response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
         version_id = response['VersionId']
@@ -7914,13 +7914,13 @@ def _do_test_create_remove_versions(client, bucket_name, key, num_versions, remo
 
     idx = remove_start_idx
 
-    for j in xrange(num_versions):
+    for j in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
         idx += idx_inc
 
     response = client.list_object_versions(Bucket=bucket_name)
     if 'Versions' in response:
-        print response['Versions']
+        print(response['Versions'])
 
 
 @attr(resource='object')
@@ -8145,7 +8145,7 @@ def test_versioning_obj_suspend_versions():
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, 3, version_ids, contents)
     num_versions += 3
 
-    for idx in xrange(num_versions):
+    for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
     eq(len(version_ids), 0)
@@ -8166,7 +8166,7 @@ def test_versioning_obj_create_versions_remove_all():
     num_versions = 10
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
-    for idx in xrange(num_versions):
+    for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
     eq(len(version_ids), 0)
@@ -8188,7 +8188,7 @@ def test_versioning_obj_create_versions_remove_special_names():
 
     for key in keys:
         (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
-        for idx in xrange(num_versions):
+        for idx in range(num_versions):
             remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
         eq(len(version_ids), 0)
@@ -8210,7 +8210,7 @@ def test_versioning_obj_create_overwrite_multipart():
     contents = []
     version_ids = []
 
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         ret =  _do_test_multipart_upload_contents(bucket_name, key, 3)
         contents.append(ret)
 
@@ -8221,7 +8221,7 @@ def test_versioning_obj_create_overwrite_multipart():
     version_ids.reverse()
     check_obj_versions(client, bucket_name, key, version_ids, contents)
 
-    for idx in xrange(num_versions):
+    for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
     eq(len(version_ids), 0)
@@ -8248,7 +8248,7 @@ def test_versioning_obj_list_marker():
     version_ids2 = []
 
     # for key #1
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         body = 'content-{i}'.format(i=i)
         response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
         version_id = response['VersionId']
@@ -8257,7 +8257,7 @@ def test_versioning_obj_list_marker():
         version_ids.append(version_id)
 
     # for key #2
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         body = 'content-{i}'.format(i=i)
         response = client.put_object(Bucket=bucket_name, Key=key2, Body=body)
         version_id = response['VersionId']
@@ -8303,7 +8303,7 @@ def test_versioning_copy_obj_version():
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
 
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         new_key_name = 'key_{i}'.format(i=i)
         copy_source = {'Bucket': bucket_name, 'Key': key, 'VersionId': version_ids[i]}
         client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=new_key_name)
@@ -8313,7 +8313,7 @@ def test_versioning_copy_obj_version():
 
     another_bucket_name = get_new_bucket()
 
-    for i in xrange(num_versions):
+    for i in range(num_versions):
         new_key_name = 'key_{i}'.format(i=i)
         copy_source = {'Bucket': bucket_name, 'Key': key, 'VersionId': version_ids[i]}
         client.copy_object(Bucket=another_bucket_name, CopySource=copy_source, Key=new_key_name)
@@ -8612,7 +8612,7 @@ def test_versioned_concurrent_object_create_concurrent_remove():
     key = 'myobj'
     num_versions = 5
 
-    for i in xrange(5):
+    for i in range(5):
         t = _do_create_versioned_obj_concurrent(client, bucket_name, key, num_versions)
         _do_wait_completion(t)
 
@@ -8643,7 +8643,7 @@ def test_versioned_concurrent_object_create_and_remove():
 
     all_threads = []
 
-    for i in xrange(3):
+    for i in range(3):
 
         t = _do_create_versioned_obj_concurrent(client, bucket_name, key, num_versions)
         all_threads.append(t)
@@ -8717,7 +8717,7 @@ def test_lifecycle_get_no_id():
             assert 'ID' in lc_rule
         else:
             # neither of the rules we supplied was returned, something wrong
-            print "rules not right"
+            print("rules not right")
             assert False
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
@@ -9505,7 +9505,7 @@ def _multipart_upload_enc(client, bucket_name, key, size, part_size, init_header
 def _check_content_using_range_enc(client, bucket_name, key, data, step, enc_headers=None):
     response = client.get_object(Bucket=bucket_name, Key=key)
     size = response['ContentLength']
-    for ofs in xrange(0, size, step):
+    for ofs in range(0, size, step):
         toread = size - ofs
         if toread > step:
             toread = step
@@ -10270,8 +10270,8 @@ def test_bucket_policy_different_tenant():
         kwargs['params']['url'] = "http://localhost:8000/:{bucket_name}?encoding-type=url".format(bucket_name=bucket_name)
         kwargs['params']['url_path'] = "/:{bucket_name}".format(bucket_name=bucket_name)
         kwargs['params']['context']['signing']['bucket'] = ":{bucket_name}".format(bucket_name=bucket_name)
-        print kwargs['request_signer']
-        print kwargs
+        print(kwargs['request_signer'])
+        print(kwargs)
 
     #bucket_name = ":" + bucket_name
     tenant_client = get_tenant_client()
@@ -10319,8 +10319,8 @@ def test_bucketv2_policy_different_tenant():
         kwargs['params']['url'] = "http://localhost:8000/:{bucket_name}?encoding-type=url".format(bucket_name=bucket_name)
         kwargs['params']['url_path'] = "/:{bucket_name}".format(bucket_name=bucket_name)
         kwargs['params']['context']['signing']['bucket'] = ":{bucket_name}".format(bucket_name=bucket_name)
-        print kwargs['request_signer']
-        print kwargs
+        print(kwargs['request_signer'])
+        print(kwargs)
 
     #bucket_name = ":" + bucket_name
     tenant_client = get_tenant_client()
@@ -10475,7 +10475,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     eq(status, 403)
 
     response =  client.get_bucket_policy(Bucket=bucket_name)
-    print response
+    print(response)
 
 def _create_simple_tagset(count):
     tagset = []
@@ -12144,7 +12144,7 @@ def test_object_lock_get_obj_metadata():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     response = client.head_object(Bucket=bucket_name, Key=key)
-    print response
+    print(response)
     eq(response['ObjectLockMode'], retention['Mode'])
     eq(response['ObjectLockRetainUntilDate'], retention['RetainUntilDate'])
     eq(response['ObjectLockLegalHoldStatus'], legal_hold['Status'])

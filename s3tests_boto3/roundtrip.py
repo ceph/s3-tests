@@ -11,8 +11,8 @@ import traceback
 import random
 import yaml
 
-import realistic
-import common
+from . import realistic
+from . import common
 
 NANOSECOND = int(1e9)
 
@@ -141,12 +141,12 @@ def main():
         for name in ['names', 'contents', 'writer', 'reader']:
             seeds.setdefault(name, rand.randrange(2**32))
 
-        print 'Using random seeds: {seeds}'.format(seeds=seeds)
+        print('Using random seeds: {seeds}'.format(seeds=seeds))
 
         # setup bucket and other objects
         bucket_name = common.choose_bucket_prefix(config.roundtrip.bucket, max_len=30)
         bucket = conn.create_bucket(bucket_name)
-        print "Created bucket: {name}".format(name=bucket.name)
+        print("Created bucket: {name}".format(name=bucket.name))
         objnames = realistic.names(
             mean=15,
             stddev=4,
@@ -163,10 +163,10 @@ def main():
 
         logger_g = gevent.spawn(yaml.safe_dump_all, q, stream=real_stdout)
 
-        print "Writing {num} objects with {w} workers...".format(
+        print("Writing {num} objects with {w} workers...".format(
             num=config.roundtrip.files.num,
             w=config.roundtrip.writers,
-            )
+            ))
         pool = gevent.pool.Pool(size=config.roundtrip.writers)
         start = time.time()
         for objname in objnames:
@@ -186,10 +186,10 @@ def main():
                 duration=int(round(elapsed * NANOSECOND)),
                 ))
 
-        print "Reading {num} objects with {w} workers...".format(
+        print("Reading {num} objects with {w} workers...".format(
             num=config.roundtrip.files.num,
             w=config.roundtrip.readers,
-            )
+            ))
         # avoid accessing them in the same order as the writing
         rand.shuffle(objnames)
         pool = gevent.pool.Pool(size=config.roundtrip.readers)
