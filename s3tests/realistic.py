@@ -24,7 +24,7 @@ def generate_file_contents(size):
     size = int(size)
     contents = os.urandom(size)
     content_hash = hashlib.sha1(contents).hexdigest()
-    return contents + content_hash
+    return contents + content_hash.encode()
 
 
 class FileValidator(object):
@@ -44,7 +44,7 @@ class FileValidator(object):
         """
         self._file.seek(0)
         contents = self._file.read()
-        self.original_hash, binary = contents[-40:], contents[:-40]
+        self.original_hash, binary = contents[-40:].decode(), contents[:-40]
         self.new_hash = hashlib.sha1(binary).hexdigest()
         if not self.new_hash == self.original_hash:
             print('original  hash: ', self.original_hash)
