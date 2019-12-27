@@ -4,12 +4,12 @@ from botocore.client import Config
 from botocore.handlers import disable_signing
 import configparser
 import os
-import bunch
+import munch
 import random
 import string
 import itertools
 
-config = bunch.Bunch
+config = munch.Munch
 
 # this will be assigned by setup()
 prefix = None

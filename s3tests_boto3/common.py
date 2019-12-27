@@ -1,5 +1,5 @@
 import boto.s3.connection
-import bunch
+import munch
 import itertools
 import os
 import random
@@ -11,8 +11,8 @@ from lxml import etree
 from doctest import Example
 from lxml.doctestcompare import LXMLOutputChecker
 
-s3 = bunch.Bunch()
-config = bunch.Bunch()
+s3 = munch.Munch()
+config = munch.Munch()
 prefix = ''
 
 bucket_counter = itertools.count(1)
@@ -83,10 +83,10 @@ def nuke_prefixed_buckets():
     print('Done with cleanup of test buckets.')
 
 def read_config(fp):
-    config = bunch.Bunch()
+    config = munch.Munch()
     g = yaml.safe_load_all(fp)
     for new in g:
-        config.update(bunch.bunchify(new))
+        config.update(munch.munchify(new))
     return config
 
 def connect(conf):

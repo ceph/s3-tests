@@ -4,7 +4,7 @@ import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 import boto.utils
-import bunch
+import munch
 import nose
 import operator
 import random
