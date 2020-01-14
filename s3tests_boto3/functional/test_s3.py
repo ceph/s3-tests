@@ -9515,6 +9515,28 @@ def test_encryption_sse_c_invalid_md5():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='write encrypted with SSE-C, but algorithm is not AES256')
+@attr(assertion='operation fails')
+@attr('encryption')
+def test_encryption_sse_c_invalid_algorithm():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    data = 'A'*100
+    key = 'testobj'
+    sse_client_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES128',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
+    }
+
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
+    client.meta.events.register('before-call.s3.PutObject', lf)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='write encrypted with SSE-C, but dont provide MD5')
 @attr(assertion='operation fails')
 @attr('encryption')
