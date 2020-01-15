@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import sys
 import collections
 import nose
@@ -8,7 +8,7 @@ from pprint import pprint
 import time
 import boto.exception
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
@@ -110,7 +110,7 @@ def get_website_url(**kwargs):
 
 def _test_website_populate_fragment(xml_fragment, fields):
     for k in ['RoutingRules']:
-      if k in fields.keys() and len(fields[k]) > 0:
+      if k in list(fields.keys()) and len(fields[k]) > 0:
          fields[k] = '<%s>%s</%s>' % (k, fields[k], k)
     f = {
           'IndexDocument_Suffix': choose_bucket_prefix(template='index-{random}.html', max_len=32),
@@ -185,7 +185,7 @@ def __website_expected_reponse_status(res, status, reason):
 
 def _website_expected_default_html(**kwargs):
     fields = []
-    for k in kwargs.keys():
+    for k in list(kwargs.keys()):
         # AmazonS3 seems to be inconsistent, some HTML errors include BucketName, but others do not.
         if k is 'BucketName':
             continue
@@ -217,6 +217,7 @@ def _website_expected_error_response(res, bucket_name, status, reason, code, con
         content = set([content])
     for f in content:
         if f is not IGNORE_FIELD and f is not None:
+            f = bytes(f, 'utf-8')
             ok(f in body, 'HTML should contain "%s"' % (f, ))
 
 def _website_expected_redirect_response(res, status, reason, new_url):
@@ -237,7 +238,7 @@ def _website_request(bucket_name, path, connect_hostname=None, method='GET', tim
     request_headers={}
     request_headers['Host'] = o.hostname
     request_headers['Accept'] = '*/*'
-    print('Request: {method} {path}\n{headers}'.format(method=method, path=path, headers=''.join(map(lambda t: t[0]+':'+t[1]+"\n", request_headers.items()))))
+    print('Request: {method} {path}\n{headers}'.format(method=method, path=path, headers=''.join([t[0]+':'+t[1]+"\n" for t in list(request_headers.items())])))
     res = _make_raw_request(connect_hostname, config.main.port, method, path, request_headers=request_headers, secure=False, timeout=timeout)
     for (k,v) in res.getheaders():
         print(k,v)
@@ -293,6 +294,7 @@ def test_website_public_bucket_list_public_index():
     res = _website_request(bucket.name, '')
     body = res.read()
     print(body)
+    indexstring = bytes(indexstring, 'utf-8')
     eq(body, indexstring) # default content should match index.html set content
     __website_expected_reponse_status(res, 200, 'OK')
     indexhtml.delete()
@@ -321,6 +323,7 @@ def test_website_private_bucket_list_public_index():
     __website_expected_reponse_status(res, 200, 'OK')
     body = res.read()
     print(body)
+    indexstring = bytes(indexstring, 'utf-8')
     eq(body, indexstring, 'default content should match index.html set content')
     indexhtml.delete()
     bucket.delete()
@@ -511,6 +514,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     body = res.read()
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
+    errorstring = bytes(errorstring, 'utf-8')
     ok(errorstring not in body, 'error content should NOT match error.html set content')
 
     errorhtml.delete()
@@ -537,6 +541,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
     body = res.read()
     print(body)
     _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=_website_expected_default_html(Code='NoSuchKey'), body=body)
+    errorstring = bytes(errorstring, 'utf-8')
     ok(errorstring not in body, 'error content should match error.html set content')
 
     errorhtml.delete()
@@ -568,6 +573,7 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
     body = res.read()
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
+    errorstring = bytes(errorstring, 'utf-8')
     ok(errorstring not in body, 'error content should match error.html set content')
 
     indexhtml.delete()
@@ -600,6 +606,7 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
     body = res.read()
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
+    errorstring = bytes(errorstring, 'utf-8')
     ok(errorstring not in body, 'error content should match error.html set content')
 
     indexhtml.delete()
@@ -1013,7 +1020,7 @@ ROUTING_RULES = {
 """,
 }
 
-for k in ROUTING_RULES.keys():
+for k in list(ROUTING_RULES.keys()):
   if len(ROUTING_RULES[k]) > 0:
     ROUTING_RULES[k] = "<!-- %s -->\n%s" % (k, ROUTING_RULES[k])
 
@@ -1142,7 +1149,7 @@ def routing_check(*args, **kwargs):
         #body = res.read()
         #print(body)
         #eq(body, args['content'], 'default content should match index.html set content')
-        ok(res.getheader('Content-Length', -1) > 0)
+        ok(int(res.getheader('Content-Length', -1)) > 0)
     elif args['code'] >= 300 and args['code'] < 400:
         _website_expected_redirect_response(res, args['code'], IGNORE_FIELD, new_url)
     elif args['code'] >= 400:

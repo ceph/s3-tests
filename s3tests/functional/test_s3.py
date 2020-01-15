@@ -1,9 +1,8 @@
-from cStringIO import StringIO
+from io import StringIO
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
 import boto.s3.lifecycle
-import bunch
 import datetime
 import time
 import email.utils
@@ -16,7 +15,6 @@ import os
 import requests
 import base64
 import hmac
-import sha
 import pytz
 import json
 import httplib2
@@ -27,13 +25,13 @@ import random
 import re
 
 from collections import defaultdict
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 
-import utils
+from . import utils
 from .utils import assert_raises
 
 from .policy import Policy, Statement, make_json_policy
@@ -117,7 +115,7 @@ def check_configure_versioning_retry(bucket, status, expected_string):
 
     read_status = None
 
-    for i in xrange(5):
+    for i in range(5):
         try:
             read_status = bucket.get_versioning_status()['Versioning']
         except KeyError:
@@ -330,26 +328,26 @@ def generate_lifecycle_body(rules):
     body = '<?xml version="1.0" encoding="UTF-8"?><LifecycleConfiguration>'
     for rule in rules:
         body += '<Rule><ID>%s</ID><Status>%s</Status>' % (rule['ID'], rule['Status'])
-        if 'Prefix' in rule.keys():
+        if 'Prefix' in list(rule.keys()):
             body += '<Prefix>%s</Prefix>' % rule['Prefix']
-        if 'Filter' in rule.keys():
+        if 'Filter' in list(rule.keys()):
             prefix_str= '' # AWS supports empty filters
-            if 'Prefix' in rule['Filter'].keys():
+            if 'Prefix' in list(rule['Filter'].keys()):
                 prefix_str = '<Prefix>%s</Prefix>' % rule['Filter']['Prefix']
             body += '<Filter>%s</Filter>' % prefix_str
 
-        if 'Expiration' in rule.keys():
-            if 'ExpiredObjectDeleteMarker' in rule['Expiration'].keys():
+        if 'Expiration' in list(rule.keys()):
+            if 'ExpiredObjectDeleteMarker' in list(rule['Expiration'].keys()):
                 body += '<Expiration><ExpiredObjectDeleteMarker>%s</ExpiredObjectDeleteMarker></Expiration>' \
                         % rule['Expiration']['ExpiredObjectDeleteMarker']
-            elif 'Date' in rule['Expiration'].keys():
+            elif 'Date' in list(rule['Expiration'].keys()):
                 body += '<Expiration><Date>%s</Date></Expiration>' % rule['Expiration']['Date']
             else:
                 body += '<Expiration><Days>%d</Days></Expiration>' % rule['Expiration']['Days']
-        if 'NoncurrentVersionExpiration' in rule.keys():
+        if 'NoncurrentVersionExpiration' in list(rule.keys()):
             body += '<NoncurrentVersionExpiration><NoncurrentDays>%d</NoncurrentDays></NoncurrentVersionExpiration>' % \
                     rule['NoncurrentVersionExpiration']['NoncurrentDays']
-        if 'NoncurrentVersionTransition' in rule.keys():
+        if 'NoncurrentVersionTransition' in list(rule.keys()):
             for t in rule['NoncurrentVersionTransition']:
                 body += '<NoncurrentVersionTransition>'
                 body += '<NoncurrentDays>%d</NoncurrentDays>' % \
@@ -357,7 +355,7 @@ def generate_lifecycle_body(rules):
                 body += '<StorageClass>%s</StorageClass>' % \
                     t['StorageClass']
                 body += '</NoncurrentVersionTransition>'
-        if 'AbortIncompleteMultipartUpload' in rule.keys():
+        if 'AbortIncompleteMultipartUpload' in list(rule.keys()):
             body += '<AbortIncompleteMultipartUpload><DaysAfterInitiation>%d</DaysAfterInitiation>' \
                     '</AbortIncompleteMultipartUpload>' % rule['AbortIncompleteMultipartUpload']['DaysAfterInitiation']
         body += '</Rule>'
@@ -491,11 +489,11 @@ def generate_random(size, part_size=5*1024*1024):
     chunk = 1024
     allowed = string.ascii_letters
     for x in range(0, size, part_size):
-        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in xrange(chunk)])
+        strpart = ''.join([allowed[random.randint(0, len(allowed) - 1)] for _ in range(chunk)])
         s = ''
         left = size - x
         this_part_size = min(left, part_size)
-        for y in range(this_part_size / chunk):
+        for y in range(this_part_size // chunk):
             s = s + strpart
         if this_part_size > len(s):
             s = s + strpart[0:this_part_size - len(s)]
@@ -535,7 +533,7 @@ def _populate_key(bucket, keyname, size=7*1024*1024, storage_class=None):
     key = bucket.new_key(keyname)
     if storage_class:
         key.storage_class = storage_class
-    data_str = str(generate_random(size, size).next())
+    data_str = str(next(generate_random(size, size)))
     data = StringIO(data_str)
     key.set_contents_from_file(fp=data)
     return (key, data_str)
@@ -754,7 +752,7 @@ class FakeFile(object):
     """
     def __init__(self, char='A', interrupt=None):
         self.offset = 0
-        self.char = char
+        self.char = bytes(char, 'utf-8')
         self.interrupt = interrupt
 
     def seek(self, offset, whence=os.SEEK_SET):
@@ -801,7 +799,7 @@ class FakeFileVerifier(object):
         if self.char == None:
             self.char = data[0]
         self.size += size
-        eq(data, self.char*size)
+        eq(data.decode(), self.char*size)
 
 def _verify_atomic_key_data(key, size=-1, char=None):
     """

@@ -1,5 +1,5 @@
 import boto.s3.connection
-import bunch
+import munch
 import itertools
 import os
 import random
@@ -11,8 +11,8 @@ from lxml import etree
 from doctest import Example
 from lxml.doctestcompare import LXMLOutputChecker
 
-s3 = bunch.Bunch()
-config = bunch.Bunch()
+s3 = munch.Munch()
+config = munch.Munch()
 prefix = ''
 
 bucket_counter = itertools.count(1)
@@ -51,10 +51,10 @@ def nuke_bucket(bucket):
         while deleted_cnt:
             deleted_cnt = 0
             for key in bucket.list():
-                print 'Cleaning bucket {bucket} key {key}'.format(
+                print('Cleaning bucket {bucket} key {key}'.format(
                     bucket=bucket,
                     key=key,
-                    )
+                    ))
                 key.set_canned_acl('private')
                 key.delete()
                 deleted_cnt += 1
@@ -67,26 +67,26 @@ def nuke_bucket(bucket):
             and e.body == ''):
             e.error_code = 'AccessDenied'
         if e.error_code != 'AccessDenied':
-            print 'GOT UNWANTED ERROR', e.error_code
+            print('GOT UNWANTED ERROR', e.error_code)
             raise
         # seems like we're not the owner of the bucket; ignore
         pass
 
 def nuke_prefixed_buckets():
-    for name, conn in s3.items():
-        print 'Cleaning buckets from connection {name}'.format(name=name)
+    for name, conn in list(s3.items()):
+        print('Cleaning buckets from connection {name}'.format(name=name))
         for bucket in conn.get_all_buckets():
             if bucket.name.startswith(prefix):
-                print 'Cleaning bucket {bucket}'.format(bucket=bucket)
+                print('Cleaning bucket {bucket}'.format(bucket=bucket))
                 nuke_bucket(bucket)
 
-    print 'Done with cleanup of test buckets.'
+    print('Done with cleanup of test buckets.')
 
 def read_config(fp):
-    config = bunch.Bunch()
+    config = munch.Munch()
     g = yaml.safe_load_all(fp)
     for new in g:
-        config.update(bunch.bunchify(new))
+        config.update(munch.Munchify(new))
     return config
 
 def connect(conf):
@@ -97,7 +97,7 @@ def connect(conf):
         access_key='aws_access_key_id',
         secret_key='aws_secret_access_key',
         )
-    kwargs = dict((mapping[k],v) for (k,v) in conf.iteritems() if k in mapping)
+    kwargs = dict((mapping[k],v) for (k,v) in conf.items() if k in mapping)
     #process calling_format argument
     calling_formats = dict(
         ordinary=boto.s3.connection.OrdinaryCallingFormat(),
@@ -105,7 +105,7 @@ def connect(conf):
         vhost=boto.s3.connection.VHostCallingFormat(),
         )
     kwargs['calling_format'] = calling_formats['ordinary']
-    if conf.has_key('calling_format'):
+    if 'calling_format' in conf:
         raw_calling_format = conf['calling_format']
         try:
             kwargs['calling_format'] = calling_formats[raw_calling_format]
@@ -146,7 +146,7 @@ def setup():
         raise RuntimeError("Empty Prefix! Aborting!")
 
     defaults = config.s3.defaults
-    for section in config.s3.keys():
+    for section in list(config.s3.keys()):
         if section == 'defaults':
             continue
 
