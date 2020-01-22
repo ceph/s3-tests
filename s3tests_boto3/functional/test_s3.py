@@ -12687,7 +12687,7 @@ def test_ignore_public_acls():
 
     client.put_object(Bucket=bucket_name,Key='key1',Body='abcde',ACL='public-read')
     resp=alt_client.get_object(Bucket=bucket_name, Key='key1')
-    eq(resp['Body'].read(), 'abcde')
+    eq(_get_body(resp), 'abcde')
 
     access_conf = {'BlockPublicAcls': False,
                    'IgnorePublicAcls': True,
