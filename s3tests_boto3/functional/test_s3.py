@@ -12396,3 +12396,41 @@ def test_user_policy():
         PolicyName='AllAccessPolicy',
         UserName=get_tenant_user_id(),
     )
+
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a new bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],False)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a public acl bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_public_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client = get_client()
+    client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],True)
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get bucket policy status on a authenticated acl bucket')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_get_authpublic_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    client = get_client()
+    client.put_bucket_acl(Bucket=bucket_name, ACL='authenticated-read')
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    eq(resp['PolicyStatus']['IsPublic'],True)
