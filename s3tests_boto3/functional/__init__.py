@@ -293,6 +293,18 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         config=Config(signature_version='s3v4'))
     return client
 
+def get_svc_client(client_config=None, svc='s3'):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name=svc,
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        config=client_config)
+    return client
+
 bucket_counter = itertools.count(1)
 
 def get_new_bucket_name():

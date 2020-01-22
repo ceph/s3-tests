@@ -69,6 +69,7 @@ from . import (
     get_objects_list,
     get_main_kms_keyid,
     get_secondary_kms_keyid,
+    get_svc_client,
     nuke_prefixed_buckets,
     )
 
