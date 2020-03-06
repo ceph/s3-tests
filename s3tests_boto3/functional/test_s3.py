@@ -190,8 +190,8 @@ def test_basic_key_count():
     for j in range(5):
             client.put_object(Bucket=bucket_name, Key=str(j))
     response1 = client.list_objects_v2(Bucket=bucket_name)
+    eq('KeyCount' in response1, True)
     eq(response1['KeyCount'], 5)
-
 
 
 @attr(resource='bucket')
