@@ -182,7 +182,18 @@ def test_column_sum():
 
     assert int(res_s3select) == int(res_target) 
 
+def test_alias():
+    csv_obj = create_random_csv_object(10000,10)
 
+    csv_obj_name = "csv_10x10"
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from stdin where a3>100 and a3<300;")  ).replace(",","")
+
+    res_s3select_no_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1),int(_2),int(_1)+int(_2) from stdin where (int(_1)+int(_2))>100 and (int(_1)+int(_2))<300;")  ).replace(",","")
+
+    assert res_s3select_alias == res_s3select_no_alias
 
 
 
