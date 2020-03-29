@@ -146,20 +146,21 @@ def remove_xml_tags_from_result(obj):
         result += rec + "\n" # remove by split
 
     return result
-   
-def sum_column_x(column_pos,obj):
-    res = 0 
+
+def create_list_of_int(column_pos,obj):
+    res = 0
+    list_of_int = [] 
     for rec in obj.split("\n"):
         col_num = 1
         if ( len(rec) == 0):
             continue;
         for col in rec.split(","):
             if (col_num == column_pos):
-                res += int(col);
+                list_of_int.append(int(col));
             col_num+=1; 
 
-    return res
-
+    return list_of_int
+       
 def test_count_operation():
     csv_obj_name = "csv_star_oper"
     bucket_name = "test"
@@ -170,22 +171,59 @@ def test_count_operation():
 
     assert num_of_rows == int( res )
 
-def test_column_sum():
-    csv_obj = create_random_csv_object(10,10)
+def test_column_sum_min_max():
+    csv_obj = create_random_csv_object(10000,10)
 
-    csv_obj_name = "csv_10x10"
+    csv_obj_name = "csv_10000x10"
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
     
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select sum(int(_1)) from stdin;")  ).replace(",","")
-    res_target = sum_column_x( 1 , csv_obj )
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 1 , csv_obj )
+    res_target = min( list_int )
 
     assert int(res_s3select) == int(res_target) 
 
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_4)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = min( list_int )
+
+    assert int(res_s3select) == int(res_target) 
+    
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select max(int(_4)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = max( list_int )
+
+    assert int(res_s3select) == int(res_target) 
+    
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select max(int(_7)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 7 , csv_obj )
+    res_target = max( list_int )
+
+    assert int(res_s3select) == int(res_target) 
+    
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select sum(int(_4)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = sum( list_int )
+
+    assert int(res_s3select) == int(res_target) 
+    
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select sum(int(_7)) from stdin;")  ).replace(",","")
+    list_int = create_list_of_int( 7 , csv_obj )
+    res_target = sum( list_int )
+
+    assert int(res_s3select) == int(res_target) 
+    
+
 def test_alias():
+    # purpose: test is comparing result of exact queries , one with alias the other without.
+    # this test is settign alias on 3 projections, the third projection is using other projection alias, also the where clause is using aliases
+    # the test validate that where-cluase and projections are executing aliases correctlly, bare in mind that each alias has its own cache,
+    # and that cache need to invalidate time.
+ 
     csv_obj = create_random_csv_object(10000,10)
 
-    csv_obj_name = "csv_10x10"
+    csv_obj_name = "csv_10000x10"
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -194,6 +232,5 @@ def test_alias():
     res_s3select_no_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1),int(_2),int(_1)+int(_2) from stdin where (int(_1)+int(_2))>100 and (int(_1)+int(_2))<300;")  ).replace(",","")
 
     assert res_s3select_alias == res_s3select_no_alias
-
 
 
