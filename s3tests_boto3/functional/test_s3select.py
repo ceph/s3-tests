@@ -73,7 +73,6 @@ from . import (
 import boto
 import boto.s3.connection
 import sys
-#import urlparse
 import random
 from botocore.client import Config
 
@@ -216,11 +215,12 @@ def test_column_sum_min_max():
     
 
 def test_alias():
-    # purpose: test is comparing result of exact queries , one with alias the other without.
-    # this test is settign alias on 3 projections, the third projection is using other projection alias, also the where clause is using aliases
-    # the test validate that where-cluase and projections are executing aliases correctlly, bare in mind that each alias has its own cache,
-    # and that cache need to invalidate time.
- 
+
+    # purpose: test is comparing result of exactly the same queries , one with alias the other without.
+    # this test is setting alias on 3 projections, the third projection is using other projection alias, also the where clause is using aliases
+    # the test validate that where-clause and projections are executing aliases correctly, bare in mind that each alias has its own cache,
+    # and that cache need to be invalidate per new row. 
+
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = "csv_10000x10"
@@ -233,4 +233,20 @@ def test_alias():
 
     assert res_s3select_alias == res_s3select_no_alias
 
+
+def test_alias_cyclic_refernce():
+
+    # purpose of test is to validate the s3select-engine is able to detect a cyclic reference to alias.
+    
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = "csv_10000x10"
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1) as a1,int(_2) as a2, a1+a4 as a3, a5+a1 as a4, int(_3)+a3 as a5 from stdin;")  )
+
+    find_res = res_s3select_alias.find("number of calls exceed maximum size, probably a cyclic reference to alias");
+    
+    assert int(find_res) >= 0 
 
