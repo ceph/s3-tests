@@ -213,7 +213,31 @@ def test_column_sum_min_max():
 
     assert int(res_s3select) == int(res_target) 
     
+def test_complex_expressions():
 
+    # purpose of test: engine is process correctly several projections containing aggregation-functions 
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = "csv_100000x10"
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;")).replace("\n","")
+
+    # assert is according to radom-csv function 
+    assert res_s3select == "0,1000,1,"
+
+    # purpose of test that all where conditions create the same group of values, thus same result
+    res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substr(_2,1,1) == "1"')).replace("\n","")
+
+    res_s3select_between_numbers = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)>=100 and int(_2)<200')).replace("\n","")
+
+    res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)/100 == 1 or int(_2)/10 == 1 or int(_2) == 1')).replace("\n","")
+
+    assert res_s3select_substr == res_s3select_between_numbers
+
+    assert res_s3select_between_numbers == res_s3select_eq_modolu
+    
 def test_alias():
 
     # purpose: test is comparing result of exactly the same queries , one with alias the other without.
