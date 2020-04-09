@@ -92,6 +92,16 @@ def get_connection():
 
     return conn
 
+def create_csv_object_for_datetime(rows,columns):
+        result = ""
+        for i in range(rows):
+            row = "";
+            for y in range(columns):
+                row = row + "{}{:02d}{:02d}-{:02d}{:02d}{:02d},".format(random.randint(0,100)+1900,random.randint(1,12),random.randint(1,28),random.randint(0,23),random.randint(0,59),random.randint(0,59),);
+            result += row + "\n"
+
+        return result
+
 
 def create_random_csv_object(rows,columns):
         result = ""
@@ -273,4 +283,33 @@ def test_alias_cyclic_refernce():
     find_res = res_s3select_alias.find("number of calls exceed maximum size, probably a cyclic reference to alias");
     
     assert int(find_res) >= 0 
+
+def test_datetime():
+
+    # purpose of test is to validate date-time functionality is correct,
+    # by creating same groups with different functions (nested-calls) ,which later produce the same result 
+
+    csv_obj = create_csv_object_for_datetime(10000,1)
+
+    csv_obj_name = "csv_datetime_10000x10"
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where extract("year",timestamp(_1)) > 1950 and extract("year",timestamp(_1)) < 1960;')  )
+
+    res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substr(_1,1,4))>1950 and int(substr(_1,1,4))<1960;')  )
+
+    assert res_s3select_date_time == res_s3select_substr
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  datediff("month",timestamp(_1),dateadd("month",2,timestamp(_1)) ) == 2;')  )
+
+    res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin;')  )
+
+    assert res_s3select_date_time == res_s3select_count
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("year",timestamp(_1),dateadd("day", 366 ,timestamp(_1))) == 1 ;')  )
+
+    assert res_s3select_date_time == res_s3select_count
+
 
