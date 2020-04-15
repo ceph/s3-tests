@@ -312,4 +312,8 @@ def test_datetime():
 
     assert res_s3select_date_time == res_s3select_count
 
+    # validate that utcnow is integrate correctly with other date-time functions 
+    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("hours",utcnow(),dateadd("day",1,utcnow())) == 24 ;')  )
+
+    assert res_s3select_date_time_utcnow == res_s3select_count
 
