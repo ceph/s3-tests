@@ -102,16 +102,16 @@ def create_csv_object_for_datetime(rows,columns):
 
         return result
 
-
-def create_random_csv_object(rows,columns):
+def create_random_csv_object(rows,columns,col_delim=",",record_delim="\n"):
         result = ""
         for i in range(rows):
             row = "";
             for y in range(columns):
-                row = row + "{},".format(random.randint(0,1000)); 
-            result += row + "\n"
+                row = row + "{}{}".format(random.randint(0,1000),col_delim);
+            result += row + record_delim
 
         return result
+
 
 def upload_csv_object(bucket_name,new_key,obj):
         conn = get_connection()
@@ -122,7 +122,7 @@ def upload_csv_object(bucket_name,new_key,obj):
         k1.set_contents_from_string( obj );
         
     
-def run_s3select(bucket,key,query):
+def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\'):
     s3 = boto3.client('s3',#'sns',
         endpoint_url=endpoint,
         aws_access_key_id=access_key,
@@ -135,7 +135,7 @@ def run_s3select(bucket,key,query):
         Bucket=bucket,
         Key=key,
         ExpressionType='SQL',
-        InputSerialization = {"CSV": {}, "CompressionType": "NONE"},
+        InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char}, "CompressionType": "NONE"},
         OutputSerialization = {"CSV": {}},
         Expression=query,)
     
@@ -316,4 +316,66 @@ def test_datetime():
     res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("hours",utcnow(),dateadd("day",1,utcnow())) == 24 ;')  )
 
     assert res_s3select_date_time_utcnow == res_s3select_count
+
+def test_csv_parser():
+
+    # purpuse: test default csv values(, \n " \ ), return value may contain meta-char 
+    # NOTE: should note that default meta-char for s3select are also for python, thus for one example double \ is mandatory
+
+    csv_obj = ',first,,,second,third="c31,c32,c33",forth="1,2,3,4",fifth="my_string=\\"any_value\\" , my_other_string=\\"aaaa,bbb\\" ",' + "\n"
+    csv_obj_name = "csv_one_line"
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    # return value contain comma{,}
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _6 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  'third="c31,c32,c33",'
+
+    # return value contain comma{,}
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _7 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  'forth="1,2,3,4",'
+
+    # return value contain comma{,}{"}, escape-rule{\} by-pass quote{"} , the escape{\} is removed.
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _8 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  'fifth="my_string="any_value" , my_other_string="aaaa,bbb" ",'
+
+    # return NULL as first token
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  ','
+
+    # return NULL in the middle of line
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _3 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  ','
+
+    # return NULL in the middle of line (successive)
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _4 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  ','
+
+    # return NULL at the end line
+    res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from stdin;")  ).replace("\n","")
+    assert res_s3select_alias ==  ','
+
+def test_csv_definition():
+
+    number_of_rows = 10000
+
+    #create object with pipe-sign as field separator and tab as row delimiter.
+    csv_obj = create_random_csv_object(number_of_rows,10,"|","\t")
+
+    csv_obj_name = "csv_pipeSign_tab_eol"
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+   
+    # purpose of tests is to parse correctly input with different csv defintions  
+    res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin;","|","\t") ).replace(",","")
+
+    assert number_of_rows == int(res)
+    
+    # assert is according to radom-csv function 
+    # purpose of test is validate that tokens are processed correctly
+    res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;","|","\t") ).replace("\n","")
+
+    assert res == "0,1000,1,"
 
