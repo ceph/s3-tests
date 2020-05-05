@@ -114,6 +114,7 @@ def nuke_prefixed_buckets(prefix, client=None):
 
     buckets = get_buckets_list(client, prefix)
 
+    err = None
     if buckets != []:
         for bucket_name in buckets:
             objects_list = get_objects_list(bucket_name, client)
@@ -127,11 +128,15 @@ def nuke_prefixed_buckets(prefix, client=None):
                 response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
             try:
                 response = client.delete_bucket(Bucket=bucket_name)
-            except ClientError:
-                # if DELETE times out, the retry may see NoSuchBucket
-                if response['Error']['Code'] != 'NoSuchBucket':
-                    raise ClientError
+            except ClientError as e:
+                # The exception shouldn't be raised when doing cleanup. Pass and continue
+                # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
+                # resulting in some kind of resource leak. err is used to hint user some
+                # exception once occurred.
+                err = e
                 pass
+        if err:
+            raise err
 
     print('Done with cleanup of buckets in tests.')
 
