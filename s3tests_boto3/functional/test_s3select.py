@@ -102,8 +102,11 @@ def create_csv_object_for_datetime(rows,columns):
 
         return result
 
-def create_random_csv_object(rows,columns,col_delim=",",record_delim="\n"):
+def create_random_csv_object(rows,columns,col_delim=",",record_delim="\n",csv_schema=""):
         result = ""
+        if len(csv_schema)>0 :
+            result = csv_schema + record_delim
+
         for i in range(rows):
             row = "";
             for y in range(columns):
@@ -122,7 +125,7 @@ def upload_csv_object(bucket_name,new_key,obj):
         k1.set_contents_from_string( obj );
         
     
-def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\'):
+def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
     s3 = boto3.client('s3',#'sns',
         endpoint_url=endpoint,
         aws_access_key_id=access_key,
@@ -135,7 +138,7 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
         Bucket=bucket,
         Key=key,
         ExpressionType='SQL',
-        InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char}, "CompressionType": "NONE"},
+        InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char, "FileHeaderInfo": csv_header_info}, "CompressionType": "NONE"},
         OutputSerialization = {"CSV": {}},
         Expression=query,)
     
@@ -378,4 +381,31 @@ def test_csv_definition():
     res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;","|","\t") ).replace("\n","")
 
     assert res == "0,1000,1,"
+
+    # purpose of test is to validate functionality using csv header info
+    csv_obj = create_random_csv_object(number_of_rows,10,csv_schema="c1,c2,c3,c4,c5,c6,c7,c8,c9,c10")
+
+    csv_obj_name = "csv_with_header_info"
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    # ignoring the schema on first line and retrieve using generic column number
+    res_ignore = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select _1,_3 from stdin;",csv_header_info="IGNORE") ).replace("\n","")
+
+    # using the scheme on first line, query is using the attach schema
+    res_use = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c3 from stdin;",csv_header_info="USE") ).replace("\n","")
+    
+    # result of both queries should be the same
+    assert res_ignore == res_use
+
+    # alias-name is identical to column-name
+    res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from stdin;",csv_header_info="USE") ).replace("\n","")
+
+    assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
+
+    # using column-name not exist in schema
+    res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c10,int(c11) from stdin;",csv_header_info="USE") ).replace("\n","")
+
+    assert res_multiple_defintion.find("alias {c11} or column not exist in schema") > 0
 
