@@ -8977,6 +8977,75 @@ def test_lifecyclev2_expiration():
     eq(len(keep2_objects), 4)
     eq(len(expire3_objects), 2)
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration when tags are not the exactly the same as the rule')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+@attr('list-objects-v2')
+def test_lifecycle_obj_tags_inc_rule():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    lifecycle={
+        "Rules": [
+        {
+            "Filter": {
+                "Tag": {"Key": "key1", "Value": "tag5"}
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "rule5"
+            },
+        ]
+    }
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    key1 = "obj_key1"
+    body1 = "obj_key1_body"
+    tags1={'TagSet': [{'Key': 'key1', 'Value': 'tag1'},
+          {'Key': 'key5','Value': 'tag5'}]}
+    response = client.put_object(Bucket=bucket_name, Key=key1, Body=body1)
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key1,Tagging=tags1)
+    time.sleep(15)
+    response = client.list_objects(Bucket=bucket_name)
+    if 'Contents' in response:
+        expire_objects = response['Contents']
+        eq(len(expire_objects), 0)
+    #The check below is for checking that the obj is not being deleted when it shouldn't
+        lifecycle={
+        "Rules": [
+        {
+            "Filter": {
+                "And": {
+                "Tags": [{"Key": "key1", "Value": "tag5"},{"Key": "suffix2", "Value": "WMV2"}]
+                }
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "rule5"
+            },
+        ]
+    }
+    response = client.put_bucket_lifecycle_configuration(
+    Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    key1 = "obj_key1"
+    body1 = "obj_key1_body"
+    tags1={'TagSet': [{'Key': 'key1', 'Value': 'tag1'},
+          {'Key': 'key5','Value': 'tag5'}]}
+    response = client.put_object(Bucket=bucket_name, Key=key1, Body=body1)
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key1,Tagging=tags1)
+    time.sleep(15)
+    response = client.list_objects(Bucket=bucket_name)
+    if 'Contents' in response:
+        expire_objects = response['Contents']
+        eq(len(expire_objects), 1)
+
+    
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9021,7 +9090,7 @@ def test_lifecycle_id_too_long():
 
 @attr(resource='bucket')
 @attr(method='put')
-@attr(operation='same id')
+@attr(operation='same id')0
 @attr('lifecycle')
 @attr(assertion='fails 400')
 def test_lifecycle_same_id():
