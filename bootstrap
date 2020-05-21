@@ -59,7 +59,7 @@ esac
 
 
 # s3-tests only works on python 3.6 not newer versions of python3
-${virtualenv} --python=$(which python3.6) --no-site-packages --distribute virtualenv
+${virtualenv} --python=$(which python3.6) virtualenv
 
 # avoid pip bugs
 ./virtualenv/bin/pip3 install --upgrade pip
