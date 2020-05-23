@@ -76,16 +76,14 @@ import sys
 import random
 from botocore.client import Config
 
-endpoint = 'http://localhost:8000'
-access_key = 'b2345678901234567890'
-secret_key = 'b234567890123456789012345678901234567890'
 region_name = ''
 
 def get_connection():
     conn = boto.connect_s3(
-        aws_access_key_id = access_key,
-        aws_secret_access_key = secret_key,
-        host = 'localhost', port = 8000 ,
+        aws_access_key_id = get_main_aws_access_key(),
+        aws_secret_access_key = get_main_aws_secret_key(),
+        host = get_config_host(),
+        port = get_config_port(),
         is_secure=False,               # uncomment if you are not using ssl
         calling_format = boto.s3.connection.OrdinaryCallingFormat(),
         )
@@ -126,11 +124,12 @@ def upload_csv_object(bucket_name,new_key,obj):
         
     
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
+
     s3 = boto3.client('s3',#'sns',
-        endpoint_url=endpoint,
-        aws_access_key_id=access_key,
+        endpoint_url=get_config_endpoint(),
+        aws_access_key_id=get_main_aws_access_key(),
         region_name=region_name,
-        aws_secret_access_key=secret_key)
+        aws_secret_access_key=get_main_aws_secret_key())
         #config=Config(signature_version='v2'))
 
 
