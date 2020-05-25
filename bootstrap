@@ -39,8 +39,8 @@ virtualenv --no-site-packages --distribute virtualenv
 # avoid pip bugs
 ./virtualenv/bin/pip install --upgrade pip
 
-# slightly old version of setuptools; newer fails w/ requests 0.14.0
-./virtualenv/bin/pip install setuptools==32.3.1
+# latest setuptools supporting python 2.7
+./virtualenv/bin/pip install setuptools==44.1.0
 
 ./virtualenv/bin/pip install -r requirements.txt
 
