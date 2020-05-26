@@ -8938,9 +8938,9 @@ def test_lifecycle_expiration():
     expire3_objects = response['Contents']
 
     eq(len(init_objects), 6)
-    eq(len(expire1_objects), 6)
-    eq(len(keep2_objects), 6)
-    eq(len(expire3_objects), 6)
+    eq(len(expire1_objects), 4)
+    eq(len(keep2_objects), 4)
+    eq(len(expire3_objects), 2)
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -8977,7 +8977,6 @@ def test_lifecyclev2_expiration():
     eq(len(keep2_objects), 4)
     eq(len(expire3_objects), 2)
 
-
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='test lifecycle expiration on versining enabled bucket')
@@ -9001,7 +9000,6 @@ def test_lifecycle_expiration_versioning_enabled():
     delete_markers = response['DeleteMarkers']
     eq(len(versions), 1)
     eq(len(delete_markers), 1)
-
 
 @attr(resource='bucket')
 @attr(method='put')
