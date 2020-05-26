@@ -92,10 +92,10 @@ def get_connection():
 
 def create_csv_object_for_datetime(rows,columns):
         result = ""
-        for i in range(rows):
-            row = "";
-            for y in range(columns):
-                row = row + "{}{:02d}{:02d}-{:02d}{:02d}{:02d},".format(random.randint(0,100)+1900,random.randint(1,12),random.randint(1,28),random.randint(0,23),random.randint(0,59),random.randint(0,59),);
+        for _ in range(rows):
+            row = ""
+            for _ in range(columns):
+                row = row + "{}{:02d}{:02d}-{:02d}{:02d}{:02d},".format(random.randint(0,100)+1900,random.randint(1,12),random.randint(1,28),random.randint(0,23),random.randint(0,59),random.randint(0,59),)
             result += row + "\n"
 
         return result
@@ -105,10 +105,10 @@ def create_random_csv_object(rows,columns,col_delim=",",record_delim="\n",csv_sc
         if len(csv_schema)>0 :
             result = csv_schema + record_delim
 
-        for i in range(rows):
-            row = "";
-            for y in range(columns):
-                row = row + "{}{}".format(random.randint(0,1000),col_delim);
+        for _ in range(rows):
+            row = ""
+            for _ in range(columns):
+                row = row + "{}{}".format(random.randint(0,1000),col_delim)
             result += row + record_delim
 
         return result
@@ -119,8 +119,8 @@ def upload_csv_object(bucket_name,new_key,obj):
         conn.create_bucket( bucket_name )
         bucket = conn.get_bucket( bucket_name )
 
-        k1 = bucket.new_key( new_key );
-        k1.set_contents_from_string( obj );
+        k1 = bucket.new_key( new_key )
+        k1.set_contents_from_string( obj )
         
     
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
@@ -158,17 +158,17 @@ def remove_xml_tags_from_result(obj):
 
     return result
 
-def create_list_of_int(column_pos,obj):
-    res = 0
+def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
+    
     list_of_int = [] 
-    for rec in obj.split("\n"):
+    for rec in obj.split(row_split):
         col_num = 1
         if ( len(rec) == 0):
-            continue;
-        for col in rec.split(","):
+            continue
+        for col in rec.split(field_split):
             if (col_num == column_pos):
-                list_of_int.append(int(col));
-            col_num+=1; 
+                list_of_int.append(int(col))
+            col_num+=1
 
     return list_of_int
        
@@ -180,7 +180,7 @@ def test_count_operation():
     upload_csv_object(bucket_name,csv_obj_name,obj_to_load)
     res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin;") ).replace(",","")
 
-    assert num_of_rows == int( res )
+    nose.tools.assert_equal( num_of_rows, int( res ))
 
 def test_column_sum_min_max():
     csv_obj = create_random_csv_object(10000,10)
@@ -189,42 +189,57 @@ def test_column_sum_min_max():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
     
+    csv_obj_name = "csv_10000x10"
+    bucket_name_2 = "testbuck2"
+    upload_csv_object(bucket_name_2,csv_obj_name,csv_obj)
+    
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 1 , csv_obj )
     res_target = min( list_int )
 
-    assert int(res_s3select) == int(res_target) 
+    nose.tools.assert_equal( int(res_s3select), int(res_target))
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_4)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = min( list_int )
 
-    assert int(res_s3select) == int(res_target) 
+    nose.tools.assert_equal( int(res_s3select), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select max(int(_4)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = max( list_int )
 
-    assert int(res_s3select) == int(res_target) 
+    nose.tools.assert_equal( int(res_s3select), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select max(int(_7)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 7 , csv_obj )
     res_target = max( list_int )
 
-    assert int(res_s3select) == int(res_target) 
+    nose.tools.assert_equal( int(res_s3select), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select sum(int(_4)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = sum( list_int )
 
-    assert int(res_s3select) == int(res_target) 
+    nose.tools.assert_equal( int(res_s3select), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select sum(int(_7)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 7 , csv_obj )
     res_target = sum( list_int )
 
-    assert int(res_s3select) == int(res_target) 
-    
+    nose.tools.assert_equal(  int(res_s3select) , int(res_target) )
+
+    # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from stdin where (int(_1)-int(_2)) == 2;" ) )
+    count,sum1,sum2,d = res_s3select.split(",")
+
+    nose.tools.assert_equal( int(count)*2 , int(sum1)-int(sum2 ) )
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from stdin where (int(_1)-int(_2)) == 4;" ) ) 
+    count,sum1,sum2,d = res_s3select.split(",")
+
+    nose.tools.assert_equal( int(count)*4 , int(sum1)-int(sum2) )
+
 def test_complex_expressions():
 
     # purpose of test: engine is process correctly several projections containing aggregation-functions 
@@ -236,8 +251,14 @@ def test_complex_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;")).replace("\n","")
 
+    min_1 = min ( create_list_of_int( 1 , csv_obj ) )
+    max_2 = max ( create_list_of_int( 2 , csv_obj ) )
+    min_3 = min ( create_list_of_int( 3 , csv_obj ) ) + 1
+
+    __res = "{},{},{},".format(min_1,max_2,min_3)
+    
     # assert is according to radom-csv function 
-    assert res_s3select == "0,1000,1,"
+    nose.tools.assert_equal( res_s3select, __res )
 
     # purpose of test that all where conditions create the same group of values, thus same result
     res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substr(_2,1,1) == "1"')).replace("\n","")
@@ -246,9 +267,9 @@ def test_complex_expressions():
 
     res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)/100 == 1 or int(_2)/10 == 1 or int(_2) == 1')).replace("\n","")
 
-    assert res_s3select_substr == res_s3select_between_numbers
+    nose.tools.assert_equal( res_s3select_substr, res_s3select_between_numbers)
 
-    assert res_s3select_between_numbers == res_s3select_eq_modolu
+    nose.tools.assert_equal( res_s3select_between_numbers, res_s3select_eq_modolu)
     
 def test_alias():
 
@@ -267,14 +288,15 @@ def test_alias():
 
     res_s3select_no_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1),int(_2),int(_1)+int(_2) from stdin where (int(_1)+int(_2))>100 and (int(_1)+int(_2))<300;")  ).replace(",","")
 
-    assert res_s3select_alias == res_s3select_no_alias
+    nose.tools.assert_equal( res_s3select_alias, res_s3select_no_alias)
 
 
 def test_alias_cyclic_refernce():
 
-    # purpose of test is to validate the s3select-engine is able to detect a cyclic reference to alias.
+    number_of_rows = 10000
     
-    csv_obj = create_random_csv_object(10000,10)
+    # purpose of test is to validate the s3select-engine is able to detect a cyclic reference to alias.
+    csv_obj = create_random_csv_object(number_of_rows,10)
 
     csv_obj_name = "csv_10000x10"
     bucket_name = "test"
@@ -282,7 +304,7 @@ def test_alias_cyclic_refernce():
 
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1) as a1,int(_2) as a2, a1+a4 as a3, a5+a1 as a4, int(_3)+a3 as a5 from stdin;")  )
 
-    find_res = res_s3select_alias.find("number of calls exceed maximum size, probably a cyclic reference to alias");
+    find_res = res_s3select_alias.find("number of calls exceed maximum size, probably a cyclic reference to alias")
     
     assert int(find_res) >= 0 
 
@@ -302,22 +324,22 @@ def test_datetime():
 
     res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substr(_1,1,4))>1950 and int(substr(_1,1,4))<1960;')  )
 
-    assert res_s3select_date_time == res_s3select_substr
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_substr)
 
     res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  datediff("month",timestamp(_1),dateadd("month",2,timestamp(_1)) ) == 2;')  )
 
     res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin;')  )
 
-    assert res_s3select_date_time == res_s3select_count
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
 
     res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("year",timestamp(_1),dateadd("day", 366 ,timestamp(_1))) == 1 ;')  )
 
-    assert res_s3select_date_time == res_s3select_count
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
 
     # validate that utcnow is integrate correctly with other date-time functions 
     res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("hours",utcnow(),dateadd("day",1,utcnow())) == 24 ;')  )
 
-    assert res_s3select_date_time_utcnow == res_s3select_count
+    nose.tools.assert_equal( res_s3select_date_time_utcnow, res_s3select_count)
 
 def test_csv_parser():
 
@@ -332,31 +354,31 @@ def test_csv_parser():
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _6 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  'third="c31,c32,c33",'
+    nose.tools.assert_equal( res_s3select_alias, 'third="c31,c32,c33",')
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _7 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  'forth="1,2,3,4",'
+    nose.tools.assert_equal( res_s3select_alias, 'forth="1,2,3,4",')
 
     # return value contain comma{,}{"}, escape-rule{\} by-pass quote{"} , the escape{\} is removed.
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _8 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  'fifth="my_string="any_value" , my_other_string="aaaa,bbb" ",'
+    nose.tools.assert_equal( res_s3select_alias, 'fifth="my_string="any_value" , my_other_string="aaaa,bbb" ",')
 
     # return NULL as first token
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  ','
+    nose.tools.assert_equal( res_s3select_alias, ',')
 
     # return NULL in the middle of line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _3 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  ','
+    nose.tools.assert_equal( res_s3select_alias, ',')
 
     # return NULL in the middle of line (successive)
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _4 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  ','
+    nose.tools.assert_equal( res_s3select_alias, ',')
 
     # return NULL at the end line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from stdin;")  ).replace("\n","")
-    assert res_s3select_alias ==  ','
+    nose.tools.assert_equal( res_s3select_alias, ',')
 
 def test_csv_definition():
 
@@ -373,13 +395,23 @@ def test_csv_definition():
     # purpose of tests is to parse correctly input with different csv defintions  
     res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin;","|","\t") ).replace(",","")
 
-    assert number_of_rows == int(res)
+    nose.tools.assert_equal( number_of_rows, int(res))
     
     # assert is according to radom-csv function 
     # purpose of test is validate that tokens are processed correctly
-    res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;","|","\t") ).replace("\n","")
+    res_s3select = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from stdin;","|","\t") ).replace("\n","")
 
-    assert res == "0,1000,1,"
+    min_1 = min ( create_list_of_int( 1 , csv_obj , "|","\t") )
+    max_2 = max ( create_list_of_int( 2 , csv_obj , "|","\t") )
+    min_3 = min ( create_list_of_int( 3 , csv_obj , "|","\t") ) + 1
+
+    __res = "{},{},{},".format(min_1,max_2,min_3)
+    nose.tools.assert_equal( res_s3select, __res )
+
+
+def test_schema_definition():
+
+    number_of_rows = 10000
 
     # purpose of test is to validate functionality using csv header info
     csv_obj = create_random_csv_object(number_of_rows,10,csv_schema="c1,c2,c3,c4,c5,c6,c7,c8,c9,c10")
@@ -396,15 +428,14 @@ def test_csv_definition():
     res_use = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c3 from stdin;",csv_header_info="USE") ).replace("\n","")
     
     # result of both queries should be the same
-    assert res_ignore == res_use
-
-    # alias-name is identical to column-name
-    res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from stdin;",csv_header_info="USE") ).replace("\n","")
-
-    assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
+    nose.tools.assert_equal( res_ignore, res_use)
 
     # using column-name not exist in schema
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c10,int(c11) from stdin;",csv_header_info="USE") ).replace("\n","")
 
     assert res_multiple_defintion.find("alias {c11} or column not exist in schema") > 0
 
+    # alias-name is identical to column-name
+    res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from stdin;",csv_header_info="USE") ).replace("\n","")
+
+    assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
