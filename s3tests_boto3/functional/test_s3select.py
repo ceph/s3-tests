@@ -78,6 +78,90 @@ from botocore.client import Config
 
 region_name = ''
 
+# recurssion function for generating arithmetical expression 
+def random_expr(depth):
+    # depth is the complexity of expression 
+    if depth==1 :
+        return str(int(random.random() * 100) + 1)+".0"
+    return '(' + random_expr(depth-1) + random.choice(['+','-','*','/']) + random_expr(depth-1) + ')'
+
+
+def generate_s3select_where_clause(bucket_name,obj_name):
+
+    a=random_expr(4)
+    b=random_expr(4)
+    s=random.choice([ '<','>','==','<=','>=','!=' ])
+
+    try:
+        eval( a )
+        eval( b )
+    except ZeroDivisionError:
+        return
+
+    # generate s3select statement using generated randome expression
+    # upon count(0)>0 it means true for the where clause expression
+    # the python-engine {eval( conditional expression )} should return same boolean result.
+    s3select_stmt =  "select count(0) from stdin where " + a + s + b + ";"
+
+    res = remove_xml_tags_from_result( run_s3select(bucket_name,obj_name,s3select_stmt) ).replace(",","")
+
+    nose.tools.assert_equal(int(res)>0 , eval( a + s + b ))
+
+def generate_s3select_expression_projection(bucket_name,obj_name):
+
+        # generate s3select statement using generated randome expression
+        # statement return an arithmetical result for the generated expression.
+        # the same expression is evaluated by python-engine, result should be close enough(Epsilon)
+        
+        e = random_expr( 4 )
+
+        try:
+            eval( e )
+        except ZeroDivisionError:
+            return
+
+        if eval( e ) == 0:
+            return
+
+        res = remove_xml_tags_from_result( run_s3select(bucket_name,obj_name,"select " + e + " from stdin;",) ).replace(",","")
+
+        # accuracy level 
+        epsilon = float(0.1) 
+
+        #debug purpose
+        x = (1 - (float(res.split("\n")[1]) / eval( e )) )
+        if (x > epsilon):
+            print (x)
+            print (e)
+
+        # both results should be close (epsilon)
+        assert (1 - (float(res.split("\n")[1]) / eval( e )) ) < epsilon
+
+def test_generate_where_clause():
+
+    # create small csv file for testing the random expressions
+    single_line_csv = create_random_csv_object(1,1)
+    bucket_name = "test"
+    obj_name = "single_line_csv.csv"
+    upload_csv_object(bucket_name,obj_name,single_line_csv)
+       
+    for _ in range(10): 
+        generate_s3select_where_clause(bucket_name,obj_name)
+
+def test_generate_projection():
+
+    # skipping until fix for s3select engine accuracy
+    return
+
+    # create small csv file for testing the random expressions
+    single_line_csv = create_random_csv_object(1,1)
+    bucket_name = "test"
+    obj_name = "single_line_csv.csv"
+    upload_csv_object(bucket_name,obj_name,single_line_csv)
+       
+    for _ in range(100): 
+        generate_s3select_expression_projection(bucket_name,obj_name)
+    
 def get_connection():
     conn = boto.connect_s3(
         aws_access_key_id = get_main_aws_access_key(),
