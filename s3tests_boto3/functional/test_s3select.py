@@ -1,80 +1,9 @@
-import boto3
-import botocore.session
-from botocore.exceptions import ClientError
-from botocore.exceptions import ParamValidationError
-from nose.tools import eq_ as eq
-from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
-import isodate
-import email.utils
-import datetime
-import threading
-import re
-import pytz
-from collections import OrderedDict
-import requests
-import json
-import base64
-import hmac
-import hashlib
-import xml.etree.ElementTree as ET
-import time
-import operator
 import nose
-import os
-import string
 import random
-import socket
-import ssl
-from email.header import decode_header
-
-from .utils import assert_raises
-from .utils import generate_random
-from .utils import _get_status_and_error_code
-from .utils import _get_status
-
-from .policy import Policy, Statement, make_json_policy
 
 from . import (
-    get_client,
-    get_prefix,
-    get_unauthenticated_client,
-    get_bad_auth_client,
-    get_v2_client,
-    get_new_bucket,
-    get_new_bucket_name,
-    get_new_bucket_resource,
-    get_config_is_secure,
-    get_config_host,
-    get_config_port,
-    get_config_endpoint,
-    get_main_aws_access_key,
-    get_main_aws_secret_key,
-    get_main_display_name,
-    get_main_user_id,
-    get_main_email,
-    get_main_api_name,
-    get_alt_aws_access_key,
-    get_alt_aws_secret_key,
-    get_alt_display_name,
-    get_alt_user_id,
-    get_alt_email,
-    get_alt_client,
-    get_tenant_client,
-    get_tenant_iam_client,
-    get_tenant_user_id,
-    get_buckets_list,
-    get_objects_list,
-    get_main_kms_keyid,
-    get_secondary_kms_keyid,
-    nuke_prefixed_buckets,
+    get_client
     )
-
-import boto
-import boto.s3.connection
-import sys
-import random
-from botocore.client import Config
 
 region_name = ''
 
@@ -126,13 +55,7 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         res = remove_xml_tags_from_result( run_s3select(bucket_name,obj_name,"select " + e + " from stdin;",) ).replace(",","")
 
         # accuracy level 
-        epsilon = float(0.1) 
-
-        #debug purpose
-        x = (1 - (float(res.split("\n")[1]) / eval( e )) )
-        if (x > epsilon):
-            print (x)
-            print (e)
+        epsilon = float(0.000001) 
 
         # both results should be close (epsilon)
         assert (1 - (float(res.split("\n")[1]) / eval( e )) ) < epsilon
@@ -145,13 +68,10 @@ def test_generate_where_clause():
     obj_name = "single_line_csv.csv"
     upload_csv_object(bucket_name,obj_name,single_line_csv)
        
-    for _ in range(10): 
+    for _ in range(100): 
         generate_s3select_where_clause(bucket_name,obj_name)
 
 def test_generate_projection():
-
-    # skipping until fix for s3select engine accuracy
-    return
 
     # create small csv file for testing the random expressions
     single_line_csv = create_random_csv_object(1,1)
@@ -162,17 +82,6 @@ def test_generate_projection():
     for _ in range(100): 
         generate_s3select_expression_projection(bucket_name,obj_name)
     
-def get_connection():
-    conn = boto.connect_s3(
-        aws_access_key_id = get_main_aws_access_key(),
-        aws_secret_access_key = get_main_aws_secret_key(),
-        host = get_config_host(),
-        port = get_config_port(),
-        is_secure=False,               # uncomment if you are not using ssl
-        calling_format = boto.s3.connection.OrdinaryCallingFormat(),
-        )
-
-    return conn
 
 def create_csv_object_for_datetime(rows,columns):
         result = ""
@@ -199,23 +108,14 @@ def create_random_csv_object(rows,columns,col_delim=",",record_delim="\n",csv_sc
 
 
 def upload_csv_object(bucket_name,new_key,obj):
-        conn = get_connection()
-        conn.create_bucket( bucket_name )
-        bucket = conn.get_bucket( bucket_name )
 
-        k1 = bucket.new_key( new_key )
-        k1.set_contents_from_string( obj )
-        
+        client = get_client()
+        client.create_bucket(Bucket=bucket_name)
+        client.put_object(Bucket=bucket_name, Key=new_key, Body=obj)
     
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
 
-    s3 = boto3.client('s3',#'sns',
-        endpoint_url=get_config_endpoint(),
-        aws_access_key_id=get_main_aws_access_key(),
-        region_name=region_name,
-        aws_secret_access_key=get_main_aws_secret_key())
-        #config=Config(signature_version='v2'))
-
+    s3 = get_client()
 
     r = s3.select_object_content(
         Bucket=bucket,
