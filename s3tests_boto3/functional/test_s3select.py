@@ -1274,3 +1274,23 @@ def test_output_serial_expressions():
     
     s3select_assert_result( res_s3select_quot, res_s3select_final )
 
+    assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
+
+@attr('s3select')
+def test_version():
+
+    return
+    number_of_rows = 1
+
+    # purpose of test is to validate functionality using csv header info
+    csv_obj = create_random_csv_object(number_of_rows,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_version = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select version() from stdin;") ).replace("\n","")
+
+    nose.tools.assert_equal( res_version, "41.a," )
+
