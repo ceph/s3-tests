@@ -3,6 +3,8 @@ import random
 import string
 from nose.plugins.attrib import attr
 
+import uuid
+from nose.tools import eq_ as eq
 
 from . import (
     get_client
@@ -64,12 +66,16 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         assert (1 - (float(res.split("\n")[1]) / eval( e )) ) < epsilon
 
 @attr('s3select')
+def get_random_string():
+
+    return uuid.uuid4().hex[:6].upper()
+
 def test_generate_where_clause():
 
     # create small csv file for testing the random expressions
     single_line_csv = create_random_csv_object(1,1)
     bucket_name = "test"
-    obj_name = "single_line_csv.csv"
+    obj_name = get_random_string() #"single_line_csv.csv"
     upload_csv_object(bucket_name,obj_name,single_line_csv)
        
     for _ in range(100): 
@@ -81,7 +87,7 @@ def test_generate_projection():
     # create small csv file for testing the random expressions
     single_line_csv = create_random_csv_object(1,1)
     bucket_name = "test"
-    obj_name = "single_line_csv.csv"
+    obj_name = get_random_string() #"single_line_csv.csv"
     upload_csv_object(bucket_name,obj_name,single_line_csv)
        
     for _ in range(100): 
@@ -134,6 +140,12 @@ def upload_csv_object(bucket_name,new_key,obj):
         client = get_client()
         client.create_bucket(Bucket=bucket_name)
         client.put_object(Bucket=bucket_name, Key=new_key, Body=obj)
+
+        # validate uploaded object
+        c2 = get_client()
+        response = c2.get_object(Bucket=bucket_name, Key=new_key)
+        eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
+
     
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
 
@@ -180,9 +192,9 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
        
 @attr('s3select')
 def test_count_operation():
-    csv_obj_name = "csv_star_oper"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
-    num_of_rows = 10
+    num_of_rows = 1234
     obj_to_load = create_random_csv_object(num_of_rows,10)
     upload_csv_object(bucket_name,csv_obj_name,obj_to_load)
     res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin;") ).replace(",","")
@@ -193,13 +205,13 @@ def test_count_operation():
 def test_column_sum_min_max():
     csv_obj = create_random_csv_object(10000,10)
 
-    csv_obj_name = "csv_10000x10"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
     
-    csv_obj_name = "csv_10000x10"
+    csv_obj_name_2 = get_random_string()
     bucket_name_2 = "testbuck2"
-    upload_csv_object(bucket_name_2,csv_obj_name,csv_obj)
+    upload_csv_object(bucket_name_2,csv_obj_name_2,csv_obj)
     
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)) from stdin;")  ).replace(",","")
     list_int = create_list_of_int( 1 , csv_obj )
@@ -244,7 +256,7 @@ def test_column_sum_min_max():
     nose.tools.assert_equal(  int(res_s3select) , int(res_target) )
 
     # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from stdin where (int(_1)-int(_2)) == 2;" ) )
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from stdin where (int(_1)-int(_2)) == 2;" ) )
     count,sum1,sum2,d = res_s3select.split(",")
 
     nose.tools.assert_equal( int(count)*2 , int(sum1)-int(sum2 ) )
@@ -390,7 +402,7 @@ def test_complex_expressions():
     # purpose of test: engine is process correctly several projections containing aggregation-functions 
     csv_obj = create_random_csv_object(10000,10)
 
-    csv_obj_name = "csv_100000x10"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -426,7 +438,7 @@ def test_alias():
 
     csv_obj = create_random_csv_object(10000,10)
 
-    csv_obj_name = "csv_10000x10"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -445,7 +457,7 @@ def test_alias_cyclic_refernce():
     # purpose of test is to validate the s3select-engine is able to detect a cyclic reference to alias.
     csv_obj = create_random_csv_object(number_of_rows,10)
 
-    csv_obj_name = "csv_10000x10"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -463,7 +475,7 @@ def test_datetime():
 
     csv_obj = create_csv_object_for_datetime(10000,1)
 
-    csv_obj_name = "csv_datetime_10000x10"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
@@ -496,7 +508,7 @@ def test_csv_parser():
     # NOTE: should note that default meta-char for s3select are also for python, thus for one example double \ is mandatory
 
     csv_obj = ',first,,,second,third="c31,c32,c33",forth="1,2,3,4",fifth="my_string=\\"any_value\\" , my_other_string=\\"aaaa,bbb\\" ",' + "\n"
-    csv_obj_name = "csv_one_line"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
@@ -537,7 +549,7 @@ def test_csv_definition():
     #create object with pipe-sign as field separator and tab as row delimiter.
     csv_obj = create_random_csv_object(number_of_rows,10,"|","\t")
 
-    csv_obj_name = "csv_pipeSign_tab_eol"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
@@ -567,7 +579,7 @@ def test_schema_definition():
     # purpose of test is to validate functionality using csv header info
     csv_obj = create_random_csv_object(number_of_rows,10,csv_schema="c1,c2,c3,c4,c5,c6,c7,c8,c9,c10")
 
-    csv_obj_name = "csv_with_header_info"
+    csv_obj_name = get_random_string()
     bucket_name = "test"
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
@@ -590,3 +602,22 @@ def test_schema_definition():
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from stdin;",csv_header_info="USE") ).replace("\n","")
 
     assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
+
+@attr('s3select')
+def test_version():
+
+    return
+    number_of_rows = 1
+
+    # purpose of test is to validate functionality using csv header info
+    csv_obj = create_random_csv_object(number_of_rows,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_version = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select version() from stdin;") ).replace("\n","")
+
+    nose.tools.assert_equal( res_version, "41.a," )
+
