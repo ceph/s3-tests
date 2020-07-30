@@ -158,6 +158,8 @@ def setup():
         raise RuntimeError('Your config file is missing the "s3 alt" section!')
     if not cfg.has_section("s3 tenant"):
         raise RuntimeError('Your config file is missing the "s3 tenant" section!')
+    if not cfg.has_section("iam"):
+        raise RuntimeError('Your config file is missing the "iam" section!')
 
     global prefix
 
@@ -205,6 +207,12 @@ def setup():
     config.tenant_user_id = cfg.get('s3 tenant',"user_id")
     config.tenant_email = cfg.get('s3 tenant',"email")
 
+    config.iam_access_key = cfg.get('iam',"access_key")
+    config.iam_secret_key = cfg.get('iam',"secret_key")
+    config.iam_display_name = cfg.get('iam',"display_name")
+    config.iam_user_id = cfg.get('iam',"user_id")
+    #config.iam_email = cfg.get('iam',"email")
+
     # vars from the fixtures section
     try:
         template = cfg.get('fixtures', "bucket prefix")
@@ -244,6 +252,32 @@ def get_v2_client():
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
                         config=Config(signature_version='s3'))
+    return client
+
+def get_sts_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='sts',
+                        aws_access_key_id=config.alt_access_key,
+                        aws_secret_access_key=config.alt_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        region_name='',
+                        use_ssl=config.default_is_secure,
+                        config=client_config)
+    return client
+
+def get_iam_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+    
+    client = boto3.client(service_name='iam',
+                        aws_access_key_id=config.iam_access_key,
+                        aws_secret_access_key=config.iam_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        region_name='',
+                        use_ssl=config.default_is_secure,
+                        config=client_config)
     return client
 
 def get_alt_client(client_config=None):
@@ -359,6 +393,21 @@ def get_new_bucket(client=None, name=None):
     client.create_bucket(Bucket=name)
     return name
 
+def get_parameter_name():
+    parameter_name=""
+    rand = ''.join(
+        random.choice(string.ascii_lowercase + string.digits)
+        for c in range(255)
+        )
+    while rand:
+        parameter_name = '{random}'.format(random=rand)
+        if len(parameter_name) <= 10:
+            return parameter_name
+        rand = rand[:-1]
+    return parameter_name
+
+def get_sts_user_id():
+    return config.alt_user_id
 
 def get_config_is_secure():
     return config.default_is_secure
