@@ -54,3 +54,17 @@ You can run only the boto3 tests with::
 
         S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -s -A 'not fails_on_rgw' s3tests_boto3.functional
 
+========================
+ STS compatibility tests
+========================
+
+This section contains some basic tests for the AssumeRole and GetSessionToken API's. The test file is located under ``s3tests_boto3/functional``.
+
+You can run only the sts tests with::
+
+        S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_sts
+
+You can filter tests based on the attributes. There is a attribute named ``sts_test`` to run specifically the sts tests as below::
+
+        S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -s -A 'sts_test' s3tests_boto3.functional.test_sts
+
