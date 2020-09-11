@@ -9153,25 +9153,26 @@ def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
         Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    key = rule_prefix + '/foo'
+    key = rule_prefix + 'foo'
     body = 'bar'
     response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
     return response
 
 def check_lifecycle_expiration_header(response, start_time, rule_id,
                                       delta_days):
     print(response)
-    #TODO: see how this can work
-    #print(response['ResponseMetadata']['HTTPHeaders'])
-    #exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
-    #m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    print(response['ResponseMetadata']['HTTPHeaders'])
 
-    #expiration = datetime.datetime.strptime(m.group(1),
-    #                                        '%a %b %d %H:%M:%S %Y')
-    #eq((expiration - start_time).days, delta_days)
-    #eq(m.group(2), rule_id)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    datestr = m.group(1)
+    exp_date = datetime.datetime.strptime(datestr, '%a, %d %b %Y %H:%M:%S %Z')
+    exp_diff = exp_date - start_time
+    rule_id = m.group(2)
+
+    eq(exp_diff.days, delta_days)
+    eq(m.group(2), rule_id)
 
     return True
 
@@ -9200,9 +9201,9 @@ def test_lifecycle_expiration_header_head():
 
     now = datetime.datetime.now(None)
     response = setup_lifecycle_expiration(
-        client, bucket_name, 'rule1', 1, 'days1')
+        client, bucket_name, 'rule1', 1, 'days1/')
 
-    key = 'days1/' + '/foo'
+    key = 'days1/' + 'foo'
 
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key)
