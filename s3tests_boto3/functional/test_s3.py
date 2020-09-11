@@ -7441,7 +7441,7 @@ def test_cors_header_option():
 @attr(operation='put tags')
 @attr(assertion='succeeds')
 @attr('tagging')
-def test_set_tagging():
+def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
 
