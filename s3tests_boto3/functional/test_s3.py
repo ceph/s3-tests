@@ -9128,14 +9128,17 @@ def test_lifecycle_expiration_days0():
 
     rules=[{'Expiration': {'Days': 1}, 'ID': 'rule1', 'Prefix': 'days0/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
-    print(lifecycle)
+
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    time.sleep(20)
+    time.sleep(30)
 
     response = client.list_objects(Bucket=bucket_name)
-    expire_objects = response['Contents']
+    try:
+        expire_objects = response['Contents']
+    except KeyError:
+        expire_objects = []
 
     eq(len(expire_objects), 0)
 
