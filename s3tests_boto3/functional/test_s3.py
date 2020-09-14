@@ -9126,21 +9126,18 @@ def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
     client = get_client()
 
-    rules=[{'Expiration': {'Days': 1}, 'ID': 'rule1', 'Prefix': 'days0/', 'Status':'Enabled'}]
+    rules=[{'Expiration': {'Days': 0}, 'ID': 'rule1', 'Prefix': 'days0/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
 
-    response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-
-    time.sleep(30)
-
-    response = client.list_objects(Bucket=bucket_name)
+    # days: 0 is legal in a transition rule, but not legal in an
+    # expiration rule
+    response_code = ""
     try:
-        expire_objects = response['Contents']
-    except KeyError:
-        expire_objects = []
+        response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    except botocore.exceptions.ClientError as e:
+        response_code = e.response['Error']['Code']
 
-    eq(len(expire_objects), 0)
+    eq(response_code, 'InvalidArgument')
 
 
 def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
