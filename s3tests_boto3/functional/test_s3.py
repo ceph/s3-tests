@@ -9053,16 +9053,8 @@ def test_lifecycle_expiration_tags1():
 
     eq(len(expire_objects), 0)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with 2 tags')
-@attr('lifecycle')
-@attr('lifecycle_expiration')
-@attr('fails_on_aws')
-def test_lifecycle_expiration_tags2():
-    bucket_name = get_new_bucket()
-    client = get_client()
-
+# factor out common setup code
+def setup_lifecycle_tags2(client, bucket_name):
     tom_key = 'days1/tom'
     tom_tagset = {'TagSet':
                   [{'Key': 'tom', 'Value': 'sawyer'}]}
@@ -9116,6 +9108,40 @@ def test_lifecycle_expiration_tags2():
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    return response
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with 2 tags')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_tags2():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    response = setup_lifecycle_tags2(client, bucket_name)
+
+    time.sleep(28)
+    response = client.list_objects(Bucket=bucket_name)
+    expire1_objects = response['Contents']
+
+    eq(len(expire1_objects), 1)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with versioning and 2 tags')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_versioned_tags2():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    # mix in versioning
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    response = setup_lifecycle_tags2(client, bucket_name)
 
     time.sleep(28)
     response = client.list_objects(Bucket=bucket_name)
