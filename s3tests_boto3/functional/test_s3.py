@@ -9149,6 +9149,83 @@ def test_lifecycle_expiration_versioned_tags2():
 
     eq(len(expire1_objects), 1)
 
+# setup for scenario based on vidushi mishra's in rhbz#1877737
+def setup_lifecycle_noncur_tags(client, bucket_name, days):
+
+    # first create and tag the objects (10 versions of 1)
+    key = "myobject_"
+    tagset = {'TagSet':
+              [{'Key': 'vidushi', 'Value': 'mishra'}]}
+
+    for ix in range(10):
+        body = "%s v%d" % (key, ix)
+        response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+        response = client.put_object_tagging(Bucket=bucket_name, Key=key,
+                                             Tagging=tagset)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    lifecycle_config = {
+        'Rules': [
+            {
+                'NoncurrentVersionExpiration': {
+                    'NoncurrentDays': days,
+                },
+                'ID': 'rule_tag1',
+                'Filter': {
+                    'Prefix': '',
+                    'Tag': {
+                        'Key': 'vidushi',
+                        'Value': 'mishra'
+                    },
+                },
+                'Status': 'Enabled',
+            },
+        ]
+    }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    return response
+
+def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
+    time.sleep(secs)
+    try:
+        response  = client.list_object_versions(Bucket=bucket_name)
+        objs_list = response['Versions']
+    except:
+        objs_list = []
+    return len(objs_list)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle noncurrent expiration with 1 tag filter')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_noncur_tags1():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    # create 10 object versions (9 noncurrent) and a tag-filter
+    # noncurrent version expiration at 4 "days"
+    response = setup_lifecycle_noncur_tags(client, bucket_name, 4)
+
+    num_objs = verify_lifecycle_expiration_noncur_tags(
+        client, bucket_name, 20)
+
+    # at T+20, 10 objects should exist
+    eq(num_objs, 10)
+
+    num_objs = verify_lifecycle_expiration_noncur_tags(
+        client, bucket_name, 40)
+
+    # at T+60, only the current object version should exist
+    eq(num_objs, 1)
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='id too long in lifecycle rule')
