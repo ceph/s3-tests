@@ -153,8 +153,6 @@ def setup():
         raise RuntimeError('Your config file is missing the "s3 alt" section!')
     if not cfg.has_section("s3 tenant"):
         raise RuntimeError('Your config file is missing the "s3 tenant" section!')
-    if not cfg.has_section("iam"):
-        raise RuntimeError('Your config file is missing the "iam" section!')
 
     global prefix
 
@@ -202,12 +200,6 @@ def setup():
     config.tenant_user_id = cfg.get('s3 tenant',"user_id")
     config.tenant_email = cfg.get('s3 tenant',"email")
 
-    config.iam_access_key = cfg.get('iam',"access_key")
-    config.iam_secret_key = cfg.get('iam',"secret_key")
-    config.iam_display_name = cfg.get('iam',"display_name")
-    config.iam_user_id = cfg.get('iam',"user_id")
-    #config.iam_email = cfg.get('iam',"email")
-
     # vars from the fixtures section
     try:
         template = cfg.get('fixtures', "bucket prefix")
@@ -227,6 +219,24 @@ def teardown():
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+
+def check_webidentity():
+    cfg = configparser.RawConfigParser()
+    try:
+        path = os.environ['S3TEST_CONF']
+    except KeyError:
+        raise RuntimeError(
+            'To run tests, point environment '
+            + 'variable S3TEST_CONF to a config file.',
+            )
+    cfg.read(path)
+    if not cfg.has_section("webidentity"):
+        raise RuntimeError('Your config file is missing the "webidentity" section!')
+
+    config.webidentity_thumbprint = cfg.get('webidentity', "thumbprint")
+    config.webidentity_aud = cfg.get('webidentity', "aud")
+    config.webidentity_token = cfg.get('webidentity', "token")
+    config.webidentity_realm = cfg.get('webidentity', "KC_REALM")
 
 def get_client(client_config=None):
     if client_config == None:
@@ -263,6 +273,24 @@ def get_sts_client(client_config=None):
     return client
 
 def get_iam_client(client_config=None):
+    cfg = configparser.RawConfigParser()
+    try:
+        path = os.environ['S3TEST_CONF']
+    except KeyError:
+        raise RuntimeError(
+            'To run tests, point environment '
+            + 'variable S3TEST_CONF to a config file.',
+            )
+    cfg.read(path)
+    if not cfg.has_section("iam"):
+        raise RuntimeError('Your config file is missing the "iam" section!')
+
+    config.iam_access_key = cfg.get('iam',"access_key")
+    config.iam_secret_key = cfg.get('iam',"secret_key")
+    config.iam_display_name = cfg.get('iam',"display_name")
+    config.iam_user_id = cfg.get('iam',"user_id")
+    config.iam_email = cfg.get('iam',"email")    
+
     if client_config == None:
         client_config = Config(signature_version='s3v4')
     
@@ -469,3 +497,15 @@ def get_tenant_user_id():
 
 def get_tenant_email():
     return config.tenant_email
+
+def get_thumbprint():
+    return config.webidentity_thumbprint
+
+def get_aud():
+    return config.webidentity_aud
+
+def get_token():
+    return config.webidentity_token
+
+def get_realm_name():
+    return config.webidentity_realm
