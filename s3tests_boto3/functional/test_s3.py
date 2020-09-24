@@ -227,6 +227,7 @@ def test_bucket_listv2_delimiter_basic():
     prefixes = _get_prefixes(response)
     eq(len(prefixes), 2)
     eq(prefixes, ['foo/', 'quux/'])
+    eq(response['KeyCount'], len(prefixes) + len(keys))
 
 
 @attr(resource='bucket')
