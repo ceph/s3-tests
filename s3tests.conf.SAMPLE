@@ -69,6 +69,7 @@ secret_key = opqrstuvwxyzabcdefghijklmnopqrstuvwxyzab
 # tenant email set in vstart.sh
 email = tenanteduser@example.com
 
+#following section needs to be added for all sts-tests
 [iam]
 #used for iam operations in sts-tests
 #user_id from vstart.sh
@@ -82,3 +83,15 @@ secret_key = abcdefghijklmnopqrstuvwxyzabcdefghijklmn
 
 #display_name from vstart.sh
 display_name = youruseridhere
+
+#following section needs to be added when you want to run Assume Role With Webidentity test
+[webidentity]
+#used for assume role with web identity test in sts-tests
+#all parameters will be obtained from ceph/qa/tasks/keycloak.py
+token=<access_token>
+
+aud=<obtained after introspecting token>
+
+thumbprint=<obtained from x509 certificate>
+
+KC_REALM=<name of the realm>
