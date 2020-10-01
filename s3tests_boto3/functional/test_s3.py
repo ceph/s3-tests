@@ -7441,7 +7441,7 @@ def test_cors_header_option():
 @attr(operation='put tags')
 @attr(assertion='succeeds')
 @attr('tagging')
-def test_set_tagging():
+def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
 
@@ -9003,6 +9003,231 @@ def test_lifecycle_expiration_versioning_enabled():
 
 @attr(resource='bucket')
 @attr(method='put')
+@attr(operation='test lifecycle expiration with 1 tag')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_tags1():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    tom_key = 'days1/tom'
+    tom_tagset = {'TagSet':
+                  [{'Key': 'tom', 'Value': 'sawyer'}]}
+
+    client.put_object(Bucket=bucket_name, Key=tom_key, Body='tom_body')
+
+    response = client.put_object_tagging(Bucket=bucket_name, Key=tom_key,
+                                         Tagging=tom_tagset)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    lifecycle_config = {
+        'Rules': [
+            {
+                'Expiration': {
+                    'Days': 1,
+                },
+                'ID': 'rule_tag1',
+                'Filter': {
+                    'Prefix': 'days1/',
+                    'Tag': {
+                        'Key': 'tom',
+                        'Value': 'sawyer'
+                    },
+                },
+                'Status': 'Enabled',
+            },
+        ]
+    }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    time.sleep(28)
+
+    try:
+        expire_objects = response['Contents']
+    except KeyError:
+        expire_objects = []
+
+    eq(len(expire_objects), 0)
+
+# factor out common setup code
+def setup_lifecycle_tags2(client, bucket_name):
+    tom_key = 'days1/tom'
+    tom_tagset = {'TagSet':
+                  [{'Key': 'tom', 'Value': 'sawyer'}]}
+
+    client.put_object(Bucket=bucket_name, Key=tom_key, Body='tom_body')
+
+    response = client.put_object_tagging(Bucket=bucket_name, Key=tom_key,
+                                         Tagging=tom_tagset)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    huck_key = 'days1/huck'
+    huck_tagset = {
+        'TagSet':
+        [{'Key': 'tom', 'Value': 'sawyer'},
+         {'Key': 'huck', 'Value': 'finn'}]}
+
+    client.put_object(Bucket=bucket_name, Key=huck_key, Body='huck_body')
+
+    response = client.put_object_tagging(Bucket=bucket_name, Key=huck_key,
+                                         Tagging=huck_tagset)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    lifecycle_config = {
+        'Rules': [
+            {
+                'Expiration': {
+                    'Days': 1,
+                },
+                'ID': 'rule_tag1',
+                'Filter': {
+                    'Prefix': 'days1/',
+                    'Tag': {
+                        'Key': 'tom',
+                        'Value': 'sawyer'
+                    },
+                    'And': {
+                        'Prefix': 'days1',
+                        'Tags': [
+                            {
+                                'Key': 'huck',
+                                'Value': 'finn'
+                            },
+                        ]
+                    }
+                },
+                'Status': 'Enabled',
+            },
+        ]
+    }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    return response
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with 2 tags')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_tags2():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    response = setup_lifecycle_tags2(client, bucket_name)
+
+    time.sleep(28)
+    response = client.list_objects(Bucket=bucket_name)
+    expire1_objects = response['Contents']
+
+    eq(len(expire1_objects), 1)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with versioning and 2 tags')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_versioned_tags2():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    # mix in versioning
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    response = setup_lifecycle_tags2(client, bucket_name)
+
+    time.sleep(28)
+    response = client.list_objects(Bucket=bucket_name)
+    expire1_objects = response['Contents']
+
+    eq(len(expire1_objects), 1)
+
+# setup for scenario based on vidushi mishra's in rhbz#1877737
+def setup_lifecycle_noncur_tags(client, bucket_name, days):
+
+    # first create and tag the objects (10 versions of 1)
+    key = "myobject_"
+    tagset = {'TagSet':
+              [{'Key': 'vidushi', 'Value': 'mishra'}]}
+
+    for ix in range(10):
+        body = "%s v%d" % (key, ix)
+        response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+        response = client.put_object_tagging(Bucket=bucket_name, Key=key,
+                                             Tagging=tagset)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    lifecycle_config = {
+        'Rules': [
+            {
+                'NoncurrentVersionExpiration': {
+                    'NoncurrentDays': days,
+                },
+                'ID': 'rule_tag1',
+                'Filter': {
+                    'Prefix': '',
+                    'Tag': {
+                        'Key': 'vidushi',
+                        'Value': 'mishra'
+                    },
+                },
+                'Status': 'Enabled',
+            },
+        ]
+    }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    return response
+
+def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
+    time.sleep(secs)
+    try:
+        response  = client.list_object_versions(Bucket=bucket_name)
+        objs_list = response['Versions']
+    except:
+        objs_list = []
+    return len(objs_list)
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle noncurrent expiration with 1 tag filter')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('fails_on_aws')
+def test_lifecycle_expiration_noncur_tags1():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    # create 10 object versions (9 noncurrent) and a tag-filter
+    # noncurrent version expiration at 4 "days"
+    response = setup_lifecycle_noncur_tags(client, bucket_name, 4)
+
+    num_objs = verify_lifecycle_expiration_noncur_tags(
+        client, bucket_name, 20)
+
+    # at T+20, 10 objects should exist
+    eq(num_objs, 10)
+
+    num_objs = verify_lifecycle_expiration_noncur_tags(
+        client, bucket_name, 40)
+
+    # at T+60, only the current object version should exist
+    eq(num_objs, 1)
+
+@attr(resource='bucket')
+@attr(method='put')
 @attr(operation='id too long in lifecycle rule')
 @attr('lifecycle')
 @attr(assertion='fails 400')
@@ -9126,18 +9351,18 @@ def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
     client = get_client()
 
-    rules=[{'Expiration': {'Days': 1}, 'ID': 'rule1', 'Prefix': 'days0/', 'Status':'Enabled'}]
+    rules=[{'Expiration': {'Days': 0}, 'ID': 'rule1', 'Prefix': 'days0/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
-    print(lifecycle)
-    response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    time.sleep(20)
+    # days: 0 is legal in a transition rule, but not legal in an
+    # expiration rule
+    response_code = ""
+    try:
+        response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    except botocore.exceptions.ClientError as e:
+        response_code = e.response['Error']['Code']
 
-    response = client.list_objects(Bucket=bucket_name)
-    expire_objects = response['Contents']
-
-    eq(len(expire_objects), 0)
+    eq(response_code, 'InvalidArgument')
 
 
 def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
@@ -9150,25 +9375,26 @@ def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
         Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    key = rule_prefix + '/foo'
+    key = rule_prefix + 'foo'
     body = 'bar'
     response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
     return response
 
 def check_lifecycle_expiration_header(response, start_time, rule_id,
                                       delta_days):
     print(response)
-    #TODO: see how this can work
-    #print(response['ResponseMetadata']['HTTPHeaders'])
-    #exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
-    #m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    print(response['ResponseMetadata']['HTTPHeaders'])
 
-    #expiration = datetime.datetime.strptime(m.group(1),
-    #                                        '%a %b %d %H:%M:%S %Y')
-    #eq((expiration - start_time).days, delta_days)
-    #eq(m.group(2), rule_id)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    datestr = m.group(1)
+    exp_date = datetime.datetime.strptime(datestr, '%a, %d %b %Y %H:%M:%S %Z')
+    exp_diff = exp_date - start_time
+    rule_id = m.group(2)
+
+    eq(exp_diff.days, delta_days)
+    eq(m.group(2), rule_id)
 
     return True
 
@@ -9197,9 +9423,9 @@ def test_lifecycle_expiration_header_head():
 
     now = datetime.datetime.now(None)
     response = setup_lifecycle_expiration(
-        client, bucket_name, 'rule1', 1, 'days1')
+        client, bucket_name, 'rule1', 1, 'days1/')
 
-    key = 'days1/' + '/foo'
+    key = 'days1/' + 'foo'
 
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key)
