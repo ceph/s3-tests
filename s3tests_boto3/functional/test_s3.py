@@ -9462,6 +9462,106 @@ def test_lifecycle_expiration_header_head():
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
 
 @attr(resource='bucket')
+@attr(method='head')
+@attr(operation='test lifecycle expiration header check earliest rule')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+def test_lifecycle_expiration_header_earliest():
+    """
+    Check for valid x-amz-expiration header on HEAD request should return the earliest date for the rule
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+    lifecycle={
+        "Rules": [
+        {
+            "Filter": {
+                "Tag": {"Key": "key1", "Value": "tag1"}
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 100
+            },
+            "ID": "rule1"
+            },
+        {
+            "Filter": {
+                "Tag": {"Key": "key1", "Value": "tag5"}
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 10
+            },
+            "ID": "rule5"
+            }
+        ]
+    }
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    key1 = "obj_key1"
+    body1 = "obj_key1_body"
+    tags1={'TagSet': [{'Key': 'key1', 'Value': 'tag1'},
+          {'Key': 'key5','Value': 'tag5'}]}
+    response = client.put_object(Bucket=bucket_name, Key=key1, Body=body1)
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key1,Tagging=tags1)
+    # stat the object, check header
+    response = client.head_object(Bucket=bucket_name, Key=key1)
+    datenow = datetime.datetime.now()
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    expiration = datetime.datetime.strptime(m.group(1),
+                                            '%a, %d %b %Y %H:%M:%S %Z')
+    eq(m.group(2), "rule5")
+    eq(expiration <= datenow + datetime.timedelta(days=10), True)
+    # Check that the rule order in the json does not matter, so the rule and date in expiration header will be of the earliest rule
+    bucket_name = get_new_bucket()
+    client = get_client()
+    lifecycle={
+        "Rules": [
+        {
+            "Filter": {
+                "Tag": {"Key": "key1", "Value": "tag5"}
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 10
+            },
+            "ID": "rule5"
+            },
+        {
+            "Filter": {
+                "Tag": {"Key": "key1", "Value": "tag1"}
+            },
+            "Status": "Enabled",
+            "Expiration": {
+                "Days": 100
+            },
+            "ID": "rule1"
+            }
+        ]
+    }
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    key1 = "obj_key1"
+    body1 = "obj_key1_body"
+    tags1={'TagSet': [{'Key': 'key1', 'Value': 'tag1'},
+          {'Key': 'key5','Value': 'tag5'}]}
+    response = client.put_object(Bucket=bucket_name, Key=key1, Body=body1)
+    response = client.put_object_tagging(Bucket=bucket_name, Key=key1,Tagging=tags1)
+    # stat the object, check header
+    response = client.head_object(Bucket=bucket_name, Key=key1)
+    datenow = datetime.datetime.now()
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    expiration = datetime.datetime.strptime(m.group(1),
+                                            '%a, %d %b %Y %H:%M:%S %Z')
+    eq(m.group(2), "rule5")
+    eq(expiration <= datenow + datetime.timedelta(days=10), True)
+
+@attr(resource='bucket')
 @attr(method='put')
 @attr(operation='set lifecycle config with noncurrent version expiration')
 @attr('lifecycle')
