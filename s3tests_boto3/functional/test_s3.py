@@ -4337,6 +4337,34 @@ def test_bucket_create_exists_nonowner():
     eq(status, 409)
     eq(error_code, 'BucketAlreadyExists')
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='re-create with existing acl')
+@attr(assertion='fails 409')
+def test_bucket_recreate_overwrite_acl():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+
+    client.create_bucket(Bucket=bucket_name, ACL='public-read')
+    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 409)
+    eq(error_code, 'BucketAlreadyExists')
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='re-create with new acl')
+@attr(assertion='fails 409')
+def test_bucket_recreate_new_acl():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+
+    client.create_bucket(Bucket=bucket_name)
+    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name, ACL='public-read')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 409)
+    eq(error_code, 'BucketAlreadyExists')
+
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(ClientError, fn, *args, **kwargs)
     status = _get_status(e.response)
