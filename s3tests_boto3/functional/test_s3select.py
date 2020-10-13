@@ -604,6 +604,82 @@ def test_schema_definition():
     assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
 
 @attr('s3select')
+def test_when_than_else_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select  case when ((4*3)==(12)) than "case_1_2" else "case_2_1" end from stdin where (3*3==9);')  ).replace("\n","")          
+
+    nose.tools.assert_equal( res_s3select, "case_1_2,")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case when cast(_1 as int)>100 and cast(_1 as int)<200 than "(100-200)" when cast(_1 as int)>200 and cast(_1 as int)<300 than "(200-300)" else "NONE" end from s3object;')  ).replace("\n","")
+
+    count1 = res_s3select.count("(100-200)")  
+
+    count2 = res_s3select.count("(200-300)") 
+
+    count3 = res_s3select.count("NONE")
+
+    res = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)>100 and cast(_1 as int)<200  ;')  ).replace("\n","")
+
+    res1 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)>200 and cast(_1 as int)<300  ;')  ).replace("\n","")
+    
+    res2 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)<=100 or cast(_1 as int)>=300 or cast(_1 as int)==200  ;')  ).replace("\n","")
+
+    nose.tools.assert_equal( str(count1) + ',', res)
+
+    nose.tools.assert_equal( str(count2) + ',', res1)
+
+    nose.tools.assert_equal( str(count3) + ',', res2)
+
+@attr('s3select')
+def test_coalesce_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substr(_3,1,2) as int) == cast(substr(_4,1,2) as int);')  ).replace("\n","")  
+
+    res_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_4 as int)>99 and coalesce(nullif(cast(substr(_3,1,2) as int),cast(substr(_4,1,2) as int)),7) == 7;' ) ).replace("\n","") 
+
+    nose.tools.assert_equal( res_s3select, res_null)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select coalesce(nullif(_5,_5),nullif(_1,_1),_2) from stdin;')  ).replace("\n","") 
+
+    res_coalesce = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select coalesce(_2) from stdin;')  ).replace("\n","")   
+
+    nose.tools.assert_equal( res_s3select, res_coalesce)
+
+
+@attr('s3select')
+def test_cast_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>999;')  ).replace("\n","")  
+
+    res = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>3;')  ).replace("\n","") 
+
+    nose.tools.assert_equal( res_s3select, res)
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_3 as int)<1000;')  ).replace("\n","")  
+
+    res = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)==3;')  ).replace("\n","") 
+
+    nose.tools.assert_equal( res_s3select, res)
+
+@attr('s3select')
 def test_version():
 
     return
