@@ -12499,6 +12499,77 @@ def test_object_lock_delete_object_with_retention():
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
 
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='Test multi-delete object with retention')
+@attr(assertion='retention period make effects')
+@attr('object-lock')
+def test_object_lock_multi_delete_object_with_retention():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    key1 = 'file1'
+    key2 = 'file2'
+
+    response1 = client.put_object(Bucket=bucket_name, Body='abc', Key=key1)
+    response2 = client.put_object(Bucket=bucket_name, Body='abc', Key=key2)
+
+    versionId1 = response1['VersionId']
+    versionId2 = response2['VersionId']
+
+    # key1 is under retention, but key2 isn't.
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
+    client.put_object_retention(Bucket=bucket_name, Key=key1, Retention=retention)
+
+    delete_response = client.delete_objects(
+        Bucket=bucket_name,
+        Delete={
+            'Objects': [
+                {
+                    'Key': key1,
+                    'VersionId': versionId1
+                },
+                {
+                    'Key': key2,
+                    'VersionId': versionId2
+                }
+            ]
+        }
+    )
+
+    eq(len(delete_response['Deleted']), 1)
+    eq(len(delete_response['Errors']), 1)
+    
+    failed_object = delete_response['Errors'][0]
+    eq(failed_object['Code'], 'AccessDenied')
+    eq(failed_object['Key'], key1)
+    eq(failed_object['VersionId'], versionId1)
+
+    deleted_object = delete_response['Deleted'][0]
+    eq(deleted_object['Key'], key2)
+    eq(deleted_object['VersionId'], versionId2)
+
+    delete_response = client.delete_objects(
+        Bucket=bucket_name,
+        Delete={
+            'Objects': [
+                {
+                    'Key': key1,
+                    'VersionId': versionId1
+                }
+            ]
+        },
+        BypassGovernanceRetention=True
+    )
+
+    assert( ('Errors' not in delete_response) or (len(delete_response['Errors']) == 0) )
+    eq(len(delete_response['Deleted']), 1)
+    deleted_object = delete_response['Deleted'][0]
+    eq(deleted_object['Key'], key1)
+    eq(deleted_object['VersionId'], versionId1)
+
+
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='Test put legal hold')
