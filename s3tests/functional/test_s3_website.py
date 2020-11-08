@@ -7,6 +7,7 @@ import random
 from pprint import pprint
 import time
 import boto.exception
+import socket
 
 from urllib.parse import urlparse
 
@@ -516,6 +517,57 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     errorstring = bytes(errorstring, 'utf-8')
     ok(errorstring not in body, 'error content should NOT match error.html set content')
+
+    errorhtml.delete()
+    bucket.delete()
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list')
+@attr(assertion='check if there is an invalid payload after serving error doc')
+@attr('s3website')
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
+def test_website_public_bucket_list_pubilc_errordoc():
+    bucket = get_new_bucket()
+    f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
+    bucket.make_public()
+    errorhtml = bucket.new_key(f['ErrorDocument_Key'])
+    errorstring = choose_bucket_prefix(template=ERRORDOC_TEMPLATE, max_len=256)
+    errorhtml.set_contents_from_string(errorstring)
+    errorhtml.set_canned_acl('public-read')
+
+    url = get_website_url(proto='http', bucket=bucket.name, path='')
+    o = urlparse(url)
+    host = o.hostname
+    port = s3.main.port
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+
+    request = "GET / HTTP/1.1\r\nHost:%s.%s:%s\r\n\r\n" % (bucket.name, host, port)
+    sock.send(request.encode())
+    
+    #receive header
+    resp = sock.recv(4096)
+    print(resp)
+
+    #receive body
+    resp = sock.recv(4096)
+    print('payload length=%d' % len(resp))
+    print(resp)
+
+    #check if any additional payload is left
+    resp_len = 0
+    sock.settimeout(2)
+    try:
+        resp = sock.recv(4096)
+        resp_len = len(resp)
+        print('invalid payload length=%d' % resp_len)
+        print(resp)
+    except socket.timeout:
+        print('no invalid payload')
+
+    ok(resp_len == 0, 'invalid payload')
 
     errorhtml.delete()
     bucket.delete()
