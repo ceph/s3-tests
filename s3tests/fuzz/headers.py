@@ -189,7 +189,7 @@ class RepeatExpandingFormatter(string.Formatter):
         if charset_arg == 'binary' or charset_arg == 'binary_no_whitespace':
             num_bytes = length + 8
             tmplist = [self.prng.getrandbits(64) for _ in xrange(num_bytes / 8)]
-            tmpstring = struct.pack((num_bytes / 8) * 'Q', *tmplist)
+            tmpstring = struct.pack('<' + (num_bytes / 8) * 'Q', *tmplist)
             if charset_arg == 'binary_no_whitespace':
                 tmpstring = ''.join(c for c in tmpstring if c not in string.whitespace)
             return tmpstring[0:length]
