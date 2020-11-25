@@ -178,7 +178,6 @@ def test_bucket_listv2_many():
     eq(response['IsTruncated'], False)
     eq(keys, ['foo'])
 
-
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list')
@@ -193,8 +192,6 @@ def test_basic_key_count():
             client.put_object(Bucket=bucket_name, Key=str(j))
     response1 = client.list_objects_v2(Bucket=bucket_name)
     eq(response1['KeyCount'], 5)
-
-
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -3733,6 +3730,23 @@ def test_bucket_head():
 
     response = client.head_bucket(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+@attr(resource='bucket')
+@attr(method='head')
+@attr(operation='non-existant bucket')
+@attr(assertion='fails 404')
+def test_bucket_head_notexist():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+
+    e = assert_raises(ClientError, client.head_bucket, Bucket=bucket_name)
+
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+    # n.b., RGW does not send a response document for this operation,
+    # which seems consistent with
+    # https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
+    #eq(error_code, 'NoSuchKey')
 
 @attr('fails_on_aws')
 @attr(resource='bucket')
