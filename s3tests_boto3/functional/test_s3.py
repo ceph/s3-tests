@@ -11325,6 +11325,32 @@ def test_get_tags_acl_public():
     eq(response['TagSet'], input_tagset['TagSet'])
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='Test MultipartUpload with tags')
+@attr(assertion='success')
+@attr('tagging')
+def test_create_multipart_with_tags():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    tag_str = 'foo=bar&1=2'
+
+    key = 'mymultipart1'
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=key, Tagging=tag_str)
+    upload_id = response['UploadId']
+
+    parts = []
+    payload='12345'*1024*1024
+    num_parts=2
+    for part_num in range(0, num_parts):
+        response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=part_num+1, Body=payload)
+        parts.append({'ETag': response['ETag'].strip('"'), 'PartNumber': part_num+1})
+
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key)
+    eq(response['TagSet'], [{'Key': '1', 'Value': '2'}, {'Key': 'foo', 'Value': 'bar'}])
+
+@attr(resource='object')
 @attr(method='get')
 @attr(operation='Test PutObjTagging public wrote')
 @attr(assertion='success')
