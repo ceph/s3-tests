@@ -1267,6 +1267,68 @@ def test_bucket_listv2_maxkeys_none():
     eq(keys, key_names)
     eq(response['MaxKeys'], 1000)
 
+def get_http_response_body(**kwargs):
+    global http_response_body
+    http_response_body = kwargs['http_response'].__dict__['_content']
+
+def parseXmlToJson(xml):
+  response = {}
+
+  for child in list(xml):
+    if len(list(child)) > 0:
+      response[child.tag] = parseXmlToJson(child)
+    else:
+      response[child.tag] = child.text or ''
+
+    # one-liner equivalent
+    # response[child.tag] = parseXmlToJson(child) if len(list(child)) > 0 else child.text or ''
+
+  return response
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get usage by client')
+@attr(assertion='account usage api')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+def test_account_usage():
+    # boto3.set_stream_logger(name='botocore')
+    client = get_client()
+    # adds the unordered query parameter
+    def add_usage(**kwargs):
+        kwargs['params']['url'] += "?usage"
+    client.meta.events.register('before-call.s3.ListBuckets', add_usage)
+    client.meta.events.register('after-call.s3.ListBuckets', get_http_response_body)
+    client.list_buckets()
+    xml    = ET.fromstring(http_response_body.decode('utf-8'))
+    parsed = parseXmlToJson(xml)
+    summary = parsed['Summary']
+    eq(summary['QuotaMaxBytes'], '-1')
+    eq(summary['QuotaMaxBuckets'], '1000')
+    eq(summary['QuotaMaxObjCount'], '-1')
+    eq(summary['QuotaMaxBytesPerBucket'], '-1')
+    eq(summary['QuotaMaxObjCountPerBucket'], '-1')
+
+@attr(resource='bucket')
+@attr(method='head')
+@attr(operation='get usage by client')
+@attr(assertion='account usage by head bucket')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+def test_head_bucket_usage():
+    # boto3.set_stream_logger(name='botocore')
+    client = get_client()
+    bucket_name = _create_objects(keys=['foo'])
+    # adds the unordered query parameter
+    client.meta.events.register('after-call.s3.HeadBucket', get_http_response)
+    client.head_bucket(Bucket=bucket_name)
+    hdrs = http_response['headers']
+    eq(hdrs['X-RGW-Object-Count'], '1')
+    eq(hdrs['X-RGW-Bytes-Used'], '3')
+    eq(hdrs['X-RGW-Quota-User-Size'], '-1')
+    eq(hdrs['X-RGW-Quota-User-Objects'], '-1')
+    eq(hdrs['X-RGW-Quota-Max-Buckets'], '1000')
+    eq(hdrs['X-RGW-Quota-Bucket-Size'], '-1')
+    eq(hdrs['X-RGW-Quota-Bucket-Objects'], '-1')
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
