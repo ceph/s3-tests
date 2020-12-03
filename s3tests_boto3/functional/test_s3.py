@@ -1267,6 +1267,47 @@ def test_bucket_listv2_maxkeys_none():
     eq(keys, key_names)
     eq(response['MaxKeys'], 1000)
 
+def get_http_response_body(**kwargs):
+    global http_response_body
+    http_response_body = kwargs['http_response'].__dict__['_content']
+
+def parseXmlToJson(xml):
+  response = {}
+
+  for child in list(xml):
+    if len(list(child)) > 0:
+      response[child.tag] = parseXmlToJson(child)
+    else:
+      response[child.tag] = child.text or ''
+
+    # one-liner equivalent
+    # response[child.tag] = parseXmlToJson(child) if len(list(child)) > 0 else child.text or ''
+
+  return response
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get usage by client')
+@attr(assertion='account usage api')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+def test_account_usage():
+    # boto3.set_stream_logger(name='botocore')
+    client = get_client()
+    # adds the unordered query parameter
+    def add_usage(**kwargs):
+        kwargs['params']['url'] += "?usage"
+    client.meta.events.register('before-call.s3.ListBuckets', add_usage)
+    client.meta.events.register('after-call.s3.ListBuckets', get_http_response_body)
+    client.list_buckets()
+    xml    = ET.fromstring(http_response_body.decode('utf-8'))
+    parsed = parseXmlToJson(xml)
+    summary = parsed['Summary']
+    eq(summary['QuotaMaxBytes'], '-1')
+    eq(summary['QuotaMaxBuckets'], '1000')
+    eq(summary['QuotaMaxObjCount'], '-1')
+    eq(summary['QuotaMaxBytesPerBucket'], '-1')
+    eq(summary['QuotaMaxObjCountPerBucket'], '-1')
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
