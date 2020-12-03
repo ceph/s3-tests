@@ -1307,6 +1307,27 @@ def test_account_usage():
     eq(summary['QuotaMaxObjCountPerBucket'], '-1')
 
 @attr(resource='bucket')
+@attr(method='head')
+@attr(operation='get usage by client')
+@attr(assertion='account usage by head bucket')
+@attr('fails_on_aws') # allow-unordered is a non-standard extension
+def test_head_bucket_usage():
+    # boto3.set_stream_logger(name='botocore')
+    client = get_client()
+    bucket_name = _create_objects(keys=['foo'])
+    # adds the unordered query parameter
+    client.meta.events.register('after-call.s3.HeadBucket', get_http_response)
+    client.head_bucket(Bucket=bucket_name)
+    hdrs = http_response['headers']
+    eq(hdrs['X-RGW-Object-Count'], '1')
+    eq(hdrs['X-RGW-Bytes-Used'], '3')
+    eq(hdrs['X-RGW-Quota-User-Size'], '-1')
+    eq(hdrs['X-RGW-Quota-User-Objects'], '-1')
+    eq(hdrs['X-RGW-Quota-Max-Buckets'], '1000')
+    eq(hdrs['X-RGW-Quota-Bucket-Size'], '-1')
+    eq(hdrs['X-RGW-Quota-Bucket-Objects'], '-1')
+
+@attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list all keys')
 @attr(assertion='bucket list unordered')
