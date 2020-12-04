@@ -11295,6 +11295,68 @@ def test_put_obj_with_tags():
     tagset = tagset
     eq(response_tagset, tagset)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test PutObj with tagging in versioning enabled bucket')
+@attr(assertion='success')
+@attr('tagging')
+def test_put_obj_with_tags_versioning():
+    key = 'testputobjtagsversioning'
+    client = get_client()
+    bucket_name = get_new_bucket()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    data = 'abcde' * 1024
+
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=data, Tagging="bar=foo")
+    version1 = response['VersionId']
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=data, Tagging="foo=bar")
+    version2 = response['VersionId']
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key, VersionId=version1)
+    response_tagset = response['TagSet']
+    eq(response_tagset, [{ "Key": "bar", "Value": "foo"}])
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key, VersionId=version2)
+    response_tagset = response['TagSet']
+    eq(response_tagset, [{ "Key": "foo", "Value": "bar"}])
+
+    # get latest object's tag
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key)
+    response_tagset = response['TagSet']
+    eq(response_tagset, [{ "Key": "foo", "Value": "bar"}])
+
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='Test DeleteObjTagging in versioning enabled bucket')
+@attr(assertion='success')
+@attr('tagging')
+def test_delte_obj_tags_versioning():
+    key = 'testdeleteobjtagsversioning'
+    client = get_client()
+    bucket_name = get_new_bucket()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    data = 'abcde' * 1024
+
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=data, Tagging="bar=foo")
+    version1 = response['VersionId']
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=data, Tagging="foo=bar")
+    version2 = response['VersionId']
+
+    response = client.delete_object_tagging(Bucket=bucket_name, Key=key, VersionId=version1)
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key, VersionId=version1)
+    eq(response['TagSet'], [])
+
+    # get latest object's tag
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key)
+    response_tagset = response['TagSet']
+    eq(response_tagset, [{ "Key": "foo", "Value": "bar"}])
+
+    # delete latest object's tag
+    response = client.delete_object_tagging(Bucket=bucket_name, Key=key)
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key)
+    eq(response['TagSet'], [])
+
+
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
 
