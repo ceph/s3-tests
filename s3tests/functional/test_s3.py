@@ -950,6 +950,48 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
                       metadata={'foo': 'bar'})
     eq(e.status, 400)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create part from encrypted object')
+@attr(assertion='successful')
+@attr('encryption')
+def test_encryption_sse_c_multipart_copy():
+    bucket = get_new_bucket()
+
+    content = 'fooz'
+    srcobj = 'testobj_enc'
+    content_type = 'text/plain'
+
+    encrypt_headers = {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+    }
+    srckey = bucket.new_key(srcobj)
+    srckey.set_contents_from_string(content, headers=encrypt_headers)
+
+    key = "multipart"
+    init_headers = {
+       'Content-Type': content_type
+    }
+    upload = bucket.initiate_multipart_upload(key)
+    mp = boto.s3.multipart.MultiPartUpload(bucket)
+    mp.key_name = upload.key_name
+    mp.id = upload.id
+    encrypt_src_headers = {
+        'x-amz-copy-source-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-copy-source-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
+        'x-amz-copy-source-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
+    }
+    part = mp.copy_part_from_key(bucket.name, srcobj, 1, headers=encrypt_src_headers)
+
+    xml = "<Part><PartNumber>{0}</PartNumber><ETag>{1}</ETag></Part>".format(1, part.etag)
+    xml = "<CompleteMultipartUpload>{0}</CompleteMultipartUpload>".format(xml)
+    bucket.complete_multipart_upload(key, upload.id, xml)
+
+    key = bucket.get_key(key)
+    eq(key.size, len(content))
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='Test Bucket Policy for a user belonging to a different tenant')
