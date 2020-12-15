@@ -353,7 +353,7 @@ def test_in_expressions():
 @attr('s3select')
 def test_like_expressions():
 
-    csv_obj = create_random_csv_object_string(10000,10)
+    csv_obj = create_random_csv_object_string(1000,10)
 
     csv_obj_name = get_random_string()
     bucket_name = "test"
