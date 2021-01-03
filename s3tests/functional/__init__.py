@@ -324,6 +324,11 @@ def setup():
             'is_secure',
             'kms_keyid',
             'storage_classes',
+            'retain_object',
+            'cloud_storage_class',
+            'target_path',
+            'target_storage_class',
+            'storage_class',
             ]:
             try:
                 config[name][var] = cfg.get(section, var)
@@ -333,15 +338,27 @@ def setup():
         targets[name] = RegionsConn()
 
         for (k, conf) in regions.items():
-            conn = boto.s3.connection.S3Connection(
-                aws_access_key_id=cfg.get(section, 'access_key'),
-                aws_secret_access_key=cfg.get(section, 'secret_key'),
-                is_secure=conf.is_secure,
-                port=conf.port,
-                host=conf.host,
-                # TODO test vhost calling format
-                calling_format=conf.calling_format,
-                )
+            if (name == 'cloud'):
+                conn = boto.s3.connection.S3Connection(
+                    aws_access_key_id=cfg.get(section, 'access_key'),
+                    aws_secret_access_key=cfg.get(section, 'secret_key'),
+                    #is_secure=cfg.get(section, 'is_secure'),
+                    is_secure=conf.is_secure,
+                    port=int(cfg.get(section, 'port')),
+                    host=cfg.get(section, 'host'),
+                    # TODO test vhost calling format
+                    calling_format=conf.calling_format,
+                    )
+            else:
+                conn = boto.s3.connection.S3Connection(
+                    aws_access_key_id=cfg.get(section, 'access_key'),
+                    aws_secret_access_key=cfg.get(section, 'secret_key'),
+                    is_secure=conf.is_secure,
+                    port=conf.port,
+                    host=conf.host,
+                    # TODO test vhost calling format
+                    calling_format=conf.calling_format,
+                    )
 
             temp_targetConn = TargetConnection(conf, conn)
             targets[name].add(k, temp_targetConn)

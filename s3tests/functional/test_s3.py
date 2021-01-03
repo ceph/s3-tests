@@ -51,6 +51,26 @@ from . import (
     )
 
 
+def create_multiple_versions(bucket, objname, num_versions, version_ids = None, contents = None, check_versions = True):
+    contents = contents or []
+    version_ids = version_ids or []
+
+    for i in range(num_versions):
+        body = 'content-{i}'.format(i=i)
+        # response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
+        key = bucket.new_key(objname)
+        key.set_contents_from_string(body)
+        version_id = {i}
+
+        contents.append(body)
+        version_ids.append(version_id)
+
+    #if check_versions:
+    #    check_obj_versions(bucket, key, version_ids, contents)
+
+    return (version_ids, contents)
+
+
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(boto.exception.S3ResponseError, fn, *args, **kwargs)
     eq(e.status, 403)
@@ -90,6 +110,16 @@ def _get_alt_connection():
         port=s3['alt'].port,
         host=s3['alt'].host,
         calling_format=s3['alt'].calling_format,
+    )
+
+def _get_cloud_connection():
+    return boto.s3.connection.S3Connection(
+        aws_access_key_id=s3['cloud'].aws_access_key_id,
+        aws_secret_access_key=s3['cloud'].aws_secret_access_key,
+        is_secure=s3['cloud'].is_secure,
+        port=s3['cloud'].port,
+        host=s3['cloud'].host,
+        calling_format=s3['cloud'].calling_format,
     )
 
 
@@ -239,7 +269,7 @@ def list_bucket_storage_class(bucket):
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @attr(resource='bucket')
 @attr(method='put')
-@attr(operation='test lifecycle expiration')
+@attr(operation='test lifecycle transition')
 @attr('lifecycle')
 @attr('lifecycle_transition')
 @attr('fails_on_aws')
@@ -323,6 +353,337 @@ def test_lifecycle_transition_single_rule_multi_trans():
     eq(len(expire3_keys['STANDARD']), 4)
     eq(len(expire3_keys[sc[1]]), 0)
     eq(len(expire3_keys[sc[2]]), 2)
+
+# The test harness for lifecycle is configured to treat days as 10 second intervals.
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle transition for cloud')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('cloud_transition')
+@attr('fails_on_aws')
+def test_lifecycle_cloud_transition():
+    retain_object = None
+    target_path = None
+    target_sc = 'STANDARD'
+
+    cloud_sc = config['cloud']['cloud_storage_class']
+    if cloud_sc == None:
+        raise SkipTest
+
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'transition': lc_transition(days=1, storage_class=cloud_sc), 'prefix': 'expire1/', 'status': 'Enabled'}])
+    keys = ['expire1/foo', 'expire1/bar', 'keep2/foo', 'keep2/bar']
+    _create_keys(bucket=bucket, keys=keys)
+
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    eq(len(init_keys), 4)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+
+    if ('retain_object' in config['cloud']):
+         retain_object = config['cloud']['retain_object']
+
+    if (retain_object != None and retain_object == "true"):
+        eq(len(expire1_keys[cloud_sc]), 2)
+    else:
+        eq(len(expire1_keys[cloud_sc]), 0)
+
+    # Check if objects copied to target path
+    if ('target_path' in config['cloud']):
+        target_path = config['cloud']['target_path']
+
+    if target_path == None:
+        target_path = "rgwx-default-" + cloud_sc.lower() + "-cloud-bucket" 
+    prefix = bucket.name + "/"
+
+    cloud_conn = _get_cloud_connection()
+    bucket1 = cloud_conn.get_bucket(target_path, validate=False)
+
+    if ('target_storage_class' in config['cloud']):
+        target_sc = config['cloud']['target_storage_class']
+
+    expire1_key1_str = prefix + keys[0]
+    key1  = bucket1.get_key(expire1_key1_str)
+    verify_object(bucket1, key1, keys[0], target_sc)
+
+    expire1_key2_str = prefix + keys[1]
+    key2  = bucket1.get_key(expire1_key2_str)
+    verify_object(bucket1, key2, keys[1], target_sc)
+
+
+# Same as 'test_lifecycle_transition' but for cloud transition
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle transition for cloud')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('cloud_transition')
+@attr('fails_on_aws')
+def test_lifecycle_cloud_multiple_transition():
+    retain_object = None
+    sc1 = None
+
+    cloud_sc = config['cloud']['cloud_storage_class']
+    if cloud_sc == None:
+        raise SkipTest
+
+    if ('storage_class' in config['cloud']):
+         sc1 = config['cloud']['storage_class']
+
+    if (sc1 == None):
+        raise SkipTest
+
+    sc = ['STANDARD', sc1, cloud_sc]
+
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'transition': lc_transition(days=1, storage_class=sc[1]), 'prefix': 'expire1/', 'status': 'Enabled'},
+                                  {'id':'rule2', 'transition': lc_transition(days=4, storage_class=sc[2]), 'prefix': 'expire3/', 'status': 'Enabled'}])
+    _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                      'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    eq(len(init_keys), 6)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 4)
+    eq(len(expire1_keys[sc[1]]), 2)
+    eq(len(expire1_keys[sc[2]]), 0)
+
+    # Wait for next expiration cycle
+    time.sleep(10)
+    keep2_keys = list_bucket_storage_class(bucket)
+    eq(len(keep2_keys['STANDARD']), 4)
+    eq(len(keep2_keys[sc[1]]), 2)
+    eq(len(keep2_keys[sc[2]]), 0)
+
+    # Wait for final expiration cycle
+    time.sleep(50)
+    expire3_keys = list_bucket_storage_class(bucket)
+    eq(len(expire3_keys['STANDARD']), 2)
+    eq(len(expire3_keys[sc[1]]), 2)
+
+    if ('retain_object' in config['cloud']):
+         retain_object = config['cloud']['retain_object']
+
+    if (retain_object != None and retain_object == "true"):
+        eq(len(expire3_keys[sc[2]]), 2)
+    else:
+        eq(len(expire3_keys[sc[2]]), 0)
+
+# Same as 'test_lifecycle_transition_single_rule_multi_trans' but for cloud transition
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle transition for cloud')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('cloud_transition')
+@attr('fails_on_aws')
+def test_lifecycle_transition_single_rule_multi_trans():
+    retain_object = None
+    sc1 = None
+
+    cloud_sc = config['cloud']['cloud_storage_class']
+    if cloud_sc == None:
+        raise SkipTest
+
+    if ('storage_class' in config['cloud']):
+         sc1 = config['cloud']['storage_class']
+
+    if (sc1 == None):
+        raise SkipTest
+
+    sc = ['STANDARD', sc1, cloud_sc]
+
+    bucket = set_lifecycle(rules=[
+        {'id': 'rule1',
+         'transition': lc_transitions([
+                lc_transition(days=1, storage_class=sc[1]),
+                lc_transition(days=4, storage_class=sc[2])]),
+        'prefix': 'expire1/',
+        'status': 'Enabled'}])
+
+    _create_keys(bucket=bucket, keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
+                                      'keep2/bar', 'expire3/foo', 'expire3/bar'])
+    # Get list of all keys
+    init_keys = bucket.get_all_keys()
+    eq(len(init_keys), 6)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 4)
+    eq(len(expire1_keys[sc[1]]), 2)
+    eq(len(expire1_keys[sc[2]]), 0)
+
+    # Wait for next expiration cycle
+    time.sleep(10)
+    keep2_keys = list_bucket_storage_class(bucket)
+    eq(len(keep2_keys['STANDARD']), 4)
+    eq(len(keep2_keys[sc[1]]), 2)
+    eq(len(keep2_keys[sc[2]]), 0)
+
+    # Wait for final expiration cycle
+    time.sleep(30)
+    expire3_keys = list_bucket_storage_class(bucket)
+    eq(len(expire3_keys['STANDARD']), 4)
+    eq(len(expire3_keys[sc[1]]), 0)
+
+    if ('retain_object' in config['cloud']):
+         retain_object = config['cloud']['retain_object']
+
+    if (retain_object != None and retain_object == "true"):
+        eq(len(expire3_keys[sc[2]]), 2)
+    else:
+        eq(len(expire3_keys[sc[2]]), 0)
+
+# Same as 'test_lifecycle_noncur_transition' but for cloud transition
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle non-current version expiration on cloud transition')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+@attr('lifecycle_transition')
+@attr('cloud_transition')
+@attr('fails_on_aws')
+def test_lifecycle_noncur_cloud_transition():
+    retain_object = None
+    sc1 = None
+
+    cloud_sc = config['cloud']['cloud_storage_class']
+    if cloud_sc == None:
+        raise SkipTest
+
+    if ('storage_class' in config['cloud']):
+         sc1 = config['cloud']['storage_class']
+
+    if (sc1 == None):
+        raise SkipTest
+
+    sc = ['STANDARD', sc1, cloud_sc]
+
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, True, "Enabled")
+
+    rules = [
+        {
+            'ID': 'rule1',
+            'Prefix': 'test1/',
+            'Status': 'Enabled',
+            'NoncurrentVersionTransition': [
+                {
+                    'NoncurrentDays': 1,
+                    'StorageClass': sc[1]
+                },
+                {
+                    'NoncurrentDays': 3,
+                    'StorageClass': sc[2]
+                }
+            ],
+            'NoncurrentVersionExpiration': {
+                'NoncurrentDays': 15
+            }
+        }
+    ]
+    body = generate_lifecycle_body(rules)
+    fp = StringIO(body)
+    md5 = boto.utils.compute_md5(fp)
+    headers = {'Content-MD5': md5[1], 'Content-Type': 'text/xml'}
+    bucket.connection.make_request('PUT', bucket.name, data=fp.getvalue(), query_args='lifecycle',
+                                         headers=headers)
+
+    create_multiple_versions(bucket, "test1/a", 3)
+    create_multiple_versions(bucket, "test1/b", 3)
+    init_keys = bucket.get_all_versions()
+    eq(len(init_keys), 6)
+
+    time.sleep(20)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys[sc[1]]), 4)
+    eq(len(expire1_keys[sc[2]]), 0)
+
+    time.sleep(100)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys[sc[1]]), 0)
+
+    if ('retain_object' in config['cloud']):
+         retain_object = config['cloud']['retain_object']
+
+    if (retain_object == None or retain_object == "false"):
+        eq(len(expire1_keys[sc[2]]), 0)
+        return
+
+    # else
+    eq(len(expire1_keys[sc[2]]), 4)
+
+    time.sleep(60)
+    expire_keys = bucket.get_all_versions()
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 2)
+    eq(len(expire1_keys[sc[1]]), 0)
+    eq(len(expire1_keys[sc[2]]), 0)
+
+# The test harness for lifecycle is configured to treat days as 10 second intervals.
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle transition for cloud')
+@attr('lifecycle')
+@attr('lifecycle_transition')
+@attr('cloud_transition')
+@attr('fails_on_aws')
+def test_lifecycle_cloud_transition_large_obj():
+    retain_object = None
+    target_path = None
+    target_sc = 'STANDARD'
+
+    cloud_sc = config['cloud']['cloud_storage_class']
+    if cloud_sc == None:
+        raise SkipTest
+
+    bucket = set_lifecycle(rules=[{'id': 'rule1', 'transition': lc_transition(days=1, storage_class=cloud_sc), 'prefix': 'expire1/', 'status': 'Enabled'}])
+    kname = 'expire1/multi'
+    k, data = _populate_key(bucket, kname, size=9*1024*1024)
+
+    verify_object(bucket, k, data)
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(25)
+    expire1_keys = list_bucket_storage_class(bucket)
+    eq(len(expire1_keys['STANDARD']), 0)
+
+    if ('retain_object' in config['cloud']):
+         retain_object = config['cloud']['retain_object']
+
+    if (retain_object != None and retain_object == "true"):
+        eq(len(expire1_keys[cloud_sc]), 1)
+    else:
+        eq(len(expire1_keys[cloud_sc]), 0)
+
+    # Check if objects copied to target path
+    if ('target_path' in config['cloud']):
+        target_path = config['cloud']['target_path']
+
+    if target_path == None:
+        target_path = "rgwx-default-" + cloud_sc.lower() + "-cloud-bucket" 
+    prefix = bucket.name + "/"
+
+    # multipart upload takes time
+    time.sleep(10)
+    cloud_conn = _get_cloud_connection()
+    bucket1 = cloud_conn.get_bucket(target_path, validate=False)
+
+    if ('target_storage_class' in config['cloud']):
+        target_sc = config['cloud']['target_storage_class']
+
+    expire1_key1_str = prefix + kname
+    key1  = bucket1.get_key(expire1_key1_str)
+    verify_object(bucket1, key1, data, target_sc)
 
 def generate_lifecycle_body(rules):
     body = '<?xml version="1.0" encoding="UTF-8"?><LifecycleConfiguration>'
@@ -546,7 +907,7 @@ def verify_object(bucket, k, data=None, storage_class=None):
         eq(k.storage_class, storage_class)
 
     if data:
-        read_data = k.get_contents_as_string()
+        read_data = k.get_contents_as_string().decode("utf-8")
 
         equal = data == read_data # avoid spamming log if data not equal
         eq(equal, True)
