@@ -70,6 +70,7 @@ def get_random_string():
 
     return uuid.uuid4().hex[:6].upper()
 
+@attr('s3select')
 def test_generate_where_clause():
 
     # create small csv file for testing the random expressions
@@ -344,7 +345,7 @@ def test_in_expressions():
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where character_length(_1) == 2 and substr(_1,2,1) in ("3");')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where character_length(_1) == 2 and substring(_1,2,1) in ("3");')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where _1 like "_3";')).replace("\n","")
 
@@ -361,37 +362,37 @@ def test_like_expressions():
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_1,11,4) == "aeio" ;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,11,4) == "aeio" ;')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "cbcd%";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_1,1,4) == "cbcd";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,1,4) == "cbcd";')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _3 like "%y[y-z]";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_3,char_length(_3),1) between "y" and "z" and substr(_3,char_length(_3)-1,1) == "y";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) == "y";')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _2 like "%yz";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_2,char_length(_2),1) == "z" and substr(_2,char_length(_2)-1,1) == "y";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_2,char_length(_2),1) == "z" and substring(_2,char_length(_2)-1,1) == "y";')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _3 like "c%z";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_3,char_length(_3),1) == "z" and substr(_3,1,1) == "c";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_3,char_length(_3),1) == "z" and substring(_3,1,1) == "c";')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _2 like "%xy_";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substr(_2,char_length(_2)-1,1) == "y" and substr(_2,char_length(_2)-2,1) == "x";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_2,char_length(_2)-1,1) == "y" and substring(_2,char_length(_2)-2,1) == "x";')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
@@ -418,13 +419,13 @@ def test_complex_expressions():
     nose.tools.assert_equal( res_s3select, __res )
 
     # purpose of test that all where conditions create the same group of values, thus same result
-    res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substr(_2,1,1) == "1"')).replace("\n","")
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substring(_2,1,1) == "1"')).replace("\n","")
 
     res_s3select_between_numbers = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)>=100 and int(_2)<200')).replace("\n","")
 
     res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)/100 == 1 or int(_2)/10 == 1 or int(_2) == 1')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_substr, res_s3select_between_numbers)
+    nose.tools.assert_equal( res_s3select_substring, res_s3select_between_numbers)
 
     nose.tools.assert_equal( res_s3select_between_numbers, res_s3select_eq_modolu)
     
@@ -482,9 +483,9 @@ def test_datetime():
 
     res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where extract("year",timestamp(_1)) > 1950 and extract("year",timestamp(_1)) < 1960;')  )
 
-    res_s3select_substr = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substr(_1,1,4))>1950 and int(substr(_1,1,4))<1960;')  )
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substring(_1,1,4))>1950 and int(substring(_1,1,4))<1960;')  )
 
-    nose.tools.assert_equal( res_s3select_date_time, res_s3select_substr)
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_substring)
 
     res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  datediff("month",timestamp(_1),dateadd("month",2,timestamp(_1)) ) == 2;')  )
 
@@ -641,9 +642,9 @@ def test_coalesce_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substr(_3,1,2) as int) == cast(substr(_4,1,2) as int);')  ).replace("\n","")  
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substring(_3,1,2) as int) == cast(substring(_4,1,2) as int);')  ).replace("\n","")  
 
-    res_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_4 as int)>99 and coalesce(nullif(cast(substr(_3,1,2) as int),cast(substr(_4,1,2) as int)),7) == 7;' ) ).replace("\n","") 
+    res_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_4 as int)>99 and coalesce(nullif(cast(substring(_3,1,2) as int),cast(substring(_4,1,2) as int)),7) == 7;' ) ).replace("\n","") 
 
     nose.tools.assert_equal( res_s3select, res_null)
 
