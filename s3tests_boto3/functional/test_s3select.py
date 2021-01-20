@@ -100,7 +100,7 @@ def create_csv_object_for_datetime(rows,columns):
         for _ in range(rows):
             row = ""
             for _ in range(columns):
-                row = row + "{}{:02d}{:02d}-{:02d}{:02d}{:02d},".format(random.randint(0,100)+1900,random.randint(1,12),random.randint(1,28),random.randint(0,23),random.randint(0,59),random.randint(0,59),)
+                row = row + "{}{:02d}{:02d}T{:02d}{:02d}{:02d}Z,".format(random.randint(0,100)+1900,random.randint(1,12),random.randint(1,28),random.randint(0,23),random.randint(0,59),random.randint(0,59),)
             result += row + "\n"
 
         return result
@@ -135,6 +135,50 @@ def create_random_csv_object_string(rows,columns,col_delim=",",record_delim="\n"
 
         return result
 
+def create_random_csv_object_trim(rows,columns,col_delim=",",record_delim="\n",csv_schema=""):
+        result = ""
+        if len(csv_schema)>0 :
+            result = csv_schema + record_delim
+
+        for _ in range(rows):
+            row = ""
+            for _ in range(columns):
+                    row = row + "{}{}".format(''.join("   aeiou    ") ,col_delim)
+                
+            result += row + record_delim
+
+        return result
+
+def create_random_csv_object_escape(rows,columns,col_delim=",",record_delim="\n",csv_schema=""):
+        result = ""
+        if len(csv_schema)>0 :
+            result = csv_schema + record_delim
+
+        for _ in range(rows):
+            row = ""
+            for _ in range(columns):
+                if random.randint(0,9) == 5:
+                    row = row + "{}{}".format(''.join("_ar") ,col_delim)
+                else:
+                    row = row + "{}{}".format(''.join("aeio_")  ,col_delim)
+                
+            result += row + record_delim
+
+        return result
+
+def create_random_csv_object_null(rows,columns,col_delim=",",record_delim="\n",csv_schema=""):
+        result = ""
+        if len(csv_schema)>0 :
+            result = csv_schema + record_delim
+
+        for _ in range(rows):
+            row = ""
+            for _ in range(columns):
+                    row = row + "{}{}".format(''.join("") ,col_delim)
+                
+            result += row + record_delim
+
+        return result
 
 def upload_csv_object(bucket_name,new_key,obj):
 
@@ -294,6 +338,64 @@ def test_nullif_expressions():
 
     nose.tools.assert_equal( res_s3select_nullif, res_s3select)
 
+    csv_obj = create_random_csv_object_null(10000,10)
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where nullif(_1,null) is null;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where _1 is null;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+
+@attr('s3select')
+def test_nulliftrue_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where (nullif(_1,_2) is null) == true ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 == _2  ;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where not (nullif(_1,_2) is null) == true ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 != _2  ;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where (nullif(_1,_2) == _1 == true) ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 != _2  ;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+
+@attr('s3select')
+def test_is_not_null_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where nullif(_1,_2) is not null ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where _1 != _2  ;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_null, res_s3select)
+
+    res_s3select_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where (nullif(_1,_1) and _1 == _2) is not null ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where _1 != _2  ;")  ).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_null, res_s3select)
+
 @attr('s3select')
 def test_lowerupper_expressions():
 
@@ -352,6 +454,45 @@ def test_in_expressions():
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
 @attr('s3select')
+def test_true_false_in_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where (int(_1) in(1)) == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) == 1;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where (int(_1) in(1,0)) == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) == 1 or int(_1) == 0;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where (int(_2) in(1,0,2)) == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2) == 1 or int(_2) == 0 or int(_2) == 2;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where (int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5)) == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2)*2 == int(_3)*2 or int(_2)*2 == int(_4)*3 or int(_2)*2 == int(_5)*5;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where (character_length(_1) == 2) == true and (substring(_1,2,1) in ("3")) == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where _1 like "_3";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+@attr('s3select')
 def test_like_expressions():
 
     csv_obj = create_random_csv_object_string(1000,10)
@@ -396,6 +537,50 @@ def test_like_expressions():
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
+@attr('s3select')
+def test_truefalselike_expressions():
+
+    csv_obj = create_random_csv_object_string(1000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_1 like "%aeio%") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,11,4) == "aeio" ;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_1 like "cbcd%") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,1,4) == "cbcd";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_3 like "%y[y-z]") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where (substring(_3,char_length(_3),1) between "y" and "z") == true and (substring(_3,char_length(_3)-1,1) == "y") == true;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_2 like "%yz") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where (substring(_2,char_length(_2),1) == "z") == true and (substring(_2,char_length(_2)-1,1) == "y") == true;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_3 like "c%z") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where (substring(_3,char_length(_3),1) == "z") == true and (substring(_3,1,1) == "c") == true;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where (_2 like "%xy_") == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where (substring(_2,char_length(_2)-1,1) == "y") == true and (substring(_2,char_length(_2)-2,1) == "x") == true;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )
 
 @attr('s3select')
 def test_complex_expressions():
@@ -481,24 +666,57 @@ def test_datetime():
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where extract("year",timestamp(_1)) > 1950 and extract("year",timestamp(_1)) < 1960;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where extract(year from to_timestamp(_1)) > 1950 and extract(year from to_timestamp(_1)) < 1960;')  )
 
     res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substring(_1,1,4))>1950 and int(substring(_1,1,4))<1960;')  )
 
     nose.tools.assert_equal( res_s3select_date_time, res_s3select_substring)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  datediff("month",timestamp(_1),dateadd("month",2,timestamp(_1)) ) == 2;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) == 2;')  )
 
     res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin;')  )
 
     nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("year",timestamp(_1),dateadd("day", 366 ,timestamp(_1))) == 1 ;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) == 1 ;')  )
 
     nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
 
     # validate that utcnow is integrate correctly with other date-time functions 
-    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where datediff("hours",utcnow(),dateadd("day",1,utcnow())) == 24 ;')  )
+    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where date_diff(hour,utcnow(),date_add(day,1,utcnow())) == 24 ;')  )
+
+    nose.tools.assert_equal( res_s3select_date_time_utcnow, res_s3select_count)
+
+@attr('s3select')
+def test_true_false_datetime():
+
+    # purpose of test is to validate date-time functionality is correct,
+    # by creating same groups with different functions (nested-calls) ,which later produce the same result 
+
+    csv_obj = create_csv_object_for_datetime(10000,1)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where (extract(year from to_timestamp(_1)) > 1950) == true and (extract(year from to_timestamp(_1)) < 1960) == true;')  )
+
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where int(substring(_1,1,4))>1950 and int(substring(_1,1,4))<1960;')  )
+
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_substring)
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where  (date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) == 2) == true;')  )
+
+    res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin;')  )
+
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
+
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where (date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) == 1) == true ;')  )
+
+    nose.tools.assert_equal( res_s3select_date_time, res_s3select_count)
+
+    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  stdin where (date_diff(hour,utcnow(),date_add(day,1,utcnow())) == 24) == true ;')  )
 
     nose.tools.assert_equal( res_s3select_date_time_utcnow, res_s3select_count)
 
@@ -528,19 +746,19 @@ def test_csv_parser():
 
     # return NULL as first token
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1 from stdin;")  ).replace("\n","")
-    nose.tools.assert_equal( res_s3select_alias, ',')
+    nose.tools.assert_equal( res_s3select_alias, 'null,')
 
     # return NULL in the middle of line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _3 from stdin;")  ).replace("\n","")
-    nose.tools.assert_equal( res_s3select_alias, ',')
+    nose.tools.assert_equal( res_s3select_alias, 'null,')
 
     # return NULL in the middle of line (successive)
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _4 from stdin;")  ).replace("\n","")
-    nose.tools.assert_equal( res_s3select_alias, ',')
+    nose.tools.assert_equal( res_s3select_alias, 'null,')
 
     # return NULL at the end line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from stdin;")  ).replace("\n","")
-    nose.tools.assert_equal( res_s3select_alias, ',')
+    nose.tools.assert_equal( res_s3select_alias, 'null,')
 
 @attr('s3select')
 def test_csv_definition():
@@ -605,7 +823,7 @@ def test_schema_definition():
     assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
 
 @attr('s3select')
-def test_when_than_else_expressions():
+def test_when_then_else_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
 
@@ -613,7 +831,7 @@ def test_when_than_else_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case when cast(_1 as int)>100 and cast(_1 as int)<200 than "(100-200)" when cast(_1 as int)>200 and cast(_1 as int)<300 than "(200-300)" else "NONE" end from s3object;')  ).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case when cast(_1 as int)>100 and cast(_1 as int)<200 then "(100-200)" when cast(_1 as int)>200 and cast(_1 as int)<300 then "(200-300)" else "NONE" end from s3object;')  ).replace("\n","")
 
     count1 = res_s3select.count("(100-200)")  
 
@@ -694,3 +912,131 @@ def test_version():
 
     nose.tools.assert_equal( res_version, "41.a," )
 
+@attr('s3select')
+def test_trim_expressions():
+
+    csv_obj = create_random_csv_object_trim(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(_1) == "aeiou";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1 from 4 for 5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(both from _1) == "aeiou";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(trailing from _1) == "   aeiou";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(leading from _1) == "aeiou    ";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(trim(leading from _1)) == "aeiou";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+@attr('s3select')
+def test_truefalse_trim_expressions():
+
+    csv_obj = create_random_csv_object_trim(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(_1) == "aeiou" == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1 from 4 for 5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(both from _1) == "aeiou" == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(trailing from _1) == "   aeiou" == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(leading from _1) == "aeiou    " == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where trim(trim(leading from _1)) == "aeiou" == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,4,5) == "aeiou";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_trim, res_s3select )
+
+@attr('s3select')
+def test_escape_expressions():
+
+    csv_obj = create_random_csv_object_escape(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_escape = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%_ar" escape "%";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,char_length(_1),1) == "r" and substring(_1,char_length(_1)-1,1) == "a" and substring(_1,char_length(_1)-2,1) == "_";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_escape, res_s3select )
+
+    res_s3select_escape = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio$_" escape "$";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,1,5) == "aeio_";')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_escape, res_s3select )
+
+@attr('s3select')
+def test_case_value_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_case = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case cast(_1 as int) when cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select case when cast(_1 as int) == cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_case, res_s3select )
+
+@attr('s3select')
+def test_bool_cast_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_cast = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(int(_1) as bool) == true ;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where cast(_1 as int) != 0 ;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_cast, res_s3select )
