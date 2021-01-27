@@ -6479,52 +6479,61 @@ def test_object_copy_versioned_bucket():
     # copy object in the same bucket
     copy_source = {'Bucket': bucket_name, 'Key': key1, 'VersionId': version_id}
     key2 = 'bar321foo'
-    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key2)
+    copy_resp = client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key2)
+    eq(version_id, copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-copy-source-version-id'))
     response = client.get_object(Bucket=bucket_name, Key=key2)
     body = _get_body(response)
     eq(data_str, body)
     eq(size, response['ContentLength'])
-
+    eq(copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-version-id'), response['VersionId'])
 
     # second copy
     version_id2 = response['VersionId']
     copy_source = {'Bucket': bucket_name, 'Key': key2, 'VersionId': version_id2}
     key3 = 'bar321foo2'
-    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key3)
+    copy_resp = client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key3)
+    eq(version_id2, copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-copy-source-version-id'))
     response = client.get_object(Bucket=bucket_name, Key=key3)
     body = _get_body(response)
     eq(data_str, body)
     eq(size, response['ContentLength'])
+    eq(copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-version-id'), response['VersionId'])
 
     # copy to another versioned bucket
     bucket_name2 = get_new_bucket()
     check_configure_versioning_retry(bucket_name2, "Enabled", "Enabled")
     copy_source = {'Bucket': bucket_name, 'Key': key1, 'VersionId': version_id}
     key4 = 'bar321foo3'
-    client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key=key4)
+    copy_resp = client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key=key4)
+    eq(version_id, copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-copy-source-version-id'))
     response = client.get_object(Bucket=bucket_name2, Key=key4)
     body = _get_body(response)
     eq(data_str, body)
     eq(size, response['ContentLength'])
+    eq(copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-version-id'), response['VersionId'])
 
     # copy to another non versioned bucket
     bucket_name3 = get_new_bucket()
     copy_source = {'Bucket': bucket_name, 'Key': key1, 'VersionId': version_id}
     key5 = 'bar321foo4'
-    client.copy_object(Bucket=bucket_name3, CopySource=copy_source, Key=key5)
+    copy_resp = client.copy_object(Bucket=bucket_name3, CopySource=copy_source, Key=key5)
+    eq(version_id, copy_resp['ResponseMetadata']['HTTPHeaders']['x-amz-copy-source-version-id'])
     response = client.get_object(Bucket=bucket_name3, Key=key5)
     body = _get_body(response)
     eq(data_str, body)
     eq(size, response['ContentLength'])
+    eq(copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-version-id'), None)
 
     # copy from a non versioned bucket
     copy_source = {'Bucket': bucket_name3, 'Key': key5}
     key6 = 'foo123bar2'
-    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key6)
+    copy_resp = client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key6)
+    eq(copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-copy-source-version-id'), None)
     response = client.get_object(Bucket=bucket_name, Key=key6)
     body = _get_body(response)
     eq(data_str, body)
     eq(size, response['ContentLength'])
+    eq(response['VersionId'], copy_resp['ResponseMetadata']['HTTPHeaders'].get('x-amz-version-id'))
 
 @attr(resource='object')
 @attr(method='put')
