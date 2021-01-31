@@ -9159,6 +9159,56 @@ def test_lifecycle_expiration_tags1():
 
     eq(len(expire_objects), 0)
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='test lifecycle expiration with suspended bucket')
+@attr('lifecycle')
+@attr('lifecycle_expiration')
+def test_lifecycle_expiration_versioning_suspended():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    obj_name = '2.txt'
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    client.put_object(Bucket=bucket_name, Key=obj_name, Body='first version')
+    check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
+    client.put_object(Bucket=bucket_name, Key=obj_name, Body='second version with null version id, current version')
+
+    lifecycle_config = {
+        'Rules': [
+            {
+                'Expiration': {
+                    'Days': 1,
+                },
+                'ID': 'rule_1',
+                'Filter': {
+                    'Prefix': '',
+                },
+                'Status': 'Enabled',
+            },
+        ]
+    }
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    init_versions = response['Versions']
+    eq(len(init_versions), 2)
+
+    response = client.put_bucket_lifecycle_configuration(
+        Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
+
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    time.sleep(30)
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 1)
+
+    deleted_versions = response['DeleteMarkers']
+    eq(len(deleted_versions), 1)
+    eq(deleted_versions[0]['VersionId'], "null")
+
 # factor out common setup code
 def setup_lifecycle_tags2(client, bucket_name):
     tom_key = 'days1/tom'
