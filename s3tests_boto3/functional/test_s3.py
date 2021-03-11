@@ -2154,6 +2154,17 @@ def test_object_set_get_metadata_overwrite_to_empty():
 
 @attr(resource='object.metadata')
 @attr(method='put')
+@attr(operation='metadata key with underscore')
+@attr(assertion='correct handling of dash and underscore in key names')
+def test_object_set_get_metadata_dash_underscore():
+    bucket_name = get_new_bucket()
+    got = _set_get_metadata('kay-fabe', bucket_name)
+    eq(got, 'kay-fabe')
+    got = _set_get_metadata('kay_fabe', bucket_name)
+    eq(got, 'kay_fabe')
+
+@attr(resource='object.metadata')
+@attr(method='put')
 @attr(operation='metadata write/re-write')
 @attr(assertion='UTF-8 values passed through')
 # TODO: the decoding of this unicode metadata is not happening properly for unknown reasons
