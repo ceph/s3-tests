@@ -6073,6 +6073,23 @@ def test_buckets_create_then_list():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='list all buckets')
+@attr(assertion='all buckets have a sane creation time')
+def test_buckets_list_ctime():
+    # check that creation times are within a day
+    before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+
+    client = get_client()
+    for i in range(5):
+        client.create_bucket(Bucket=get_new_bucket_name())
+
+    response = client.list_buckets()
+    for bucket in response['Buckets']:
+        ctime = bucket['CreationDate']
+        assert before <= ctime, '%r > %r' % (before, ctime)
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='list all buckets (anonymous)')
 @attr(assertion='succeeds')
 @attr('fails_on_aws')
