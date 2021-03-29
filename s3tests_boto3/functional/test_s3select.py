@@ -1,6 +1,7 @@
 import nose
 import random
 import string
+import re
 from nose.plugins.attrib import attr
 
 import uuid
@@ -174,7 +175,10 @@ def create_random_csv_object_null(rows,columns,col_delim=",",record_delim="\n",c
         for _ in range(rows):
             row = ""
             for _ in range(columns):
+                if random.randint(0,5) == 2:
                     row = row + "{}{}".format(''.join("") ,col_delim)
+                else:
+                    row = row + "{}{}".format(''.join("abc") ,col_delim)
                 
             result += row + record_delim
 
@@ -219,6 +223,9 @@ def remove_xml_tags_from_result(obj):
             continue
         result += rec + "\n" # remove by split
 
+    result_strip= result.strip()
+    x = bool(re.search("^failure.*$", result_strip))
+    nose.tools.assert_equal(x, False)
     return result
 
 def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
@@ -540,6 +547,12 @@ def test_true_false_in_expressions():
 
     nose.tools.assert_equal( res_s3select_in, res_s3select )
 
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) in (1,2,0)) as a1 from s3object where a1 == true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select \"true\"from stdin where (int(_1) in (1,0,2)) ;')).replace("\n","")
+
+    nose.tools.assert_equal( res_s3select_in, res_s3select )  
+
 @attr('s3select')
 def test_like_expressions():
 
@@ -688,11 +701,11 @@ def test_complex_expressions():
     nose.tools.assert_equal( res_s3select, __res )
 
     # purpose of test that all where conditions create the same group of values, thus same result
-    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substring(_2,1,1) == "1"')).replace("\n","")
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where substring(_2,1,1) == "1" and char_length(_2) == 3;')).replace("\n","")
 
-    res_s3select_between_numbers = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)>=100 and int(_2)<200')).replace("\n","")
+    res_s3select_between_numbers = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)>=100 and int(_2)<200;')).replace("\n","")
 
-    res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)/100 == 1 or int(_2)/10 == 1 or int(_2) == 1')).replace("\n","")
+    res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from stdin where int(_2)/100 == 1 and character_length(_2) == 3;')).replace("\n","")
 
     nose.tools.assert_equal( res_s3select_substring, res_s3select_between_numbers)
 
