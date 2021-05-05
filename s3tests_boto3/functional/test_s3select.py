@@ -28,7 +28,7 @@ def generate_s3select_where_clause(bucket_name,obj_name):
 
     a=random_expr(4)
     b=random_expr(4)
-    s=random.choice([ '<','>','==','<=','>=','!=' ])
+    s=random.choice([ '<','>','=','<=','>=','!=' ])
 
     try:
         eval( a )
@@ -42,6 +42,9 @@ def generate_s3select_where_clause(bucket_name,obj_name):
     s3select_stmt =  "select count(0) from s3object where " + a + s + b + ";"
 
     res = remove_xml_tags_from_result( run_s3select(bucket_name,obj_name,s3select_stmt) ).replace(",","")
+
+    if  s == '=':
+        s = '=='
 
     s3select_assert_result(int(res)>0 , eval( a + s + b ))
 
@@ -330,12 +333,12 @@ def test_column_sum_min_max():
     s3select_assert_result(  int(res_s3select) , int(res_target) )
 
     # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) == 2;" ) )
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 2;" ) )
     count,sum1,sum2,d = res_s3select.split(",")
 
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) == 4;" ) ) 
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 4;" ) ) 
     count,sum1,sum2,d = res_s3select.split(",")
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
@@ -351,13 +354,13 @@ def test_nullif_expressions():
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where nullif(_1,_2) is null ;")  ).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 == _2  ;")  ).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 = _2  ;")  ).replace("\n","")
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select (nullif(_1,_2) is null) from s3object ;")  ).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select (_1 == _2) from s3object  ;")  ).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select (_1 = _2) from s3object  ;")  ).replace("\n","")
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
@@ -373,7 +376,7 @@ def test_nullif_expressions():
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where  nullif(_1,_2) == _1 ;")  ).replace("\n","")
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where  nullif(_1,_2) = _1 ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 != _2  ;")  ).replace("\n","")
 
@@ -404,19 +407,19 @@ def test_nulliftrue_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where (nullif(_1,_2) is null) == true ;")  ).replace("\n","")
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where (nullif(_1,_2) is null) = true ;")  ).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 == _2  ;")  ).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 = _2  ;")  ).replace("\n","")
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where not (nullif(_1,_2) is null) == true ;")  ).replace("\n","")
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where not (nullif(_1,_2) is null) = true ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 != _2  ;")  ).replace("\n","")
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where (nullif(_1,_2) == _1 == true) ;")  ).replace("\n","")
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where (nullif(_1,_2) = _1 = true) ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where _1 != _2  ;")  ).replace("\n","")
 
@@ -437,7 +440,7 @@ def test_is_not_null_expressions():
 
     s3select_assert_result( res_s3select_null, res_s3select)
 
-    res_s3select_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where (nullif(_1,_1) and _1 == _2) is not null ;")  ).replace("\n","")
+    res_s3select_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where (nullif(_1,_1) and _1 = _2) is not null ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where _1 != _2  ;")  ).replace("\n","")
 
@@ -472,59 +475,59 @@ def test_in_expressions():
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) in(1);')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) == 1;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = 1;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) in(1)) from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) == 1) from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) = 1) from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) in(1,0);')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) == 1 or int(_1) == 0;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = 1 or int(_1) = 0;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) in(1,0)) from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) == 1 or int(_1) == 0) from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) = 1 or int(_1) = 0) from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2) in(1,0,2);')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2) == 1 or int(_2) == 0 or int(_2) == 2;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2) = 1 or int(_2) = 0 or int(_2) = 2;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2) in(1,0,2)) from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2) == 1 or int(_2) == 0 or int(_2) == 2) from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2) = 1 or int(_2) = 0 or int(_2) = 2) from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5);')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2)*2 == int(_3)*2 or int(_2)*2 == int(_4)*3 or int(_2)*2 == int(_5)*5;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2)*2 = int(_3)*2 or int(_2)*2 = int(_4)*3 or int(_2)*2 = int(_5)*5;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5)) from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2)*2 == int(_3)*2 or int(_2)*2 == int(_4)*3 or int(_2)*2 == int(_5)*5) from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_2)*2 = int(_3)*2 or int(_2)*2 = int(_4)*3 or int(_2)*2 = int(_5)*5) from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where character_length(_1) == 2 and substring(_1,2,1) in ("3");')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where character_length(_1) = 2 and substring(_1,2,1) in ("3");')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3";')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (character_length(_1) == 2 and substring(_1,2,1) in ("3")) from s3object;')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (character_length(_1) = 2 and substring(_1,2,1) in ("3")) from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "_3") from s3object;')).replace("\n","")
 
@@ -539,37 +542,37 @@ def test_true_false_in_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(1)) == true;')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(1)) = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) == 1;')).replace("\n","")
-
-    s3select_assert_result( res_s3select_in, res_s3select )
-
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(1,0)) == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) == 1 or int(_1) == 0;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = 1;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where (int(_2) in(1,0,2)) == true;')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(1,0)) = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2) == 1 or int(_2) == 0 or int(_2) == 2;')).replace("\n","")
-
-    s3select_assert_result( res_s3select_in, res_s3select )
-
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where (int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5)) == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2)*2 == int(_3)*2 or int(_2)*2 == int(_4)*3 or int(_2)*2 == int(_5)*5;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = 1 or int(_1) = 0;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (character_length(_1) == 2) == true and (substring(_1,2,1) in ("3")) == true;')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where (int(_2) in(1,0,2)) = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2) = 1 or int(_2) = 0 or int(_2) = 2;')).replace("\n","")
+
+    s3select_assert_result( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where (int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5)) = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from s3object where int(_2)*2 = int(_3)*2 or int(_2)*2 = int(_4)*3 or int(_2)*2 = int(_5)*5;')).replace("\n","")
+
+    s3select_assert_result( res_s3select_in, res_s3select )
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (character_length(_1) = 2) = true and (substring(_1,2,1) in ("3")) = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3";')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) in (1,2,0)) as a1 from s3object where a1 == true;')).replace("\n","")
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (int(_1) in (1,2,0)) as a1 from s3object where a1 = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select \"true\"from s3object where (int(_1) in (1,0,2)) ;')).replace("\n","")
 
@@ -586,73 +589,73 @@ def test_like_expressions():
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%aeio%";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) == "aeio" ;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) = "aeio" ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select  (_1 like "%aeio%") from s3object ;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,11,4) == "aeio") from s3object ;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,11,4) = "aeio") from s3object ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "cbcd%";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) == "cbcd";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%") from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,1,4) == "cbcd") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,1,4) = "cbcd") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "%y[y-z]";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) == "y";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) = "y";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "%y[y-z]") from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) == "y") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) = "y") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%yz";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2),1) == "z" and substring(_2,char_length(_2)-1,1) == "y";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2),1) = "z" and substring(_2,char_length(_2)-1,1) = "y";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%yz") from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2),1) == "z" and substring(_2,char_length(_2)-1,1) == "y") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2),1) = "z" and substring(_2,char_length(_2)-1,1) = "y") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "c%z";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) == "z" and substring(_3,1,1) == "c";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) = "z" and substring(_3,1,1) = "c";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "c%z") from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) == "z" and substring(_3,1,1) == "c") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) = "z" and substring(_3,1,1) = "c") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%xy_";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2)-1,1) == "y" and substring(_2,char_length(_2)-2,1) == "x";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2)-1,1) = "y" and substring(_2,char_length(_2)-2,1) = "x";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%xy_") from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2)-1,1) == "y" and substring(_2,char_length(_2)-2,1) == "x") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2)-1,1) = "y" and substring(_2,char_length(_2)-2,1) = "x") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
@@ -665,39 +668,39 @@ def test_truefalselike_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "%aeio%") == true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "%aeio%") = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) == "aeio" ;')).replace("\n","")
-
-    s3select_assert_result( res_s3select_like, res_s3select )
-
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "cbcd%") == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) == "cbcd";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) = "aeio" ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "%y[y-z]") == true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "cbcd%") = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) between "y" and "z") == true and (substring(_3,char_length(_3)-1,1) == "y") == true;')).replace("\n","")
-
-    s3select_assert_result( res_s3select_like, res_s3select )
-
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%yz") == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2),1) == "z") == true and (substring(_2,char_length(_2)-1,1) == "y") == true;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "c%z") == true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "%y[y-z]") = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) == "z") == true and (substring(_3,1,1) == "c") == true;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) between "y" and "z") = true and (substring(_3,char_length(_3)-1,1) = "y") = true;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%xy_") == true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%yz") = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2)-1,1) == "y") == true and (substring(_2,char_length(_2)-2,1) == "x") == true;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2),1) = "z") = true and (substring(_2,char_length(_2)-1,1) = "y") = true;')).replace("\n","")
+
+    s3select_assert_result( res_s3select_like, res_s3select )
+
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "c%z") = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) = "z") = true and (substring(_3,1,1) = "c") = true;')).replace("\n","")
+
+    s3select_assert_result( res_s3select_like, res_s3select )
+
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%xy_") = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2)-1,1) = "y") = true and (substring(_2,char_length(_2)-2,1) = "x") = true;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
@@ -723,11 +726,11 @@ def test_complex_expressions():
     s3select_assert_result( res_s3select, __res )
 
     # purpose of test that all where conditions create the same group of values, thus same result
-    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from s3object where substring(_2,1,1) == "1" and char_length(_2) == 3;')).replace("\n","")
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from s3object where substring(_2,1,1) = "1" and char_length(_2) = 3;')).replace("\n","")
 
     res_s3select_between_numbers = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from s3object where int(_2)>=100 and int(_2)<200;')).replace("\n","")
 
-    res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from s3object where int(_2)/100 == 1 and character_length(_2) == 3;')).replace("\n","")
+    res_s3select_eq_modolu = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select min(int(_2)),max(int(_2)) from s3object where int(_2)/100 = 1 and character_length(_2) = 3;')).replace("\n","")
 
     s3select_assert_result( res_s3select_substring, res_s3select_between_numbers)
 
@@ -791,18 +794,18 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time, res_s3select_substring)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) == 2;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) = 2;')  )
 
     res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object;')  )
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) == 1 ;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) = 1 ;')  )
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
     # validate that utcnow is integrate correctly with other date-time functions 
-    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(hour,utcnow(),date_add(day,1,utcnow())) == 24 ;')  )
+    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24 ;')  )
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
 
@@ -819,23 +822,23 @@ def test_true_false_datetime():
 
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (extract(year from to_timestamp(_1)) > 1950) == true and (extract(year from to_timestamp(_1)) < 1960) == true;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (extract(year from to_timestamp(_1)) > 1950) = true and (extract(year from to_timestamp(_1)) < 1960) = true;')  )
 
     res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where int(substring(_1,1,4))>1950 and int(substring(_1,1,4))<1960;')  )
 
     s3select_assert_result( res_s3select_date_time, res_s3select_substring)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  (date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) == 2) == true;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  (date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) = 2) = true;')  )
 
     res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object;')  )
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) == 1) == true ;')  )
+    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) = 1) = true ;')  )
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
-    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(hour,utcnow(),date_add(day,1,utcnow())) == 24) == true ;')  )
+    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24) = true ;')  )
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
 
@@ -962,7 +965,7 @@ def test_when_then_else_expressions():
 
     res1 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)>200 and cast(_1 as int)<300  ;')  ).replace("\n","")
     
-    res2 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)<=100 or cast(_1 as int)>=300 or cast(_1 as int)==200  ;')  ).replace("\n","")
+    res2 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)<=100 or cast(_1 as int)>=300 or cast(_1 as int)=200  ;')  ).replace("\n","")
 
     s3select_assert_result( str(count1) + ',', res)
 
@@ -979,9 +982,9 @@ def test_coalesce_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substring(_3,1,2) as int) == cast(substring(_4,1,2) as int);')  ).replace("\n","")  
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substring(_3,1,2) as int) = cast(substring(_4,1,2) as int);')  ).replace("\n","")  
 
-    res_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_4 as int)>99 and coalesce(nullif(cast(substring(_3,1,2) as int),cast(substring(_4,1,2) as int)),7) == 7;' ) ).replace("\n","") 
+    res_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_4 as int)>99 and coalesce(nullif(cast(substring(_3,1,2) as int),cast(substring(_4,1,2) as int)),7) = 7;' ) ).replace("\n","") 
 
     s3select_assert_result( res_s3select, res_null)
 
@@ -1009,7 +1012,7 @@ def test_cast_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>99 and cast(_3 as int)<1000;')  ).replace("\n","")  
 
-    res = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)==3;')  ).replace("\n","") 
+    res = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)=3;')  ).replace("\n","") 
 
     s3select_assert_result( res_s3select, res)
 
@@ -1040,33 +1043,33 @@ def test_trim_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) == "aeiou";')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) = "aeiou";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1 from 4 for 5) == "aeiou";')).replace("\n","")
-
-    s3select_assert_result( res_s3select_trim, res_s3select )
-
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(both from _1) == "aeiou";')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1 from 4 for 5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trailing from _1) == "   aeiou";')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(both from _1) = "aeiou";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
-
-    s3select_assert_result( res_s3select_trim, res_s3select )
-
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(leading from _1) == "aeiou    ";')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trim(leading from _1)) == "aeiou";')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trailing from _1) = "   aeiou";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
+
+    s3select_assert_result( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(leading from _1) = "aeiou    ";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
+
+    s3select_assert_result( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trim(leading from _1)) = "aeiou";')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
@@ -1079,33 +1082,33 @@ def test_truefalse_trim_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) == "aeiou" == true;')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) = "aeiou" = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1 from 4 for 5) == "aeiou";')).replace("\n","")
-
-    s3select_assert_result( res_s3select_trim, res_s3select )
-
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(both from _1) == "aeiou" == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1 from 4 for 5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trailing from _1) == "   aeiou" == true;')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(both from _1) = "aeiou" = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
-
-    s3select_assert_result( res_s3select_trim, res_s3select )
-
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(leading from _1) == "aeiou    " == true;')).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trim(leading from _1)) == "aeiou" == true;')).replace("\n","")
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trailing from _1) = "   aeiou" = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) == "aeiou";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
+
+    s3select_assert_result( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(leading from _1) = "aeiou    " = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
+
+    s3select_assert_result( res_s3select_trim, res_s3select )
+
+    res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(trim(leading from _1)) = "aeiou" = true;')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,4,5) = "aeiou";')).replace("\n","")
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
@@ -1120,13 +1123,13 @@ def test_escape_expressions():
 
     res_s3select_escape = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%_ar" escape "%";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,char_length(_1),1) == "r" and substring(_1,char_length(_1)-1,1) == "a" and substring(_1,char_length(_1)-2,1) == "_";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,char_length(_1),1) = "r" and substring(_1,char_length(_1)-1,1) = "a" and substring(_1,char_length(_1)-2,1) = "_";')).replace("\n","")
 
     s3select_assert_result( res_s3select_escape, res_s3select )
 
     res_s3select_escape = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%aeio$_" escape "$";')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,5) == "aeio_";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,5) = "aeio_";')).replace("\n","")
 
     s3select_assert_result( res_s3select_escape, res_s3select )
 
@@ -1141,7 +1144,7 @@ def test_case_value_expressions():
 
     res_s3select_case = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case cast(_1 as int) when cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select case when cast(_1 as int) == cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select case when cast(_1 as int) = cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_case, res_s3select )
 
@@ -1154,7 +1157,7 @@ def test_bool_cast_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_cast = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(int(_1) as bool) == true ;')).replace("\n","")
+    res_s3select_cast = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(int(_1) as bool) = true ;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where cast(_1 as int) != 0 ;')).replace("\n","")
 
