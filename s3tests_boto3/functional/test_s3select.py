@@ -3,6 +3,7 @@ import random
 import string
 import re
 from nose.plugins.attrib import attr
+from botocore.exceptions import ClientError
 
 import uuid
 from nose.tools import eq_ as eq
@@ -221,16 +222,20 @@ def upload_csv_object(bucket_name,new_key,obj):
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
 
     s3 = get_client()
-
-    r = s3.select_object_content(
+    result = ""
+    try:
+        r = s3.select_object_content(
         Bucket=bucket,
         Key=key,
         ExpressionType='SQL',
         InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char, "FileHeaderInfo": csv_header_info}, "CompressionType": "NONE"},
         OutputSerialization = {"CSV": {}},
         Expression=query,)
+
+    except ClientError as c:
+        result += str(c)
+        return result
     
-    result = ""
     for event in r['Payload']:
         if 'Records' in event:
             records = event['Records']['Payload'].decode('utf-8')
@@ -286,7 +291,7 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
             col_num+=1
 
     return list_of_int
-       
+
 @attr('s3select')
 def test_count_operation():
     csv_obj_name = get_random_string()
@@ -486,7 +491,7 @@ def test_lowerupper_expressions():
 @attr('s3select')
 def test_in_expressions():
 
-    # purpose of test: engine is process correctly several projections containing aggregation-functions 
+    # purpose of test: engine is process correctly several projections containing aggregation-functions
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
@@ -624,6 +629,12 @@ def test_like_expressions():
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
+
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
+
+    find_like = res_s3select_like.find("s3select-Syntax-Error")
+
+    assert int(find_like) >= 0
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%") from s3object;')).replace("\n","")
 
@@ -958,6 +969,10 @@ def test_schema_definition():
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c10,int(c11) from s3object;",csv_header_info="USE") ).replace("\n","")
 
     assert res_multiple_defintion.find("alias {c11} or column not exist in schema") > 0
+
+    find_processing_error = res_multiple_defintion.find("s3select-ProcessingTime-Error")
+    
+    assert int(find_processing_error) >= 0
 
     # alias-name is identical to column-name
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from s3object;",csv_header_info="USE") ).replace("\n","")
