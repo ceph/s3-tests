@@ -13135,3 +13135,34 @@ def test_ignore_public_acls():
     # IgnorePublicACLs is true, so regardless this should behave as a private bucket
     check_access_denied(alt_client.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key='key1')
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='multipart upload on a bucket with a policy')
+@attr(assertion='succeeds')
+@attr('policy_status')
+def test_multipart_upload_on_a_bucket_with_policy():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": "*",
+        "Resource": [
+            resource1,
+            resource2
+          ],
+        }]
+     })
+    key = "foo"
+    objlen=50*1024*1024
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, client=client)
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
