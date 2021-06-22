@@ -809,6 +809,18 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
 
+    res_s3select_date_time_to_string = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select to_string(to_timestamp(_1), \'x\') from  s3object;')  )
+
+    res_s3select_date_time_extract = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select extract(timezone_hour from to_timestamp(_1)) from  s3object;')  )
+
+    s3select_assert_result( res_s3select_date_time_to_string, res_s3select_date_time_extract)
+
+    res_s3select_date_time_to_timestamp = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select to_timestamp(_1) from s3object where extract(month from to_timestamp(_1)) = 5;')  )
+
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select substring(_1, 1, char_length(_1)) from s3object where _1 like \'____-05%\';')  )
+
+    s3select_assert_result( res_s3select_date_time_to_timestamp, res_s3select_substring)
+
 @attr('s3select')
 def test_true_false_datetime():
 
