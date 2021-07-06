@@ -235,6 +235,24 @@ def teardown():
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+    try:
+        iam_client = get_iam_client()
+        list_roles_resp = iam_client.list_roles()
+        for role in list_roles_resp['Roles']:
+            list_policies_resp = iam_client.list_role_policies(RoleName=role['RoleName'])
+            for policy in list_policies_resp['PolicyNames']:
+                del_policy_resp = iam_client.delete_role_policy(
+                                         RoleName=role['RoleName'],
+                                         PolicyName=policy
+                                        )
+            del_role_resp = iam_client.delete_role(RoleName=role['RoleName'])
+        list_oidc_resp = iam_client.list_open_id_connect_providers()
+        for oidcprovider in list_oidc_resp['OpenIDConnectProviderList']:
+            del_oidc_resp = iam_client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=oidcprovider['Arn']
+                    )
+    except:
+        pass
 
 def check_webidentity():
     cfg = configparser.RawConfigParser()
@@ -539,3 +557,9 @@ def get_token():
 
 def get_realm_name():
     return config.webidentity_realm
+
+def get_iam_access_key():
+    return config.iam_access_key
+
+def get_iam_secret_key():
+    return config.iam_secret_key
