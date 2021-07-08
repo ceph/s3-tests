@@ -374,6 +374,36 @@ def get_svc_client(client_config=None, svc='s3'):
 
 bucket_counter = itertools.count(1)
 
+def get_s3_client_using_iam_creds(client_config=None):
+    cfg = configparser.RawConfigParser()
+    try:
+        path = os.environ['S3TEST_CONF']
+    except KeyError:
+        raise RuntimeError(
+            'To run tests, point environment '
+            + 'variable S3TEST_CONF to a config file.',
+            )
+    cfg.read(path)
+    if not cfg.has_section("iam"):
+        raise RuntimeError('Your config file is missing the "iam" section!')
+
+    config.iam_access_key = cfg.get('iam',"access_key")
+    config.iam_secret_key = cfg.get('iam',"secret_key")
+    config.iam_display_name = cfg.get('iam',"display_name")
+    config.iam_user_id = cfg.get('iam',"user_id")
+    config.iam_email = cfg.get('iam',"email")
+
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.iam_access_key,
+                        aws_secret_access_key=config.iam_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        region_name='',
+                        )
+    return client
+
 def get_new_bucket_name():
     """
     Get a bucket name that probably does not exist.
