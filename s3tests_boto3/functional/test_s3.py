@@ -2028,6 +2028,22 @@ def test_multi_objectv2_delete():
     assert 'Contents' not in response
 
 @attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects has upper limit of 1000 keys')
+@attr(assertion='fails 400')
+def test_multi_object_delete_key_limit():
+    key_names = [f"key-{i}" for i in range(1001)]
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    response = client.list_objects(Bucket=bucket_name)
+    eq(len(response['Contents']), 1001)
+
+    objs_dict = _make_objs_dict(key_names=key_names)
+    e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
+    eq(e.response['Error']['Code'], 400)
+
+@attr(resource='object')
 @attr(method='put')
 @attr(operation='write zero-byte key')
 @attr(assertion='correct content length')
