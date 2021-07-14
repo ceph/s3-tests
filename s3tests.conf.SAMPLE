@@ -98,6 +98,10 @@ token=<access_token>
 
 aud=<obtained after introspecting token>
 
+sub=<obtained after introspecting token>
+
+azp=<obtained after introspecting token>
+
 thumbprint=<obtained from x509 certificate>
 
 KC_REALM=<name of the realm>
