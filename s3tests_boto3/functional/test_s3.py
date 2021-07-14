@@ -12432,6 +12432,28 @@ def test_object_lock_get_obj_retention():
 
 @attr(resource='bucket')
 @attr(method='get')
+@attr(operation='Test object retention date formatting')
+@attr(assertion='success')
+@attr('object-lock')
+def test_object_lock_get_obj_retention_iso8601():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    key = 'file1'
+    response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
+    version_id = response['VersionId']
+    date = datetime.datetime.today() + datetime.timedelta(days=365)
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate': date}
+    client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
+    client.meta.events.register('after-call.s3.HeadObject', get_http_response)
+    client.head_object(Bucket=bucket_name,VersionId=version_id,Key=key)
+    retain_date = http_response['headers']['x-amz-object-lock-retain-until-date']
+    isodate.parse_datetime(retain_date)
+    client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
+
+
+@attr(resource='bucket')
+@attr(method='get')
 @attr(operation='Test get object retention with invalid bucket')
 @attr(assertion='fails')
 @attr('object-lock')
