@@ -9818,6 +9818,19 @@ def test_lifecycle_multipart_expiration():
     eq(len(init_uploads), 2)
     eq(len(expired_uploads), 1)
 
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='set lifecycle config transition with not iso8601 date')
+@attr('lifecycle')
+@attr(assertion='fails 400')
+def test_lifecycle_transition_set_invalid_date():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    rules=[{'ID': 'rule1', 'Expiration': {'Date': '2023-09-27'},'Transitions': [{'Date': '20220927','StorageClass': 'GLACIER'}],'Prefix': 'test1/', 'Status':'Enabled'}]
+    lifecycle = {'Rules': rules}
+    e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
 
 def _test_encryption_sse_customer_write(file_size):
     """
