@@ -2041,13 +2041,10 @@ def test_multi_object_delete_key_limit():
     numKeys = 0
     for page in pages:
         numKeys += len(page['Contents'])
-    
-    response = client.list_objects(Bucket=bucket_name)
     eq(numKeys, 1001)
 
     objs_dict = _make_objs_dict(key_names=key_names)
     e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
-
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
 
@@ -2065,13 +2062,10 @@ def test_multi_objectv2_delete_key_limit():
     numKeys = 0
     for page in pages:
         numKeys += len(page['Contents'])
-    
-    response = client.list_objects(Bucket=bucket_name)
     eq(numKeys, 1001)
 
     objs_dict = _make_objs_dict(key_names=key_names)
     e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
-
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
 
