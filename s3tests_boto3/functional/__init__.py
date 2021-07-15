@@ -296,6 +296,7 @@ def check_webidentity():
     config.webidentity_realm = cfg.get('webidentity', "KC_REALM")
     config.webidentity_sub = cfg.get('webidentity', "sub")
     config.webidentity_azp = cfg.get('webidentity', "azp")
+    config.webidentity_user_token = cfg.get('webidentity', "user_token")
 
 def get_client(client_config=None):
     if client_config == None:
@@ -594,3 +595,6 @@ def get_iam_access_key():
 
 def get_iam_secret_key():
     return config.iam_secret_key
+
+def get_user_token():
+    return config.webidentity_user_token
