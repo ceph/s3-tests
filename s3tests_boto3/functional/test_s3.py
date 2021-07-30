@@ -13301,3 +13301,207 @@ def test_delete_bucket_encryption():
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+@attr(assertion='success')
+@attr('encryption')
+def _test_sse_s3_customer_write(file_size):
+    """
+    Test enables bucket encryption.
+    Create a file of A's of certain size, and use it to set_contents_from_file.
+    Re-read the contents, and confirm we get A's
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    server_side_encryption_conf = {
+        'Rules': [
+            {
+                'ApplyServerSideEncryptionByDefault': {
+                    'SSEAlgorithm': 'AES256'
+                }
+            },
+        ]
+    }
+
+    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+
+    data = 'A'*file_size
+    client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
+
+    response = client.get_object(Bucket=bucket_name, Key='testobj')
+    body = _get_body(response)
+    eq(body, data)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-S3 encrypted transfer 1 byte')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_s3_transfer_1b():
+    _test_sse_s3_customer_write(1)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-S3 encrypted transfer 1KB')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_s3_transfer_1kb():
+    _test_sse_s3_customer_write(1024)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test SSE-S3 encrypted transfer 1MB')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_s3_transfer_1mb():
+    _test_sse_s3_customer_write(1024*1024)
+
+@attr(resource='object')
+@attr(method='head')
+@attr(operation='Test SSE-S3 encrypted does perform head properly')
+@attr(assertion='success')
+@attr('encryption')
+def test_sse_s3_method_head():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    server_side_encryption_conf = {
+        'Rules': [
+            {
+                'ApplyServerSideEncryptionByDefault': {
+                    'SSEAlgorithm': 'AES256'
+                }
+            },
+        ]
+    }
+
+    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+
+    data = 'A'*1000
+    key = 'testobj'
+    client.put_object(Bucket=bucket_name, Key=key, Body=data)
+
+    response = client.head_object(Bucket=bucket_name, Key=key)
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+
+    sse_s3_headers = {
+        'x-amz-server-side-encryption': 'AES256',
+    }
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_s3_headers))
+    client.meta.events.register('before-call.s3.HeadObject', lf)
+    e = assert_raises(ClientError, client.head_object, Bucket=bucket_name, Key=key)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete SSE-S3 multi-part upload')
+@attr(assertion='successful')
+@attr('encryption')
+def test_sse_s3_multipart_upload():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = "multipart_enc"
+    content_type = 'text/plain'
+    objlen = 30 * 1024 * 1024
+    metadata = {'foo': 'bar'}
+    enc_headers = {
+        'Content-Type': content_type
+    }
+    resend_parts = []
+    server_side_encryption_conf = {
+        'Rules': [
+            {
+                'ApplyServerSideEncryptionByDefault': {
+                    'SSEAlgorithm': 'AES256'
+                }
+            },
+        ]
+    }
+    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+
+    (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
+            part_size=5*1024*1024, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
+
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
+    client.meta.events.register('before-call.s3.CompleteMultipartUpload', lf)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.head_bucket(Bucket=bucket_name)
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
+    eq(rgw_object_count, 1)
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
+    eq(rgw_bytes_used, objlen)
+
+    lf = (lambda **kwargs: kwargs['params']['headers'].update(part_headers))
+    client.meta.events.register('before-call.s3.UploadPart', lf)
+
+    response = client.get_object(Bucket=bucket_name, Key=key)
+
+    eq(response['Metadata'], metadata)
+    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], content_type)
+
+    body = _get_body(response)
+    eq(body, data)
+    size = response['ContentLength']
+    eq(len(body), size)
+
+    _check_content_using_range(key, bucket_name, data, 1000000)
+    _check_content_using_range(key, bucket_name, data, 10000000)
+
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='authenticated SSE-S3 browser based upload via POST request')
+@attr(assertion='succeeds and returns written data')
+@attr('encryption')
+def test_sse_s3_post_object_authenticated_request():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    server_side_encryption_conf = {
+        'Rules': [
+            {
+                'ApplyServerSideEncryptionByDefault': {
+                    'SSEAlgorithm': 'AES256'
+                }
+            },
+        ]
+    }
+    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+
+    url = _get_post_url(bucket_name)
+    utc = pytz.utc
+    expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
+
+    policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
+    "conditions": [\
+    {"bucket": bucket_name},\
+    ["starts-with", "$key", "foo"],\
+    {"acl": "private"},\
+    ["starts-with", "$Content-Type", "text/plain"],\
+    ["starts-with", "$x-amz-server-side-encryption", ""], \
+    ["starts-with", "$x-amz-server-side-encryption-aws-kms-key-id", ""], \
+    ["content-length-range", 0, 1024]\
+    ]\
+    }
+
+    json_policy_document = json.JSONEncoder().encode(policy_document)
+    bytes_json_policy_document = bytes(json_policy_document, 'utf-8')
+    policy = base64.b64encode(bytes_json_policy_document)
+    aws_secret_access_key = get_main_aws_secret_key()
+    aws_access_key_id = get_main_aws_access_key()
+
+    signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())
+
+    payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
+    ("acl" , "private"),("signature" , signature),("policy" , policy),\
+    ("Content-Type" , "text/plain"),
+    ('x-amz-server-side-encryption', 'AES256'), \
+    ('file', ('bar'))])
+
+    r = requests.post(url, files = payload)
+    eq(r.status_code, 204)
+
+    response = client.get_object(Bucket=bucket_name, Key='foo.txt')
+    body = _get_body(response)
+    eq(body, 'bar')
