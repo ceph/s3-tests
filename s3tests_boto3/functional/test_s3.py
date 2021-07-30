@@ -1564,6 +1564,17 @@ def test_bucket_listv2_continuationtoken_empty():
     keys = _get_keys(response)
     eq(keys, key_names)
 
+@attr('fixed_to_neofs_s3_gw')
+def test_bucket_listv2_continuationtoken_empty_neofs_s3():
+    key_names = ['bar', 'baz', 'foo', 'quxx']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name, ContinuationToken='')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(error_code, 'InvalidArgument')
+
 @attr(resource='bucket')
 @attr(method='get')
 @attr(operation='list keys with list-objects-v2')
