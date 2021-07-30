@@ -10,6 +10,9 @@ port = 8000
 ## say "False" to disable TLS
 is_secure = False
 
+## say "False" to disable SSL Verify
+ssl_verify = True
+
 [fixtures]
 ## all the buckets created will start with this prefix;
 ## {random} will be filled with random characters to pad
