@@ -13308,7 +13308,7 @@ def _test_sse_s3_customer_write(file_size):
     """
     Test enables bucket encryption.
     Create a file of A's of certain size, and use it to set_contents_from_file.
-    Re-read the contents, and confirm we get A's
+    Re-read the contents, and confirm we get same content as input i.e., A's
     """
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13358,7 +13358,7 @@ def test_sse_s3_transfer_1mb():
 
 @attr(resource='object')
 @attr(method='head')
-@attr(operation='Test SSE-S3 encrypted does perform head properly')
+@attr(operation='Test head operation on SSE-S3 encrypted object')
 @attr(assertion='success')
 @attr('encryption')
 def test_sse_s3_method_head():
