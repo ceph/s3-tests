@@ -13473,16 +13473,16 @@ def test_sse_s3_post_object_authenticated_request():
     utc = pytz.utc
     expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
 
-    policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
-    "conditions": [\
-    {"bucket": bucket_name},\
-    ["starts-with", "$key", "foo"],\
-    {"acl": "private"},\
-    ["starts-with", "$Content-Type", "text/plain"],\
-    ["starts-with", "$x-amz-server-side-encryption", ""], \
-    ["starts-with", "$x-amz-server-side-encryption-aws-kms-key-id", ""], \
-    ["content-length-range", 0, 1024]\
-    ]\
+    policy_document = {
+            "expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "conditions": [
+                {"bucket": bucket_name},
+                ["starts-with", "$key", "foo"],
+                {"acl": "private"},
+                ["starts-with", "$Content-Type", "text/plain"],
+                ["starts-with", "$x-amz-server-side-encryption", ""], 
+                ["content-length-range", 0, 1024]
+            ]
     }
 
     json_policy_document = json.JSONEncoder().encode(policy_document)
