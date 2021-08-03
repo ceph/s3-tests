@@ -1565,6 +1565,11 @@ def test_bucket_listv2_continuationtoken_empty():
     eq(keys, key_names)
 
 @attr('fixed_to_neofs_s3_gw')
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list all keys with list-objects-v2')
+@attr(assertion='no pagination, empty continuationtoken')
+@attr('list-objects-v2-neofs-s3')
 def test_bucket_listv2_continuationtoken_empty_neofs_s3():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
