@@ -4,6 +4,8 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
 import configparser
+import datetime
+import time
 import os
 import munch
 import random
@@ -101,9 +103,40 @@ def nuke_bucket(client, bucket):
 
     # list and delete objects in batches
     for objects in list_versions(client, bucket, batch_size):
-        client.delete_objects(Bucket=bucket,
+        delete = client.delete_objects(Bucket=bucket,
                 Delete={'Objects': objects, 'Quiet': True},
                 BypassGovernanceRetention=True)
+
+        # check for object locks on 403 AccessDenied errors
+        for err in delete.get('Errors', []):
+            if err.get('Code') != 'AccessDenied':
+                continue
+            try:
+                res = client.get_object_retention(Bucket=bucket,
+                        Key=err['Key'], VersionId=err['VersionId'])
+                retain_date = res['Retention']['RetainUntilDate']
+                if not max_retain_date or max_retain_date < retain_date:
+                    max_retain_date = retain_date
+            except ClientError:
+                pass
+
+    if max_retain_date:
+        # wait out the retention period (up to 60 seconds)
+        now = datetime.datetime.now(max_retain_date.tzinfo)
+        if max_retain_date > now:
+            delta = max_retain_date - now
+            if delta.total_seconds() > 60:
+                raise RuntimeError('bucket {} still has objects \
+locked for {} more seconds, not waiting for \
+bucket cleanup'.format(bucket, delta.total_seconds()))
+            print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
+                    'seconds for object locks to expire')
+            time.sleep(delta.total_seconds())
+
+        for objects in list_versions(client, bucket, batch_size):
+            client.delete_objects(Bucket=bucket,
+                    Delete={'Objects': objects, 'Quiet': True},
+                    BypassGovernanceRetention=True)
 
     client.delete_bucket(Bucket=bucket)
 
