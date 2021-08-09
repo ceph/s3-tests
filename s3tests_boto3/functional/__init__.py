@@ -9,6 +9,7 @@ import munch
 import random
 import string
 import itertools
+import urllib3
 
 config = munch.Munch
 
@@ -171,6 +172,15 @@ def setup():
     proto = 'https' if config.default_is_secure else 'http'
     config.default_endpoint = "%s://%s:%d" % (proto, config.default_host, config.default_port)
 
+    try:
+        config.default_ssl_verify = cfg.getboolean('DEFAULT', "ssl_verify")
+    except configparser.NoOptionError:
+        config.default_ssl_verify = True
+
+    # Disable InsecureRequestWarning reported by urllib3 when ssl_verify is False
+    if not config.default_ssl_verify:
+        urllib3.disable_warnings()
+
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
     config.main_secret_key = cfg.get('s3 main',"secret_key")
@@ -217,6 +227,7 @@ def setup():
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+
 
 def teardown():
     alt_client = get_alt_client()
@@ -270,6 +281,7 @@ def get_client(client_config=None):
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -279,6 +291,7 @@ def get_v2_client():
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version='s3'))
     return client
 
@@ -292,6 +305,7 @@ def get_sts_client(client_config=None):
                         endpoint_url=config.default_endpoint,
                         region_name='',
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -323,6 +337,7 @@ def get_iam_client(client_config=None):
                         endpoint_url=config.default_endpoint,
                         region_name='',
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -335,6 +350,7 @@ def get_alt_client(client_config=None):
                         aws_secret_access_key=config.alt_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -347,6 +363,7 @@ def get_tenant_client(client_config=None):
                         aws_secret_access_key=config.tenant_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -357,6 +374,7 @@ def get_tenant_iam_client():
                           aws_access_key_id=config.tenant_access_key,
                           aws_secret_access_key=config.tenant_secret_key,
                           endpoint_url=config.default_endpoint,
+                          verify=config.default_ssl_verify,
                           use_ssl=config.default_is_secure)
     return client
 
@@ -366,6 +384,7 @@ def get_unauthenticated_client():
                         aws_secret_access_key='',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version=UNSIGNED))
     return client
 
@@ -375,6 +394,7 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         aws_secret_access_key='roflmao',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version='s3v4'))
     return client
 
@@ -387,6 +407,7 @@ def get_svc_client(client_config=None, svc='s3'):
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -417,7 +438,8 @@ def get_new_bucket_resource(name=None):
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
-                        use_ssl=config.default_is_secure)
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify)
     if name is None:
         name = get_new_bucket_name()
     bucket = s3.Bucket(name)
@@ -466,6 +488,9 @@ def get_config_port():
 
 def get_config_endpoint():
     return config.default_endpoint
+
+def get_config_ssl_verify():
+    return config.default_ssl_verify
 
 def get_main_aws_access_key():
     return config.main_access_key

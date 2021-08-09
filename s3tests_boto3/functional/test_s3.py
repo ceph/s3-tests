@@ -51,6 +51,7 @@ from . import (
     get_config_host,
     get_config_port,
     get_config_endpoint,
+    get_config_ssl_verify,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_main_display_name,
@@ -2285,7 +2286,7 @@ def test_post_object_anonymous_request():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2327,7 +2328,7 @@ def test_post_object_authenticated_request():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2368,7 +2369,7 @@ def test_post_object_authenticated_no_content_type():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key="foo.txt")
     body = _get_body(response)
@@ -2410,7 +2411,7 @@ def test_post_object_authenticated_request_bad_access_key():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2427,7 +2428,7 @@ def test_post_object_set_success_code():
     ("success_action_status" , "201"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 201)
     message = ET.fromstring(r.content).find('Key')
     eq(message.text,'foo.txt')
@@ -2446,7 +2447,7 @@ def test_post_object_set_invalid_success_code():
     ("success_action_status" , "404"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     content = r.content.decode()
     eq(content,'')
@@ -2488,7 +2489,7 @@ def test_post_object_upload_larger_than_chunk():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', foo_string)])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2528,7 +2529,7 @@ def test_post_object_set_key_from_filename():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('foo.txt', 'bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2569,7 +2570,7 @@ def test_post_object_ignored_header():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),("x-ignore-foo" , "bar"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
 @attr(resource='object')
@@ -2608,7 +2609,7 @@ def test_post_object_case_insensitive_condition_fields():
     ("aCl" , "private"),("signature" , signature),("pOLICy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
 @attr(resource='object')
@@ -2645,7 +2646,7 @@ def test_post_object_escaped_field_values():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='\$foo.txt')
     body = _get_body(response)
@@ -2690,7 +2691,7 @@ def test_post_object_success_redirect_action():
     ("Content-Type" , "text/plain"),("success_action_redirect" , redirect_url),\
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 200)
     url = r.url
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -2732,7 +2733,7 @@ def test_post_object_invalid_signature():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2769,7 +2770,7 @@ def test_post_object_invalid_access_key():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2806,7 +2807,7 @@ def test_post_object_invalid_date_format():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2842,7 +2843,7 @@ def test_post_object_no_key_specified():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2879,7 +2880,7 @@ def test_post_object_missing_signature():
     ("acl" , "private"),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2915,7 +2916,7 @@ def test_post_object_missing_policy_condition():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2953,7 +2954,7 @@ def test_post_object_user_specified_header():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     eq(response['Metadata']['foo'], 'barclamp')
@@ -2993,7 +2994,7 @@ def test_post_object_request_missing_policy_specified_field():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3030,7 +3031,7 @@ def test_post_object_condition_is_case_sensitive():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3067,7 +3068,7 @@ def test_post_object_expires_is_case_sensitive():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3104,7 +3105,7 @@ def test_post_object_expired_policy():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3141,7 +3142,7 @@ def test_post_object_invalid_request_field_value():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3178,7 +3179,7 @@ def test_post_object_missing_expires_condition():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3207,7 +3208,7 @@ def test_post_object_missing_conditions_list():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3244,7 +3245,7 @@ def test_post_object_upload_size_limit_exceeded():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3281,7 +3282,7 @@ def test_post_object_missing_content_length_argument():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3318,7 +3319,7 @@ def test_post_object_invalid_content_length_argument():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3355,7 +3356,7 @@ def test_post_object_upload_size_below_minimum():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3388,7 +3389,7 @@ def test_post_object_empty_conditions():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3945,7 +3946,7 @@ def test_object_raw_get_x_amz_expires_not_expired():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 200)
 
 @attr(resource='object')
@@ -3959,7 +3960,7 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=0, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 @attr(resource='object')
@@ -3973,7 +3974,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=609901, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 @attr(resource='object')
@@ -3987,7 +3988,7 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=-7, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 
@@ -4046,7 +4047,7 @@ def test_object_raw_put_authenticated_expired():
     url = client.generate_presigned_url(ClientMethod='put_object', Params=params, ExpiresIn=-1000, HttpMethod='PUT')
 
     # params wouldn't take a 'Body' parameter so we're passing it in here
-    res = requests.put(url,data="foo").__dict__
+    res = requests.put(url, data="foo", verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 def check_bad_bucket_name(bucket_name):
@@ -7412,7 +7413,7 @@ def test_set_cors():
     eq(status, 404)
 
 def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
-    r = func(url, headers=headers)
+    r = func(url, headers=headers, verify=get_config_ssl_verify())
     eq(r.status_code, expect_status)
 
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
@@ -10315,7 +10316,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     ('x-amz-server-side-encryption-customer-key-md5', 'DWygnHRtgiJ77HCm+1rvHw=='), \
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
     get_headers = {
@@ -10604,7 +10605,7 @@ def test_sse_kms_post_object_authenticated_request():
     ('x-amz-server-side-encryption-aws-kms-key-id', kms_keyid), \
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -11310,7 +11311,7 @@ def test_post_object_tags_anonymous_request():
         ('file', ('bar')),
     ])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key=key_name)
     body = _get_body(response)
@@ -11362,7 +11363,7 @@ def test_post_object_tags_authenticated_request():
         ("Content-Type" , "text/plain"),
         ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
