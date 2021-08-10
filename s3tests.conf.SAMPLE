@@ -11,7 +11,7 @@ port = 8000
 is_secure = False
 
 ## say "False" to disable SSL Verify
-ssl_verify = True
+ssl_verify = False
 
 [fixtures]
 ## all the buckets created will start with this prefix;
