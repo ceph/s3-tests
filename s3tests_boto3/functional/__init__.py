@@ -175,7 +175,7 @@ def setup():
     try:
         config.default_ssl_verify = cfg.getboolean('DEFAULT', "ssl_verify")
     except configparser.NoOptionError:
-        config.default_ssl_verify = True
+        config.default_ssl_verify = False
 
     # Disable InsecureRequestWarning reported by urllib3 when ssl_verify is False
     if not config.default_ssl_verify:
