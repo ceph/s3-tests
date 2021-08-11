@@ -4,6 +4,8 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
 import configparser
+import datetime
+import time
 import os
 import munch
 import random
@@ -75,38 +77,69 @@ def get_objects_list(bucket, client=None, prefix=None):
 
     return objects_list
 
-def get_versioned_objects_list(bucket, client=None):
-    if client == None:
-        client = get_client()
-    response = client.list_object_versions(Bucket=bucket)
-    versioned_objects_list = []
+# generator function that returns object listings in batches, where each
+# batch is a list of dicts compatible with delete_objects()
+def list_versions(client, bucket, batch_size):
+    key_marker = ''
+    version_marker = ''
+    truncated = True
+    while truncated:
+        listing = client.list_object_versions(
+                Bucket=bucket,
+                KeyMarker=key_marker,
+                VersionIdMarker=version_marker,
+                MaxKeys=batch_size)
 
-    if 'Versions' in response:
-        contents = response['Versions']
-        for obj in contents:
-            key = obj['Key']
-            version_id = obj['VersionId']
-            versioned_obj = (key,version_id)
-            versioned_objects_list.append(versioned_obj)
+        key_marker = listing.get('NextKeyMarker')
+        version_marker = listing.get('NextVersionIdMarker')
+        truncated = listing['IsTruncated']
 
-    return versioned_objects_list
+        objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
+        if len(objs):
+            yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
 
-def get_delete_markers_list(bucket, client=None):
-    if client == None:
-        client = get_client()
-    response = client.list_object_versions(Bucket=bucket)
-    delete_markers = []
+def nuke_bucket(client, bucket):
+    batch_size = 128
+    max_retain_date = None
 
-    if 'DeleteMarkers' in response:
-        contents = response['DeleteMarkers']
-        for obj in contents:
-            key = obj['Key']
-            version_id = obj['VersionId']
-            versioned_obj = (key,version_id)
-            delete_markers.append(versioned_obj)
+    # list and delete objects in batches
+    for objects in list_versions(client, bucket, batch_size):
+        delete = client.delete_objects(Bucket=bucket,
+                Delete={'Objects': objects, 'Quiet': True},
+                BypassGovernanceRetention=True)
 
-    return delete_markers
+        # check for object locks on 403 AccessDenied errors
+        for err in delete.get('Errors', []):
+            if err.get('Code') != 'AccessDenied':
+                continue
+            try:
+                res = client.get_object_retention(Bucket=bucket,
+                        Key=err['Key'], VersionId=err['VersionId'])
+                retain_date = res['Retention']['RetainUntilDate']
+                if not max_retain_date or max_retain_date < retain_date:
+                    max_retain_date = retain_date
+            except ClientError:
+                pass
 
+    if max_retain_date:
+        # wait out the retention period (up to 60 seconds)
+        now = datetime.datetime.now(max_retain_date.tzinfo)
+        if max_retain_date > now:
+            delta = max_retain_date - now
+            if delta.total_seconds() > 60:
+                raise RuntimeError('bucket {} still has objects \
+locked for {} more seconds, not waiting for \
+bucket cleanup'.format(bucket, delta.total_seconds()))
+            print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
+                    'seconds for object locks to expire')
+            time.sleep(delta.total_seconds())
+
+        for objects in list_versions(client, bucket, batch_size):
+            client.delete_objects(Bucket=bucket,
+                    Delete={'Objects': objects, 'Quiet': True},
+                    BypassGovernanceRetention=True)
+
+    client.delete_bucket(Bucket=bucket)
 
 def nuke_prefixed_buckets(prefix, client=None):
     if client == None:
@@ -115,28 +148,18 @@ def nuke_prefixed_buckets(prefix, client=None):
     buckets = get_buckets_list(client, prefix)
 
     err = None
-    if buckets != []:
-        for bucket_name in buckets:
-            objects_list = get_objects_list(bucket_name, client)
-            for obj in objects_list:
-                response = client.delete_object(Bucket=bucket_name,Key=obj)
-            versioned_objects_list = get_versioned_objects_list(bucket_name, client)
-            for obj in versioned_objects_list:
-                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
-            delete_markers = get_delete_markers_list(bucket_name, client)
-            for obj in delete_markers:
-                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
-            try:
-                response = client.delete_bucket(Bucket=bucket_name)
-            except ClientError as e:
-                # The exception shouldn't be raised when doing cleanup. Pass and continue
-                # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
-                # resulting in some kind of resource leak. err is used to hint user some
-                # exception once occurred.
-                err = e
-                pass
-        if err:
-            raise err
+    for bucket_name in buckets:
+        try:
+            nuke_bucket(client, bucket_name)
+        except Exception as e:
+            # The exception shouldn't be raised when doing cleanup. Pass and continue
+            # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
+            # resulting in some kind of resource leak. err is used to hint user some
+            # exception once occurred.
+            err = e
+            pass
+    if err:
+        raise err
 
     print('Done with cleanup of buckets in tests.')
 

@@ -12862,6 +12862,66 @@ def test_object_lock_uploading_obj():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE with bypass')
+@attr(assertion='succeeds')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_governance_with_bypass():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=GOVERNANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # change mode to COMPLIANCE
+    retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
+    client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE without bypass')
+@attr(assertion='fails')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_governance_without_bypass():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=GOVERNANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # try to change mode to COMPLIANCE
+    retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
+    e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from COMPLIANCE to GOVERNANCE')
+@attr(assertion='fails')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_compliance():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=COMPLIANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='COMPLIANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # try to change mode to GOVERNANCE
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':retain_until}
+    e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+@attr(resource='object')
 @attr(method='copy')
 @attr(operation='copy w/ x-amz-copy-source-if-match: the latest ETag')
 @attr(assertion='succeeds')
