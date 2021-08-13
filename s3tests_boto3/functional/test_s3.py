@@ -1684,6 +1684,44 @@ def test_bucket_list_return_data():
         eq(obj['Owner']['ID'],key_data['ID'])
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
+@attr(resource='object')
+@attr(method='head')
+@attr(operation='compare w/bucket list after object acl changed')
+@attr(assertion='return same metadata')
+def test_bucket_list_return_data_after_object_acl_changed():
+    key_names = ['bar', 'baz', 'foo']
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    # sleep after creating the objects, so that put_object_acl() below will generate a different mtime
+    time.sleep(2)
+
+    data = {}
+    for key_name in key_names:
+        client.put_object_acl(ACL='public-read',Bucket=bucket_name, Key=key_name)
+        obj_response = client.head_object(Bucket=bucket_name, Key=key_name)
+        acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
+        data.update({
+            key_name: {
+                'DisplayName': acl_response['Owner']['DisplayName'],
+                'ID': acl_response['Owner']['ID'],
+                'ETag': obj_response['ETag'],
+                'LastModified': obj_response['LastModified'],
+                'ContentLength': obj_response['ContentLength'],
+                }
+            })
+
+    response  = client.list_objects(Bucket=bucket_name)
+    objs_list = response['Contents']
+    for obj in objs_list:
+        key_name = obj['Key']
+        key_data = data[key_name]
+        eq(obj['ETag'],key_data['ETag'])
+        eq(obj['Size'],key_data['ContentLength'])
+        eq(obj['Owner']['DisplayName'],key_data['DisplayName'])
+        eq(obj['Owner']['ID'],key_data['ID'])
+        _compare_dates(obj['LastModified'],key_data['LastModified'])
+
 # amazon is eventually consistent, retry a bit if failed
 def check_configure_versioning_retry(bucket_name, status, expected_string):
     client = get_client()
@@ -1718,10 +1756,55 @@ def test_bucket_list_return_data_versioning():
     key_names = ['bar', 'baz', 'foo']
     bucket_name = _create_objects(bucket_name=bucket_name,keys=key_names)
 
+    # sleep after creating the objects, so that put_object_acl() below will generate a different mtime
+    time.sleep(2)
+
     client = get_client()
     data = {}
 
     for key_name in key_names:
+        obj_response = client.head_object(Bucket=bucket_name, Key=key_name)
+        acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
+        data.update({
+            key_name: {
+                'ID': acl_response['Owner']['ID'],
+                'DisplayName': acl_response['Owner']['DisplayName'],
+                'ETag': obj_response['ETag'],
+                'LastModified': obj_response['LastModified'],
+                'ContentLength': obj_response['ContentLength'],
+                'VersionId': obj_response['VersionId']
+                }
+            })
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+
+    for obj in objs_list:
+        key_name = obj['Key']
+        key_data = data[key_name]
+        eq(obj['Owner']['DisplayName'],key_data['DisplayName'])
+        eq(obj['ETag'],key_data['ETag'])
+        eq(obj['Size'],key_data['ContentLength'])
+        eq(obj['Owner']['ID'],key_data['ID'])
+        eq(obj['VersionId'], key_data['VersionId'])
+        _compare_dates(obj['LastModified'],key_data['LastModified'])
+
+@attr(resource='object')
+@attr(method='head')
+@attr(operation='compare w/bucket list when bucket versioning is configured after object acl changed')
+@attr(assertion='return same metadata')
+@attr('versioning')
+def test_bucket_list_return_data_versioning_after_object_acl_changed():
+    bucket_name = get_new_bucket()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    key_names = ['bar', 'baz', 'foo']
+    bucket_name = _create_objects(bucket_name=bucket_name,keys=key_names)
+
+    client = get_client()
+    data = {}
+
+    for key_name in key_names:
+        client.put_object_acl(ACL='public-read',Bucket=bucket_name, Key=key_name)
         obj_response = client.head_object(Bucket=bucket_name, Key=key_name)
         acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
         data.update({
