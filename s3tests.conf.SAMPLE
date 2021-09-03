@@ -98,6 +98,12 @@ token=<access_token>
 
 aud=<obtained after introspecting token>
 
+sub=<obtained after introspecting token>
+
+azp=<obtained after introspecting token>
+
+user_token=<access token for a user, with attribute Department=[Engineering, Marketing>]
+
 thumbprint=<obtained from x509 certificate>
 
 KC_REALM=<name of the realm>
