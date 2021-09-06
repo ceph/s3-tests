@@ -26,15 +26,15 @@ Once you have that file copied and edited, you can run the tests with::
 
 You can specify which directory of tests to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional
 
 You can specify which file of tests to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional.test_s3
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_s3
 
 You can specify which test to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests.functional.test_s3:test_bucket_list_empty
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_s3:test_bucket_list_empty
 
 To gather a list of tests being run, use the flags::
 
