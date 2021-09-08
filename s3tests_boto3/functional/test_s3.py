@@ -2029,6 +2029,48 @@ def test_multi_objectv2_delete():
     assert 'Contents' not in response
 
 @attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects has upper limit of 1000 keys')
+@attr(assertion='fails 400')
+def test_multi_object_delete_key_limit():
+    key_names = [f"key-{i}" for i in range(1001)]
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    paginator = client.get_paginator('list_objects')
+    pages = paginator.paginate(Bucket=bucket_name)
+    numKeys = 0
+    for page in pages:
+        numKeys += len(page['Contents'])
+    eq(numKeys, 1001)
+
+    objs_dict = _make_objs_dict(key_names=key_names)
+    e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects has upper limit of 1000 keys with list-objects-v2')
+@attr(assertion='fails 400')
+def test_multi_objectv2_delete_key_limit():
+    key_names = [f"key-{i}" for i in range(1001)]
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    paginator = client.get_paginator('list_objects_v2')
+    pages = paginator.paginate(Bucket=bucket_name)
+    numKeys = 0
+    for page in pages:
+        numKeys += len(page['Contents'])
+    eq(numKeys, 1001)
+
+    objs_dict = _make_objs_dict(key_names=key_names)
+    e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
 @attr(method='put')
 @attr(operation='write zero-byte key')
 @attr(assertion='correct content length')
