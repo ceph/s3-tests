@@ -12,3 +12,7 @@
 /virtualenv
 
 config.yaml
+
+# IDE
+.idea
+.vscode
