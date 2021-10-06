@@ -295,7 +295,15 @@ def test_cors_header_option():
              },
             {'AllowedMethods': ['PUT'],
              'AllowedOrigins': ['http://www.example.com'],
-             'AllowedHeaders': ['x-amz-meta-header2'],
+             'AllowedHeaders': ['x-amz-meta-header2', 'x-amz-meta-header3'],
+             },
+            {'AllowedMethods': ['DELETE'],
+             'AllowedOrigins': ['http://www.example1.com'],
+             'AllowedHeaders': [],
+             },
+            {'AllowedMethods': ['POST'],
+             'AllowedOrigins': ['http://www.example2.com'],
+             'AllowedHeaders': ['*'],
              },
         ]
     }
@@ -324,7 +332,6 @@ def test_cors_header_option():
                                               response_methods_header: 'GET',
                                               response_headers_header: 'x-amz-meta-header1'
                                               })
-
     _cors_request_and_check(method='OPTIONS', url=url,
                             headers={'Origin': 'http://www.example.com',
                                      'Access-Control-Request-Method': 'GET',
@@ -348,4 +355,63 @@ def test_cors_header_option():
                             expected_headers={response_origin_header: 'http://www.example.com',
                                               response_methods_header: 'PUT',
                                               response_headers_header: 'x-amz-meta-header2'
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example.com',
+                                     'Access-Control-Request-Method': 'PUT',
+                                     'Access-Control-Request-Headers': 'x-amz-meta-header3'},
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example.com',
+                                              response_methods_header: 'PUT',
+                                              response_headers_header: 'x-amz-meta-header3'
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example.com',
+                                     'Access-Control-Request-Method': 'PUT',
+                                     'Access-Control-Request-Headers': 'x-amz-meta-header2, x-amz-meta-header3'},
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example.com',
+                                              response_methods_header: 'PUT',
+                                              response_headers_header: 'x-amz-meta-header2, x-amz-meta-header3'
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example.com',
+                                     'Access-Control-Request-Method': 'PUT'},
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example.com',
+                                              response_methods_header: 'PUT',
+                                              response_headers_header: None
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example1.com',
+                                     'Access-Control-Request-Method': 'DELETE',
+                                     'Access-Control-Request-Headers': 'x-amz-meta-header'},
+                            expected_status=403,
+                            expected_headers=no_origin_header)
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example1.com',
+                                     'Access-Control-Request-Method': 'DELETE'},
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example1.com',
+                                              response_methods_header: 'DELETE',
+                                              response_headers_header: None
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example2.com',
+                                     'Access-Control-Request-Method': 'POST',
+                                     'Access-Control-Request-Headers': 'x-amz-meta-header'
+                                     },
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example2.com',
+                                              response_methods_header: 'POST',
+                                              response_headers_header: 'x-amz-meta-header'
+                                              })
+    _cors_request_and_check(method='OPTIONS', url=url,
+                            headers={'Origin': 'http://www.example2.com',
+                                     'Access-Control-Request-Method': 'POST'
+                                     },
+                            expected_status=200,
+                            expected_headers={response_origin_header: 'http://www.example2.com',
+                                              response_methods_header: 'POST',
+                                              response_headers_header: None
                                               })
