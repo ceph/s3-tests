@@ -227,6 +227,47 @@ def test_cors_origin_response():
                             headers={'Origin': 'http://not.exists', 'Access-Control-Request-Method': 'PUT'},
                             expected_status=403, expected_headers=no_origin_header)
 
+
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='check cors response when origin header set')
+@attr(assertion='returning cors header')
+@attr('cors')
+def test_cors_origin_response_with_credentials():
+    bucket_name = _setup_bucket_acl(bucket_acl='public-read')
+    client = get_client()
+
+    cors_config = {
+        'CORSRules': [
+            {'AllowedMethods': ['PUT', 'DELETE'],
+             'AllowedOrigins': ['http://www.example1.com'],
+             'AllowedHeaders': ['*'],
+             },
+            {'AllowedMethods': ['GET'],
+             'AllowedOrigins': ['*'],
+             'AllowedHeaders': ['*']
+             },
+            {'AllowedMethods': ['DELETE'],
+             'AllowedOrigins': ['http://www.example2.com', 'http://www.example3.com'],
+             'AllowedHeaders': ['*'],
+             },
+        ]
+    }
+
+    e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
+    status = _get_status(e.response)
+    eq(status, 404)
+
+    client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
+
+    time.sleep(3)
+
+    url = _get_post_url(bucket_name)
+
+    obj_url = '{u}/{o}'.format(u=url, o='bar')
+
+    response_origin_header = 'Access-Control-Allow-Origin'
+
     # with_credentials
     _cors_request_and_check(method='GET', url=url, headers={'Origin': 'http://www.example1.com'},
                             expected_status=None,
