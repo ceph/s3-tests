@@ -172,10 +172,10 @@ def test_cors_origin_response():
     _cors_request_and_check(method='GET', url=obj_url, headers={'Origin': 'http://www.example1.com'},
                             expected_status=404, expected_headers={response_origin_header: '*'})
     _cors_request_and_check(method='PUT', url=obj_url, headers={'Origin': 'http://www.example1.com'},
-                            expected_status=200,
+                            expected_status=None,
                             expected_headers={response_origin_header: 'http://www.example1.com'})
     _cors_request_and_check(method='DELETE', url=obj_url, headers={'Origin': 'http://www.example1.com'},
-                            expected_status=204,
+                            expected_status=None,
                             expected_headers={response_origin_header: 'http://www.example1.com'})
 
     _cors_request_and_check(method='GET', url=url, headers={'Origin': 'http://www.example3.com'},
@@ -183,9 +183,9 @@ def test_cors_origin_response():
     _cors_request_and_check(method='GET', url=obj_url, headers={'Origin': 'http://www.example3.com'},
                             expected_status=404, expected_headers={response_origin_header: '*'})
     _cors_request_and_check(method='PUT', url=obj_url, headers={'Origin': 'http://www.example3.com'},
-                            expected_status=200, expected_headers=no_origin_header)
+                            expected_status=None, expected_headers=no_origin_header)
     _cors_request_and_check(method='DELETE', url=obj_url, headers={'Origin': 'http://www.example3.com'},
-                            expected_status=204,
+                            expected_status=None,
                             expected_headers={response_origin_header: 'http://www.example3.com'})
 
     _cors_request_and_check(method='GET', url=url, headers={'Origin': 'http://not.exists'},
@@ -193,9 +193,9 @@ def test_cors_origin_response():
     _cors_request_and_check(method='GET', url=obj_url, headers={'Origin': 'http://not.exists'},
                             expected_status=404, expected_headers={response_origin_header: '*'})
     _cors_request_and_check(method='PUT', url=obj_url, headers={'Origin': 'http://not.exists'},
-                            expected_status=200, expected_headers=no_origin_header)
+                            expected_status=None, expected_headers=no_origin_header)
     _cors_request_and_check(method='DELETE', url=obj_url, headers={'Origin': 'http://not.exists'},
-                            expected_status=204, expected_headers=no_origin_header)
+                            expected_status=None, expected_headers=no_origin_header)
 
     _cors_request_and_check(method='OPTIONS', url=url,
                             headers={'Origin': 'http://www.example1.com',
