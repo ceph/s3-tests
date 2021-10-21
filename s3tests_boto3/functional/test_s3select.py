@@ -258,6 +258,25 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
                 end = event['End']
                 result.append(end.copy())
     return result
+def run_s3select_output(bucket,key,query, quot_field, op_column_delim = ",", op_row_delim = "\n",  column_delim=",", op_quot_char = '"', op_esc_char = '\\', row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
+
+    s3 = get_client()
+
+    r = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType='SQL',
+        InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char, "FileHeaderInfo": csv_header_info}, "CompressionType": "NONE"},
+        OutputSerialization = {"CSV": {"RecordDelimiter" : op_row_delim, "FieldDelimiter" : op_column_delim, "QuoteCharacter" : op_quot_char, "QuoteEscapeCharacter" : op_esc_char, "QuoteFields" : quot_field}},
+        Expression=query,)
+    
+    result = ""
+    for event in r['Payload']:
+        if 'Records' in event:
+            records = event['Records']['Payload'].decode('utf-8')
+            result += records
+    
+    return result
 
 def remove_xml_tags_from_result(obj):
     result = ""
@@ -355,13 +374,11 @@ def test_column_sum_min_max():
 
     # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 2;" ) )
-
     count,sum1,sum2,d = res_s3select.split(",")
 
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 4;" ) ) 
-
     count,sum1,sum2,d = res_s3select.split(",")
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
@@ -627,6 +644,12 @@ def test_like_expressions():
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
+
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
+
+    find_like = res_s3select_like.find("s3select-Syntax-Error")
+
+    assert int(find_like) >= 0
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%") from s3object;')).replace("\n","")
 
@@ -1217,6 +1240,53 @@ def test_progress_expressions():
     # end response
     s3select_assert_result({}, res_s3select_response[total_response-1])
 
+@attr('s3select')
+def test_output_serial_expressions():
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_1 = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,"select _1, _2 from s3object where nullif(_1,_2) is null ;", "ALWAYS")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1, _2 from s3object where _1 = _2 ;")  ).replace("\n","")
+
+    res_s3select_list = res_s3select.split(',')
+
+    res_s3select_list.pop()
+
+    res_s3select_final = (','.join('"' + item + '"' for item in res_s3select_list))
+
+    res_s3select_final += ','
+
+    s3select_assert_result( res_s3select_1, res_s3select_final)
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ASNEEDED", '$', '#')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","")
     
+    res_s3select_list = res_s3select.split(',')
 
+    res_s3select_list.pop()
 
+    res_s3select_final = ('#'.join(item + '$' for item in res_s3select_list))
+
+    res_s3select_final += '#'
+
+    s3select_assert_result( res_s3select_in, res_s3select_final )
+
+    res_s3select_quot = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ALWAYS", '$', '#')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","")
+    
+    res_s3select_list = res_s3select.split(',')
+
+    res_s3select_list.pop()
+
+    res_s3select_final = ('#'.join('"' + item + '"' + '$' for item in res_s3select_list))
+
+    res_s3select_final += '#'
+
+    s3select_assert_result( res_s3select_quot, res_s3select_final )
