@@ -563,13 +563,13 @@ def test_in_expressions():
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where character_length(_1) = 2 and substring(_1,2,1) in ("3");')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3" escape "\\";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3";')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (character_length(_1) = 2 and substring(_1,2,1) in ("3")) from s3object;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "_3" escape "\\") from s3object;')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "_3") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
@@ -608,7 +608,7 @@ def test_true_false_in_expressions():
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (character_length(_1) = 2) = true and (substring(_1,2,1) in ("3")) = true;')).replace("\n","")
 
-    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3" escape "\\";')).replace("\n","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where _1 like "_3";')).replace("\n","")
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
@@ -627,79 +627,79 @@ def test_like_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%aeio%"  escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%aeio%";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) = "aeio" ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select  (_1 like "%aeio%"  escape "\\") from s3object ;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select  (_1 like "%aeio%") from s3object ;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,11,4) = "aeio") from s3object ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "cbcd%" escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "cbcd%";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
 
     find_like = res_s3select_like.find("s3select-Syntax-Error")
 
     assert int(find_like) >= 0
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%" escape "\\") from s3object;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,1,4) = "cbcd") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "%y[y-z]"  escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "%y[y-z]";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) = "y";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "%y[y-z]" escape "\\") from s3object;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "%y[y-z]") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) between "y" and "z" and substring(_3,char_length(_3)-1,1) = "y") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%yz" escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%yz";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2),1) = "z" and substring(_2,char_length(_2)-1,1) = "y";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%yz" escape "\\") from s3object;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%yz") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2),1) = "z" and substring(_2,char_length(_2)-1,1) = "y") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "c%z" escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _3 like "c%z";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_3,char_length(_3),1) = "z" and substring(_3,1,1) = "c";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "c%z" escape "\\") from s3object;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_3 like "c%z") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_3,char_length(_3),1) = "z" and substring(_3,1,1) = "c") from s3object;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%xy_" escape "\\";')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _2 like "%xy_";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_2,char_length(_2)-1,1) = "y" and substring(_2,char_length(_2)-2,1) = "x";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%xy_" escape "\\") from s3object;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_2 like "%xy_") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_2,char_length(_2)-1,1) = "y" and substring(_2,char_length(_2)-2,1) = "x") from s3object;')).replace("\n","")
 
@@ -714,37 +714,37 @@ def test_truefalselike_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "%aeio%" escape "\\") = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "%aeio%") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,11,4) = "aeio" ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "cbcd%" escape "\\") = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "cbcd%") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "%y[y-z]" escape "\\" ) = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "%y[y-z]") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) between "y" and "z") = true and (substring(_3,char_length(_3)-1,1) = "y") = true;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%yz" escape "\\") = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%yz") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2),1) = "z") = true and (substring(_2,char_length(_2)-1,1) = "y") = true;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "c%z" escape "\\") = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_3 like "c%z") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_3,char_length(_3),1) = "z") = true and (substring(_3,1,1) = "c") = true;')).replace("\n","")
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%xy_" escape "\\") = true;')).replace("\n","")
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_2 like "%xy_") = true;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where (substring(_2,char_length(_2)-1,1) = "y") = true and (substring(_2,char_length(_2)-2,1) = "x") = true;')).replace("\n","")
 
