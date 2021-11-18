@@ -4,11 +4,14 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
 import configparser
+import datetime
+import time
 import os
 import munch
 import random
 import string
 import itertools
+import urllib3
 
 config = munch.Munch
 
@@ -74,38 +77,69 @@ def get_objects_list(bucket, client=None, prefix=None):
 
     return objects_list
 
-def get_versioned_objects_list(bucket, client=None):
-    if client == None:
-        client = get_client()
-    response = client.list_object_versions(Bucket=bucket)
-    versioned_objects_list = []
+# generator function that returns object listings in batches, where each
+# batch is a list of dicts compatible with delete_objects()
+def list_versions(client, bucket, batch_size):
+    key_marker = ''
+    version_marker = ''
+    truncated = True
+    while truncated:
+        listing = client.list_object_versions(
+                Bucket=bucket,
+                KeyMarker=key_marker,
+                VersionIdMarker=version_marker,
+                MaxKeys=batch_size)
 
-    if 'Versions' in response:
-        contents = response['Versions']
-        for obj in contents:
-            key = obj['Key']
-            version_id = obj['VersionId']
-            versioned_obj = (key,version_id)
-            versioned_objects_list.append(versioned_obj)
+        key_marker = listing.get('NextKeyMarker')
+        version_marker = listing.get('NextVersionIdMarker')
+        truncated = listing['IsTruncated']
 
-    return versioned_objects_list
+        objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
+        if len(objs):
+            yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
 
-def get_delete_markers_list(bucket, client=None):
-    if client == None:
-        client = get_client()
-    response = client.list_object_versions(Bucket=bucket)
-    delete_markers = []
+def nuke_bucket(client, bucket):
+    batch_size = 128
+    max_retain_date = None
 
-    if 'DeleteMarkers' in response:
-        contents = response['DeleteMarkers']
-        for obj in contents:
-            key = obj['Key']
-            version_id = obj['VersionId']
-            versioned_obj = (key,version_id)
-            delete_markers.append(versioned_obj)
+    # list and delete objects in batches
+    for objects in list_versions(client, bucket, batch_size):
+        delete = client.delete_objects(Bucket=bucket,
+                Delete={'Objects': objects, 'Quiet': True},
+                BypassGovernanceRetention=True)
 
-    return delete_markers
+        # check for object locks on 403 AccessDenied errors
+        for err in delete.get('Errors', []):
+            if err.get('Code') != 'AccessDenied':
+                continue
+            try:
+                res = client.get_object_retention(Bucket=bucket,
+                        Key=err['Key'], VersionId=err['VersionId'])
+                retain_date = res['Retention']['RetainUntilDate']
+                if not max_retain_date or max_retain_date < retain_date:
+                    max_retain_date = retain_date
+            except ClientError:
+                pass
 
+    if max_retain_date:
+        # wait out the retention period (up to 60 seconds)
+        now = datetime.datetime.now(max_retain_date.tzinfo)
+        if max_retain_date > now:
+            delta = max_retain_date - now
+            if delta.total_seconds() > 60:
+                raise RuntimeError('bucket {} still has objects \
+locked for {} more seconds, not waiting for \
+bucket cleanup'.format(bucket, delta.total_seconds()))
+            print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
+                    'seconds for object locks to expire')
+            time.sleep(delta.total_seconds())
+
+        for objects in list_versions(client, bucket, batch_size):
+            client.delete_objects(Bucket=bucket,
+                    Delete={'Objects': objects, 'Quiet': True},
+                    BypassGovernanceRetention=True)
+
+    client.delete_bucket(Bucket=bucket)
 
 def nuke_prefixed_buckets(prefix, client=None):
     if client == None:
@@ -114,28 +148,18 @@ def nuke_prefixed_buckets(prefix, client=None):
     buckets = get_buckets_list(client, prefix)
 
     err = None
-    if buckets != []:
-        for bucket_name in buckets:
-            objects_list = get_objects_list(bucket_name, client)
-            for obj in objects_list:
-                response = client.delete_object(Bucket=bucket_name,Key=obj)
-            versioned_objects_list = get_versioned_objects_list(bucket_name, client)
-            for obj in versioned_objects_list:
-                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
-            delete_markers = get_delete_markers_list(bucket_name, client)
-            for obj in delete_markers:
-                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
-            try:
-                response = client.delete_bucket(Bucket=bucket_name)
-            except ClientError as e:
-                # The exception shouldn't be raised when doing cleanup. Pass and continue
-                # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
-                # resulting in some kind of resource leak. err is used to hint user some
-                # exception once occurred.
-                err = e
-                pass
-        if err:
-            raise err
+    for bucket_name in buckets:
+        try:
+            nuke_bucket(client, bucket_name)
+        except Exception as e:
+            # The exception shouldn't be raised when doing cleanup. Pass and continue
+            # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
+            # resulting in some kind of resource leak. err is used to hint user some
+            # exception once occurred.
+            err = e
+            pass
+    if err:
+        raise err
 
     print('Done with cleanup of buckets in tests.')
 
@@ -170,6 +194,15 @@ def setup():
 
     proto = 'https' if config.default_is_secure else 'http'
     config.default_endpoint = "%s://%s:%d" % (proto, config.default_host, config.default_port)
+
+    try:
+        config.default_ssl_verify = cfg.getboolean('DEFAULT', "ssl_verify")
+    except configparser.NoOptionError:
+        config.default_ssl_verify = False
+
+    # Disable InsecureRequestWarning reported by urllib3 when ssl_verify is False
+    if not config.default_ssl_verify:
+        urllib3.disable_warnings()
 
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
@@ -218,12 +251,31 @@ def setup():
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
 
+
 def teardown():
     alt_client = get_alt_client()
     tenant_client = get_tenant_client()
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+    try:
+        iam_client = get_iam_client()
+        list_roles_resp = iam_client.list_roles()
+        for role in list_roles_resp['Roles']:
+            list_policies_resp = iam_client.list_role_policies(RoleName=role['RoleName'])
+            for policy in list_policies_resp['PolicyNames']:
+                del_policy_resp = iam_client.delete_role_policy(
+                                         RoleName=role['RoleName'],
+                                         PolicyName=policy
+                                        )
+            del_role_resp = iam_client.delete_role(RoleName=role['RoleName'])
+        list_oidc_resp = iam_client.list_open_id_connect_providers()
+        for oidcprovider in list_oidc_resp['OpenIDConnectProviderList']:
+            del_oidc_resp = iam_client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=oidcprovider['Arn']
+                    )
+    except:
+        pass
 
 def check_webidentity():
     cfg = configparser.RawConfigParser()
@@ -242,6 +294,9 @@ def check_webidentity():
     config.webidentity_aud = cfg.get('webidentity', "aud")
     config.webidentity_token = cfg.get('webidentity', "token")
     config.webidentity_realm = cfg.get('webidentity', "KC_REALM")
+    config.webidentity_sub = cfg.get('webidentity', "sub")
+    config.webidentity_azp = cfg.get('webidentity', "azp")
+    config.webidentity_user_token = cfg.get('webidentity', "user_token")
 
 def get_client(client_config=None):
     if client_config == None:
@@ -252,6 +307,7 @@ def get_client(client_config=None):
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -261,6 +317,7 @@ def get_v2_client():
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version='s3'))
     return client
 
@@ -274,6 +331,7 @@ def get_sts_client(client_config=None):
                         endpoint_url=config.default_endpoint,
                         region_name='',
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -305,6 +363,7 @@ def get_iam_client(client_config=None):
                         endpoint_url=config.default_endpoint,
                         region_name='',
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -317,6 +376,7 @@ def get_alt_client(client_config=None):
                         aws_secret_access_key=config.alt_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -329,6 +389,7 @@ def get_tenant_client(client_config=None):
                         aws_secret_access_key=config.tenant_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -339,6 +400,7 @@ def get_tenant_iam_client():
                           aws_access_key_id=config.tenant_access_key,
                           aws_secret_access_key=config.tenant_secret_key,
                           endpoint_url=config.default_endpoint,
+                          verify=config.default_ssl_verify,
                           use_ssl=config.default_is_secure)
     return client
 
@@ -348,6 +410,7 @@ def get_unauthenticated_client():
                         aws_secret_access_key='',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version=UNSIGNED))
     return client
 
@@ -357,6 +420,7 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         aws_secret_access_key='roflmao',
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=Config(signature_version='s3v4'))
     return client
 
@@ -369,6 +433,7 @@ def get_svc_client(client_config=None, svc='s3'):
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
                         config=client_config)
     return client
 
@@ -399,7 +464,8 @@ def get_new_bucket_resource(name=None):
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
-                        use_ssl=config.default_is_secure)
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify)
     if name is None:
         name = get_new_bucket_name()
     bucket = s3.Bucket(name)
@@ -448,6 +514,9 @@ def get_config_port():
 
 def get_config_endpoint():
     return config.default_endpoint
+
+def get_config_ssl_verify():
+    return config.default_ssl_verify
 
 def get_main_aws_access_key():
     return config.main_access_key
@@ -509,8 +578,23 @@ def get_thumbprint():
 def get_aud():
     return config.webidentity_aud
 
+def get_sub():
+    return config.webidentity_sub
+
+def get_azp():
+    return config.webidentity_azp
+
 def get_token():
     return config.webidentity_token
 
 def get_realm_name():
     return config.webidentity_realm
+
+def get_iam_access_key():
+    return config.iam_access_key
+
+def get_iam_secret_key():
+    return config.iam_secret_key
+
+def get_user_token():
+    return config.webidentity_user_token

@@ -51,6 +51,7 @@ from . import (
     get_config_host,
     get_config_port,
     get_config_endpoint,
+    get_config_ssl_verify,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_main_display_name,
@@ -2029,6 +2030,48 @@ def test_multi_objectv2_delete():
     assert 'Contents' not in response
 
 @attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects has upper limit of 1000 keys')
+@attr(assertion='fails 400')
+def test_multi_object_delete_key_limit():
+    key_names = [f"key-{i}" for i in range(1001)]
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    paginator = client.get_paginator('list_objects')
+    pages = paginator.paginate(Bucket=bucket_name)
+    numKeys = 0
+    for page in pages:
+        numKeys += len(page['Contents'])
+    eq(numKeys, 1001)
+
+    objs_dict = _make_objs_dict(key_names=key_names)
+    e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
+@attr(method='post')
+@attr(operation='delete multiple objects has upper limit of 1000 keys with list-objects-v2')
+@attr(assertion='fails 400')
+def test_multi_objectv2_delete_key_limit():
+    key_names = [f"key-{i}" for i in range(1001)]
+    bucket_name = _create_objects(keys=key_names)
+    client = get_client()
+
+    paginator = client.get_paginator('list_objects_v2')
+    pages = paginator.paginate(Bucket=bucket_name)
+    numKeys = 0
+    for page in pages:
+        numKeys += len(page['Contents'])
+    eq(numKeys, 1001)
+
+    objs_dict = _make_objs_dict(key_names=key_names)
+    e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+
+@attr(resource='object')
 @attr(method='put')
 @attr(operation='write zero-byte key')
 @attr(assertion='correct content length')
@@ -2286,7 +2329,7 @@ def test_post_object_anonymous_request():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2328,7 +2371,7 @@ def test_post_object_authenticated_request():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2369,7 +2412,7 @@ def test_post_object_authenticated_no_content_type():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key="foo.txt")
     body = _get_body(response)
@@ -2411,7 +2454,7 @@ def test_post_object_authenticated_request_bad_access_key():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2428,7 +2471,7 @@ def test_post_object_set_success_code():
     ("success_action_status" , "201"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 201)
     message = ET.fromstring(r.content).find('Key')
     eq(message.text,'foo.txt')
@@ -2447,7 +2490,7 @@ def test_post_object_set_invalid_success_code():
     ("success_action_status" , "404"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     content = r.content.decode()
     eq(content,'')
@@ -2489,7 +2532,7 @@ def test_post_object_upload_larger_than_chunk():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', foo_string)])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2529,7 +2572,7 @@ def test_post_object_set_key_from_filename():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('foo.txt', 'bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -2570,7 +2613,7 @@ def test_post_object_ignored_header():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),("x-ignore-foo" , "bar"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
 @attr(resource='object')
@@ -2609,7 +2652,7 @@ def test_post_object_case_insensitive_condition_fields():
     ("aCl" , "private"),("signature" , signature),("pOLICy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
 @attr(resource='object')
@@ -2646,7 +2689,7 @@ def test_post_object_escaped_field_values():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='\$foo.txt')
     body = _get_body(response)
@@ -2691,7 +2734,7 @@ def test_post_object_success_redirect_action():
     ("Content-Type" , "text/plain"),("success_action_redirect" , redirect_url),\
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 200)
     url = r.url
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -2733,7 +2776,7 @@ def test_post_object_invalid_signature():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2770,7 +2813,7 @@ def test_post_object_invalid_access_key():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2807,7 +2850,7 @@ def test_post_object_invalid_date_format():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2843,7 +2886,7 @@ def test_post_object_no_key_specified():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2880,7 +2923,7 @@ def test_post_object_missing_signature():
     ("acl" , "private"),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -2916,7 +2959,7 @@ def test_post_object_missing_policy_condition():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -2954,7 +2997,7 @@ def test_post_object_user_specified_header():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     eq(response['Metadata']['foo'], 'barclamp')
@@ -2994,7 +3037,7 @@ def test_post_object_request_missing_policy_specified_field():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3031,7 +3074,7 @@ def test_post_object_condition_is_case_sensitive():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3068,7 +3111,7 @@ def test_post_object_expires_is_case_sensitive():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3105,7 +3148,7 @@ def test_post_object_expired_policy():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3142,7 +3185,7 @@ def test_post_object_invalid_request_field_value():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 403)
 
 @attr(resource='object')
@@ -3179,7 +3222,7 @@ def test_post_object_missing_expires_condition():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3208,7 +3251,7 @@ def test_post_object_missing_conditions_list():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3245,7 +3288,7 @@ def test_post_object_upload_size_limit_exceeded():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3282,7 +3325,7 @@ def test_post_object_missing_content_length_argument():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3319,7 +3362,7 @@ def test_post_object_invalid_content_length_argument():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3356,7 +3399,7 @@ def test_post_object_upload_size_below_minimum():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3389,7 +3432,7 @@ def test_post_object_empty_conditions():
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 400)
 
 @attr(resource='object')
@@ -3946,7 +3989,7 @@ def test_object_raw_get_x_amz_expires_not_expired():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 200)
 
 @attr(resource='object')
@@ -3960,7 +4003,7 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=0, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 @attr(resource='object')
@@ -3974,7 +4017,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=609901, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 @attr(resource='object')
@@ -3988,7 +4031,7 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=-7, HttpMethod='GET')
 
-    res = requests.get(url).__dict__
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 
@@ -4047,7 +4090,7 @@ def test_object_raw_put_authenticated_expired():
     url = client.generate_presigned_url(ClientMethod='put_object', Params=params, ExpiresIn=-1000, HttpMethod='PUT')
 
     # params wouldn't take a 'Body' parameter so we're passing it in here
-    res = requests.put(url,data="foo").__dict__
+    res = requests.put(url, data="foo", verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 403)
 
 def check_bad_bucket_name(bucket_name):
@@ -6720,6 +6763,8 @@ def test_multipart_upload_small():
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
     response = client.get_object(Bucket=bucket_name, Key=key1)
     eq(response['ContentLength'], objlen)
+    # check extra client.complete_multipart_upload
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
 def _create_key_with_random_content(keyname, size=7*1024*1024, bucket_name=None, client=None):
     if bucket_name is None:
@@ -6935,6 +6980,8 @@ def test_multipart_upload():
     client = get_client()
 
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, content_type=content_type, metadata=metadata)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    # check extra client.complete_multipart_upload
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.head_bucket(Bucket=bucket_name)
@@ -7413,7 +7460,7 @@ def test_set_cors():
     eq(status, 404)
 
 def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
-    r = func(url, headers=headers)
+    r = func(url, headers=headers, verify=get_config_ssl_verify())
     eq(r.status_code, expect_status)
 
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
@@ -10317,7 +10364,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     ('x-amz-server-side-encryption-customer-key-md5', 'DWygnHRtgiJ77HCm+1rvHw=='), \
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
     get_headers = {
@@ -10606,7 +10653,7 @@ def test_sse_kms_post_object_authenticated_request():
     ('x-amz-server-side-encryption-aws-kms-key-id', kms_keyid), \
     ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
 
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -11312,7 +11359,7 @@ def test_post_object_tags_anonymous_request():
         ('file', ('bar')),
     ])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key=key_name)
     body = _get_body(response)
@@ -11364,7 +11411,7 @@ def test_post_object_tags_authenticated_request():
         ("Content-Type" , "text/plain"),
         ('file', ('bar'))])
 
-    r = requests.post(url, files = payload)
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     eq(r.status_code, 204)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
@@ -12620,6 +12667,77 @@ def test_object_lock_delete_object_with_retention():
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
 
+@attr(resource='object')
+@attr(method='delete')
+@attr(operation='Test multi-delete object with retention')
+@attr(assertion='retention period make effects')
+@attr('object-lock')
+def test_object_lock_multi_delete_object_with_retention():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    key1 = 'file1'
+    key2 = 'file2'
+
+    response1 = client.put_object(Bucket=bucket_name, Body='abc', Key=key1)
+    response2 = client.put_object(Bucket=bucket_name, Body='abc', Key=key2)
+
+    versionId1 = response1['VersionId']
+    versionId2 = response2['VersionId']
+
+    # key1 is under retention, but key2 isn't.
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
+    client.put_object_retention(Bucket=bucket_name, Key=key1, Retention=retention)
+
+    delete_response = client.delete_objects(
+        Bucket=bucket_name,
+        Delete={
+            'Objects': [
+                {
+                    'Key': key1,
+                    'VersionId': versionId1
+                },
+                {
+                    'Key': key2,
+                    'VersionId': versionId2
+                }
+            ]
+        }
+    )
+
+    eq(len(delete_response['Deleted']), 1)
+    eq(len(delete_response['Errors']), 1)
+    
+    failed_object = delete_response['Errors'][0]
+    eq(failed_object['Code'], 'AccessDenied')
+    eq(failed_object['Key'], key1)
+    eq(failed_object['VersionId'], versionId1)
+
+    deleted_object = delete_response['Deleted'][0]
+    eq(deleted_object['Key'], key2)
+    eq(deleted_object['VersionId'], versionId2)
+
+    delete_response = client.delete_objects(
+        Bucket=bucket_name,
+        Delete={
+            'Objects': [
+                {
+                    'Key': key1,
+                    'VersionId': versionId1
+                }
+            ]
+        },
+        BypassGovernanceRetention=True
+    )
+
+    assert( ('Errors' not in delete_response) or (len(delete_response['Errors']) == 0) )
+    eq(len(delete_response['Deleted']), 1)
+    deleted_object = delete_response['Deleted'][0]
+    eq(deleted_object['Key'], key1)
+    eq(deleted_object['VersionId'], versionId1)
+
+
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='Test put legal hold')
@@ -12790,6 +12908,66 @@ def test_object_lock_uploading_obj():
     eq(response['ObjectLockLegalHoldStatus'], 'ON')
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE with bypass')
+@attr(assertion='succeeds')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_governance_with_bypass():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=GOVERNANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # change mode to COMPLIANCE
+    retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
+    client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE without bypass')
+@attr(assertion='fails')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_governance_without_bypass():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=GOVERNANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # try to change mode to COMPLIANCE
+    retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
+    e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test changing object retention mode from COMPLIANCE to GOVERNANCE')
+@attr(assertion='fails')
+@attr('object-lock')
+def test_object_lock_changing_mode_from_compliance():
+    bucket_name = get_new_bucket_name()
+    key = 'file1'
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    # upload object with mode=COMPLIANCE
+    retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
+    client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='COMPLIANCE',
+                      ObjectLockRetainUntilDate=retain_until)
+    # try to change mode to GOVERNANCE
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':retain_until}
+    e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
 
 @attr(resource='object')
 @attr(method='copy')

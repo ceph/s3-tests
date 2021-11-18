@@ -10,6 +10,9 @@ port = 8000
 ## say "False" to disable TLS
 is_secure = False
 
+## say "False" to disable SSL Verify
+ssl_verify = False
+
 [fixtures]
 ## all the buckets created will start with this prefix;
 ## {random} will be filled with random characters to pad
@@ -72,6 +75,9 @@ email = tenanteduser@example.com
 #following section needs to be added for all sts-tests
 [iam]
 #used for iam operations in sts-tests
+#email from vstart.sh
+email = s3@example.com
+
 #user_id from vstart.sh
 user_id = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
@@ -91,6 +97,12 @@ display_name = youruseridhere
 token=<access_token>
 
 aud=<obtained after introspecting token>
+
+sub=<obtained after introspecting token>
+
+azp=<obtained after introspecting token>
+
+user_token=<access token for a user, with attribute Department=[Engineering, Marketing>]
 
 thumbprint=<obtained from x509 certificate>
 
