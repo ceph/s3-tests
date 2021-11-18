@@ -7321,6 +7321,55 @@ def test_list_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id2)
     client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id3)
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='list multipart uploads with different owners')
+@attr(assertion='successful')
+def test_list_multipart_upload_owner():
+    bucket_name = get_new_bucket()
+
+    client1 = get_client()
+    user1 = get_main_user_id()
+    name1 = get_main_display_name()
+
+    client2 = get_alt_client()
+    user2  = get_alt_user_id()
+    name2 = get_alt_display_name()
+
+    # add bucket acl for public read/write access
+    client1.put_bucket_acl(Bucket=bucket_name, ACL='public-read-write')
+
+    key1 = 'multipart1'
+    key2 = 'multipart2'
+    upload1 = client1.create_multipart_upload(Bucket=bucket_name, Key=key1)['UploadId']
+    try:
+        upload2 = client2.create_multipart_upload(Bucket=bucket_name, Key=key2)['UploadId']
+        try:
+            # match fields of an Upload from ListMultipartUploadsResult
+            def match(upload, key, uploadid, userid, username):
+                eq(upload['Key'], key)
+                eq(upload['UploadId'], uploadid)
+                eq(upload['Initiator']['ID'], userid)
+                eq(upload['Initiator']['DisplayName'], username)
+                eq(upload['Owner']['ID'], userid)
+                eq(upload['Owner']['DisplayName'], username)
+
+            # list uploads with client1
+            uploads1 = client1.list_multipart_uploads(Bucket=bucket_name)['Uploads']
+            eq(len(uploads1), 2)
+            match(uploads1[0], key1, upload1, user1, name1)
+            match(uploads1[1], key2, upload2, user2, name2)
+
+            # list uploads with client2
+            uploads2 = client2.list_multipart_uploads(Bucket=bucket_name)['Uploads']
+            eq(len(uploads2), 2)
+            match(uploads2[0], key1, upload1, user1, name1)
+            match(uploads2[1], key2, upload2, user2, name2)
+        finally:
+            client2.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload2)
+    finally:
+        client1.abort_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload1)
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multi-part upload with missing part')
