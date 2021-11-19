@@ -9137,14 +9137,14 @@ def test_lifecycle_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
-    rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'expire1/', 'Status':'Enabled'},
-           {'ID': 'rule2', 'Expiration': {'Days': 4}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
+    rules=[{'ID': 'rule1', 'Expiration': {'Days': 3}, 'Prefix': 'expire1/', 'Status':'Enabled'},
+           {'ID': 'rule2', 'Expiration': {'Days': 12}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     response = client.list_objects(Bucket=bucket_name)
     init_objects = response['Contents']
 
-    time.sleep(28)
+    time.sleep(80)
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
@@ -9152,7 +9152,7 @@ def test_lifecycle_expiration():
     response = client.list_objects(Bucket=bucket_name)
     keep2_objects = response['Contents']
 
-    time.sleep(20)
+    time.sleep(80)
     response = client.list_objects(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
@@ -9172,14 +9172,14 @@ def test_lifecyclev2_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
-    rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'expire1/', 'Status':'Enabled'},
-           {'ID': 'rule2', 'Expiration': {'Days': 4}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
+    rules=[{'ID': 'rule1', 'Expiration': {'Days': 3}, 'Prefix': 'expire1/', 'Status':'Enabled'},
+           {'ID': 'rule2', 'Expiration': {'Days': 12}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     response = client.list_objects_v2(Bucket=bucket_name)
     init_objects = response['Contents']
 
-    time.sleep(28)
+    time.sleep(80)
     response = client.list_objects_v2(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
@@ -9187,7 +9187,7 @@ def test_lifecyclev2_expiration():
     response = client.list_objects_v2(Bucket=bucket_name)
     keep2_objects = response['Contents']
 
-    time.sleep(20)
+    time.sleep(80)
     response = client.list_objects_v2(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
