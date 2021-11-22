@@ -6738,6 +6738,7 @@ def test_object_copy_versioning_multipart_upload():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart upload without parts')
+@attr('multipart')
 def test_multipart_upload_empty():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6753,6 +6754,7 @@ def test_multipart_upload_empty():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart uploads with single small part')
+@attr('multipart')
 def test_multipart_upload_small():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6830,6 +6832,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
+@attr('multipart')
 def test_multipart_copy_small():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key)
@@ -6849,6 +6852,7 @@ def test_multipart_copy_small():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with an invalid range')
+@attr('multipart')
 def test_multipart_copy_invalid_range():
     client = get_client()
     src_key = 'source'
@@ -6873,6 +6877,7 @@ def test_multipart_copy_invalid_range():
 @attr(operation='check multipart copy with an improperly formatted range')
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
 @attr('fails_on_rgw')
+@attr('multipart')
 def test_multipart_copy_improper_range():
     client = get_client()
     src_key = 'source'
@@ -6905,6 +6910,7 @@ def test_multipart_copy_improper_range():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies without x-amz-copy-source-range')
+@attr('multipart')
 def test_multipart_copy_without_range():
     client = get_client()
     src_key = 'source'
@@ -6933,6 +6939,7 @@ def test_multipart_copy_without_range():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart copies with single small part')
+@attr('multipart')
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
 
@@ -6971,6 +6978,7 @@ def _check_content_using_range(key, bucket_name, data, step):
 @attr(operation='complete multi-part upload')
 @attr(assertion='successful')
 @attr('fails_on_aws')
+@attr('multipart')
 def test_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7087,6 +7095,7 @@ def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
 @attr(method='put')
 @attr(operation='complete multi-part upload')
 @attr(assertion='successful')
+@attr('multipart')
 def test_multipart_upload_resend_part():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7099,6 +7108,7 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [0,1,2,3,4,5])
 
 @attr(assertion='successful')
+@attr('multipart')
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7129,6 +7139,7 @@ def test_multipart_upload_multiple_sizes():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
 @attr(assertion='successful')
+@attr('multipart')
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key, 12*1024*1024)
@@ -7171,6 +7182,7 @@ def test_multipart_copy_multiple_sizes():
 @attr(method='put')
 @attr(operation='check failure on multiple multi-part upload with size too small')
 @attr(assertion='fails 400')
+@attr('multipart')
 def test_multipart_upload_size_too_small():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7220,6 +7232,7 @@ def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
 @attr(method='put')
 @attr(operation='check contents of multi-part upload')
 @attr(assertion='successful')
+@attr('multipart')
 def test_multipart_upload_contents():
     bucket_name = get_new_bucket()
     _do_test_multipart_upload_contents(bucket_name, 'mymultipart', 3)
@@ -7228,6 +7241,7 @@ def test_multipart_upload_contents():
 @attr(method='put')
 @attr(operation=' multi-part upload overwrites existing key')
 @attr(assertion='successful')
+@attr('multipart')
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7257,6 +7271,7 @@ def test_multipart_upload_overwrite_existing_object():
 @attr(method='put')
 @attr(operation='abort multi-part upload')
 @attr(assertion='successful')
+@attr('multipart')
 def test_abort_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7277,6 +7292,7 @@ def test_abort_multipart_upload():
 @attr(method='put')
 @attr(operation='abort non-existent multi-part upload')
 @attr(assertion='fails 404')
+@attr('multipart')
 def test_abort_multipart_upload_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7292,6 +7308,7 @@ def test_abort_multipart_upload_not_found():
 @attr(method='put')
 @attr(operation='concurrent multi-part uploads')
 @attr(assertion='successful')
+@attr('multipart')
 def test_list_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7374,6 +7391,7 @@ def test_list_multipart_upload_owner():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multi-part upload with missing part')
+@attr('multipart')
 def test_multipart_upload_missing_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7396,6 +7414,7 @@ def test_multipart_upload_missing_part():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='multi-part upload with incorrect ETag')
+@attr('multipart')
 def test_multipart_upload_incorrect_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8033,6 +8052,7 @@ def test_atomic_write_bucket_gone():
 @attr(method='put')
 @attr(operation='begin to overwrite file with multipart upload then abort')
 @attr(assertion='read back original key contents')
+@attr('multipart')
 def test_atomic_multipart_upload_write():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8075,6 +8095,7 @@ class ActionOnCount:
 @attr(method='put')
 @attr(operation='multipart check for two writes of the same part, first write finishes last')
 @attr(assertion='object contains correct content')
+@attr('multipart')
 def test_multipart_resend_first_finishes_last():
     bucket_name = get_new_bucket()
     client = get_client()
