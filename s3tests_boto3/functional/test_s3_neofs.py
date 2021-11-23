@@ -1,5 +1,11 @@
 import requests
 import time
+from .test_s3 import (
+    _multipart_upload,
+    _get_body,
+    _check_content_using_range,
+    _create_key_with_random_content,
+)
 
 from nose.plugins.attrib import attr
 from botocore.exceptions import ClientError
@@ -471,3 +477,124 @@ def test_cors_header_option():
                                               response_methods_header: 'POST',
                                               response_headers_header: None
                                               })
+
+
+def _check_multipart_upload_resend(bucket_name, key, objlen, resend_parts):
+    content_type = 'text/bla'
+    metadata = {'foo': 'bar'}
+    client = get_client()
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key,
+                                                 size=objlen, content_type=content_type, metadata=metadata,
+                                                 resend_parts=resend_parts)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.get_object(Bucket=bucket_name, Key=key)
+    eq(response['ContentType'], content_type)
+    eq(response['Metadata']['foo'], metadata['foo'])
+    body = _get_body(response)
+    eq(len(body), response['ContentLength'])
+    eq(body, data)
+
+    _check_content_using_range(key, bucket_name, data, 1000000)
+    _check_content_using_range(key, bucket_name, data, 10000000)
+    client.delete_object(Bucket=bucket_name, Key=key)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multiple multi-part upload with different sizes')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload')
+@attr(assertion='successful')
+@attr('multipart')
+def test_multipart_upload_resend_part():
+    bucket_name = get_new_bucket()
+    key = "mymultipart"
+    objlen = 30 * 1024 * 1024
+
+    _check_multipart_upload_resend(bucket_name, key, objlen, [0])
+    _check_multipart_upload_resend(bucket_name, key, objlen, [1])
+    _check_multipart_upload_resend(bucket_name, key, objlen, [2])
+    _check_multipart_upload_resend(bucket_name, key, objlen, [1, 2])
+    _check_multipart_upload_resend(bucket_name, key, objlen, [0, 1, 2, 3, 4, 5])
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart uploads with single small part')
+@attr('multipart')
+def test_multipart_upload_small():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    key1 = "mymultipart"
+    objlen = 1
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key1, size=objlen)
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id,
+                                                MultipartUpload={'Parts': parts})
+    response = client.get_object(Bucket=bucket_name, Key=key1)
+    eq(response['ContentLength'], objlen)
+    client.delete_object(Bucket=bucket_name, Key=key1)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copies with an invalid range')
+@attr('multipart')
+def test_multipart_copy_invalid_range():
+    client = get_client()
+    src_key = 'source'
+    src_bucket_name = _create_key_with_random_content(src_key, size=5)
+
+    response = client.create_multipart_upload(Bucket=src_bucket_name, Key='dest')
+    upload_id = response['UploadId']
+
+    copy_source = {'Bucket': src_bucket_name, 'Key': src_key}
+    copy_source_range = 'bytes={start}-{end}'.format(start=0, end=21)
+
+    e = assert_raises(ClientError, client.upload_part_copy, Bucket=src_bucket_name, Key='dest', UploadId=upload_id,
+                      CopySource=copy_source, CopySourceRange=copy_source_range, PartNumber=1)
+    status, error_code = _get_status_and_error_code(e.response)
+    valid_status = [400, 416]
+    if not status in valid_status:
+       raise AssertionError("Invalid response " + str(status))
+    eq(error_code, 'InvalidRange')
+    client.delete_object(Bucket=src_bucket_name, Key=src_key)
+
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='complete multi-part upload')
+@attr(assertion='successful')
+@attr('fails_on_aws')
+@attr('multipart')
+def test_multipart_upload():
+    bucket_name = get_new_bucket()
+    key = "mymultipart"
+    content_type = 'text/bla'
+    objlen = 30 * 1024 * 1024
+    metadata = {'foo': 'bar'}
+    client = get_client()
+
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen,
+                                                 content_type=content_type, metadata=metadata)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = client.head_bucket(Bucket=bucket_name)
+    rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
+    eq(rgw_bytes_used, objlen)
+
+    rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
+    eq(rgw_object_count, 1)
+
+    response = client.get_object(Bucket=bucket_name, Key=key)
+    eq(response['ContentType'], content_type)
+    eq(response['Metadata']['foo'], metadata['foo'])
+    body = _get_body(response)
+    eq(len(body), response['ContentLength'])
+    eq(body, data)
+
+    _check_content_using_range(key, bucket_name, data, 1000000)
+    _check_content_using_range(key, bucket_name, data, 10000000)
+    client.delete_object(Bucket=bucket_name, Key=key)
