@@ -7161,6 +7161,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 @attr(operation='check multipart copies of versioned objects')
 @attr('versioning')
 @attr('fails_on_dbstore')
+@attr('multipart')
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
     dest_bucket_name = get_new_bucket()
