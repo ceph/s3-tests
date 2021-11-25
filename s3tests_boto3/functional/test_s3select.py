@@ -840,20 +840,17 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time, res_s3select_substring)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) = 2;')  )
+    res_s3select_date_time_to_string = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select cast(to_string(to_timestamp(_1), \'x\') as int) from  s3object;')  )
 
-    res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object;')  )
+    res_s3select_date_time_extract = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select extract(timezone_hour from to_timestamp(_1)) from  s3object;')  )
 
-    s3select_assert_result( res_s3select_date_time, res_s3select_count)
+    s3select_assert_result( res_s3select_date_time_to_string, res_s3select_date_time_extract )
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) = 1 ;')  )
+    res_s3select_date_time_to_timestamp = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select extract(month from to_timestamp(_1)) from s3object where extract(month from to_timestamp(_1)) = 5;')  )
 
-    s3select_assert_result( res_s3select_date_time, res_s3select_count)
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select cast(substring(_1, 5, 2) as int) from s3object where _1 like \'____05%\';')  )
 
-    # validate that utcnow is integrate correctly with other date-time functions 
-    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24 ;')  )
-
-    s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
+    s3select_assert_result( res_s3select_date_time_to_timestamp, res_s3select_substring)
 
 @attr('s3select')
 def test_true_false_datetime():
@@ -884,6 +881,7 @@ def test_true_false_datetime():
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
+    # validate that utcnow is integrate correctly with other date-time functions 
     res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24) = true ;')  )
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
