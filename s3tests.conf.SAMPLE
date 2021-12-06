@@ -56,6 +56,37 @@ access_key = NOPQRSTUVWXYZABCDEFG
 # alt AWS secret key set in vstart.sh
 secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 
+[s3 cloud]
+## to run the testcases with "cloud_transition" attribute.
+## Note: the waiting time may have to tweaked depending on
+## the I/O latency to the cloud endpoint.
+
+## host set for cloud endpoint
+# host = localhost
+
+## port set for cloud endpoint
+# port = 8001
+
+## say "False" to disable TLS
+# is_secure = False
+
+## cloud endpoint credentials
+# access_key = 0555b35654ad1656d804
+# secret_key = h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
+
+## storage class configured as cloud tier on local rgw server
+# cloud_storage_class = CLOUDTIER
+
+## Below are optional -
+
+## Above configured cloud storage class config options
+# retain_head_object = false
+# target_storage_class = Target_SC
+# target_path = cloud-bucket
+
+## another regular storage class to test multiple transition rules,
+# storage_class = S1
+
 [s3 tenant]
 # tenant display_name set in vstart.sh
 display_name = testx$tenanteduser
