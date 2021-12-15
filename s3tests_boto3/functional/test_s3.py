@@ -13451,6 +13451,7 @@ def test_multipart_upload_on_a_bucket_with_policy():
 @attr(method='put')
 @attr(operation='put bucket encryption on bucket')
 @attr(assertion='succeeds')
+@attr('sse-s3')
 def test_put_bucket_encryption():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13473,6 +13474,7 @@ def test_put_bucket_encryption():
 @attr(method='get')
 @attr(operation='get bucket encryption on bucket')
 @attr(assertion='succeeds')
+@attr('sse-s3')
 def test_get_bucket_encryption():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13507,6 +13509,7 @@ def test_get_bucket_encryption():
 @attr(method='delete')
 @attr(operation='delete bucket encryption on bucket')
 @attr(assertion='succeeds')
+@attr('sse-s3')
 def test_delete_bucket_encryption():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13529,8 +13532,6 @@ def test_delete_bucket_encryption():
     response = client.delete_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
-@attr(assertion='success')
-@attr('encryption')
 def _test_sse_s3_customer_write(file_size):
     """
     Test enables bucket encryption.
@@ -13564,6 +13565,7 @@ def _test_sse_s3_customer_write(file_size):
 @attr(operation='Test SSE-S3 encrypted transfer 1 byte')
 @attr(assertion='success')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_transfer_1b():
     _test_sse_s3_customer_write(1)
 
@@ -13572,6 +13574,7 @@ def test_sse_s3_transfer_1b():
 @attr(operation='Test SSE-S3 encrypted transfer 1KB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_transfer_1kb():
     _test_sse_s3_customer_write(1024)
 
@@ -13580,6 +13583,7 @@ def test_sse_s3_transfer_1kb():
 @attr(operation='Test SSE-S3 encrypted transfer 1MB')
 @attr(assertion='success')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_transfer_1mb():
     _test_sse_s3_customer_write(1024*1024)
 
@@ -13588,6 +13592,7 @@ def test_sse_s3_transfer_1mb():
 @attr(operation='Test head operation on SSE-S3 encrypted object')
 @attr(assertion='success')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13625,6 +13630,7 @@ def test_sse_s3_method_head():
 @attr(operation='complete SSE-S3 multi-part upload')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13681,6 +13687,7 @@ def test_sse_s3_multipart_upload():
 @attr(operation='authenticated SSE-S3 browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
+@attr('sse-s3')
 def test_sse_s3_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
