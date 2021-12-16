@@ -13527,9 +13527,11 @@ def _test_sse_s3_default_upload(file_size):
     _put_bucket_encryption(client, bucket_name)
 
     data = 'A'*file_size
-    client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
+    response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
 
     response = client.get_object(Bucket=bucket_name, Key='testobj')
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
     body = _get_body(response)
     eq(body, data)
 
