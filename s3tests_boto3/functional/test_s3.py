@@ -13566,6 +13566,17 @@ def test_sse_s3_default_upload_1mb():
     _test_sse_s3_default_upload(1024*1024)
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='Test 8MB upload to SSE-S3 default-encrypted bucket')
+@attr(assertion='success')
+@attr('encryption')
+@attr('bucket-encryption')
+@attr('sse-s3')
+def test_sse_s3_default_upload_8mb():
+    _test_sse_s3_default_upload(8*1024*1024)
+
+
+@attr(resource='object')
 @attr(method='head')
 @attr(operation='Test head operation on SSE-S3 default-encrypted object')
 @attr(assertion='success')
