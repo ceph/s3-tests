@@ -13516,7 +13516,7 @@ def test_delete_bucket_encryption():
     response = client.delete_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
-def _test_sse_s3_customer_write(file_size):
+def _test_sse_s3_default_upload(file_size):
     """
     Test enables bucket encryption.
     Create a file of A's of certain size, and use it to set_contents_from_file.
@@ -13535,38 +13535,42 @@ def _test_sse_s3_customer_write(file_size):
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='Test SSE-S3 encrypted transfer 1 byte')
+@attr(operation='Test 1 byte upload to SSE-S3 default-encrypted bucket')
 @attr(assertion='success')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_transfer_1b():
-    _test_sse_s3_customer_write(1)
+def test_sse_s3_default_upload_1b():
+    _test_sse_s3_default_upload(1)
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='Test SSE-S3 encrypted transfer 1KB')
+@attr(operation='Test 1KB upload to SSE-S3 default-encrypted bucket')
 @attr(assertion='success')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_transfer_1kb():
-    _test_sse_s3_customer_write(1024)
+def test_sse_s3_default_upload_1kb():
+    _test_sse_s3_default_upload(1024)
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='Test SSE-S3 encrypted transfer 1MB')
+@attr(operation='Test 1MB upload to SSE-S3 default-encrypted bucket')
 @attr(assertion='success')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_transfer_1mb():
-    _test_sse_s3_customer_write(1024*1024)
+def test_sse_s3_default_upload_1mb():
+    _test_sse_s3_default_upload(1024*1024)
 
 @attr(resource='object')
 @attr(method='head')
-@attr(operation='Test head operation on SSE-S3 encrypted object')
+@attr(operation='Test head operation on SSE-S3 default-encrypted object')
 @attr(assertion='success')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_method_head():
+def test_sse_s3_default_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption(client, bucket_name)
@@ -13592,8 +13596,9 @@ def test_sse_s3_method_head():
 @attr(operation='complete SSE-S3 multi-part upload')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_multipart_upload():
+def test_sse_s3_default_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption(client, bucket_name)
@@ -13641,8 +13646,9 @@ def test_sse_s3_multipart_upload():
 @attr(operation='authenticated SSE-S3 browser based upload via POST request')
 @attr(assertion='succeeds and returns written data')
 @attr('encryption')
+@attr('bucket-encryption')
 @attr('sse-s3')
-def test_sse_s3_post_object_authenticated_request():
+def test_sse_s3_default_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption(client, bucket_name)
