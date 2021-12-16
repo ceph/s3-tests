@@ -13446,16 +13446,10 @@ def test_multipart_upload_on_a_bucket_with_policy():
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='put bucket encryption on bucket')
-@attr(assertion='succeeds')
-@attr('sse-s3')
-def test_put_bucket_encryption():
-    bucket_name = get_new_bucket()
-    client = get_client()
-
+def _put_bucket_encryption(client, bucket_name):
+    """
+    enable a default encryption policy on the given bucket
+    """
     server_side_encryption_conf = {
         'Rules': [
             {
@@ -13465,9 +13459,19 @@ def test_put_bucket_encryption():
             },
         ]
     }
-
     response = client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='put bucket encryption on bucket')
+@attr(assertion='succeeds')
+@attr('sse-s3')
+def test_put_bucket_encryption():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    _put_bucket_encryption(client, bucket_name)
 
 
 @attr(resource='bucket')
@@ -13487,17 +13491,7 @@ def test_get_bucket_encryption():
 
     eq(response_code, 'ServerSideEncryptionConfigurationNotFoundError')
 
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+    _put_bucket_encryption(client, bucket_name)
 
     response = client.get_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
@@ -13517,17 +13511,7 @@ def test_delete_bucket_encryption():
     response = client.delete_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+    _put_bucket_encryption(client, bucket_name)
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
@@ -13540,18 +13524,7 @@ def _test_sse_s3_customer_write(file_size):
     """
     bucket_name = get_new_bucket()
     client = get_client()
-
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+    _put_bucket_encryption(client, bucket_name)
 
     data = 'A'*file_size
     client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
@@ -13596,18 +13569,7 @@ def test_sse_s3_transfer_1mb():
 def test_sse_s3_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
-
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+    _put_bucket_encryption(client, bucket_name)
 
     data = 'A'*1000
     key = 'testobj'
@@ -13634,6 +13596,8 @@ def test_sse_s3_method_head():
 def test_sse_s3_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
+    _put_bucket_encryption(client, bucket_name)
+
     key = "multipart_enc"
     content_type = 'text/plain'
     objlen = 30 * 1024 * 1024
@@ -13642,16 +13606,6 @@ def test_sse_s3_multipart_upload():
         'Content-Type': content_type
     }
     resend_parts = []
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
 
     (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
             part_size=5*1024*1024, init_headers=enc_headers, part_headers=enc_headers, metadata=metadata, resend_parts=resend_parts)
@@ -13691,17 +13645,7 @@ def test_sse_s3_multipart_upload():
 def test_sse_s3_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
-
-    server_side_encryption_conf = {
-        'Rules': [
-            {
-                'ApplyServerSideEncryptionByDefault': {
-                    'SSEAlgorithm': 'AES256'
-                }
-            },
-        ]
-    }
-    client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
+    _put_bucket_encryption(client, bucket_name)
 
     url = _get_post_url(bucket_name)
     utc = pytz.utc
