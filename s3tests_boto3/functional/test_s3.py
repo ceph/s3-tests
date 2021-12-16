@@ -13702,3 +13702,56 @@ def test_sse_s3_default_post_object_authenticated_request():
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
     eq(body, 'bar')
+
+
+def _test_sse_s3_encrypted_upload(file_size):
+    """
+    Test upload of the given size, specifically requesting sse-s3 encryption.
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    data = 'A'*file_size
+    response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data, ServerSideEncryption='AES256')
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+
+    response = client.get_object(Bucket=bucket_name, Key='testobj')
+    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    body = _get_body(response)
+    eq(body, data)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test 1 byte upload with SSE-S3 encryption')
+@attr(assertion='success')
+@attr('encryption')
+@attr('sse-s3')
+def test_sse_s3_encrypted_upload_1b():
+    _test_sse_s3_encrypted_upload(1)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test 1Kb upload with SSE-S3 encryption')
+@attr(assertion='success')
+@attr('encryption')
+@attr('sse-s3')
+def test_sse_s3_encrypted_upload_1kb():
+    _test_sse_s3_encrypted_upload(1024)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test 1MB upload with SSE-S3 encryption')
+@attr(assertion='success')
+@attr('encryption')
+@attr('sse-s3')
+def test_sse_s3_encrypted_upload_1mb():
+    _test_sse_s3_encrypted_upload(1024*1024)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='Test 8MB upload with SSE-S3 encryption')
+@attr(assertion='success')
+@attr('encryption')
+@attr('sse-s3')
+def test_sse_s3_encrypted_upload_8mb():
+    _test_sse_s3_encrypted_upload(8*1024*1024)
