@@ -41,6 +41,12 @@ secret_key = h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
 ## replace with key id obtained when secret is created, or delete if KMS not tested
 #kms_keyid = 01234567-89ab-cdef-0123-456789abcdef
 
+## Storage classes
+#storage_classes = "LUKEWARM, FROZEN"
+
+## Lifecycle debug interval (default: 10)
+#lc_debug_interval = 20
+
 [s3 alt]
 # alt display_name set in vstart.sh
 display_name = john.doe
