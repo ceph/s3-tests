@@ -82,6 +82,7 @@ from . import (
     get_cloud_client,
     nuke_prefixed_buckets,
     configured_storage_classes,
+    get_lc_debug_interval,
     )
 
 
@@ -9172,21 +9173,23 @@ def test_lifecycle_expiration():
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'expire1/', 'Status':'Enabled'},
-           {'ID': 'rule2', 'Expiration': {'Days': 4}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
+           {'ID': 'rule2', 'Expiration': {'Days': 5}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     response = client.list_objects(Bucket=bucket_name)
     init_objects = response['Contents']
 
-    time.sleep(28)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
-    time.sleep(10)
+    time.sleep(lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     keep2_objects = response['Contents']
 
-    time.sleep(20)
+    time.sleep(3*lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
@@ -9207,21 +9210,23 @@ def test_lifecyclev2_expiration():
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'expire1/', 'Status':'Enabled'},
-           {'ID': 'rule2', 'Expiration': {'Days': 4}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
+           {'ID': 'rule2', 'Expiration': {'Days': 5}, 'Prefix': 'expire3/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     response = client.list_objects_v2(Bucket=bucket_name)
     init_objects = response['Contents']
 
-    time.sleep(28)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
     response = client.list_objects_v2(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
-    time.sleep(10)
+    time.sleep(lc_interval)
     response = client.list_objects_v2(Bucket=bucket_name)
     keep2_objects = response['Contents']
 
-    time.sleep(20)
+    time.sleep(3*lc_interval)
     response = client.list_objects_v2(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
@@ -9246,7 +9251,10 @@ def test_lifecycle_expiration_versioning_enabled():
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Prefix': 'test1/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    time.sleep(30)
+
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
 
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
@@ -9297,7 +9305,9 @@ def test_lifecycle_expiration_tags1():
         Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
-    time.sleep(28)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
 
     try:
         expire_objects = response['Contents']
@@ -9375,7 +9385,9 @@ def test_lifecycle_expiration_tags2():
 
     response = setup_lifecycle_tags2(client, bucket_name)
 
-    time.sleep(28)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
@@ -9396,7 +9408,9 @@ def test_lifecycle_expiration_versioned_tags2():
 
     response = setup_lifecycle_tags2(client, bucket_name)
 
-    time.sleep(28)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
@@ -9467,14 +9481,16 @@ def test_lifecycle_expiration_noncur_tags1():
     # noncurrent version expiration at 4 "days"
     response = setup_lifecycle_noncur_tags(client, bucket_name, 4)
 
+    lc_interval = get_lc_debug_interval()
+
     num_objs = verify_lifecycle_expiration_noncur_tags(
-        client, bucket_name, 20)
+        client, bucket_name, 2*lc_interval)
 
     # at T+20, 10 objects should exist
     eq(num_objs, 10)
 
     num_objs = verify_lifecycle_expiration_noncur_tags(
-        client, bucket_name, 40)
+        client, bucket_name, 5*lc_interval)
 
     # at T+60, only the current object version should exist
     eq(num_objs, 1)
@@ -9588,7 +9604,10 @@ def test_lifecycle_expiration_date():
     response = client.list_objects(Bucket=bucket_name)
     init_objects = response['Contents']
 
-    time.sleep(20)
+    lc_interval = get_lc_debug_interval()
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(3*lc_interval)
     response = client.list_objects(Bucket=bucket_name)
     expire_objects = response['Contents']
 
@@ -9822,7 +9841,11 @@ def test_lifecycle_noncur_expiration():
     rules=[{'ID': 'rule1', 'NoncurrentVersionExpiration': {'NoncurrentDays': 2}, 'Prefix': 'test1/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    time.sleep(50)
+
+    lc_interval = get_lc_debug_interval()
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(5*lc_interval)
 
     response  = client.list_object_versions(Bucket=bucket_name)
     expire_versions = response['Versions']
@@ -9888,7 +9911,11 @@ def test_lifecycle_deletemarker_expiration():
     rules=[{'ID': 'rule1', 'NoncurrentVersionExpiration': {'NoncurrentDays': 1}, 'Expiration': {'ExpiredObjectDeleteMarker': True}, 'Prefix': 'test1/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    time.sleep(50)
+
+    lc_interval = get_lc_debug_interval()
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(5*lc_interval)
 
     response  = client.list_object_versions(Bucket=bucket_name)
     init_versions = response['Versions']
@@ -9941,7 +9968,11 @@ def test_lifecycle_multipart_expiration():
     ]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    time.sleep(50)
+
+    lc_interval = get_lc_debug_interval()
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(5*lc_interval)
 
     response = client.list_multipart_uploads(Bucket=bucket_name)
     expired_uploads = response['Uploads']
@@ -10004,7 +10035,7 @@ def test_lifecycle_transition():
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
     rules=[{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': sc[1]}], 'Prefix': 'expire1/', 'Status': 'Enabled'},
-           {'ID': 'rule2', 'Transitions': [{'Days': 4, 'StorageClass': sc[2]}], 'Prefix': 'expire3/', 'Status': 'Enabled'}]
+           {'ID': 'rule2', 'Transitions': [{'Days': 6, 'StorageClass': sc[2]}], 'Prefix': 'expire3/', 'Status': 'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
 
@@ -10013,22 +10044,24 @@ def test_lifecycle_transition():
     init_keys = _get_keys(response)
     eq(len(init_keys), 6)
 
+    lc_interval = get_lc_debug_interval()
+
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(25)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 4)
     eq(len(expire1_keys[sc[1]]), 2)
     eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for next expiration cycle
-    time.sleep(10)
+    time.sleep(lc_interval)
     keep2_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(keep2_keys['STANDARD']), 4)
     eq(len(keep2_keys[sc[1]]), 2)
     eq(len(keep2_keys[sc[2]]), 0)
 
     # Wait for final expiration cycle
-    time.sleep(20)
+    time.sleep(5*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire3_keys['STANDARD']), 2)
     eq(len(expire3_keys[sc[1]]), 2)
@@ -10049,7 +10082,7 @@ def test_lifecycle_transition_single_rule_multi_trans():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
     client = get_client()
-    rules=[{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': sc[1]}, {'Days': 4, 'StorageClass': sc[2]}], 'Prefix': 'expire1/', 'Status': 'Enabled'}]
+    rules=[{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': sc[1]}, {'Days': 6, 'StorageClass': sc[2]}], 'Prefix': 'expire1/', 'Status': 'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
 
@@ -10058,22 +10091,24 @@ def test_lifecycle_transition_single_rule_multi_trans():
     init_keys = _get_keys(response)
     eq(len(init_keys), 6)
 
+    lc_interval = get_lc_debug_interval()
+
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(25)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 4)
     eq(len(expire1_keys[sc[1]]), 2)
     eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for next expiration cycle
-    time.sleep(10)
+    time.sleep(lc_interval)
     keep2_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(keep2_keys['STANDARD']), 4)
     eq(len(keep2_keys[sc[1]]), 2)
     eq(len(keep2_keys[sc[2]]), 0)
 
     # Wait for final expiration cycle
-    time.sleep(20)
+    time.sleep(5*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire3_keys['STANDARD']), 4)
     eq(len(expire3_keys[sc[1]]), 0)
@@ -10145,12 +10180,12 @@ def test_lifecycle_noncur_transition():
                     'StorageClass': sc[1]
                 },
                 {
-                    'NoncurrentDays': 3,
+                    'NoncurrentDays': 5,
                     'StorageClass': sc[2]
                 }
             ],
             'NoncurrentVersionExpiration': {
-                'NoncurrentDays': 5
+                'NoncurrentDays': 9
             }
         }
     ]
@@ -10163,19 +10198,21 @@ def test_lifecycle_noncur_transition():
     init_keys = list_bucket_storage_class(client, bucket)
     eq(len(init_keys['STANDARD']), 6)
 
-    time.sleep(25)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 4)
     eq(len(expire1_keys[sc[2]]), 0)
 
-    time.sleep(20)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
     eq(len(expire1_keys[sc[2]]), 4)
 
-    time.sleep(20)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
@@ -10225,8 +10262,10 @@ def test_lifecycle_cloud_transition():
     init_keys = _get_keys(response)
     eq(len(init_keys), 4)
 
+    lc_interval = get_lc_debug_interval()
+
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(30)
+    time.sleep(3*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
 
@@ -10235,7 +10274,7 @@ def test_lifecycle_cloud_transition():
     else:
         eq(len(expire1_keys[cloud_sc]), 0)
 
-    time.sleep(20)
+    time.sleep(2*lc_interval)
     # Check if objects copied to target path
     if target_path == None:
         target_path = "rgwx-default-" + cloud_sc.lower() + "-cloud-bucket"
@@ -10243,7 +10282,7 @@ def test_lifecycle_cloud_transition():
 
     cloud_client = get_cloud_client()
 
-    time.sleep(100)
+    time.sleep(10*lc_interval)
     expire1_key1_str = prefix + keys[0]
     verify_object(cloud_client, target_path, expire1_key1_str, keys[0], target_sc)
 
@@ -10306,8 +10345,8 @@ def test_lifecycle_cloud_multiple_transition():
     bucket_name = _create_objects(keys=keys)
     client = get_client()
     rules=[{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': sc1}], 'Prefix': 'expire1/', 'Status': 'Enabled'},
-           {'ID': 'rule2', 'Transitions': [{'Days': 6, 'StorageClass': cloud_sc}], 'Prefix': 'expire1/', 'Status': 'Enabled'},
-           {'ID': 'rule3', 'Expiration': {'Days': 8}, 'Prefix': 'expire1/', 'Status': 'Enabled'}]
+           {'ID': 'rule2', 'Transitions': [{'Days': 5, 'StorageClass': cloud_sc}], 'Prefix': 'expire1/', 'Status': 'Enabled'},
+           {'ID': 'rule3', 'Expiration': {'Days': 9}, 'Prefix': 'expire1/', 'Status': 'Enabled'}]
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
 
@@ -10316,15 +10355,17 @@ def test_lifecycle_cloud_multiple_transition():
     init_keys = _get_keys(response)
     eq(len(init_keys), 4)
 
+    lc_interval = get_lc_debug_interval()
+
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(50)
+    time.sleep(3*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 2)
     eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for next expiration cycle
-    time.sleep(50)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
@@ -10335,7 +10376,7 @@ def test_lifecycle_cloud_multiple_transition():
         eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for final expiration cycle
-    time.sleep(60)
+    time.sleep(4*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire3_keys['STANDARD']), 2)
     eq(len(expire3_keys[sc[1]]), 0)
@@ -10381,7 +10422,7 @@ def test_lifecycle_noncur_cloud_transition():
                     'StorageClass': sc[1]
                 },
                 {
-                    'NoncurrentDays': 3,
+                    'NoncurrentDays': 5,
                     'StorageClass': sc[2]
                 }
             ],
@@ -10400,13 +10441,15 @@ def test_lifecycle_noncur_cloud_transition():
 
     response  = client.list_object_versions(Bucket=bucket)
 
-    time.sleep(25)
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(3*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 4)
     eq(len(expire1_keys[sc[2]]), 0)
 
-    time.sleep(80)
+    time.sleep(5*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
@@ -10423,7 +10466,7 @@ def test_lifecycle_noncur_cloud_transition():
 
     cloud_client = get_cloud_client()
 
-    time.sleep(10)
+    time.sleep(lc_interval)
     result = list_bucket_versions(client, bucket)
 
     for src_key in keys:
@@ -10463,8 +10506,10 @@ def test_lifecycle_cloud_transition_large_obj():
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
+    lc_interval = get_lc_debug_interval()
+
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(30)
+    time.sleep(3*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 1)
 
@@ -10480,7 +10525,7 @@ def test_lifecycle_cloud_transition_large_obj():
     prefix = bucket + "/"
 
     # multipart upload takes time
-    time.sleep(10)
+    time.sleep(3*lc_interval)
     cloud_client = get_cloud_client()
 
     expire1_key1_str = prefix + keys[1]
