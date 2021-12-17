@@ -165,13 +165,16 @@ def nuke_prefixed_buckets(prefix, client=None):
     print('Done with cleanup of buckets in tests.')
 
 def configured_storage_classes():
-    sc = [ 'STANDARD' ]
+    sc = ['STANDARD']
 
-    extra_sc = re.split('\W+', config.storage_classes)
+    extra_sc = re.split(r"[\b\W\b]+", config.storage_classes)
 
     for item in extra_sc:
         if item != 'STANDARD':
              sc.append(item)
+
+    sc = [i for i in sc if i]
+    print("storage classes configured: " + str(sc))
 
     return sc
 
@@ -243,6 +246,11 @@ def setup():
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.storage_classes = ""
         pass
+
+    try:
+        config.lc_debug_interval = int(cfg.get('s3 main',"lc_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.lc_debug_interval = 10
 
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
@@ -685,3 +693,6 @@ def get_cloud_target_path():
 
 def get_cloud_target_storage_class():
     return config.cloud_target_storage_class
+
+def get_lc_debug_interval():
+    return config.lc_debug_interval
