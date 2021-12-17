@@ -1,4 +1,10 @@
 import boto3
+from botocore.exceptions import ClientError
+import json
+import os
+import time
+
+import boto3
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import nose
@@ -23,9 +29,10 @@ def _add_header_create_object(headers, client=None):
     if client == None:
         client = get_client()
     key_name = 'foo'
-
+    
     # pass in custom headers before PutObject call
     add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    #add_headers = (lambda **kwargs: print(kwargs['params']['headers']))
     client.meta.events.register('before-call.s3.PutObject', add_headers)
     client.put_object(Bucket=bucket_name, Key=key_name)
 
@@ -123,7 +130,7 @@ def _remove_header_create_bucket(remove, client=None):
         client = get_client()
 
     # remove custom headers before PutObject call
-    def remove_header(**kwargs):
+    def remove_header(**kwargs):        
         if (remove in kwargs['params']['headers']):
             del kwargs['params']['headers'][remove]
 
@@ -156,10 +163,138 @@ def tag(*tags):
         return func
     return wrap
 
+# put-replication-policy test below #####################
+def is_data_equal(src_bucket, dest_bucket):
+    s3 = boto3.resource('s3')
+
+    src_bucket = s3.Bucket(src_bucket)
+    dest_bucket = s3.Bucket(dest_bucket)
+
+    src_key=[]
+    src_body=[]
+    for obj in src_bucket.objects.all():
+        src_key.append(obj.key)
+        src_body.append(obj.get()['Body'].read())
+
+    time.sleep(200)
+
+    dest_key=[]
+    dest_body=[]
+    for obj in dest_bucket.objects.all():
+        dest_key.append(obj.key)
+        dest_body.append(obj.get()['Body'].read())
+    
+    print((dest_key == src_key) and (dest_body == src_body))
+    if dest_key != src_key:
+        print("Replication does not copy the key value as expected: src_key=" + str(src_key) + " and dest_key="+ str(dest_key))
+    elif dest_body != src_body:
+        print("Replication does not copy the object body as expected: src_body=" + str(src_body) + " and dest_body="+ str(dest_body))
+    return ((dest_key == src_key) and (dest_body == src_body))
+
+
+def add_data(file_name, bucket_name):
+    s3_client = boto3.client('s3')
+    s3_client.upload_file(file_name, bucket_name, "Tax/test")
+
+
+def create_iam_role(role_name):
+    json_data=json.loads('{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "s3.amazonaws.com"}, "Action": "sts:AssumeRole"}]}')
+    role_name=role_name
+
+    session = boto3.session.Session(profile_name='default')
+    iam = session.client('iam')
+    e = iam.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(json_data),
+    )
+
+    response = e['ResponseMetadata']['HTTPStatusCode']
+    print(response)
+    eq(response, 200)
+    role_name = e['Role']['RoleName']
+    eq(role_name, 'role-test')
+
+def create_replication_policy(role_name, policy_name, src_bucket, dest_bucket):
+
+    role_permissions_policy=json.loads('{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObjectVersionForReplication","s3:GetObjectVersionAcl","s3:GetObjectVersionTagging"],"Resource":["arn:aws:s3:::'+src_bucket+'/*"]},{"Effect":"Allow","Action":["s3:ListBucket","s3:GetReplicationConfiguration"],"Resource":["arn:aws:s3:::'+src_bucket+'"]},{"Effect":"Allow","Action":["s3:ReplicateObject","s3:ReplicateDelete","s3:ReplicateTags"],"Resource":"arn:aws:s3:::'+dest_bucket+'/*"}]}')
+
+    client = boto3.client('iam')
+    response = client.put_role_policy(
+        PolicyDocument=json.dumps(role_permissions_policy),
+        PolicyName=policy_name,
+        RoleName=role_name,
+    )
+    response=client.get_role(RoleName=role_name)
+    arn = response['Role']['Arn']
+    replication_config=json.loads('{"Role": "'+arn+'","Rules": [{"Status": "Enabled","Priority": 1,"DeleteMarkerReplication": { "Status": "Disabled" },"Filter" : { "Prefix": "Tax"},"Destination": {"Bucket": "arn:aws:s3:::'+dest_bucket+'"}}]}')
+    client = boto3.client('s3')
+    response = client.put_bucket_replication(Bucket=src_bucket, ReplicationConfiguration=replication_config)
+    
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+def enable_versioning(bucket_name):
+    s3 = boto3.resource('s3')
+    versioning = s3.BucketVersioning(bucket_name)
+    versioning.enable()
+
+def cleanup_policy(role_name, policy_name):
+    client = boto3.client('iam')
+    response = client.delete_role_policy(
+        RoleName=role_name,
+        PolicyName=policy_name
+    )
+    response = client.delete_role(
+        RoleName=role_name
+    )
+
 #
 # common tests
 #
 
+def create_file():
+    filename="sample.txt"
+    fp = open('sample.txt', 'w')
+    fp.write('sample text')
+    fp.close()
+    return filename
+
+def get_replication_status(src_bucket):
+    client = boto3.client('s3')
+    #s3 = boto3.resource('s3')
+    time.sleep(100)
+    response = client.head_object(Bucket=src_bucket, Key="Tax/test")
+    return response
+
+@tag('auth_common')
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='create w/invalid MD5')
+@attr(assertion='fails 400')
+def test_example():
+    
+    src_bucket = get_new_bucket()
+    dest_bucket = get_new_bucket()
+    
+    enable_versioning(src_bucket)
+    enable_versioning(dest_bucket)
+    
+    role_name="role-test"
+    policy_name='policy-test'
+    
+    create_iam_role(role_name)
+    create_replication_policy(role_name, policy_name, src_bucket, dest_bucket)
+    file_name=create_file()
+    add_data(file_name, src_bucket)
+    response = get_replication_status(src_bucket) 
+    status = _get_status(response)
+    #print("replication response ", status)
+    response = is_data_equal(src_bucket, dest_bucket)
+    eq(response, True)
+    eq(status, 200)
+    cleanup_policy(role_name, policy_name)
+    #teardown()    
+################# put-replication-policy above ##########################
+'''
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
@@ -171,6 +306,7 @@ def test_object_create_bad_md5_invalid_short():
     eq(status, 400)
     eq(error_code, 'InvalidDigest')
 
+
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
@@ -178,6 +314,7 @@ def test_object_create_bad_md5_invalid_short():
 @attr(assertion='fails 400')
 def test_object_create_bad_md5_bad():
     e = _add_header_create_bad_object({'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
+    print("tests")
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(error_code, 'BadDigest')
@@ -288,7 +425,8 @@ def test_object_create_bad_contentlength_mismatch_above():
     bucket_name = get_new_bucket()
     key_name = 'foo'
     headers = {'Content-Length': str(length)}
-    add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    #add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    add_headers = (lambda **kwargs: kwargs['request'].headers.add_header('Content-Length', str(length)) )
     client.meta.events.register('before-sign.s3.PutObject', add_headers)
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body=content)
@@ -350,7 +488,8 @@ def test_object_create_bad_authorization_empty():
 @attr('fails_on_rgw')
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
-    bucket_name, key_name = _add_header_create_object({'Date': date, 'X-Amz-Date': date})
+    print("the date I wanna know ", date)
+    bucket_name, key_name = _add_header_create_object({'X-Amz-Date': date, 'Date': date})#, 'X-Amz-Date': date})
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
@@ -791,3 +930,4 @@ def test_bucket_create_bad_date_before_epoch_aws2():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
     eq(error_code, 'AccessDenied')
+'''
