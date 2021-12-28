@@ -22,7 +22,7 @@ case "$ID" in
         ;;
     centos|fedora|rhel|ol|virtuozzo)
 
-        packages=(which python3-virtualenv python36-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
+        packages=(which python3-virtualenv python36-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel arrow-devel parquet-devel)
         for package in ${packages[@]}; do
             # When the package is python36-devel we change it to python3-devel on Fedora
             if [[ ${package} == "python36-devel" && -f /etc/fedora-release ]]; then
