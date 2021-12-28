@@ -4446,12 +4446,19 @@ def check_access_denied(fn, *args, **kwargs):
     status = _get_status(e.response)
     eq(status, 403)
 
+
 def check_grants(got, want):
     """
     Check that grants list in got matches the dictionaries in want,
     in any order.
     """
     eq(len(got), len(want))
+
+    # There are instances when got does not match due the order of item.
+    if got[0]["Grantee"].get("DisplayName"):
+        got.sort(key=lambda x: x["Grantee"].get("DisplayName"))
+        want.sort(key=lambda x: x["DisplayName"])
+
     for g, w in zip(got, want):
         w = dict(w)
         g = dict(g)
@@ -4462,6 +4469,7 @@ def check_grants(got, want):
         eq(g['Grantee'].pop('URI', None), w['URI'])
         eq(g['Grantee'].pop('EmailAddress', None), w['EmailAddress'])
         eq(g, {'Grantee': {}})
+
 
 @attr(resource='bucket')
 @attr(method='get')
