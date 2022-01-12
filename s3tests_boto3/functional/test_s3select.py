@@ -15,11 +15,6 @@ from . import (
 import logging
 logging.basicConfig(level=logging.INFO)
 
-#import numpy as np
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
-
 region_name = ''
 
 # recurssion function for generating arithmetical expression 
@@ -223,38 +218,6 @@ def upload_csv_object(bucket_name,new_key,obj):
         response = c2.get_object(Bucket=bucket_name, Key=new_key)
         eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
 
-def parquet_generator():
-
-    parquet_size = 1000000
-    a=[]
-    for i in range(parquet_size):
-        a.append(int(random.randint(1,10000)))
-
-    b=[]
-    for i in range(parquet_size):
-        b.append(int(random.randint(1,10000)))
-
-    c=[]
-    for i in range(parquet_size):
-        c.append(int(random.randint(1,10000)))
-
-    d=[]
-    for i in range(parquet_size):
-        d.append(int(random.randint(1,10000)))
-
-    df3 = pd.DataFrame({'a': a,
-                   'b': b,
-                   'c': c,
-                   'd': d}
-                   )
-
-
-    table = pa.Table.from_pandas(df3,preserve_index=False)
-
-    print (table)
-
-    pq.write_table(table,version='1.0',where='/tmp/3col_int_10k.parquet')
-    
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE", progress = False):
 
     s3 = get_client()
@@ -1310,10 +1273,4 @@ def test_output_serial_expressions():
     res_s3select_final = ('#'.join('"' + item + '"' for item in res_s3select_list)).replace('""','')
     
     s3select_assert_result( res_s3select_quot, res_s3select_final )
-
-@attr('s3select')
-def test_parqueet():
-
-    parquet_generator()
-
 
