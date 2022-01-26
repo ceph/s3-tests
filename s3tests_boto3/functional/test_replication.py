@@ -149,7 +149,6 @@ def create_replication_policy():
 
 
 '''
-####################### put-replication-policy test below #####################
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
@@ -157,17 +156,6 @@ def create_replication_policy():
 @attr(assertion='passes')
 def test_put_bucket_replication():
     
-    #src_bucket = get_new_bucket()
-    #dest_bucket = get_new_bucket()
-    
-    #enable_versioning(src_bucket)
-    #enable_versioning(dest_bucket)
-    
-    #role_name="role-test"
-    #policy_name='policy-test'
-    
-    #create_iam_role(role_name)
-    #create_replication_policy(role_name, policy_name, src_bucket, dest_bucket)
     src_bucket, dest_bucket = create_replication_policy()
 
     file_name=create_file()
@@ -190,18 +178,8 @@ def test_put_bucket_replication():
 @attr(assertion='passes with correct status')
 def test_get_bucket_replication():
     
-    #src_bucket = get_new_bucket()
-    #dest_bucket = get_new_bucket()
-
-    #enable_versioning(src_bucket)
-    #enable_versioning(dest_bucket)
-    
-    #role_name="role-test"
-    #policy_name='policy-test'
-
-    #create_iam_role(role_name)
-    #create_replication_policy(role_name, policy_name, src_bucket, dest_bucket)
     src_bucket, dest_bucket = create_replication_policy()
+
     file_name=create_file()
     add_data(file_name, src_bucket)
     response = get_replication_status(src_bucket)
@@ -215,10 +193,10 @@ def test_get_bucket_replication():
     eq(status_get_replication, 'Enabled')
     eq(http_status_get_replication, 200)
     eq(status, 200)
+    
     cleanup_policy()
 
 ############### get_bucket_replication above ############################
-
 
 ################# delete_bucket_replication below ##########################
 @tag('auth_common')
@@ -228,32 +206,16 @@ def test_get_bucket_replication():
 @attr(assertion='passes with correct status')
 def test_delete_bucket_replication():
 
-    #src_bucket = get_new_bucket()
-    #dest_bucket = get_new_bucket()
-
-    #enable_versioning(src_bucket)
-    #enable_versioning(dest_bucket)
-
-    #role_name="role-test"
-    #policy_name='policy-test'
-
-    #create_iam_role(role_name)
-    #create_replication_policy(role_name, policy_name, src_bucket, dest_bucket)
-
-    #file_name=create_file()
-    #add_data(file_name, src_bucket)
     src_bucket, dest_bucket = create_replication_policy()
     client = boto3.client('s3')    
 
     response = client.get_bucket_replication(Bucket=src_bucket)
-    print('before: ', response, '\n')
+    
     response = client.delete_bucket_replication(Bucket=src_bucket)
-    time.sleep(20)    
     try:
         response = client.get_bucket_replication(Bucket=src_bucket)
     except ClientError as ce:
         print(ce)
-    print('after: ', response, '\n')
     status = _get_status(response)    
     eq(status, 204)
     cleanup_policy()
@@ -267,7 +229,9 @@ def test_delete_bucket_replication():
 @attr(assertion='passes with correct status')
 def test_delete_bucket_replication_on_non_existing_bucket():
     bucket_name = get_new_bucket_name()
+    
     bucket_name = bucket_name + 'xzyjdfkpayhe909'
+    
     response = ''
     client = boto3.client('s3')
     try:
@@ -317,8 +281,6 @@ def test_disable_bucket_replication_on_bucket():
     response = client.get_bucket_replication(Bucket=src_bucket)
     replication_status = _get_replication_config_status(response)
     
-    print(is_data_equal(src_bucket, dest_bucket))
-    print(replication_status)
     eq(is_data_equal(src_bucket, dest_bucket), "False")
     eq(replication_status, "Disabled")
     cleanup_policy()
@@ -451,7 +413,6 @@ def compare_data(local_file, bucket):
     f.close()
     print("text")
     print(text)
-    #return ((dest_key == src_key) and (dest_body == src_body))
 
 def process_helper(data, bucket_name):
     file_name = create_large_object(data)
@@ -480,6 +441,4 @@ def test_simultaneous_writes_from_two_users():
     local_file="clientb.txt"
     compare_data(local_file, bucket)
 '''
-
-
 

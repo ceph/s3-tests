@@ -98,48 +98,61 @@ def list_versions(client, bucket, batch_size):
         if len(objs):
             yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
 
-def nuke_bucket(client, bucket):
+def cleanup(prefix):
+    s3 = boto3.resource('s3')
+    buckets = s3.buckets.all()
+    for bucket in buckets:
+        name = bucket.name
+        if name.startswith(prefix):
+            bucket = s3.Bucket(name)
+            bucket.object_versions.delete()
+            # Delete the bucket
+            bucket.delete()
+
+def nuke_bucket(client, bucket, prefix):
     batch_size = 128
     max_retain_date = None
-
-    # list and delete objects in batches
-    for objects in list_versions(client, bucket, batch_size):
-        delete = client.delete_objects(Bucket=bucket,
+    try:
+        # list and delete objects in batches
+        for objects in list_versions(client, bucket, batch_size):
+            delete = client.delete_objects(Bucket=bucket,
                 Delete={'Objects': objects, 'Quiet': True},
                 BypassGovernanceRetention=True)
 
-        # check for object locks on 403 AccessDenied errors
-        for err in delete.get('Errors', []):
-            if err.get('Code') != 'AccessDenied':
-                continue
-            try:
-                res = client.get_object_retention(Bucket=bucket,
+            # check for object locks on 403 AccessDenied errors
+            for err in delete.get('Errors', []):
+                if err.get('Code') != 'AccessDenied':
+                    continue
+                try:
+                    res = client.get_object_retention(Bucket=bucket,
                         Key=err['Key'], VersionId=err['VersionId'])
-                retain_date = res['Retention']['RetainUntilDate']
-                if not max_retain_date or max_retain_date < retain_date:
-                    max_retain_date = retain_date
-            except ClientError:
-                pass
+                    retain_date = res['Retention']['RetainUntilDate']
+                    if not max_retain_date or max_retain_date < retain_date:
+                        max_retain_date = retain_date
+                except ClientError:
+                    pass
 
-    if max_retain_date:
-        # wait out the retention period (up to 60 seconds)
-        now = datetime.datetime.now(max_retain_date.tzinfo)
-        if max_retain_date > now:
-            delta = max_retain_date - now
-            if delta.total_seconds() > 60:
-                raise RuntimeError('bucket {} still has objects \
+        if max_retain_date:
+            # wait out the retention period (up to 60 seconds)
+            now = datetime.datetime.now(max_retain_date.tzinfo)
+            if max_retain_date > now:
+                delta = max_retain_date - now
+                if delta.total_seconds() > 60:
+                    raise RuntimeError('bucket {} still has objects \
 locked for {} more seconds, not waiting for \
 bucket cleanup'.format(bucket, delta.total_seconds()))
-            print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
+                print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
                     'seconds for object locks to expire')
-            time.sleep(delta.total_seconds())
+                time.sleep(delta.total_seconds())
 
-        for objects in list_versions(client, bucket, batch_size):
-            client.delete_objects(Bucket=bucket,
+            for objects in list_versions(client, bucket, batch_size):
+                client.delete_objects(Bucket=bucket,
                     Delete={'Objects': objects, 'Quiet': True},
                     BypassGovernanceRetention=True)
 
-    client.delete_bucket(Bucket=bucket)
+        client.delete_bucket(Bucket=bucket)
+    except:
+        cleanup(prefix)
 
 def cleanup(prefix):
     print("cleaning")
@@ -164,8 +177,7 @@ def nuke_prefixed_buckets(prefix, client=None):
     for bucket_name in buckets:
         try:
             nuke_bucket(client, bucket_name)
-        except:# Exception as e:
-            cleanup(prefix)
+        except Exception as e:
             # The exception shouldn't be raised when doing cleanup. Pass and continue
             # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
             # resulting in some kind of resource leak. err is used to hint user some
