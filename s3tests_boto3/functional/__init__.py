@@ -141,6 +141,19 @@ bucket cleanup'.format(bucket, delta.total_seconds()))
 
     client.delete_bucket(Bucket=bucket)
 
+def cleanup(prefix):
+    print("cleaning")
+    '''s3 = boto3.resource('s3')
+    buckets = s3.buckets.all()
+    for bucket in buckets:
+        name = bucket.name
+        if name.startswith(prefix):
+            bucket = s3.Bucket(name)
+            bucket.object_versions.delete()
+            # Delete the bucket
+            bucket.delete()
+    '''
+
 def nuke_prefixed_buckets(prefix, client=None):
     if client == None:
         client = get_client()
@@ -151,13 +164,14 @@ def nuke_prefixed_buckets(prefix, client=None):
     for bucket_name in buckets:
         try:
             nuke_bucket(client, bucket_name)
-        except Exception as e:
+        except:# Exception as e:
+            cleanup(prefix)
             # The exception shouldn't be raised when doing cleanup. Pass and continue
             # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
             # resulting in some kind of resource leak. err is used to hint user some
             # exception once occurred.
-            err = e
-            pass
+            #err = e
+            #pass
     if err:
         raise err
 
