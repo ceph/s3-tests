@@ -85,7 +85,7 @@ def put_user_policy(iam_client,username,policyname,policy_document):
         role_response = iam_client.put_user_policy(UserName=username,PolicyName=policyname,PolicyDocument=policy_document)
     except ClientError as e:
         role_err = e.response['Code']
-    return (role_err,role_response)
+    return (role_err,role_response,policyname)
 
 def get_s3_client_using_iam_creds():
     iam_access_key = get_iam_access_key()
@@ -161,7 +161,7 @@ def test_get_session_token():
     default_endpoint=get_config_endpoint()
     
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    (resp_err,resp)=put_user_policy(iam_client,sts_user_id,None,user_policy)
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
     eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
     
     response=sts_client.get_session_token()
@@ -175,9 +175,12 @@ def test_get_session_token():
 		region_name='',
 		)
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
-    finish=s3_client.delete_bucket(Bucket=bucket_name)
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        finish=s3_client.delete_bucket(Bucket=bucket_name)
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
 
 @attr(resource='get session token')
 @attr(method='get')
@@ -194,7 +197,7 @@ def test_get_session_token_permanent_creds_denied():
     s3_main_secret_key=get_main_aws_secret_key()
     
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    (resp_err,resp)=put_user_policy(iam_client,sts_user_id,None,user_policy)
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
     eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
     
     response=sts_client.get_session_token()
@@ -213,6 +216,7 @@ def test_get_session_token_permanent_creds_denied():
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     eq(s3bucket_error,'AccessDenied')
+    iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
 
 @attr(resource='assume role')
 @attr(method='get')

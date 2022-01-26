@@ -3,6 +3,7 @@ import random
 import string
 import re
 from nose.plugins.attrib import attr
+from botocore.exceptions import ClientError
 
 import uuid
 from nose.tools import eq_ as eq
@@ -217,8 +218,46 @@ def upload_csv_object(bucket_name,new_key,obj):
         response = c2.get_object(Bucket=bucket_name, Key=new_key)
         eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
 
-    
-def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
+def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE", progress = False):
+
+    s3 = get_client()
+    result = ""
+    try:
+        r = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType='SQL',
+        InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char, "FileHeaderInfo": csv_header_info}, "CompressionType": "NONE"},
+        OutputSerialization = {"CSV": {}},
+        Expression=query,
+        RequestProgress = {"Enabled": progress})
+
+    except ClientError as c:
+        result += str(c)
+        return result
+
+    if progress == False:
+        for event in r['Payload']:
+            if 'Records' in event:
+                records = event['Records']['Payload'].decode('utf-8')
+                result += records
+    else:
+        result = []
+        for event in r['Payload']:
+            if 'Records' in event:
+                records = event['Records']
+                result.append(records.copy())
+            if 'Progress' in event:
+                progress = event['Progress']
+                result.append(progress.copy())
+            if 'Stats' in event:
+                stats = event['Stats']
+                result.append(stats.copy())
+            if 'End' in event:
+                end = event['End']
+                result.append(end.copy())
+    return result
+def run_s3select_output(bucket,key,query, quot_field, op_column_delim = ",", op_row_delim = "\n",  column_delim=",", op_quot_char = '"', op_esc_char = '\\', row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE"):
 
     s3 = get_client()
 
@@ -227,7 +266,7 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
         Key=key,
         ExpressionType='SQL',
         InputSerialization = {"CSV": {"RecordDelimiter" : row_delim, "FieldDelimiter" : column_delim,"QuoteEscapeCharacter": esc_char, "QuoteCharacter": quot_char, "FileHeaderInfo": csv_header_info}, "CompressionType": "NONE"},
-        OutputSerialization = {"CSV": {}},
+        OutputSerialization = {"CSV": {"RecordDelimiter" : op_row_delim, "FieldDelimiter" : op_column_delim, "QuoteCharacter" : op_quot_char, "QuoteEscapeCharacter" : op_esc_char, "QuoteFields" : quot_field}},
         Expression=query,)
     
     result = ""
@@ -266,7 +305,7 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
             col_num+=1
 
     return list_of_int
-       
+
 @attr('s3select')
 def test_count_operation():
     csv_obj_name = get_random_string()
@@ -334,12 +373,12 @@ def test_column_sum_min_max():
 
     # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 2;" ) )
-    count,sum1,sum2,d = res_s3select.split(",")
+    count,sum1,sum2 = res_s3select.split(",")
 
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 4;" ) ) 
-    count,sum1,sum2,d = res_s3select.split(",")
+    count,sum1,sum2 = res_s3select.split(",")
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
@@ -457,16 +496,16 @@ def test_lowerupper_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select lower("AB12cd$$") from s3object ;')  ).replace("\n","")
 
-    s3select_assert_result( res_s3select, "ab12cd$$,")
+    s3select_assert_result( res_s3select, "ab12cd$$")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select upper("ab12CD$$") from s3object ;')  ).replace("\n","")
 
-    s3select_assert_result( res_s3select, "AB12CD$$,")
+    s3select_assert_result( res_s3select, "AB12CD$$")
 
 @attr('s3select')
 def test_in_expressions():
 
-    # purpose of test: engine is process correctly several projections containing aggregation-functions 
+    # purpose of test: engine is process correctly several projections containing aggregation-functions
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
@@ -605,6 +644,12 @@ def test_like_expressions():
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
+    res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
+
+    find_like = res_s3select_like.find("s3select-Syntax-Error")
+
+    assert int(find_like) >= 0
+
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select (_1 like "cbcd%") from s3object;')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select (substring(_1,1,4) = "cbcd") from s3object;')).replace("\n","")
@@ -720,7 +765,7 @@ def test_complex_expressions():
     max_2 = max ( create_list_of_int( 2 , csv_obj ) )
     min_3 = min ( create_list_of_int( 3 , csv_obj ) ) + 1
 
-    __res = "{},{},{},".format(min_1,max_2,min_3)
+    __res = "{},{},{}".format(min_1,max_2,min_3)
     
     # assert is according to radom-csv function 
     s3select_assert_result( res_s3select, __res )
@@ -794,20 +839,17 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time, res_s3select_substring)
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where  date_diff(month,to_timestamp(_1),date_add(month,2,to_timestamp(_1)) ) = 2;')  )
+    res_s3select_date_time_to_string = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select cast(to_string(to_timestamp(_1), \'x\') as int) from  s3object;')  )
 
-    res_s3select_count = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object;')  )
+    res_s3select_date_time_extract = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select extract(timezone_hour from to_timestamp(_1)) from  s3object;')  )
 
-    s3select_assert_result( res_s3select_date_time, res_s3select_count)
+    s3select_assert_result( res_s3select_date_time_to_string, res_s3select_date_time_extract )
 
-    res_s3select_date_time = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(year,to_timestamp(_1),date_add(day, 366 ,to_timestamp(_1))) = 1 ;')  )
+    res_s3select_date_time_to_timestamp = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select extract(month from to_timestamp(_1)) from s3object where extract(month from to_timestamp(_1)) = 5;')  )
 
-    s3select_assert_result( res_s3select_date_time, res_s3select_count)
+    res_s3select_substring = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select cast(substring(_1, 5, 2) as int) from s3object where _1 like \'____05%\';')  )
 
-    # validate that utcnow is integrate correctly with other date-time functions 
-    res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24 ;')  )
-
-    s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
+    s3select_assert_result( res_s3select_date_time_to_timestamp, res_s3select_substring)
 
 @attr('s3select')
 def test_true_false_datetime():
@@ -838,6 +880,7 @@ def test_true_false_datetime():
 
     s3select_assert_result( res_s3select_date_time, res_s3select_count)
 
+    # validate that utcnow is integrate correctly with other date-time functions 
     res_s3select_date_time_utcnow = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(0) from  s3object where (date_diff(hour,utcnow(),date_add(day,1,utcnow())) = 24) = true ;')  )
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
@@ -856,31 +899,31 @@ def test_csv_parser():
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _6 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'third="c31,c32,c33",')
+    s3select_assert_result( res_s3select_alias, 'third="c31,c32,c33"')
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _7 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'forth="1,2,3,4",')
+    s3select_assert_result( res_s3select_alias, 'forth="1,2,3,4"')
 
     # return value contain comma{,}{"}, escape-rule{\} by-pass quote{"} , the escape{\} is removed.
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _8 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'fifth="my_string="any_value" , my_other_string="aaaa,bbb" ",')
+    s3select_assert_result( res_s3select_alias, 'fifth="my_string="any_value" , my_other_string="aaaa,bbb" "')
 
     # return NULL as first token
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'null,')
+    s3select_assert_result( res_s3select_alias, 'null')
 
     # return NULL in the middle of line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _3 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'null,')
+    s3select_assert_result( res_s3select_alias, 'null')
 
     # return NULL in the middle of line (successive)
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _4 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'null,')
+    s3select_assert_result( res_s3select_alias, 'null')
 
     # return NULL at the end line
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'null,')
+    s3select_assert_result( res_s3select_alias, 'null')
 
 @attr('s3select')
 def test_csv_definition():
@@ -908,7 +951,7 @@ def test_csv_definition():
     max_2 = max ( create_list_of_int( 2 , csv_obj , "|","\t") )
     min_3 = min ( create_list_of_int( 3 , csv_obj , "|","\t") ) + 1
 
-    __res = "{},{},{},".format(min_1,max_2,min_3)
+    __res = "{},{},{}".format(min_1,max_2,min_3)
     s3select_assert_result( res_s3select, __res )
 
 
@@ -937,12 +980,15 @@ def test_schema_definition():
     # using column-name not exist in schema
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c10,int(c11) from s3object;",csv_header_info="USE") ).replace("\n","")
 
-    assert res_multiple_defintion.find("alias {c11} or column not exist in schema") > 0
+    assert ((res_multiple_defintion.find("alias {c11} or column not exist in schema")) >= 0)
+
+    #find_processing_error = res_multiple_defintion.find("s3select-ProcessingTime-Error")
+    assert ((res_multiple_defintion.find("s3select-ProcessingTime-Error")) >= 0)
 
     # alias-name is identical to column-name
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from s3object;",csv_header_info="USE") ).replace("\n","")
 
-    assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
+    assert ((res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias"))  >= 0)
 
 @attr('s3select')
 def test_when_then_else_expressions():
@@ -967,11 +1013,11 @@ def test_when_then_else_expressions():
     
     res2 = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where  cast(_1 as int)<=100 or cast(_1 as int)>=300 or cast(_1 as int)=200  ;')  ).replace("\n","")
 
-    s3select_assert_result( str(count1) + ',', res)
+    s3select_assert_result( str(count1) , res)
 
-    s3select_assert_result( str(count2) + ',', res1)
+    s3select_assert_result( str(count2) , res1)
 
-    s3select_assert_result( str(count3) + ',', res2)
+    s3select_assert_result( str(count3) , res2)
 
 @attr('s3select')
 def test_coalesce_expressions():
@@ -1162,3 +1208,69 @@ def test_bool_cast_expressions():
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from s3object where cast(_1 as int) != 0 ;')).replace("\n","")
 
     s3select_assert_result( res_s3select_cast, res_s3select )
+
+@attr('s3select')
+def test_progress_expressions():
+
+    csv_obj = create_random_csv_object(1000000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    obj_size = len(csv_obj.encode('utf-8'))
+
+    res_s3select_response = run_s3select(bucket_name,csv_obj_name,"select sum(int(_1)) from s3object;",progress = True)
+    records_payload_size = len(remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select sum(int(_1)) from s3object;')).replace("\n",""))
+
+    total_response = len(res_s3select_response)
+    
+    # To do: Validate bytes processed after supporting compressed data
+    s3select_assert_result(obj_size, res_s3select_response[total_response-3]['Details']['BytesScanned'])
+    s3select_assert_result(records_payload_size, res_s3select_response[total_response-3]['Details']['BytesReturned'])
+
+    # stats response payload validation
+    s3select_assert_result(obj_size, res_s3select_response[total_response-2]['Details']['BytesScanned'])
+    s3select_assert_result(records_payload_size, res_s3select_response[total_response-2]['Details']['BytesReturned'])
+
+    # end response
+    s3select_assert_result({}, res_s3select_response[total_response-1])
+
+@attr('s3select')
+def test_output_serial_expressions():
+    return # TODO fix test
+
+    csv_obj = create_random_csv_object(10000,10)
+
+    csv_obj_name = get_random_string()
+    bucket_name = "test"
+    upload_csv_object(bucket_name,csv_obj_name,csv_obj)
+
+    res_s3select_1 = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,"select _1, _2 from s3object where nullif(_1,_2) is null ;", "ALWAYS")  ).replace("\n",",")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1, _2 from s3object where _1 = _2 ;")  ).replace("\n",",")
+
+    res_s3select_list = res_s3select.split(',')
+    res_s3select_final = (','.join('"' + item + '"' for item in res_s3select_list)).replace('""','') # remove empty result(first,last)
+
+    s3select_assert_result( res_s3select_1, res_s3select_final)
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ASNEEDED", '$', '#')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","#")
+    res_s3select = res_s3select[1:len(res_s3select)] # remove first redundant
+    res_s3select_final = res_s3select[0:len(res_s3select)-1] # remove last redundant
+
+    s3select_assert_result( res_s3select_in, res_s3select_final )
+
+    res_s3select_quot = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ALWAYS", '$', '#')).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","#")
+    res_s3select = res_s3select[1:len(res_s3select)] # remove first redundant
+    res_s3select = res_s3select[0:len(res_s3select)-1] # remove last redundant
+
+    res_s3select_list = res_s3select.split('#')
+    res_s3select_final = ('#'.join('"' + item + '"' for item in res_s3select_list)).replace('""','')
+    
+    s3select_assert_result( res_s3select_quot, res_s3select_final )
+
