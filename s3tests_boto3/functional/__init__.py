@@ -12,6 +12,7 @@ import random
 import string
 import itertools
 import urllib3
+import re
 
 config = munch.Munch
 
@@ -189,6 +190,20 @@ def nuke_prefixed_buckets(prefix, client=None):
 
     print('Done with cleanup of buckets in tests.')
 
+def configured_storage_classes():
+    sc = ['STANDARD']
+
+    extra_sc = re.split(r"[\b\W\b]+", config.storage_classes)
+
+    for item in extra_sc:
+        if item != 'STANDARD':
+             sc.append(item)
+
+    sc = [i for i in sc if i]
+    print("storage classes configured: " + str(sc))
+
+    return sc
+
 def setup():
     cfg = configparser.RawConfigParser()
     try:
@@ -252,6 +267,17 @@ def setup():
         config.main_api_name = ""
         pass
 
+    try:
+        config.storage_classes = cfg.get('s3 main',"storage_classes")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.storage_classes = ""
+        pass
+
+    try:
+        config.lc_debug_interval = int(cfg.get('s3 main',"lc_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.lc_debug_interval = 10
+
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
     config.alt_display_name = cfg.get('s3 alt',"display_name")
@@ -276,6 +302,11 @@ def setup():
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
     nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+
+    if cfg.has_section("s3 cloud"):
+        get_cloud_config(cfg)
+    else:
+        config.cloud_storage_class = None
 
 
 def teardown():
@@ -323,6 +354,43 @@ def check_webidentity():
     config.webidentity_sub = cfg.get('webidentity', "sub")
     config.webidentity_azp = cfg.get('webidentity', "azp")
     config.webidentity_user_token = cfg.get('webidentity', "user_token")
+
+def get_cloud_config(cfg):
+    config.cloud_host = cfg.get('s3 cloud',"host")
+    config.cloud_port = int(cfg.get('s3 cloud',"port"))
+    config.cloud_is_secure = cfg.getboolean('s3 cloud', "is_secure")
+
+    proto = 'https' if config.cloud_is_secure else 'http'
+    config.cloud_endpoint = "%s://%s:%d" % (proto, config.cloud_host, config.cloud_port)
+
+    config.cloud_access_key = cfg.get('s3 cloud',"access_key")
+    config.cloud_secret_key = cfg.get('s3 cloud',"secret_key")
+
+    try:
+        config.cloud_storage_class = cfg.get('s3 cloud', "cloud_storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_storage_class = None
+    
+    try:
+        config.cloud_retain_head_object = cfg.get('s3 cloud',"retain_head_object")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_retain_head_object = None
+
+    try:
+        config.cloud_target_path = cfg.get('s3 cloud',"target_path")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_path = None
+
+    try:
+        config.cloud_target_storage_class = cfg.get('s3 cloud',"target_storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_storage_class = 'STANDARD'
+
+    try:
+        config.cloud_regular_storage_class = cfg.get('s3 cloud', "storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_regular_storage_class  = None
+
 
 def get_client(client_config=None):
     if client_config == None:
@@ -403,6 +471,18 @@ def get_alt_client(client_config=None):
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
+                        config=client_config)
+    return client
+
+def get_cloud_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.cloud_access_key,
+                        aws_secret_access_key=config.cloud_secret_key,
+                        endpoint_url=config.cloud_endpoint,
+                        use_ssl=config.cloud_is_secure,
                         config=client_config)
     return client
 
@@ -624,3 +704,21 @@ def get_iam_secret_key():
 
 def get_user_token():
     return config.webidentity_user_token
+
+def get_cloud_storage_class():
+    return config.cloud_storage_class
+
+def get_cloud_retain_head_object():
+    return config.cloud_retain_head_object
+
+def get_cloud_regular_storage_class():
+    return config.cloud_regular_storage_class
+
+def get_cloud_target_path():
+    return config.cloud_target_path
+
+def get_cloud_target_storage_class():
+    return config.cloud_target_storage_class
+
+def get_lc_debug_interval():
+    return config.lc_debug_interval
