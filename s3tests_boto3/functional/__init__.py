@@ -167,6 +167,38 @@ def cleanup(prefix):
             bucket.delete()
     '''
 
+def get_versioned_objects_list(bucket, client=None):
+    if client == None:
+        client = get_client()
+    response = client.list_object_versions(Bucket=bucket)
+    versioned_objects_list = []
+
+    if 'Versions' in response:
+        contents = response['Versions']
+        for obj in contents:
+            key = obj['Key']
+            version_id = obj['VersionId']
+            versioned_obj = (key,version_id)
+            versioned_objects_list.append(versioned_obj)
+
+    return versioned_objects_list
+
+def get_delete_markers_list(bucket, client=None):
+    if client == None:
+        client = get_client()
+    response = client.list_object_versions(Bucket=bucket)
+    delete_markers = []
+
+    if 'DeleteMarkers' in response:
+        contents = response['DeleteMarkers']
+        for obj in contents:
+            key = obj['Key']
+            version_id = obj['VersionId']
+            versioned_obj = (key,version_id)
+            delete_markers.append(versioned_obj)
+
+    return delete_markers
+
 def nuke_prefixed_buckets(prefix, client=None):
     if client == None:
         client = get_client()
@@ -174,18 +206,28 @@ def nuke_prefixed_buckets(prefix, client=None):
     buckets = get_buckets_list(client, prefix)
 
     err = None
-    for bucket_name in buckets:
-        try:
-            nuke_bucket(client, bucket_name)
-        except Exception as e:
-            # The exception shouldn't be raised when doing cleanup. Pass and continue
-            # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
-            # resulting in some kind of resource leak. err is used to hint user some
-            # exception once occurred.
-            #err = e
-            #pass
-    if err:
-        raise err
+    if buckets != []:
+        for bucket_name in buckets:
+            objects_list = get_objects_list(bucket_name, client)
+            for obj in objects_list:
+                response = client.delete_object(Bucket=bucket_name,Key=obj)
+            versioned_objects_list = get_versioned_objects_list(bucket_name, client)
+            for obj in versioned_objects_list:
+                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
+            delete_markers = get_delete_markers_list(bucket_name, client)
+            for obj in delete_markers:
+                response = client.delete_object(Bucket=bucket_name,Key=obj[0],VersionId=obj[1])
+            try:
+                response = client.delete_bucket(Bucket=bucket_name)
+            except ClientError as e:
+                # The exception shouldn't be raised when doing cleanup. Pass and continue
+                # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
+                # resulting in some kind of resource leak. err is used to hint user some
+                # exception once occurred.
+                err = e
+                pass
+        if err:
+            raise err
 
     print('Done with cleanup of buckets in tests.')
 
