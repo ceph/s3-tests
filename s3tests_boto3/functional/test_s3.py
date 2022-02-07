@@ -9671,7 +9671,7 @@ def test_lifecycle_deletemarker_expiration():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(5*lc_interval)
+    time.sleep(7*lc_interval)
 
     response  = client.list_object_versions(Bucket=bucket_name)
     init_versions = response['Versions']
