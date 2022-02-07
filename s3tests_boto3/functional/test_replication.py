@@ -227,7 +227,7 @@ def test_put_bucket_replication():
 @attr(method='put')
 @attr(operation='put valid replication policy and make sure data is replicated')
 @attr(assertion='passes')
-def test_replication_of_data():
+def test_replication_of_data_with_prefix_tax():
 
     src_bucket, dest_bucket = create_replication_policy()
 
@@ -240,7 +240,7 @@ def test_replication_of_data():
 
 #################### test replication across buckets above ############
 
-'''
+
 ################# get_bucket_replication below ##########################
 @tag('auth_common')
 @attr(resource='object')
@@ -270,14 +270,8 @@ def test_delete_bucket_replication():
 
     src_bucket, dest_bucket = create_replication_policy()
     client = boto3.client('s3')    
-
-    response = client.get_bucket_replication(Bucket=src_bucket)
     
     response = client.delete_bucket_replication(Bucket=src_bucket)
-    try:
-        response = client.get_bucket_replication(Bucket=src_bucket)
-    except ClientError as ce:
-        print()
     status = _get_status(response)    
     eq(status, 204)
     cleanup_policy()
@@ -653,4 +647,4 @@ def test_bucket_replication_with_conditional_replication_filter():
     eq(check_filtered_replication_worked(src_bucket, dest_bucket1, "dest1/"), True)
 
     cleanup_policy()
-'''
+
