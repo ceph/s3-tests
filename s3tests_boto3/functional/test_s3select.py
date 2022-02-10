@@ -1338,7 +1338,7 @@ def test_output_serial_expressions():
     
     s3select_assert_result( res_s3select_quot, res_s3select_final )
 
-@attr('s3select_parquet')
+@attr('s3select')
 def test_parquet():
 
     parquet_obj_name = "4col.parquet"
