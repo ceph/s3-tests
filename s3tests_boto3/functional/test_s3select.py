@@ -12,6 +12,10 @@ from . import (
     get_client
     )
 
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 import logging
 logging.basicConfig(level=logging.INFO)
 
