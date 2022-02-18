@@ -10,3 +10,5 @@ requests >=2.23.0
 pytz >=2011k
 httplib2
 lxml
+pyarrow
+pandas
