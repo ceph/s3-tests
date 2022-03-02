@@ -6854,8 +6854,9 @@ def _do_remove_versions(bucket, objname, remove_start_idx, idx_inc, head_rm_rati
 
     for j in xrange(total):
         r += head_rm_ratio
-        if r >= 1:
-            r %= 1
+
+        # Head object can be removed only once.
+        if r == 1:
             remove_obj_head(bucket, objname, k, c)
         else:
             remove_obj_version(bucket, k, c, idx)
