@@ -4452,6 +4452,12 @@ def check_grants(got, want):
     in any order.
     """
     eq(len(got), len(want))
+
+    # There are instances when got does not match due the order of item.
+    if got[0]["Grantee"].get("DisplayName"):
+        got.sort(key=lambda x: x["Grantee"].get("DisplayName"))
+        want.sort(key=lambda x: x["DisplayName"])
+
     for g, w in zip(got, want):
         w = dict(w)
         g = dict(g)
