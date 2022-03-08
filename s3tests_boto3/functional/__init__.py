@@ -98,7 +98,7 @@ def list_versions(client, bucket, batch_size):
         objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
         if len(objs):
             yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
-
+'''
 def cleanup(prefix):
     s3 = boto3.resource('s3')
     buckets = s3.buckets.all()
@@ -109,9 +109,10 @@ def cleanup(prefix):
             bucket.object_versions.delete()
             # Delete the bucket
             bucket.delete()
-
+'''
 def nuke_bucket(client, bucket, prefix):
-    batch_size = 128
+    return
+    '''batch_size = 128
     max_retain_date = None
     try:
         # list and delete objects in batches
@@ -154,7 +155,7 @@ bucket cleanup'.format(bucket, delta.total_seconds()))
         client.delete_bucket(Bucket=bucket)
     except:
         cleanup(prefix)
-
+'''
 def cleanup(prefix):
     print("cleaning")
     '''s3 = boto3.resource('s3')
@@ -201,7 +202,8 @@ def get_delete_markers_list(bucket, client=None):
     return delete_markers
 
 def nuke_prefixed_buckets(prefix, client=None):
-    if client == None:
+    return
+    '''if client == None:
         client = get_client()
 
     buckets = get_buckets_list(client, prefix)
@@ -231,7 +233,7 @@ def nuke_prefixed_buckets(prefix, client=None):
             raise err
 
     print('Done with cleanup of buckets in tests.')
-
+'''
 def configured_storage_classes():
     sc = ['STANDARD']
 
@@ -619,6 +621,21 @@ def get_new_bucket_resource(name=None):
     bucket = s3.Bucket(name)
     bucket_location = bucket.create()
     return bucket
+
+def get_new_resource(name=None):
+    """
+    Get a bucket that exists and is empty.
+
+    Always recreates a bucket from scratch. This is useful to also
+    reset ACLs and such.
+    """
+    s3 = boto3.resource('s3',
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify)
+    return s3
 
 def get_new_bucket(client=None, name=None):
     """

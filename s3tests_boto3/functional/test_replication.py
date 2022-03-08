@@ -171,7 +171,10 @@ def cleanup_policy():
 
 def cleanup_role_by_name(role_name):
     policy_name = 'policy-test'
-    client = get_client() #boto3.client('iam')
+    try:
+        client = get_client() #boto3.client('iam')
+    except:
+        client = boto3.client('iam')
     response = client.delete_role_policy(
         RoleName=role_name,
         PolicyName=policy_name
