@@ -222,9 +222,9 @@ def upload_csv_object(bucket_name,new_key,obj):
         client.put_object(Bucket=bucket_name, Key=new_key, Body=obj)
 
         # validate uploaded object
-        c2 = get_client()
-        response = c2.get_object(Bucket=bucket_name, Key=new_key)
-        eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
+        #c2 = get_client()
+        #response = c2.get_object(Bucket=bucket_name, Key=new_key)
+        #eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
 
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE", progress = False):
 
