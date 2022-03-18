@@ -1285,7 +1285,7 @@ def test_output_serial_expressions():
 @attr('s3select')
 def test_parquet():
 
-    parquet_obj_name = "4col.parquet"
+    parquet_obj_name = "4col.prct"
 
     decode_parquet = base64.b64decode(encoded_parquet)
     upload_csv_object("test",parquet_obj_name,decode_parquet)
