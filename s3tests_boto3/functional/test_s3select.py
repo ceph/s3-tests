@@ -227,6 +227,13 @@ def upload_csv_object(bucket_name,new_key,obj):
         #response = c2.get_object(Bucket=bucket_name, Key=new_key)
         #eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
 
+def getobj_range_req(bucket_name,new_key,bytes_range):
+        # return requested bytes range
+        c2 = get_client()
+        response = c2.get_object(Bucket=bucket_name, Key=new_key, Range=bytes_range)
+        return response['Body'].read().decode('utf-8').strip()
+        #return response['Body'].read().strip()
+
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE", progress = False):
 
     s3 = get_client()
@@ -1286,15 +1293,42 @@ def test_output_serial_expressions():
 @attr('s3select')
 def test_parquet():
 
-    parquet_obj_name = "4col.prct"
+    parquet_obj_name = "4col.parquet"
+    bucket_name = "test"
+    counter = 0
+    no_magic = True
+    parquet_magic_header = b''
+    parquet_magic_footer = b''
 
-    decode_parquet = base64.b64decode(encoded_parquet)
-    upload_csv_object("test",parquet_obj_name,decode_parquet)
+    while(counter<10 and no_magic):
+        decode_parquet = base64.b64decode(encoded_parquet)
+        upload_csv_object(bucket_name,parquet_obj_name,decode_parquet)
+
+        parquet_magic_header = getobj_range_req(bucket_name,parquet_obj_name,'bytes=0-4')
+
+        b_to_s = parquet_magic_header[0]+parquet_magic_header[1]+parquet_magic_header[2]+parquet_magic_header[3]
+        if (b_to_s != 'PAR1' and b_to_s != 'PARE'):
+            no_magic = True
+            counter = counter + 1
+            continue
+
+        parquet_magic_footer = getobj_range_req(bucket_name,parquet_obj_name,'bytes=23362-23366')
+
+        b_to_s = parquet_magic_footer[0]+parquet_magic_footer[1]+parquet_magic_footer[2]+parquet_magic_footer[3]
+        if (b_to_s != 'PAR1' and b_to_s != 'PARE'):
+            no_magic = True
+            counter = counter + 1
+            continue
+
+        no_magic = False
+
+
+    if(no_magic == True):
+            assert False, "parquet_magic_header ="+parquet_magic_header+ " parquet_magic_footer ="+parquet_magic_footer + " counter=" + str(counter)
 
     #res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > 1000 and _2 < 1021;")  ).replace(",","")
-    res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > _2 and _2 > _3 and _3 > _4;")  ).replace(",","")
+    res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > _2 and _2 > _3 and _3 > _4;")  ).replace(",","").replace("\n","")
 
     #s3select_assert_result( 20  , int( res_s3select ))
     s3select_assert_result( 46  , int( res_s3select ))
-    
 
