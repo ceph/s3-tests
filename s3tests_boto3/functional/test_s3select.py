@@ -1300,7 +1300,7 @@ def test_parquet():
     parquet_magic_header = b''
     parquet_magic_footer = b''
 
-    while(counter<10 and no_magic):
+    while(counter<20 and no_magic):
         decode_parquet = base64.b64decode(encoded_parquet)
         upload_csv_object(bucket_name,parquet_obj_name,decode_parquet)
 
