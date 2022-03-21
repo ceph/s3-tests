@@ -88,6 +88,14 @@ def get_random_string():
     return uuid.uuid4().hex[:6].upper()
 
 @attr('s3select')
+def test_load_parquet_object():
+
+        parquet_obj_name = "4col.parquet"
+        bucket_name = "test"
+        decode_parquet = base64.b64decode(encoded_parquet)
+        upload_csv_object(bucket_name,parquet_obj_name,decode_parquet)
+
+@attr('s3select')
 def test_generate_where_clause():
 
     # create small csv file for testing the random expressions
@@ -1295,36 +1303,6 @@ def test_parquet():
 
     parquet_obj_name = "4col.parquet"
     bucket_name = "test"
-    counter = 0
-    no_magic = True
-    parquet_magic_header = b''
-    parquet_magic_footer = b''
-
-    while(counter<20 and no_magic):
-        decode_parquet = base64.b64decode(encoded_parquet)
-        upload_csv_object(bucket_name,parquet_obj_name,decode_parquet)
-
-        parquet_magic_header = getobj_range_req(bucket_name,parquet_obj_name,'bytes=0-4')
-
-        b_to_s = parquet_magic_header[0]+parquet_magic_header[1]+parquet_magic_header[2]+parquet_magic_header[3]
-        if (b_to_s != 'PAR1' and b_to_s != 'PARE'):
-            no_magic = True
-            counter = counter + 1
-            continue
-
-        parquet_magic_footer = getobj_range_req(bucket_name,parquet_obj_name,'bytes=23362-23366')
-
-        b_to_s = parquet_magic_footer[0]+parquet_magic_footer[1]+parquet_magic_footer[2]+parquet_magic_footer[3]
-        if (b_to_s != 'PAR1' and b_to_s != 'PARE'):
-            no_magic = True
-            counter = counter + 1
-            continue
-
-        no_magic = False
-
-
-    if(no_magic == True):
-            assert False, "parquet_magic_header ="+parquet_magic_header+ " parquet_magic_footer ="+parquet_magic_footer + " counter=" + str(counter)
 
     #res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > 1000 and _2 < 1021;")  ).replace(",","")
     res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > _2 and _2 > _3 and _3 > _4;")  ).replace(",","").replace("\n","")
