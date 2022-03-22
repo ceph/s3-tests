@@ -4,6 +4,7 @@ import string
 import re
 from nose.plugins.attrib import attr
 from botocore.exceptions import ClientError
+from nose.plugins.skip import SkipTest
 
 import uuid
 from nose.tools import eq_ as eq
@@ -1316,9 +1317,12 @@ def test_parquet():
     parquet_obj_name = "4col.parquet"
     bucket_name = "test"
 
-    #res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > 1000 and _2 < 1021;")  ).replace(",","")
     res_s3select = remove_xml_tags_from_result(  run_s3select("test",parquet_obj_name,"select count(0) from s3object where _1 > _2 and _2 > _3 and _3 > _4;")  ).replace(",","").replace("\n","")
 
-    #s3select_assert_result( 20  , int( res_s3select ))
+    find_res = res_s3select.find("does not contain parquet magic")
+    if (find_res > 0):
+        raise nose.SkipTest("parquet magic is missing. skipping this test")
+        return 
+
     s3select_assert_result( 46  , int( res_s3select ))
 
