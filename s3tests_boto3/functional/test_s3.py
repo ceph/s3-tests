@@ -6159,13 +6159,15 @@ def test_buckets_list_ctime():
     before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
     client = get_client()
+    buckets = []
     for i in range(5):
-        client.create_bucket(Bucket=get_new_bucket_name())
+        buckets.append(client.create_bucket(Bucket=get_new_bucket_name()))
 
     response = client.list_buckets()
     for bucket in response['Buckets']:
-        ctime = bucket['CreationDate']
-        assert before <= ctime, '%r > %r' % (before, ctime)
+        if bucket['Name'] in buckets:
+            ctime = bucket['CreationDate']
+            assert before <= ctime, '%r > %r' % (before, ctime)
 
 @attr(resource='bucket')
 @attr(method='get')
