@@ -10265,7 +10265,7 @@ def test_lifecycle_cloud_transition():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(3*lc_interval)
+    time.sleep(8*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
 
@@ -10282,7 +10282,7 @@ def test_lifecycle_cloud_transition():
 
     cloud_client = get_cloud_client()
 
-    time.sleep(10*lc_interval)
+    time.sleep(12*lc_interval)
     expire1_key1_str = prefix + keys[0]
     verify_object(cloud_client, target_path, expire1_key1_str, keys[0], target_sc)
 
@@ -10358,14 +10358,14 @@ def test_lifecycle_cloud_multiple_transition():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(3*lc_interval)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 2)
     eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for next expiration cycle
-    time.sleep(4*lc_interval)
+    time.sleep(7*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
@@ -10376,7 +10376,7 @@ def test_lifecycle_cloud_multiple_transition():
         eq(len(expire1_keys[sc[2]]), 0)
 
     # Wait for final expiration cycle
-    time.sleep(4*lc_interval)
+    time.sleep(12*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire3_keys['STANDARD']), 2)
     eq(len(expire3_keys[sc[1]]), 0)
@@ -10443,13 +10443,13 @@ def test_lifecycle_noncur_cloud_transition():
 
     lc_interval = get_lc_debug_interval()
 
-    time.sleep(3*lc_interval)
+    time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 4)
     eq(len(expire1_keys[sc[2]]), 0)
 
-    time.sleep(5*lc_interval)
+    time.sleep(10*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 2)
     eq(len(expire1_keys[sc[1]]), 0)
@@ -10509,7 +10509,7 @@ def test_lifecycle_cloud_transition_large_obj():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(3*lc_interval)
+    time.sleep(8*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     eq(len(expire1_keys['STANDARD']), 1)
 
@@ -10525,7 +10525,7 @@ def test_lifecycle_cloud_transition_large_obj():
     prefix = bucket + "/"
 
     # multipart upload takes time
-    time.sleep(3*lc_interval)
+    time.sleep(12*lc_interval)
     cloud_client = get_cloud_client()
 
     expire1_key1_str = prefix + keys[1]
