@@ -20,7 +20,7 @@ case "$ID" in
             sudo apt-get -y install $missing
         fi
         ;;
-    centos|fedora|rhel|ol|virtuozzo)
+    centos|fedora|rhel|rocky|ol|virtuozzo)
 
         packages=(which python3-virtualenv python36-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
         for package in ${packages[@]}; do
