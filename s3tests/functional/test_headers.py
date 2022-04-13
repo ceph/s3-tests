@@ -182,6 +182,7 @@ def tag(*tags):
 @attr(method='put')
 @attr(operation='create w/no content length')
 @attr(assertion='fails 411')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_none():
     key = _setup_bad_object(remove=('Content-Length',))
@@ -221,6 +222,7 @@ def test_object_create_bad_contentlength_mismatch_above():
 @attr(method='put')
 @attr(operation='create w/empty authorization')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_empty():
     key = _setup_bad_object({'Authorization': ''})
@@ -235,6 +237,7 @@ def test_object_create_bad_authorization_empty():
 @attr(method='put')
 @attr(operation='create w/date and x-amz-date')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
@@ -246,6 +249,7 @@ def test_object_create_date_and_amz_date():
 @attr(method='put')
 @attr(operation='create w/x-amz-date and no date')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_amz_date_and_no_date():
     date = formatdate(usegmt=True)
@@ -259,6 +263,7 @@ def test_object_create_amz_date_and_no_date():
 @attr(method='put')
 @attr(operation='create w/no authorization')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_none():
     key = _setup_bad_object(remove=('Authorization',))
@@ -274,6 +279,7 @@ def test_object_create_bad_authorization_none():
 @attr(method='put')
 @attr(operation='create w/no content length')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
@@ -285,6 +291,7 @@ def test_bucket_create_contentlength_none():
 @attr(method='acls')
 @attr(operation='set w/no content length')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_acl_create_contentlength_none():
     bucket = get_new_bucket()
@@ -328,6 +335,7 @@ def test_bucket_create_bad_contentlength_empty():
 @attr(method='put')
 @attr(operation='create w/no content length')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
@@ -339,6 +347,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(method='put')
 @attr(operation='create w/empty authorization')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_empty():
     _add_custom_headers({'Authorization': ''})
@@ -354,6 +363,7 @@ def test_bucket_create_bad_authorization_empty():
 @attr(method='put')
 @attr(operation='create w/no authorization')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_none():
     _add_custom_headers(remove=('Authorization',))
@@ -371,6 +381,7 @@ def test_bucket_create_bad_authorization_none():
 @attr(method='put')
 @attr(operation='create w/content length too short')
 @attr(assertion='fails 400')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_mismatch_below_aws2():
     check_aws2_support()
@@ -388,6 +399,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
 @attr(method='put')
 @attr(operation='create w/incorrect authorization')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_incorrect_aws2():
     check_aws2_support()
@@ -404,6 +416,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
 @attr(method='put')
 @attr(operation='create w/invalid authorization')
 @attr(assertion='fails 400')
+@attr('fails_on_dbstore')
 def test_object_create_bad_authorization_invalid_aws2():
     check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
@@ -417,6 +430,7 @@ def test_object_create_bad_authorization_invalid_aws2():
 @attr(method='put')
 @attr(operation='create w/no date')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_none_aws2():
     check_aws2_support()
@@ -446,6 +460,7 @@ def test_bucket_create_bad_authorization_invalid_aws2():
 @attr(method='put')
 @attr(operation='create w/no date')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 @nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_none_aws2():
     check_aws2_support()
