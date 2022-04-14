@@ -3,6 +3,7 @@ import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 from nose.tools import eq_ as eq
+from nose.tools import ok_ as ok
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import isodate
@@ -2254,7 +2255,7 @@ def test_object_set_get_non_utf8_metadata():
     metadata = '\x04mymeta'
     e = _set_get_metadata_unreadable(metadata)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
+    ok(status in [400, 403])
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2266,7 +2267,7 @@ def test_object_set_get_metadata_empty_to_unreadable_prefix():
     metadata = '\x04w'
     e = _set_get_metadata_unreadable(metadata)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
+    ok(status in [400, 403])
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2278,7 +2279,7 @@ def test_object_set_get_metadata_empty_to_unreadable_suffix():
     metadata = 'h\x04'
     e = _set_get_metadata_unreadable(metadata)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
+    ok(status in [400, 403])
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2290,7 +2291,7 @@ def test_object_set_get_metadata_empty_to_unreadable_infix():
     metadata = 'h\x04w'
     e = _set_get_metadata_unreadable(metadata)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
+    ok(status in [400, 403])
 
 @attr(resource='object')
 @attr(method='put')
