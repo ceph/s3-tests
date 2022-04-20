@@ -20,6 +20,19 @@ case "$ID" in
             sudo apt-get -y install $missing
         fi
         ;;
+    arch|manjaro)
+        packages=(which python-pip python-virtualenv libevent libffi libxml2 libxslt zlib)
+        for package in ${packages[@]}; do
+            if [ "$(pacman -Q $package 2>/dev/null)" == "" ]; then
+                missing="${missing:+$missing }$package"
+            fi
+        done
+
+        if [ -n "$missing" ]; then
+            echo "$0: Missing required packages: ${missing}." 1>&2  
+            sudo pacman -S $missing
+        fi
+        ;;
     centos|fedora|rhel|ol|virtuozzo)
 
         packages=(which python3-virtualenv python36-devel libevent-devel libffi-devel libxml2-devel libxslt-devel zlib-devel)
