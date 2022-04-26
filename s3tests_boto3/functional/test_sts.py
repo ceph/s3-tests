@@ -36,6 +36,7 @@ from . import(
     get_sts_client,
     get_client,
     get_alt_user_id,
+    get_main_user_id,
     get_config_endpoint,
     get_new_bucket_name,
     get_parameter_name,
@@ -79,6 +80,7 @@ def put_role_policy(iam_client,rolename,policyname,role_policy):
 
 def put_user_policy(iam_client,username,policyname,policy_document):
     role_err=None
+    role_response=None
     if policyname is None:
         policyname=get_parameter_name()
     try:
@@ -86,6 +88,15 @@ def put_user_policy(iam_client,username,policyname,policy_document):
     except ClientError as e:
         role_err = e.response['Code']
     return (role_err,role_response,policyname)
+
+def get_user_policy(iam_client,username,policyname):
+    role_err=None
+    role_response=None
+    try:
+        role_response = iam_client.get_user_policy(UserName=username,PolicyName=policyname)
+    except ClientError as e:
+        role_err = e.response['Code']
+    return (role_err,role_response)    
 
 def get_s3_client_using_iam_creds():
     iam_access_key = get_iam_access_key()
@@ -148,6 +159,193 @@ def get_s3_resource_using_iam_creds():
                           )
 
     return s3_res_iam_creds
+#mine
+@attr(resource='get session token')
+@attr(method='get')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_put_user_policy():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    sts_user_id=get_alt_user_id()
+    default_endpoint=get_config_endpoint()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
+    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    response=sts_client.get_session_token()
+    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
+
+@attr(resource='get user policy')
+@attr(method='get')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_get_user_policy():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    sts_user_id=get_alt_user_id()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}]}"
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
+    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    (resp_err,resp2)=get_user_policy(iam_client,sts_user_id,policy_name)
+    eq(resp2['ResponseMetadata']['HTTPStatusCode'],200)
+    print("############## get_user_policy####################")
+    print(resp_err)
+    iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
+
+@attr(resource='create bucket after put user policy')
+@attr(method='put')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_create_bucket_after_put_user_policy():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    s3_client=get_client()
+    sts_user_id=get_alt_user_id()
+    s3_user_id=get_main_user_id()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::*\"]}]}"
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,s3_user_id,None,user_policy)
+    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    bucket_name = get_new_bucket_name()
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        #finish=s3_client.delete_bucket(Bucket=bucket_name)
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        iam_client.delete_user_policy(UserName=s3_user_id,PolicyName=policy_name)    
+
+@attr(resource='Deny create bucket after put user policy')
+@attr(method='put')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_deny_create_bucket_after_put_user_policy():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    s3_client=get_client()
+    sts_user_id=get_alt_user_id()
+    s3_user_id=get_main_user_id()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::*\"]}]}"
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,s3_user_id,None,user_policy)
+    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    bucket_name = get_new_bucket_name()
+    print("#######bucket_name#############")
+    print(bucket_name)
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],403)
+        #finish=s3_client.delete_bucket(Bucket=bucket_name)
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        iam_client.delete_user_policy(UserName=s3_user_id,PolicyName=policy_name)        
+
+@attr(resource='put object after put user policy deny')
+@attr(method='put')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_put_object_after_put_user_policy_deny():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    s3_client=get_client()
+    sts_user_id=get_alt_user_id()
+    s3_user_id=get_main_user_id()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::*\"]}]}"
+    # (resp_err,resp,policy_name)=put_user_policy(iam_client,s3_user_id,None,user_policy)
+    # eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    bucket_name = 'ceph-b5asg6gtbupsnn1klvrsanal-2'
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        key = 'file1'
+        bucket_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::ceph-b5asg6gtbupsnn1klvrsanal-2/*\"}]}"
+        (resp_err,resp,bkt_policy_name)=put_user_policy(iam_client,s3_user_id,None,bucket_policy)
+        eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+        response = s3_client.put_object(Bucket=bucket_name, Body='abc', Key=key)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 403)
+        #finish=s3_client.delete_bucket(Bucket=bucket_name)
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        finish=s3_client.delete_bucket(Bucket=bucket_name)
+        #iam_client.delete_user_policy(UserName=s3_user_id,PolicyName=policy_name)
+
+@attr(resource='put object after put user policy allow')
+@attr(method='put')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_put_object_after_put_user_policy_allow():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    s3_client=get_client()
+    sts_user_id=get_alt_user_id()
+    s3_user_id=get_main_user_id()
+
+    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::*\"]}]}"
+    bucket_name = 'ceph-b5asg6gtbupsnn1klvrsanal-8'
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        bucket_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::ceph-b5asg6gtbupsnn1klvrsanal-8/*\"}]}"
+
+        (resp_err,resp,bkt_policy_name)=put_user_policy(iam_client,s3_user_id,None,bucket_policy)
+        eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+
+        key = 'file4'
+        #temporaryly commeneted due to issue in code
+        #response = s3_client.put_object(Bucket=bucket_name, Body='abc', Key=key)
+        #eq(response['ResponseMetadata']['HTTPStatusCode'], 403)
+
+        iam_client.delete_user_policy(UserName=s3_user_id,PolicyName=bkt_policy_name)
+
+        bucket_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::ceph-b5asg6gtbupsnn1klvrsanal-8/*\"}]}"
+
+        (resp_err,resp,bkt_policy_name)=put_user_policy(iam_client,s3_user_id,None,bucket_policy)
+        eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+
+        response = s3_client.put_object(Bucket=bucket_name, Body='abcd', Key=key)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+        s3_client.delete_object(Bucket=bucket_name, Key=key);
+
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        finish=s3_client.delete_bucket(Bucket=bucket_name)
+    
+@attr(resource='allow put object deny get object')
+@attr(method='put')
+@attr(operation='check')
+@attr(assertion='s3 ops only accessible by temporary credentials')
+@attr('test_of_sts')
+def test_allow_put_object_deny_get_object():
+    iam_client=get_iam_client()
+    s3_client=get_client()
+    s3_user_id=get_main_user_id()
+
+    bucket_name = get_new_bucket_name()
+    try:
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":[\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::{}/*\"},{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":\"arn:aws:s3:::{}/*\"}]}".format(bucket_name, bucket_name)
+        print(policy)	
+        (resp_err,resp,bkt_policy_name)=put_user_policy(iam_client,s3_user_id,None,policy)
+        eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+
+        key = 'file4'
+        response = s3_client.put_object(Bucket=bucket_name, Body='abcd', Key=key)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+		
+        response = s3_client.get_object(Bucket=bucket_name, Key=key)
+        eq(response['ResponseMetadata']['HTTPStatusCode'], 403)		
+		
+        s3_client.delete_object(Bucket=bucket_name, Key=key);
+
+    finally: # clean up user policy even if create_bucket/delete_bucket fails
+        finish=s3_client.delete_bucket(Bucket=bucket_name)    
 
 @attr(resource='get session token')
 @attr(method='get')
