@@ -14271,6 +14271,7 @@ def test_multipart_upload_on_a_bucket_with_policy():
 @attr(method='put')
 @attr(operation='put bucket encryption on bucket')
 @attr(assertion='succeeds')
+@attr('encryption')
 def test_put_bucket_encryption():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14293,6 +14294,7 @@ def test_put_bucket_encryption():
 @attr(method='get')
 @attr(operation='get bucket encryption on bucket')
 @attr(assertion='succeeds')
+@attr('encryption')
 def test_get_bucket_encryption():
     bucket_name = get_new_bucket()
     client = get_client()
