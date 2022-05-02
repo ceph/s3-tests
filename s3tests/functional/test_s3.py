@@ -810,52 +810,6 @@ def _make_arn_resource(path="*"):
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='Deny put obj requests without encryption')
-@attr(assertion='success')
-@attr('encryption')
-@attr('bucket-policy')
-@attr('fails_on_dbstore')
-def test_bucket_policy_put_obj_enc():
-
-    bucket = get_new_bucket()
-
-    deny_incorrect_algo = {
-        "StringNotEquals": {
-          "s3:x-amz-server-side-encryption": "AES256"
-        }
-    }
-
-    deny_unencrypted_obj = {
-        "Null" : {
-          "s3:x-amz-server-side-encryption": "true"
-        }
-    }
-
-    p = Policy()
-    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
-
-    s1 = Statement("s3:PutObject", resource, effect="Deny", condition=deny_incorrect_algo)
-    s2 = Statement("s3:PutObject", resource, effect="Deny", condition=deny_unencrypted_obj)
-    policy_document = p.add_statement(s1).add_statement(s2).to_json()
-
-    bucket.set_policy(policy_document)
-
-    key1_str ='testobj'
-    key1  = bucket.new_key(key1_str)
-    check_access_denied(key1.set_contents_from_string, key1_str)
-
-    sse_client_headers = {
-        'x-amz-server-side-encryption' : 'AES256',
-        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
-        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
-        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
-    }
-
-
-    key1.set_contents_from_string(key1_str, headers=sse_client_headers)
-
-@attr(resource='object')
-@attr(method='put')
 @attr(operation='put obj with RequestObjectTag')
 @attr(assertion='success')
 @attr('tagging')
