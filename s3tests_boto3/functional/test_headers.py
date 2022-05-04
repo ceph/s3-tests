@@ -1,4 +1,10 @@
 import boto3
+from botocore.exceptions import ClientError
+import json
+import os
+import time
+
+import boto3
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import nose
@@ -23,9 +29,10 @@ def _add_header_create_object(headers, client=None):
     if client == None:
         client = get_client()
     key_name = 'foo'
-
+    
     # pass in custom headers before PutObject call
     add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    #add_headers = (lambda **kwargs: print(kwargs['params']['headers']))
     client.meta.events.register('before-call.s3.PutObject', add_headers)
     client.put_object(Bucket=bucket_name, Key=key_name)
 
@@ -123,7 +130,7 @@ def _remove_header_create_bucket(remove, client=None):
         client = get_client()
 
     # remove custom headers before PutObject call
-    def remove_header(**kwargs):
+    def remove_header(**kwargs):        
         if (remove in kwargs['params']['headers']):
             del kwargs['params']['headers'][remove]
 
@@ -156,10 +163,6 @@ def tag(*tags):
         return func
     return wrap
 
-#
-# common tests
-#
-
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
@@ -171,6 +174,7 @@ def test_object_create_bad_md5_invalid_short():
     eq(status, 400)
     eq(error_code, 'InvalidDigest')
 
+
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
@@ -178,6 +182,7 @@ def test_object_create_bad_md5_invalid_short():
 @attr(assertion='fails 400')
 def test_object_create_bad_md5_bad():
     e = _add_header_create_bad_object({'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
+    print("tests")
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 400)
     eq(error_code, 'BadDigest')
@@ -288,7 +293,8 @@ def test_object_create_bad_contentlength_mismatch_above():
     bucket_name = get_new_bucket()
     key_name = 'foo'
     headers = {'Content-Length': str(length)}
-    add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    #add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
+    add_headers = (lambda **kwargs: kwargs['request'].headers.add_header('Content-Length', str(length)) )
     client.meta.events.register('before-sign.s3.PutObject', add_headers)
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body=content)
@@ -350,7 +356,8 @@ def test_object_create_bad_authorization_empty():
 @attr('fails_on_rgw')
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
-    bucket_name, key_name = _add_header_create_object({'Date': date, 'X-Amz-Date': date})
+    print("the date I wanna know ", date)
+    bucket_name, key_name = _add_header_create_object({'X-Amz-Date': date, 'Date': date})#, 'X-Amz-Date': date})
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
@@ -799,3 +806,4 @@ def test_bucket_create_bad_date_before_epoch_aws2():
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 403)
     eq(error_code, 'AccessDenied')
+'''
