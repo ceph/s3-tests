@@ -133,6 +133,7 @@ def check_configure_versioning_retry(bucket, status, expected_string):
 @attr(operation='create versioned object, read not exist null version')
 @attr(assertion='read null version behaves correctly')
 @attr('versioning')
+@attr('fails_on_dbstore')
 def test_versioning_obj_read_not_exist_null():
     bucket = get_new_bucket()
     check_versioning(bucket, None)
@@ -155,6 +156,7 @@ def test_versioning_obj_read_not_exist_null():
 @attr('fails_on_aws')
 @attr('fails_with_subdomain')
 @attr('appendobject')
+@attr('fails_on_dbstore')
 def test_append_object():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -179,6 +181,7 @@ def test_append_object():
 @attr('fails_on_aws')
 @attr('fails_with_subdomain')
 @attr('appendobject')
+@attr('fails_on_dbstore')
 def test_append_normal_object():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -199,6 +202,7 @@ def test_append_normal_object():
 @attr('fails_on_aws')
 @attr('fails_with_subdomain')
 @attr('appendobject')
+@attr('fails_on_dbstore')
 def test_append_object_position_wrong():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -402,6 +406,7 @@ def lc_transitions(transitions=None):
 @attr(operation='test create object with storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_storage_class():
     sc = configured_storage_classes()
     if len(sc) < 2:
@@ -420,6 +425,7 @@ def test_object_storage_class():
 @attr(operation='test create multipart object with storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_storage_class_multipart():
     sc = configured_storage_classes()
     if len(sc) < 2:
@@ -461,6 +467,7 @@ def _do_test_object_modify_storage_class(obj_write_func, size):
 @attr(operation='test changing objects storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_modify_storage_class():
     _do_test_object_modify_storage_class(_populate_key, size=9*1024*1024)
 
@@ -470,6 +477,7 @@ def test_object_modify_storage_class():
 @attr(operation='test changing objects storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_modify_storage_class_multipart():
     _do_test_object_modify_storage_class(_populate_multipart_key, size=11*1024*1024)
 
@@ -499,6 +507,7 @@ def _do_test_object_storage_class_copy(obj_write_func, size):
 @attr(operation='test copy object to object with different storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_storage_class_copy():
     _do_test_object_storage_class_copy(_populate_key, size=9*1024*1024)
 
@@ -507,6 +516,7 @@ def test_object_storage_class_copy():
 @attr(operation='test changing objects storage class')
 @attr('storage_class')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_object_storage_class_copy_multipart():
     _do_test_object_storage_class_copy(_populate_multipart_key, size=9*1024*1024)
 
@@ -613,6 +623,7 @@ def _test_atomic_dual_conditional_write(file_size):
 @attr(operation='write one or the other')
 @attr(assertion='1MB successful')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_atomic_dual_conditional_write_1mb():
     _test_atomic_dual_conditional_write(1024*1024)
 
@@ -621,6 +632,7 @@ def test_atomic_dual_conditional_write_1mb():
 @attr(operation='write file in deleted bucket')
 @attr(assertion='fail 404')
 @attr('fails_on_aws')
+@attr('fails_on_dbstore')
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()
 
@@ -665,6 +677,7 @@ def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
 @attr(operation='multipart upload with bad key for uploading chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -692,6 +705,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 @attr(operation='multipart upload with bad md5 for chunks')
 @attr(assertion='successful')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -720,6 +734,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 @attr(assertion='succeeds')
 @attr('fails_with_subdomain')
 @attr('bucket-policy')
+@attr('fails_on_dbstore')
 def test_bucket_policy_different_tenant():
     bucket = get_new_bucket()
     key = bucket.new_key('asdf')
@@ -758,6 +773,7 @@ def test_bucket_policy_different_tenant():
 @attr(method='put')
 @attr(operation='Test put condition operator end with ifExists')
 @attr('bucket-policy')
+@attr('fails_on_dbstore')
 def test_bucket_policy_set_condition_operator_end_with_IfExists():
     bucket = _create_keys(keys=['foo'])
     policy = '''{
@@ -794,55 +810,11 @@ def _make_arn_resource(path="*"):
 
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='Deny put obj requests without encryption')
-@attr(assertion='success')
-@attr('encryption')
-@attr('bucket-policy')
-def test_bucket_policy_put_obj_enc():
-
-    bucket = get_new_bucket()
-
-    deny_incorrect_algo = {
-        "StringNotEquals": {
-          "s3:x-amz-server-side-encryption": "AES256"
-        }
-    }
-
-    deny_unencrypted_obj = {
-        "Null" : {
-          "s3:x-amz-server-side-encryption": "true"
-        }
-    }
-
-    p = Policy()
-    resource = _make_arn_resource("{}/{}".format(bucket.name, "*"))
-
-    s1 = Statement("s3:PutObject", resource, effect="Deny", condition=deny_incorrect_algo)
-    s2 = Statement("s3:PutObject", resource, effect="Deny", condition=deny_unencrypted_obj)
-    policy_document = p.add_statement(s1).add_statement(s2).to_json()
-
-    bucket.set_policy(policy_document)
-
-    key1_str ='testobj'
-    key1  = bucket.new_key(key1_str)
-    check_access_denied(key1.set_contents_from_string, key1_str)
-
-    sse_client_headers = {
-        'x-amz-server-side-encryption' : 'AES256',
-        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
-        'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
-        'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
-    }
-
-
-    key1.set_contents_from_string(key1_str, headers=sse_client_headers)
-
-@attr(resource='object')
-@attr(method='put')
 @attr(operation='put obj with RequestObjectTag')
 @attr(assertion='success')
 @attr('tagging')
 @attr('bucket-policy')
+@attr('fails_on_dbstore')
 def test_bucket_policy_put_obj_request_obj_tag():
 
     bucket = get_new_bucket()

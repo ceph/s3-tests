@@ -527,6 +527,7 @@ def test_bucket_create_bad_authorization_none():
 @attr(method='put')
 @attr(operation='create w/invalid MD5')
 @attr(assertion='fails 400')
+@attr('fails_on_dbstore')
 def test_object_create_bad_md5_invalid_garbage_aws2():
     v2_client = get_v2_client()
     headers = {'Content-MD5': 'AWS HAHAHA'}
@@ -587,6 +588,7 @@ def test_object_create_bad_authorization_invalid_aws2():
 @attr(method='put')
 @attr(operation='create w/empty user agent')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 def test_object_create_bad_ua_empty_aws2():
     v2_client = get_v2_client()
     headers = {'User-Agent': ''}
@@ -598,6 +600,7 @@ def test_object_create_bad_ua_empty_aws2():
 @attr(method='put')
 @attr(operation='create w/no user agent')
 @attr(assertion='succeeds')
+@attr('fails_on_dbstore')
 def test_object_create_bad_ua_none_aws2():
     v2_client = get_v2_client()
     remove = 'User-Agent'
@@ -609,6 +612,7 @@ def test_object_create_bad_ua_none_aws2():
 @attr(method='put')
 @attr(operation='create w/invalid date')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 def test_object_create_bad_date_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Bad Date'}
@@ -622,6 +626,7 @@ def test_object_create_bad_date_invalid_aws2():
 @attr(method='put')
 @attr(operation='create w/empty date')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 def test_object_create_bad_date_empty_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': ''}
@@ -650,6 +655,7 @@ def test_object_create_bad_date_none_aws2():
 @attr(method='put')
 @attr(operation='create w/date in past')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 def test_object_create_bad_date_before_today_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 2010 21:53:04 GMT'}
@@ -663,6 +669,7 @@ def test_object_create_bad_date_before_today_aws2():
 @attr(method='put')
 @attr(operation='create w/date before epoch')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 def test_object_create_bad_date_before_epoch_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 1950 21:53:04 GMT'}
@@ -676,6 +683,7 @@ def test_object_create_bad_date_before_epoch_aws2():
 @attr(method='put')
 @attr(operation='create w/date after 9999')
 @attr(assertion='fails 403')
+@attr('fails_on_dbstore')
 def test_object_create_bad_date_after_end_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 9999 21:53:04 GMT'}
