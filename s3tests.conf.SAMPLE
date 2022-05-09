@@ -62,7 +62,7 @@ access_key = NOPQRSTUVWXYZABCDEFG
 # alt AWS secret key set in vstart.sh
 secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 
-[s3 cloud]
+#[s3 cloud]
 ## to run the testcases with "cloud_transition" attribute.
 ## Note: the waiting time may have to tweaked depending on
 ## the I/O latency to the cloud endpoint.
