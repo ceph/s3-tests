@@ -5558,6 +5558,7 @@ def _get_acl_header(user_id=None, perms=None):
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
+@attr('fails_on_dbstore')
 def test_object_header_acl_grants():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5630,6 +5631,7 @@ def test_object_header_acl_grants():
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
+@attr('fails_on_dbstore')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
     bucket_name = get_new_bucket_name()
@@ -10745,6 +10747,7 @@ def test_encryption_sse_c_method_head():
 @attr(operation='write encrypted with SSE-C and read without SSE-C')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_present():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10769,6 +10772,7 @@ def test_encryption_sse_c_present():
 @attr(operation='write encrypted with SSE-C but read with other key')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_other_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10800,6 +10804,7 @@ def test_encryption_sse_c_other_key():
 @attr(operation='write encrypted with SSE-C, but md5 is bad')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_invalid_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10822,6 +10827,7 @@ def test_encryption_sse_c_invalid_md5():
 @attr(operation='write encrypted with SSE-C, but dont provide MD5')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_no_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10841,6 +10847,7 @@ def test_encryption_sse_c_no_md5():
 @attr(operation='declare SSE-C but do not provide key')
 @attr(assertion='operation fails')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_sse_c_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10859,6 +10866,7 @@ def test_encryption_sse_c_no_key():
 @attr(operation='Do not declare SSE-C but provide key and MD5')
 @attr(assertion='operation successfull, no encryption')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_encryption_key_no_sse_c():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12944,6 +12952,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
 @attr('encryption')
 @attr('bucket-policy')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_bucket_policy_put_obj_s3_noenc():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -13001,6 +13010,7 @@ def test_bucket_policy_put_obj_s3_noenc():
 @attr('encryption')
 @attr('bucket-policy')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_bucket_policy_put_obj_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -13049,6 +13059,7 @@ def test_bucket_policy_put_obj_s3_kms():
 @attr(operation='Deny put obj requests if not sse-kms: without encryption')
 @attr(assertion='success')
 @attr('encryption')
+@attr('fails_on_dbstore')
 @attr('bucket-policy')
 def test_bucket_policy_put_obj_kms_noenc():
     kms_keyid = get_main_kms_keyid()
@@ -13100,6 +13111,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 @attr(assertion='success')
 @attr('encryption')
 @attr('bucket-policy')
+@attr('fails_on_dbstore')
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -14686,6 +14698,7 @@ def _test_sse_s3_default_upload(file_size):
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_upload_1b():
     _test_sse_s3_default_upload(1)
 
@@ -14696,6 +14709,7 @@ def test_sse_s3_default_upload_1b():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_upload_1kb():
     _test_sse_s3_default_upload(1024)
 
@@ -14706,6 +14720,7 @@ def test_sse_s3_default_upload_1kb():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_upload_1mb():
     _test_sse_s3_default_upload(1024*1024)
 
@@ -14716,6 +14731,7 @@ def test_sse_s3_default_upload_1mb():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_upload_8mb():
     _test_sse_s3_default_upload(8*1024*1024)
 
@@ -14750,6 +14766,7 @@ def _test_sse_kms_default_upload(file_size):
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_kms_default_upload_1b():
     _test_sse_kms_default_upload(1)
 
@@ -14760,6 +14777,7 @@ def test_sse_kms_default_upload_1b():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_kms_default_upload_1kb():
     _test_sse_kms_default_upload(1024)
 
@@ -14770,6 +14788,7 @@ def test_sse_kms_default_upload_1kb():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_kms_default_upload_1mb():
     _test_sse_kms_default_upload(1024*1024)
 
@@ -14780,6 +14799,7 @@ def test_sse_kms_default_upload_1mb():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_kms_default_upload_8mb():
     _test_sse_kms_default_upload(8*1024*1024)
 
@@ -14792,6 +14812,7 @@ def test_sse_kms_default_upload_8mb():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14820,6 +14841,7 @@ def test_sse_s3_default_method_head():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14870,6 +14892,7 @@ def test_sse_s3_default_multipart_upload():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_default_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14919,6 +14942,7 @@ def test_sse_s3_default_post_object_authenticated_request():
 @attr('encryption')
 @attr('bucket-encryption')
 @attr('encryption')
+@attr('fails_on_dbstore')
 def test_sse_kms_default_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14988,6 +15012,7 @@ def _test_sse_s3_encrypted_upload(file_size):
 @attr(assertion='success')
 @attr('encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_encrypted_upload_1b():
     _test_sse_s3_encrypted_upload(1)
 
@@ -14997,6 +15022,7 @@ def test_sse_s3_encrypted_upload_1b():
 @attr(assertion='success')
 @attr('encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_encrypted_upload_1kb():
     _test_sse_s3_encrypted_upload(1024)
 
@@ -15006,6 +15032,7 @@ def test_sse_s3_encrypted_upload_1kb():
 @attr(assertion='success')
 @attr('encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_encrypted_upload_1mb():
     _test_sse_s3_encrypted_upload(1024*1024)
 
@@ -15015,5 +15042,6 @@ def test_sse_s3_encrypted_upload_1mb():
 @attr(assertion='success')
 @attr('encryption')
 @attr('sse-s3')
+@attr('fails_on_dbstore')
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
