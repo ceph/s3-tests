@@ -7797,7 +7797,7 @@ def test_set_bucket_tagging():
     e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
-    eq(error_code, 'NoSuchTagSetError')
+    eq(error_code, 'NoSuchTagSet')
 
     client.put_bucket_tagging(Bucket=bucket_name, Tagging=tags)
 
@@ -7810,7 +7810,7 @@ def test_set_bucket_tagging():
     e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
-    eq(error_code, 'NoSuchTagSetError')
+    eq(error_code, 'NoSuchTagSet')
 
 
 class FakeFile(object):
