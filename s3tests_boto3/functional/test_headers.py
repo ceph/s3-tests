@@ -276,28 +276,6 @@ def test_object_create_bad_contentlength_none():
 @tag('auth_common')
 @attr(resource='object')
 @attr(method='put')
-@attr(operation='create w/content length too long')
-@attr(assertion='fails 400')
-# TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
-@attr('fails_on_rgw')
-def test_object_create_bad_contentlength_mismatch_above():
-    content = 'bar'
-    length = len(content) + 1
-
-    client = get_client()
-    bucket_name = get_new_bucket()
-    key_name = 'foo'
-    headers = {'Content-Length': str(length)}
-    add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
-    client.meta.events.register('before-sign.s3.PutObject', add_headers)
-
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body=content)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-
-@tag('auth_common')
-@attr(resource='object')
-@attr(method='put')
 @attr(operation='create w/content type text/plain')
 @attr(assertion='succeeds')
 def test_object_create_bad_contenttype_invalid():

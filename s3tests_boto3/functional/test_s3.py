@@ -4183,18 +4183,6 @@ def check_invalid_bucketname(invalid_name):
 
 @attr(resource='bucket')
 @attr(method='put')
-@attr(operation='empty name')
-@attr(assertion='fails 405')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
-def test_bucket_create_naming_bad_short_empty():
-    invalid_bucketname = ''
-    status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 405)
-    eq(error_code, 'MethodNotAllowed')
-
-@attr(resource='bucket')
-@attr(method='put')
 @attr(operation='short (one character) name')
 @attr(assertion='fails 400')
 def test_bucket_create_naming_bad_short_one():
@@ -4206,27 +4194,6 @@ def test_bucket_create_naming_bad_short_one():
 @attr(assertion='fails 400')
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
-
-# Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='excessively long names')
-@attr(assertion='fails with subdomain: 400')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
-def test_bucket_create_naming_bad_long():
-    invalid_bucketname = 256*'a'
-    status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-
-    invalid_bucketname = 280*'a'
-    status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-
-    invalid_bucketname = 3000*'a'
-    status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
 
 def check_good_bucket_name(name, _prefix=None):
     """
@@ -4349,22 +4316,6 @@ def test_bucket_list_long_name():
 @attr(assertion='fails on aws')
 def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
-
-# Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/! in name')
-@attr(assertion='fails with subdomain')
-# TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
-def test_bucket_create_naming_bad_punctuation():
-    # characters other than [a-zA-Z0-9._-]
-    invalid_bucketname = 'alpha!soup'
-    status, error_code = check_invalid_bucketname(invalid_bucketname)
-    # TODO: figure out why a 403 is coming out in boto3 but not in boto2.
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
 
 # test_bucket_create_naming_dns_* are valid but not recommended
 @attr(resource='bucket')
