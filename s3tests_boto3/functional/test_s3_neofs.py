@@ -767,3 +767,52 @@ def _check_empty_list_multipart(bucket_name):
     if 'Uploads' in response:
         uploads = response['Uploads']
     eq(len(uploads), 0)
+
+
+@attr(resource='object')
+@attr(operation='object put, get, delete, list versions')
+@attr('s3_neofs_workflow')
+def test_object_versioning_workflow():
+    object_name = 'object'
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    response = client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={'Status': 'Enabled'})
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_bucket_versioning(Bucket=bucket_name)
+    eq(response['Status'], 'Enabled')
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name, Body='version1')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name, Body='version2')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.delete_object(Bucket=bucket_name, Key=object_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=object_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    objs_list = response['Versions']
+    eq(len(objs_list), 2)
+    delete_markers = response['DeleteMarkers']
+    eq(len(delete_markers), 1)
+
+    response = client.get_object(Bucket=bucket_name, Key=object_name, VersionId=objs_list[0]['VersionId'])
+    body = _get_body(response)
+    eq(body, 'version2')
+
+    response = client.get_object(Bucket=bucket_name, Key=object_name, VersionId=objs_list[1]['VersionId'])
+    body = _get_body(response)
+    eq(body, 'version1')
+
+    response = client.delete_object(Bucket=bucket_name, Key=object_name, VersionId=delete_markers[0]['VersionId'])
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    response = client.get_object(Bucket=bucket_name, Key=object_name)
+    body = _get_body(response)
+    eq(body, 'version2')
