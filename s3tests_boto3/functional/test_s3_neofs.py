@@ -621,3 +621,34 @@ def test_bucket_create_delete():
     e = assert_raises(ClientError, client.head_bucket, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
+
+
+@attr(resource='object')
+@attr(operation='put, get, copy and delete object')
+@attr('s3_neofs_workflow')
+def test_object_basic_workflow():
+    bucket_name = get_new_bucket()
+    object_name = 'object'
+    client = get_client()
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name, Body='foo')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_object(Bucket=bucket_name, Key=object_name)
+    body = _get_body(response)
+    eq(body, 'foo')
+
+    copy_source = {'Bucket': bucket_name, 'Key': object_name}
+    object_copy_name = 'object-copy'
+    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=object_copy_name)
+
+    response = client.get_object(Bucket=bucket_name, Key=object_copy_name)
+    body = _get_body(response)
+    eq(body, 'foo')
+
+    response = client.delete_object(Bucket=bucket_name, Key=object_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=object_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
