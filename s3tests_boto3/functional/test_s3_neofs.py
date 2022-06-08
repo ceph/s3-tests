@@ -40,6 +40,28 @@ def _setup_bucket_acl(bucket_acl=None):
     return bucket_name
 
 
+def _get_keys(response):
+    """
+    return lists of strings that are the keys from a client.list_objects() response
+    """
+    keys = []
+    if 'Contents' in response:
+        objects_list = response['Contents']
+        keys = [obj['Key'] for obj in objects_list]
+    return keys
+
+
+def _get_prefixes(response):
+    """
+    return lists of strings that are prefixes from a client.list_objects() response
+    """
+    prefixes = []
+    if 'CommonPrefixes' in response:
+        prefix_list = response['CommonPrefixes']
+        prefixes = [prefix['Prefix'] for prefix in prefix_list]
+    return prefixes
+
+
 def _create_objects(bucket=None, bucket_name=None, keys=[]):
     """
     Populate a (specified or new) bucket with objects with
@@ -652,3 +674,44 @@ def test_object_basic_workflow():
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=object_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
+
+
+@attr(resource='bucket')
+@attr(operation='list objects v1 with corner case prefix')
+@attr('s3_neofs_workflow')
+def test_list_objects():
+    client = get_client()
+    list_objects(client.list_objects)
+
+
+@attr(resource='bucket')
+@attr(operation='list objects v2 with corner case prefix')
+@attr('s3_neofs_workflow')
+def test_list_objects_v2():
+    client = get_client()
+    list_objects(client.list_objects_v2)
+
+
+def list_objects(list_object_function):
+    bucket_name = _create_objects(keys=['foo/foo2', 'foo/foo3', 'bar', '/baz'])
+
+    response = list_object_function(Bucket=bucket_name)
+    keys = _get_keys(response)
+    eq(len(keys), 4)
+    eq(keys, ['/baz', 'bar', 'foo/foo2', 'foo/foo3'])
+
+    response = list_object_function(Bucket=bucket_name, Prefix='/')
+    keys = _get_keys(response)
+    eq(len(keys), 1)
+    eq(keys, ['/baz'])
+
+    response = list_object_function(Bucket=bucket_name, Prefix='foo/')
+    keys = _get_keys(response)
+    eq(len(keys), 2)
+    eq(keys, ['foo/foo2', 'foo/foo3'])
+
+    response = list_object_function(Bucket=bucket_name, Prefix='c', Delimiter='d')
+    keys = _get_keys(response)
+    prefixes = _get_prefixes(response)
+    eq(keys, [])
+    eq(prefixes, [])
