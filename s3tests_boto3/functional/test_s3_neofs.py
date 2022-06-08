@@ -715,3 +715,55 @@ def list_objects(list_object_function):
     prefixes = _get_prefixes(response)
     eq(keys, [])
     eq(prefixes, [])
+
+
+@attr(resource='object')
+@attr(operation='object multipart create, abort, complete, list')
+@attr('s3_neofs_workflow')
+def test_multipart_workflow():
+    bucket_name = get_new_bucket()
+    object_name = "object"
+    client = get_client()
+
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=object_name)
+    upload_id = response['UploadId']
+
+    response = client.list_multipart_uploads(Bucket=bucket_name)
+    uploads = response['Uploads']
+    eq(len(uploads), 1)
+    eq(uploads[0]['UploadId'], upload_id)
+
+    response = client.abort_multipart_upload(Bucket=bucket_name, Key=object_name, UploadId=upload_id)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    _check_empty_list_multipart(bucket_name)
+
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=object_name)
+    upload_id = response['UploadId']
+
+    part_content = 'content'
+    response = client.upload_part(Bucket=bucket_name, Key=object_name, UploadId=upload_id, PartNumber=1, Body=part_content)
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+
+    response = client.list_parts(Bucket=bucket_name, Key=object_name, UploadId=upload_id)
+    response_parts = response['Parts']
+    eq(len(response_parts), 1)
+    eq(response_parts[0]['ETag'], parts[0]['ETag'])
+
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=object_name, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    _check_empty_list_multipart(bucket_name)
+
+    response = client.get_object(Bucket=bucket_name, Key=object_name)
+    body = _get_body(response)
+    eq(body, part_content)
+
+
+def _check_empty_list_multipart(bucket_name):
+    client = get_client()
+    response = client.list_multipart_uploads(Bucket=bucket_name)
+    uploads = []
+    if 'Uploads' in response:
+        uploads = response['Uploads']
+    eq(len(uploads), 0)
