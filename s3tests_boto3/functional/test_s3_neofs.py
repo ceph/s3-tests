@@ -25,6 +25,7 @@ from . import (
     get_config_endpoint,
     get_main_aws_access_key,
     get_main_aws_secret_key,
+    get_buckets_list,
 )
 
 
@@ -598,3 +599,25 @@ def test_multipart_upload():
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
     client.delete_object(Bucket=bucket_name, Key=key)
+
+
+@attr(resource='bucket')
+@attr(operation='create and delete bucket')
+@attr('s3_neofs_workflow')
+def test_bucket_create_delete():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    response = client.head_bucket(Bucket=bucket_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    buckets_list = get_buckets_list()
+    if bucket_name not in buckets_list:
+        raise RuntimeError("bucket isn't in list")
+
+    response = client.delete_bucket(Bucket=bucket_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    e = assert_raises(ClientError, client.head_bucket, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 404)
