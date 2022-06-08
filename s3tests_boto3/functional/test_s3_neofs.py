@@ -816,3 +816,63 @@ def test_object_versioning_workflow():
     response = client.get_object(Bucket=bucket_name, Key=object_name)
     body = _get_body(response)
     eq(body, 'version2')
+
+
+@attr(resource='bucket')
+@attr(operation='bucket put, get, delete tags')
+@attr('s3_neofs_workflow')
+def test_bucket_tagging_workflow():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    tags = {'TagSet': [{'Key': 'bucket-tag-key', 'Value': 'bucket-tag-value'}]}
+
+    response = client.put_bucket_tagging(Bucket=bucket_name, Tagging=tags)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_bucket_tagging(Bucket=bucket_name)
+    eq(len(response['TagSet']), 1)
+    eq(response['TagSet'][0]['Key'], 'bucket-tag-key')
+    eq(response['TagSet'][0]['Value'], 'bucket-tag-value')
+
+    response = client.delete_bucket_tagging(Bucket=bucket_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    response = client.get_bucket_tagging(Bucket=bucket_name)
+    eq(len(response['TagSet']), 0)
+
+
+@attr(resource='object')
+@attr(operation='object put, get, delete tags')
+@attr('s3_neofs_workflow')
+def test_object_tagging_workflow():
+    bucket_name = get_new_bucket()
+    object_name = 'object'
+    client = get_client()
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name, Body='content')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    tags = {'TagSet': [{'Key': 'object-tag-key', 'Value': 'object-tag-value'}]}
+    response = client.put_object_tagging(Bucket=bucket_name, Key=object_name, Tagging=tags)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=object_name)
+    eq(len(response['TagSet']), 1)
+    eq(response['TagSet'][0]['Key'], 'object-tag-key')
+    eq(response['TagSet'][0]['Value'], 'object-tag-value')
+
+    new_tags = {'TagSet': [{'Key': 'object-new-tag-key', 'Value': 'object-new-tag-value'}]}
+    response = client.put_object_tagging(Bucket=bucket_name, Key=object_name, Tagging=new_tags)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=object_name)
+    eq(len(response['TagSet']), 1)
+    eq(response['TagSet'][0]['Key'], 'object-new-tag-key')
+    eq(response['TagSet'][0]['Value'], 'object-new-tag-value')
+
+    response = client.delete_object_tagging(Bucket=bucket_name, Key=object_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+    response = client.get_object_tagging(Bucket=bucket_name, Key=object_name)
+    eq(len(response['TagSet']), 0)
