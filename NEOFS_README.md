@@ -1,3 +1,4 @@
+## Local run
 To start S3 compatibility tests do the following steps:
 1. Make sure `python 3.6` is installed:
 ```bash
@@ -164,3 +165,24 @@ KC_REALM=<name of the realm>
     ```
 Also, if you don't want to see all debug output you can append a parameter `--logging-level=ERROR`.  For more info see [here](https://nose.readthedocs.io/en/latest/usage.html).
 
+## Docker run
+
+In case of issues with environment setup, run tests from Docker environment. 
+To build an image use Makefile.
+
+```bash
+make image
+```
+
+It builds `s3-tests` image. Prepare config file as described above and run 
+`nosetests` in this container.
+
+```bash
+docker run \
+  -v `pwd`/your.conf:/s3-tests/s3tests.conf \
+  -e S3TEST_CONF=/s3-tests/s3tests.conf \
+  --network host \
+  -it s3-tests nosetests -v --nologcapture s3tests_boto3.functional
+```
+
+Specify correct configuration file path and network settings.
