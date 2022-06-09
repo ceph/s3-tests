@@ -876,3 +876,71 @@ def test_object_tagging_workflow():
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=object_name)
     eq(len(response['TagSet']), 0)
+
+
+@attr(resource='object')
+@attr(operation='get object attributes')
+@attr('s3_neofs_workflow')
+def test_object_attributes():
+    bucket_name = get_new_bucket()
+    object_name = 'object'
+    client = get_client()
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name, Body='foo')
+    etag = response['ETag']
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name, ObjectAttributes=['ETag'])
+    eq(response['ETag'], etag)
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name, ObjectAttributes=['ObjectSize', 'StorageClass'])
+    eq(response['ObjectSize'], 3)
+    eq(response['StorageClass'], 'STANDARD')
+
+    response = client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={'Status': 'Enabled'})
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    object_name_versioned = 'object-versioned'
+
+    response = client.put_object(Bucket=bucket_name, Key=object_name_versioned, Body='bar')
+    etag = response['ETag']
+    version_id = response['VersionId']
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name_versioned, VersionId=version_id, ObjectAttributes=['ETag'])
+    eq(response['ETag'], etag)
+    eq(response['VersionId'], version_id)
+
+    object_name_multipart = 'object-multipart'
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=object_name_multipart, size=12*1024*1024)
+
+    response = client.list_parts(Bucket=bucket_name, Key=object_name_multipart, UploadId=upload_id)
+    response_parts = response['Parts']
+    eq(len(response_parts), len(parts))
+
+    for i in range(3):
+        eq(response_parts[i]['ETag'], parts[i]['ETag'])
+        eq(response_parts[i]['PartNumber'], parts[i]['PartNumber'])
+
+    client.complete_multipart_upload(Bucket=bucket_name, Key=object_name_multipart, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name_multipart, ObjectAttributes=['ObjectParts'])
+    object_parts = response['ObjectParts']['Parts']
+    eq(response['ObjectParts']['TotalPartsCount'], 3)
+    for i in range(3):
+        eq(object_parts[i]['ChecksumSHA256'], parts[i]['ETag'])
+        eq(object_parts[i]['PartNumber'], parts[i]['PartNumber'])
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name_multipart, ObjectAttributes=['ObjectParts'], MaxParts=2)
+    object_parts = response['ObjectParts']['Parts']
+    eq(response['ObjectParts']['TotalPartsCount'], 3)
+    eq(response['ObjectParts']['IsTruncated'], True)
+    for i in range(2):
+        eq(object_parts[i]['ChecksumSHA256'], parts[i]['ETag'])
+        eq(object_parts[i]['PartNumber'], parts[i]['PartNumber'])
+
+    response = client.get_object_attributes(Bucket=bucket_name, Key=object_name_multipart, ObjectAttributes=['ObjectParts'], PartNumberMarker=3)
+    object_parts = response['ObjectParts']['Parts']
+    eq(response['ObjectParts']['TotalPartsCount'], 3)
+    eq(response['ObjectParts']['PartNumberMarker'], 3)
+    eq(object_parts[0]['ChecksumSHA256'], parts[2]['ETag'])
+    eq(object_parts[0]['PartNumber'], parts[2]['PartNumber'])

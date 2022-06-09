@@ -14,7 +14,7 @@ setup(
 
     install_requires=[
         'boto >=2.0b4',
-        'boto3 >=1.0.0',
+        'boto3 >=1.23.10',
         'PyYAML',
         'munch >=2.0.0',
         'gevent >=1.0',
