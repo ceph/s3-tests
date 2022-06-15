@@ -8373,7 +8373,6 @@ def test_ranged_request_empty_object():
 @attr(operation='create versioned bucket')
 @attr(assertion='can create and suspend bucket versioning')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_bucket_create_suspend():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8462,7 +8461,6 @@ def _do_test_create_remove_versions(client, bucket_name, key, num_versions, remo
 @attr(operation='create and remove versioned object')
 @attr(assertion='can create access and remove appropriate versions')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_create_read_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8482,7 +8480,6 @@ def test_versioning_obj_create_read_remove():
 @attr(operation='create and remove versioned object and head')
 @attr(assertion='can create access and remove appropriate versions')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_create_read_remove_head():
     bucket_name = get_new_bucket()
 
@@ -8522,7 +8519,6 @@ def test_versioning_obj_create_read_remove_head():
 @attr(operation='create object, then switch to versioning')
 @attr(assertion='behaves correctly')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_plain_null_version_removal():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8548,7 +8544,6 @@ def test_versioning_obj_plain_null_version_removal():
 @attr(operation='create object, then switch to versioning')
 @attr(assertion='behaves correctly')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_plain_null_version_overwrite():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8587,7 +8582,6 @@ def test_versioning_obj_plain_null_version_overwrite():
 @attr(operation='create object, then switch to versioning')
 @attr(assertion='behaves correctly')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_plain_null_version_overwrite_suspended():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8658,7 +8652,6 @@ def overwrite_suspended_versioning_obj(client, bucket_name, key, version_ids, co
 @attr(operation='suspend versioned bucket')
 @attr(assertion='suspended versioning behaves correctly')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_suspend_versions():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8696,7 +8689,6 @@ def test_versioning_obj_suspend_versions():
 @attr(operation='create and remove versions')
 @attr(assertion='everything works')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_create_versions_remove_all():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8717,7 +8709,6 @@ def test_versioning_obj_create_versions_remove_all():
 @attr(method='remove')
 @attr(operation='create and remove versions')
 @attr(assertion='everything works')
-@attr('fails_on_dbstore')
 @attr('versioning')
 def test_versioning_obj_create_versions_remove_special_names():
     bucket_name = get_new_bucket()
@@ -8775,7 +8766,6 @@ def test_versioning_obj_create_overwrite_multipart():
 @attr(operation='list versioned objects')
 @attr(assertion='everything works')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_obj_list_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8879,7 +8869,6 @@ def test_versioning_copy_obj_version():
 @attr(operation='delete multiple versions')
 @attr(assertion='deletes multiple versions of an object with a single call')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_multi_object_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8913,7 +8902,6 @@ def test_versioning_multi_object_delete():
 @attr(operation='delete multiple versions')
 @attr(assertion='deletes multiple versions of an object and delete marker with a single call')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioning_multi_object_delete_with_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8984,7 +8972,6 @@ def test_versioning_multi_object_delete_with_marker_create():
 @attr(operation='change acl on an object version changes specific version')
 @attr(assertion='works')
 @attr('versioning')
-@attr('fails_on_dbstore')
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
