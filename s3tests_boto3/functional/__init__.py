@@ -435,6 +435,18 @@ def get_iam_client(client_config=None):
                         config=client_config)
     return client
 
+def get_iam_s3client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+    client = boto3.client(service_name='s3',
+                          aws_access_key_id=get_iam_access_key(),
+                          aws_secret_access_key=get_iam_secret_key(),
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          config=client_config)
+    return client
+
 def get_alt_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version='s3v4')
@@ -479,6 +491,17 @@ def get_tenant_iam_client():
                           region_name='us-east-1',
                           aws_access_key_id=config.tenant_access_key,
                           aws_secret_access_key=config.tenant_secret_key,
+                          endpoint_url=config.default_endpoint,
+                          verify=config.default_ssl_verify,
+                          use_ssl=config.default_is_secure)
+    return client
+
+def get_alt_iam_client():
+
+    client = boto3.client(service_name='iam',
+                          region_name='',
+                          aws_access_key_id=config.alt_access_key,
+                          aws_secret_access_key=config.alt_secret_key,
                           endpoint_url=config.default_endpoint,
                           verify=config.default_ssl_verify,
                           use_ssl=config.default_is_secure)
