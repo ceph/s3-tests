@@ -71,3 +71,31 @@ You can filter tests based on the attributes. There is a attribute named ``test_
 For running ``webidentity_test`` you'll need have Keycloak running.
 
 In order to run any STS test you'll need to add "iam" section to the config file. For further reference on how your config file should look check ``s3tests.conf.SAMPLE``.
+
+========================
+ IAM policy tests
+========================
+
+This is a set of IAM policy tests.
+This section covers tests for user policies such as Put, Get, List, Delete, user policies with s3 actions, conflicting user policies etc
+These tests uses Boto3 libraries. Tests are written in the ``s3test_boto3`` directory.
+
+These iam policy tests uses two users with profile name "iam" and "s3 alt" as mentioned in s3tests.conf.SAMPLE.
+If Ceph cluster is started with vstart, then above two users will get created as part of vstart with same access key, secrete key etc as mentioned in s3tests.conf.SAMPLE.
+Out of those two users, "iam" user is with capabilities --caps=user-policy=* and "s3 alt" user is without capabilities.
+Adding above capabilities to "iam" user is also taken care by vstart (If Ceph cluster is started with vstart).
+
+To run these tests, create configuration file with section "iam" and "s3 alt" refer s3tests.conf.SAMPLE.
+Once you have that configuration file copied and edited, you can run all the tests with::
+
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam
+
+You can also specify specific test to run::
+
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam:test_put_user_policy
+
+Some tests have attributes set such as "fails_on_rgw".
+You can filter tests based on their attributes::
+
+	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam -a '!fails_on_rgw'
+
