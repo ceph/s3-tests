@@ -9213,7 +9213,6 @@ def test_versioned_concurrent_object_create_and_remove():
 @attr(method='put')
 @attr(operation='set lifecycle config')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_set():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9227,7 +9226,6 @@ def test_lifecycle_set():
 @attr(method='get')
 @attr(operation='get lifecycle config')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_get():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9242,7 +9240,6 @@ def test_lifecycle_get():
 @attr(method='get')
 @attr(operation='get lifecycle config no id')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_get_no_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9279,7 +9276,6 @@ def test_lifecycle_get_no_id():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -9317,7 +9313,6 @@ def test_lifecycle_expiration():
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_lifecyclev2_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -9382,7 +9377,6 @@ def test_lifecycle_expiration_versioning_enabled():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_tags1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9494,7 +9488,6 @@ def setup_lifecycle_tags2(client, bucket_name):
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_tags2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9618,7 +9611,6 @@ def test_lifecycle_expiration_noncur_tags1():
 @attr(operation='id too long in lifecycle rule')
 @attr('lifecycle')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_lifecycle_id_too_long():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9635,7 +9627,6 @@ def test_lifecycle_id_too_long():
 @attr(operation='same id')
 @attr('lifecycle')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_lifecycle_same_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9653,7 +9644,6 @@ def test_lifecycle_same_id():
 @attr(operation='invalid status in lifecycle rule')
 @attr('lifecycle')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_lifecycle_invalid_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9685,7 +9675,6 @@ def test_lifecycle_invalid_status():
 @attr(method='put')
 @attr(operation='set lifecycle config with expiration date')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_set_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9716,7 +9705,6 @@ def test_lifecycle_set_invalid_date():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_date():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
     client = get_client()
@@ -9742,7 +9730,6 @@ def test_lifecycle_expiration_date():
 @attr(operation='test lifecycle expiration days 0')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
     client = get_client()
@@ -9797,7 +9784,6 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
 @attr(operation='test lifecycle expiration header put')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_header_put():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9812,7 +9798,6 @@ def test_lifecycle_expiration_header_put():
 @attr(operation='test lifecycle expiration header head')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_header_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9833,7 +9818,6 @@ def test_lifecycle_expiration_header_head():
 @attr(operation='test lifecycle expiration header head with tags')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_header_tags_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9892,7 +9876,6 @@ def test_lifecycle_expiration_header_tags_head():
 @attr(operation='test lifecycle expiration header head with tags and And')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
-@attr('fails_on_dbstore')
 def test_lifecycle_expiration_header_and_tags_head():
     now = datetime.datetime.now(None)
     bucket_name = get_new_bucket()
@@ -9999,7 +9982,6 @@ def test_lifecycle_set_deletemarker():
 @attr(method='put')
 @attr(operation='set lifecycle config with Filter')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_set_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10012,7 +9994,6 @@ def test_lifecycle_set_filter():
 @attr(method='put')
 @attr(operation='set lifecycle config with empty Filter')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_set_empty_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10063,7 +10044,6 @@ def test_lifecycle_deletemarker_expiration():
 @attr(method='put')
 @attr(operation='set lifecycle config with multipart expiration')
 @attr('lifecycle')
-@attr('fails_on_dbstore')
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10120,7 +10100,6 @@ def test_lifecycle_multipart_expiration():
 @attr(operation='set lifecycle config transition with not iso8601 date')
 @attr('lifecycle')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_lifecycle_transition_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10163,7 +10142,6 @@ def _test_encryption_sse_customer_write(file_size):
 @attr('lifecycle')
 @attr('lifecycle_transition')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
@@ -10212,7 +10190,6 @@ def test_lifecycle_transition():
 @attr('lifecycle')
 @attr('lifecycle_transition')
 @attr('fails_on_aws')
-@attr('fails_on_dbstore')
 def test_lifecycle_transition_single_rule_multi_trans():
     sc = configured_storage_classes()
     if len(sc) < 3:
