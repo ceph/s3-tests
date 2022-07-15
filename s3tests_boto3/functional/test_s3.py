@@ -13712,6 +13712,35 @@ def test_object_lock_delete_object_with_retention():
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
+@attr(resource='bucket')
+@attr(method='delete')
+@attr(operation='Test delete object with retention and delete marker')
+@attr(assertion='retention period make effects')
+@attr('object-lock')
+@attr('fails_on_dbstore')
+def test_object_lock_delete_object_with_retention_and_marker():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    key = 'file1'
+
+    response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
+    client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
+    del_response = client.delete_object(Bucket=bucket_name, Key=key)
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+    client.delete_object(Bucket=bucket_name, Key=key, VersionId=del_response['VersionId'])
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+
+    response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
 
 @attr(resource='object')
 @attr(method='delete')
