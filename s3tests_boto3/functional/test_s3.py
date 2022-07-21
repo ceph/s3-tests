@@ -1637,6 +1637,39 @@ def _make_objs_dict(key_names):
     objs_dict = {'Objects': objs_list}
     return objs_dict
 
+def test_versioning_concurrent_multi_object_delete():
+    num_objects = 5
+    num_threads = 5
+    bucket_name = get_new_bucket()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    key_names = ["key_{:d}".format(x) for x in range(num_objects)]
+    bucket = _create_objects(bucket_name=bucket_name, keys=key_names)
+
+    client = get_client()
+    versions = client.list_object_versions(Bucket=bucket_name)['Versions']
+    assert len(versions) == num_objects
+    objs_dict = {'Objects': [dict((k, v[k]) for k in ["Key", "VersionId"]) for v in versions]}
+    results = [None] * num_threads
+
+    def do_request(n):
+        results[n] = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
+
+    t = []
+    for i in range(num_threads):
+        thr = threading.Thread(target = do_request, args=[i])
+        thr.start()
+        t.append(thr)
+    _do_wait_completion(t)
+
+    for response in results:
+        assert len(response['Deleted']) == num_objects
+        assert 'Errors' not in response
+
+    response = client.list_objects(Bucket=bucket_name)
+    assert 'Contents' not in response
+
 def test_multi_object_delete():
     key_names = ['key0', 'key1', 'key2']
     bucket_name = _create_objects(keys=key_names)
