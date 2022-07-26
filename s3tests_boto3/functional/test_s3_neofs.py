@@ -502,47 +502,6 @@ def test_cors_header_option():
                                               })
 
 
-def _check_multipart_upload_resend(bucket_name, key, objlen, resend_parts):
-    content_type = 'text/bla'
-    metadata = {'foo': 'bar'}
-    client = get_client()
-    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key,
-                                                 size=objlen, content_type=content_type, metadata=metadata,
-                                                 resend_parts=resend_parts)
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-
-    response = client.get_object(Bucket=bucket_name, Key=key)
-    eq(response['ContentType'], content_type)
-    eq(response['Metadata']['foo'], metadata['foo'])
-    body = _get_body(response)
-    eq(len(body), response['ContentLength'])
-    eq(body, data)
-
-    _check_content_using_range(key, bucket_name, data, 1000000)
-    _check_content_using_range(key, bucket_name, data, 10000000)
-    client.delete_object(Bucket=bucket_name, Key=key)
-
-
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multiple multi-part upload with different sizes')
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multi-part upload')
-@attr(assertion='successful')
-@attr('multipart')
-def test_multipart_upload_resend_part():
-    bucket_name = get_new_bucket()
-    key = "mymultipart"
-    objlen = 30 * 1024 * 1024
-
-    _check_multipart_upload_resend(bucket_name, key, objlen, [0])
-    _check_multipart_upload_resend(bucket_name, key, objlen, [1])
-    _check_multipart_upload_resend(bucket_name, key, objlen, [2])
-    _check_multipart_upload_resend(bucket_name, key, objlen, [1, 2])
-    _check_multipart_upload_resend(bucket_name, key, objlen, [0, 1, 2, 3, 4, 5])
-
-
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='check multipart uploads with single small part')
