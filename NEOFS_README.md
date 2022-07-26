@@ -6,17 +6,21 @@ $ python3.6 --version
 Python 3.6.15
 ```
 If not installed, e.g. in Debian/Ubuntu you will have to compile the appropriate 
-version of `python`:
+version of `python` (tested on Ubuntu 22.04):
 ```bash 
+$ sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \
+   libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev \
+   libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
+   libgdbm-dev libnss3-dev libedit-dev libc6-dev 
+
 $ wget https://www.python.org/ftp/python/3.6.15/Python-3.6.15.tar.xz
 $ tar -xvf Python-3.6.15.tar.xz
-$ sudo apt-get install build-essential zlib1g-dev libncurses5-dev libgdbm-dev 
-libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev curl 
-libbz2-dev -y
+
 $ cd Python-3.6.15
-$ ./configure --enable-optimizations --enable-shared
-$ make -j 8 # -j indicates a number of threads
+$ sudo ./configure --enable-optimizations  -with-lto  --with-pydebug
 $ sudo make altinstall
+
+$ python3.6 -V
 ```
 In Arch/Manjaro you can install `python 3.6` from `AUR`, e.g. with `yay`:
 ```bash
