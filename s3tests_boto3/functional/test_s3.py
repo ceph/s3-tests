@@ -7759,7 +7759,9 @@ def test_set_bucket_tagging():
     eq(response['TagSet'][0]['Key'], 'Hello')
     eq(response['TagSet'][0]['Value'], 'World')
 
-    client.delete_bucket_tagging(Bucket=bucket_name)
+    response = client.delete_bucket_tagging(Bucket=bucket_name)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
     e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     eq(status, 404)
