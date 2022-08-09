@@ -198,6 +198,11 @@ def setup():
         config.main_api_name = ""
         pass
 
+    try:
+        config.lc_debug_interval = int(cfg.get('s3 main',"lc_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.lc_debug_interval = 10
+
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
     config.alt_display_name = cfg.get('s3 alt',"display_name")
@@ -534,3 +539,6 @@ def get_token():
 
 def get_realm_name():
     return config.webidentity_realm
+
+def get_lc_debug_interval():
+    return config.lc_debug_interval
