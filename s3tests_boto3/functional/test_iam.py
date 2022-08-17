@@ -13,6 +13,8 @@ from . import (
     get_iam_s3client,
     get_alt_iam_client,
     get_alt_user_id,
+    get_client,
+    get_main_user_id,
 )
 from .utils import _get_status, _get_status_and_error_code
 
@@ -967,4 +969,220 @@ def test_verify_allow_iam_actions():
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
     response = iam_client_alt.delete_user_policy(PolicyName='AllowAccessPolicy',
                                           UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='user-policy')
+@attr(operation='Copy object with Allow s3:PutObject on destination bucket')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_copy_object_allow_put_dest_object():
+    client = get_iam_client()
+    # Create bucket user1buck as user1
+    s3_client_iam = get_iam_s3client()
+    user1buck = get_new_bucket(client=s3_client_iam)
+    # Create bucket user2buck and upload object srcobj as user2
+    s3_client_alt = get_alt_client()
+    user2buck = get_new_bucket(client=s3_client_alt)
+    response = s3_client_alt.put_object(Bucket=user2buck, Key='srcobj', Body='bar')
+    etag_orig = response['ETag']
+    # Add inline user policy with Allow s3:PutObject on user1buck for user2
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Allow",
+             "Action": ["s3:PutObject"],
+             "Resource": f"arn:aws:s3:::{user1buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='AllowPutPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # Copy object user2buck/srcobj to user1buck/dstobj as user2
+    copy_source = {"Bucket": user2buck, 'Key': 'srcobj'}
+    response = s3_client_alt.copy_object(Bucket=user1buck, CopySource=copy_source, Key='dstobj')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    response = client.delete_user_policy(PolicyName='AllowPutPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    response = s3_client_alt.head_object(Bucket=user2buck, Key='srcobj')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq(etag_orig, response['ETag'])
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Allow",
+             "Action": ["s3:GetObject"],
+             "Resource": f"arn:aws:s3:::{user1buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='AllowGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    response = s3_client_alt.head_object(Bucket=user1buck, Key="dstobj")
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq(etag_orig, response['ETag'])
+    response = client.delete_user_policy(PolicyName='AllowGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='user-policy')
+@attr(operation='Copy object with Deny s3:PutObject destination bucket')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_copy_object_deny_put_dest_obj():
+    client = get_iam_client()
+    # Create bucket user1buck and upload object srcobj as user1
+    s3_client_iam = get_iam_s3client()
+    user1buck = get_new_bucket(client=s3_client_iam)
+    # Create bucket user2buck as user2
+    s3_client_alt = get_alt_client()
+    user2buck = get_new_bucket(client=s3_client_alt)
+    s3_client_alt.put_object(Bucket=user2buck, Key='srcobj', Body='bar')
+    copy_source = {"Bucket": user2buck, 'Key': 'srcobj'}
+    e = assert_raises(ClientError, s3_client_alt.copy_object, Bucket=user1buck,
+                      CopySource=copy_source, Key='dstobj')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+    # Add inline user policy with Deny s3:GetObject on user1buck for user2
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Deny",
+             "Action": ["s3:PutObject"],
+             "Resource": f"arn:aws:s3:::{user1buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='DenyPutPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # Copy object user2buck/srcobj to user1buck/dstobj as user2
+    e = assert_raises(ClientError, s3_client_alt.copy_object, Bucket=user1buck,
+                      CopySource=copy_source, Key='dstobj')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+    response = client.delete_user_policy(PolicyName='DenyPutPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='user-policy')
+@attr(operation='Copy object with Allow s3:GetObject on source bucket')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_copy_object_allow_get_source_obj():
+    client = get_iam_client()
+    # Create bucket user1buck and upload object srcobj as user1
+    s3_client_iam = get_iam_s3client()
+    user1buck = get_new_bucket(client=s3_client_iam)
+    response = s3_client_iam.put_object(Bucket=user1buck, Key='srcobj', Body='bar')
+    etag = response['ETag']
+    # Create bucket user2buck as user2
+    s3_client_alt = get_alt_client()
+    user2buck = get_new_bucket(client=s3_client_alt)
+    # Add inline user policy with Allow s3:GetObject on user1buck for user2
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Allow",
+             "Action": ["s3:GetObject"],
+             "Resource": f"arn:aws:s3:::{user1buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='AllowGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # Copy object user1buck/srcobj to user2buck/dstobj  as user2
+    copy_source = {"Bucket": user1buck, 'Key': 'srcobj'}
+    response = s3_client_alt.copy_object(Bucket=user2buck, CopySource=copy_source, Key='dstobj')
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # GET Object user2buck/dstobj as user2
+    response = s3_client_alt.head_object(Bucket=user2buck, Key="dstobj")
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq(etag, response['ETag'])
+    response = client.delete_user_policy(PolicyName='AllowGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='user-policy')
+@attr(operation='Copy object with Deny s3:GetObject on source bucket')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_copy_object_deny_get_source_obj():
+    client = get_iam_client()
+    # Create bucket user1buck and upload object srcobj as user1
+    s3_client_iam = get_iam_s3client()
+    user1buck = get_new_bucket(client=s3_client_iam)
+    s3_client_iam.put_object(Bucket=user1buck, Key='srcobj', Body='bar')
+    # Create bucket user2buck as user2
+    s3_client_alt = get_alt_client()
+    user2buck = get_new_bucket(client=s3_client_alt)
+    # Add inline user policy with Deny s3:GetObject on user1buck for user2
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Deny",
+             "Action": ["s3:GetObject"],
+             "Resource": f"arn:aws:s3:::{user1buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='DenyGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # Copy object user1buck/srcobj to user2buck/dstobj  as user2
+    copy_source = {"Bucket": user1buck, 'Key': 'srcobj'}
+    e = assert_raises(ClientError, s3_client_alt.copy_object, Bucket=user2buck,
+                      CopySource=copy_source, Key='dstobj')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 403)
+    eq(error_code, 'AccessDenied')
+    response = client.delete_user_policy(PolicyName='DenyGetPolicy', UserName=get_alt_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+@attr(resource='user-policy')
+@attr(operation='Copy object with Allow s3:PutObject on destination bucket and s3:GetObject on source bucket')
+@attr(assertion='succeeds')
+@attr('user-policy')
+def test_copy_object_allow_get_src_put_dest():
+    client = get_iam_client()
+    # Create bucket user1buck and upload object srcobj as user1
+    s3_client_iam = get_iam_s3client()
+    user1buck = get_new_bucket(client=s3_client_iam)
+    response = s3_client_iam.put_object(Bucket=user1buck, Key='srcobj', Body='bar')
+    etag = response['ETag']
+    # Create bucket user2buck as user2
+    s3_client_alt = get_alt_client()
+    user2buck = get_new_bucket(client=s3_client_alt)
+    # Add inline user policy for user3 with allow get on source and put on destination
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": [
+             {"Effect": "Allow",
+              "Action": ["s3:GetObject"],
+              "Resource": f"arn:aws:s3:::{user1buck}/*"},
+             {"Effect": "Allow",
+              "Action": ["s3:PutObject"],
+              "Resource": f"arn:aws:s3:::{user2buck}/*"}
+         ]}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='AllowPolicy', UserName=get_main_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # Copy object user1buck/srcobj to user2buck/dstobj as user3
+    main_s3_client = get_client()
+    copy_source = {"Bucket": user1buck, 'Key': 'srcobj'}
+    main_s3_client.copy_object(Bucket=user2buck, CopySource=copy_source, Key='dstobj')
+    response = client.delete_user_policy(PolicyName='AllowPolicy', UserName=get_main_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    # GET Object user2buck/dstobj as user2
+    policy_document_allow = json.dumps(
+        {"Version": "2012-10-17",
+         "Statement": {
+             "Effect": "Allow",
+             "Action": ["s3:GetObject"],
+             "Resource": f"arn:aws:s3:::{user2buck}/*"}}
+    )
+    response = client.put_user_policy(PolicyDocument=policy_document_allow,
+                                      PolicyName='AllowGetPolicy', UserName=get_main_user_id())
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    response = main_s3_client.head_object(Bucket=user2buck, Key="dstobj")
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq(etag, response['ETag'])
+    response = client.delete_user_policy(PolicyName='AllowGetPolicy', UserName=get_main_user_id())
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
