@@ -211,7 +211,6 @@ def test_basic_key_count():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='prefixes in multi-component object names')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_basic():
     bucket_name = _create_objects(keys=['foo/bar', 'foo/bar/xyzzy', 'quux/thud', 'asdf'])
     client = get_client()
@@ -230,7 +229,6 @@ def test_bucket_list_delimiter_basic():
 @attr(operation='list')
 @attr(assertion='prefixes in multi-component object names')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_delimiter_basic():
     bucket_name = _create_objects(keys=['foo/bar', 'foo/bar/xyzzy', 'quux/thud', 'asdf'])
     client = get_client()
@@ -251,7 +249,6 @@ def test_bucket_listv2_delimiter_basic():
 @attr(operation='list')
 @attr(assertion='test url encoding')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_encoding_basic():
     bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
     client = get_client()
@@ -399,7 +396,6 @@ def test_bucket_listv2_delimiter_prefix_ends_with_delimiter():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='prefix and delimiter handling when object ends with delimiter')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_prefix_ends_with_delimiter():
     bucket_name = _create_objects(keys=['asdf/'])
     validate_bucket_list(bucket_name, 'asdf/', '/', '', 1000, False, ['asdf/'], [], None)
@@ -408,7 +404,6 @@ def test_bucket_list_delimiter_prefix_ends_with_delimiter():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='non-slash delimiter characters')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_alt():
     bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
     client = get_client()
@@ -429,7 +424,6 @@ def test_bucket_list_delimiter_alt():
 @attr(method='get')
 @attr(assertion='non-slash delimiter characters')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_delimiter_alt():
     bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
     client = get_client()
@@ -502,7 +496,6 @@ def test_bucket_listv2_delimiter_prefix_underscore():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='percentage delimiter characters')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
     client = get_client()
@@ -522,7 +515,6 @@ def test_bucket_list_delimiter_percentage():
 @attr(method='get')
 @attr(assertion='percentage delimiter characters')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
     client = get_client()
@@ -542,7 +534,6 @@ def test_bucket_listv2_delimiter_percentage():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='whitespace delimiter characters')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_whitespace():
     bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
     client = get_client()
@@ -562,7 +553,6 @@ def test_bucket_list_delimiter_whitespace():
 @attr(method='get')
 @attr(assertion='whitespace delimiter characters')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_delimiter_whitespace():
     bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
     client = get_client()
@@ -582,7 +572,6 @@ def test_bucket_listv2_delimiter_whitespace():
 @attr(method='get')
 @attr(operation='list')
 @attr(assertion='dot delimiter characters')
-@attr('fails_on_dbstore')
 def test_bucket_list_delimiter_dot():
     bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
     client = get_client()
@@ -602,7 +591,6 @@ def test_bucket_list_delimiter_dot():
 @attr(method='get')
 @attr(assertion='dot delimiter characters')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_delimiter_dot():
     bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
     client = get_client()
@@ -818,7 +806,6 @@ def test_bucket_list_delimiter_not_skip_special():
 @attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='returns only objects under prefix')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_basic():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -837,7 +824,6 @@ def test_bucket_list_prefix_basic():
 @attr(operation='list under prefix with list-objects-v2')
 @attr(assertion='returns only objects under prefix')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_basic():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -856,7 +842,6 @@ def test_bucket_listv2_prefix_basic():
 @attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='prefixes w/o delimiters')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_alt():
     key_names = ['bar', 'baz', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -875,7 +860,6 @@ def test_bucket_list_prefix_alt():
 @attr(operation='list under prefix with list-objects-v2')
 @attr(assertion='prefixes w/o delimiters')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_alt():
     key_names = ['bar', 'baz', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -963,7 +947,6 @@ def test_bucket_listv2_prefix_none():
 @attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='nonexistent prefix returns nothing')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_not_exist():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -982,7 +965,6 @@ def test_bucket_list_prefix_not_exist():
 @attr(operation='list under prefix with list-objects-v2')
 @attr(assertion='nonexistent prefix returns nothing')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_not_exist():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -1000,7 +982,6 @@ def test_bucket_listv2_prefix_not_exist():
 @attr(method='get')
 @attr(operation='list under prefix')
 @attr(assertion='non-printable prefix can be specified')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -1019,7 +1000,6 @@ def test_bucket_list_prefix_unreadable():
 @attr(operation='list under prefix with list-objects-v2')
 @attr(assertion='non-printable prefix can be specified')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -1037,7 +1017,6 @@ def test_bucket_listv2_prefix_unreadable():
 @attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='returns only objects directly under prefix')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_delimiter_basic():
     key_names = ['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf']
     bucket_name = _create_objects(keys=key_names)
@@ -1057,7 +1036,6 @@ def test_bucket_list_prefix_delimiter_basic():
 @attr(operation='list-objects-v2 under prefix w/delimiter')
 @attr(assertion='returns only objects directly under prefix')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_delimiter_basic():
     key_names = ['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf']
     bucket_name = _create_objects(keys=key_names)
@@ -1076,7 +1054,6 @@ def test_bucket_listv2_prefix_delimiter_basic():
 @attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='non-slash delimiters')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_delimiter_alt():
     key_names = ['bar', 'bazar', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -1092,7 +1069,6 @@ def test_bucket_list_prefix_delimiter_alt():
     eq(prefixes, ['baza'])
 
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_delimiter_alt():
     key_names = ['bar', 'bazar', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -1111,7 +1087,6 @@ def test_bucket_listv2_prefix_delimiter_alt():
 @attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='finds nothing w/unmatched prefix')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_delimiter_prefix_not_exist():
     key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1129,7 +1104,6 @@ def test_bucket_list_prefix_delimiter_prefix_not_exist():
 @attr(operation='list-objects-v2 under prefix w/delimiter')
 @attr(assertion='finds nothing w/unmatched prefix')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
     key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1146,7 +1120,6 @@ def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
 @attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='over-ridden slash ceases to be a delimiter')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_delimiter_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1164,7 +1137,6 @@ def test_bucket_list_prefix_delimiter_delimiter_not_exist():
 @attr(operation='list-objects-v2 under prefix w/delimiter')
 @attr(assertion='over-ridden slash ceases to be a delimiter')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1181,7 +1153,6 @@ def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
 @attr(method='get')
 @attr(operation='list under prefix w/delimiter')
 @attr(assertion='finds nothing w/unmatched prefix and delimiter')
-@attr('fails_on_dbstore')
 def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1199,7 +1170,6 @@ def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
 @attr(operation='list-objects-v2 under prefix w/delimiter')
 @attr(assertion='finds nothing w/unmatched prefix and delimiter')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1569,7 +1539,6 @@ def test_bucket_listv2_continuationtoken_empty():
 @attr(operation='list keys with list-objects-v2')
 @attr(assertion='no pagination, non-empty continuationtoken')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_bucket_listv2_continuationtoken():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -2068,7 +2037,6 @@ def test_multi_objectv2_delete():
 @attr(method='post')
 @attr(operation='delete multiple objects has upper limit of 1000 keys')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2090,7 +2058,6 @@ def test_multi_object_delete_key_limit():
 @attr(method='post')
 @attr(operation='delete multiple objects has upper limit of 1000 keys with list-objects-v2')
 @attr(assertion='fails 400')
-@attr('fails_on_dbstore')
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -4976,7 +4943,6 @@ def test_object_acl_canned_authenticatedread():
 @attr(method='put')
 @attr(operation='acl bucket-owner-read')
 @attr(assertion='read back expected values')
-@attr('fails_on_dbstore')
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5023,7 +4989,6 @@ def test_object_acl_canned_bucketownerread():
 @attr(method='put')
 @attr(operation='acl bucket-owner-read')
 @attr(assertion='read back expected values')
-@attr('fails_on_dbstore')
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5406,7 +5371,6 @@ def test_bucket_acl_grant_userid_fullcontrol():
 @attr(operation='set acl w/userid READ')
 @attr(assertion='can read data, no other r/w')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_bucket_acl_grant_userid_read():
     bucket_name = _bucket_acl_grant_userid('READ')
 
@@ -5424,7 +5388,6 @@ def test_bucket_acl_grant_userid_read():
 @attr(operation='set acl w/userid READ_ACP')
 @attr(assertion='can read acl, no other r/w')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_bucket_acl_grant_userid_readacp():
     bucket_name = _bucket_acl_grant_userid('READ_ACP')
 
@@ -5443,7 +5406,6 @@ def test_bucket_acl_grant_userid_readacp():
 @attr(operation='set acl w/userid WRITE')
 @attr(assertion='can write data, no other r/w')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_bucket_acl_grant_userid_write():
     bucket_name = _bucket_acl_grant_userid('WRITE')
 
@@ -5461,7 +5423,6 @@ def test_bucket_acl_grant_userid_write():
 @attr(operation='set acl w/userid WRITE_ACP')
 @attr(assertion='can write acls, no other r/w')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_bucket_acl_grant_userid_writeacp():
     bucket_name = _bucket_acl_grant_userid('WRITE_ACP')
 
@@ -5557,7 +5518,6 @@ def _get_acl_header(user_id=None, perms=None):
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_object_header_acl_grants():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5630,7 +5590,6 @@ def test_object_header_acl_grants():
 @attr(assertion='adds all grants individually to second user')
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
-@attr('fails_on_dbstore')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
     bucket_name = get_new_bucket_name()
@@ -5875,7 +5834,6 @@ def list_bucket_versions(client, bucket_name):
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: private/private')
 @attr(assertion='public has no access to bucket or objects')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_object_private():
     # all the test_access_* tests follow this template
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='private')
@@ -5908,7 +5866,6 @@ def test_access_bucket_private_object_private():
 @attr(operation='set bucket/object acls: private/private with list-objects-v2')
 @attr(assertion='public has no access to bucket or objects')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_objectv2_private():
     # all the test_access_* tests follow this template
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='private')
@@ -5940,7 +5897,6 @@ def test_access_bucket_private_objectv2_private():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: private/public-read')
 @attr(assertion='public can only read readable object')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_object_publicread():
 
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read')
@@ -5966,7 +5922,6 @@ def test_access_bucket_private_object_publicread():
 @attr(operation='set bucket/object acls: private/public-read with list-objects-v2')
 @attr(assertion='public can only read readable object')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_objectv2_publicread():
 
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read')
@@ -5991,7 +5946,6 @@ def test_access_bucket_private_objectv2_publicread():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: private/public-read/write')
 @attr(assertion='public can only read the readable object')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6017,7 +5971,6 @@ def test_access_bucket_private_object_publicreadwrite():
 @attr(operation='set bucket/object acls: private/public-read/write with list-objects-v2')
 @attr(assertion='public can only read the readable object')
 @attr('list-objects-v2')
-@attr('fails_on_dbstore')
 def test_access_bucket_private_objectv2_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6042,7 +5995,6 @@ def test_access_bucket_private_objectv2_publicreadwrite():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read/private')
 @attr(assertion='public can only list the bucket')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicread_object_private():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='private')
     alt_client = get_alt_client()
@@ -6066,7 +6018,6 @@ def test_access_bucket_publicread_object_private():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read/public-read')
 @attr(assertion='public can read readable objects and list bucket')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicread_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='public-read')
     alt_client = get_alt_client()
@@ -6095,7 +6046,6 @@ def test_access_bucket_publicread_object_publicread():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read/public-read-write')
 @attr(assertion='public can read readable objects and list bucket')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicread_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6126,7 +6076,6 @@ def test_access_bucket_publicread_object_publicreadwrite():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read-write/private')
 @attr(assertion='private objects cannot be read, but can be overwritten')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicreadwrite_object_private():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='private')
     alt_client = get_alt_client()
@@ -6146,7 +6095,6 @@ def test_access_bucket_publicreadwrite_object_private():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read-write/public-read')
 @attr(assertion='private objects cannot be read, but can be overwritten')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicreadwrite_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='public-read')
     alt_client = get_alt_client()
@@ -6169,7 +6117,6 @@ def test_access_bucket_publicreadwrite_object_publicread():
 @attr(method='ACLs')
 @attr(operation='set bucket/object acls: public-read-write/public-read-write')
 @attr(assertion='private objects cannot be read, but can be overwritten')
-@attr('fails_on_dbstore')
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6245,7 +6192,6 @@ def test_list_buckets_anonymous():
 @attr(method='get')
 @attr(operation='list all buckets (bad auth)')
 @attr(assertion='fails 403')
-@attr('fails_on_dbstore')
 def test_list_buckets_invalid_auth():
     bad_auth_client = get_bad_auth_client()
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
@@ -6361,7 +6307,6 @@ def test_bucket_create_special_key_names():
 @attr(method='get')
 @attr(operation='create and list objects with underscore as prefix, list using prefix')
 @attr(assertion='listing works correctly')
-@attr('fails_on_dbstore')
 def test_bucket_list_special_prefix():
     key_names = ['_bla/1', '_bla/2', '_bla/3', '_bla/4', 'abcd']
     bucket_name = _create_objects(keys=key_names)
@@ -6435,7 +6380,6 @@ def test_object_copy_verify_contenttype():
 @attr(method='put')
 @attr(operation='copy object to itself')
 @attr(assertion='fails')
-@attr('fails_on_dbstore')
 def test_object_copy_to_itself():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6488,7 +6432,6 @@ def test_object_copy_diff_bucket():
 @attr(method='put')
 @attr(operation='copy to an inaccessible bucket')
 @attr(assertion='fails w/AttributeError')
-@attr('fails_on_dbstore')
 def test_object_copy_not_owned_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -6509,7 +6452,6 @@ def test_object_copy_not_owned_bucket():
 @attr(method='put')
 @attr(operation='copy a non-owned object in a non-owned bucket, but with perms')
 @attr(assertion='works')
-@attr('fails_on_dbstore')
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -6604,7 +6546,6 @@ def test_object_copy_replacing_metadata():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy from non-existent bucket')
-@attr('fails_on_dbstore')
 def test_object_copy_bucket_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6617,7 +6558,6 @@ def test_object_copy_bucket_not_found():
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='copy from non-existent object')
-@attr('fails_on_dbstore')
 def test_object_copy_key_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7981,7 +7921,6 @@ def _test_atomic_write(file_size):
 @attr(method='put')
 @attr(operation='write atomicity')
 @attr(assertion='1MB successful')
-@attr('fails_on_dbstore')
 def test_atomic_write_1mb():
     _test_atomic_write(1024*1024)
 
@@ -8942,6 +8881,7 @@ def test_versioning_multi_object_delete_with_marker():
 @attr(operation='multi delete create marker')
 @attr(assertion='returns correct marker version id')
 @attr('versioning')
+@attr('faild_on_dbstore')
 def test_versioning_multi_object_delete_with_marker_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9037,6 +8977,7 @@ def test_versioned_object_acl():
 @attr(operation='change acl on an object with no version specified changes latest version')
 @attr(assertion='works')
 @attr('versioning')
+@attr('faild_on_dbstore')
 def test_versioned_object_acl_no_version_specified():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9254,6 +9195,7 @@ def test_lifecycle_get_no_id():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -9291,6 +9233,7 @@ def test_lifecycle_expiration():
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
 @attr('list-objects-v2')
+@attr('faild_on_dbstore')
 def test_lifecyclev2_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -9465,6 +9408,7 @@ def setup_lifecycle_tags2(client, bucket_name):
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_tags2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9485,6 +9429,7 @@ def test_lifecycle_expiration_tags2():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_versioned_tags2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9557,6 +9502,7 @@ def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_noncur_tags1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9680,6 +9626,7 @@ def test_lifecycle_set_invalid_date():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_date():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
     client = get_client()
@@ -9773,6 +9720,7 @@ def test_lifecycle_expiration_header_put():
 @attr(operation='test lifecycle expiration header head')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_header_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9793,6 +9741,7 @@ def test_lifecycle_expiration_header_head():
 @attr(operation='test lifecycle expiration header head with tags')
 @attr('lifecycle')
 @attr('lifecycle_expiration')
+@attr('faild_on_dbstore')
 def test_lifecycle_expiration_header_tags_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9913,6 +9862,7 @@ def test_lifecycle_set_noncurrent():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_noncur_expiration():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9980,6 +9930,7 @@ def test_lifecycle_set_empty_filter():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_deletemarker_expiration():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10034,6 +9985,7 @@ def test_lifecycle_set_multipart():
 @attr('lifecycle')
 @attr('lifecycle_expiration')
 @attr('fails_on_aws')
+@attr('faild_on_dbstore')
 def test_lifecycle_multipart_expiration():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10692,7 +10644,6 @@ def test_encryption_sse_c_method_head():
 @attr(operation='write encrypted with SSE-C and read without SSE-C')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_encryption_sse_c_present():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10717,7 +10668,6 @@ def test_encryption_sse_c_present():
 @attr(operation='write encrypted with SSE-C but read with other key')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_encryption_sse_c_other_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10749,7 +10699,6 @@ def test_encryption_sse_c_other_key():
 @attr(operation='write encrypted with SSE-C, but md5 is bad')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_encryption_sse_c_invalid_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10772,7 +10721,6 @@ def test_encryption_sse_c_invalid_md5():
 @attr(operation='write encrypted with SSE-C, but dont provide MD5')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_encryption_sse_c_no_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10792,7 +10740,6 @@ def test_encryption_sse_c_no_md5():
 @attr(operation='declare SSE-C but do not provide key')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_encryption_sse_c_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11195,7 +11142,6 @@ def test_sse_kms_present():
 @attr(operation='declare SSE-KMS but do not provide key_id')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_sse_kms_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11216,7 +11162,6 @@ def test_sse_kms_no_key():
 @attr(operation='Do not declare SSE-KMS but provide key_id')
 @attr(assertion='operation successfull, no encryption')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_sse_kms_not_declared():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11452,7 +11397,6 @@ def test_sse_kms_transfer_13b():
 @attr(operation='write encrypted with SSE-KMS and read with SSE-KMS')
 @attr(assertion='operation fails')
 @attr('encryption')
-@attr('fails_on_dbstore')
 def test_sse_kms_read_declare():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13464,7 +13408,6 @@ def test_object_lock_put_obj_retention():
 @attr(operation='Test put object retention with bucket object lock not enabled')
 @attr(assertion='fails')
 @attr('object-lock')
-@attr('fails_on_dbstore')
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13483,7 +13426,6 @@ def test_object_lock_put_obj_retention_invalid_bucket():
 @attr(operation='Test put object retention with invalid mode')
 @attr(assertion='fails')
 @attr('object-lock')
-@attr('fails_on_dbstore')
 def test_object_lock_put_obj_retention_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13551,7 +13493,6 @@ def test_object_lock_get_obj_retention_iso8601():
 @attr(operation='Test get object retention with invalid bucket')
 @attr(assertion='fails')
 @attr('object-lock')
-@attr('fails_on_dbstore')
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13802,7 +13743,6 @@ def test_object_lock_put_legal_hold():
 @attr(operation='Test put legal hold with invalid bucket')
 @attr(assertion='fails')
 @attr('object-lock')
-@attr('fails_on_dbstore')
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14102,7 +14042,6 @@ def test_object_read_unreadable():
 @attr(operation='Test User Policy')
 @attr(assertion='succeeds')
 @attr('user-policy')
-@attr('fails_on_dbstore')
 def test_user_policy():
     client = get_tenant_iam_client()
 
@@ -14397,7 +14336,6 @@ def test_block_public_policy():
 @attr(operation='ignore public acls on canned acls')
 @attr(assertion='succeeds')
 @attr('policy_status')
-@attr('fails_on_dbstore')
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
