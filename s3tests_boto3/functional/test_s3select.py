@@ -1021,7 +1021,7 @@ def test_csv_parser():
     # purpuse: test default csv values(, \n " \ ), return value may contain meta-char 
     # NOTE: should note that default meta-char for s3select are also for python, thus for one example double \ is mandatory
 
-    csv_obj = ',first,,,second,third="c31,c32,c33",forth="1,2,3,4",fifth="my_string=\\"any_value\\" , my_other_string=\\"aaaa,bbb\\" ",' + "\n"
+    csv_obj = r',first,,,second,third="c31,c32,c33",forth="1,2,3,4",fifth=my_string=\"any_value\" \, my_other_string=\"aaaa\,bbb\" ,' + "\n"
     csv_obj_name = get_random_string()
     bucket_name = "test"
 
@@ -1029,15 +1029,15 @@ def test_csv_parser():
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _6 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'third="c31,c32,c33"')
+    s3select_assert_result( res_s3select_alias, 'third=c31,c32,c33')
 
     # return value contain comma{,}
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _7 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'forth="1,2,3,4"')
+    s3select_assert_result( res_s3select_alias, 'forth=1,2,3,4')
 
     # return value contain comma{,}{"}, escape-rule{\} by-pass quote{"} , the escape{\} is removed.
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _8 from s3object;")  ).replace("\n","")
-    s3select_assert_result( res_s3select_alias, 'fifth="my_string="any_value" , my_other_string="aaaa,bbb" "')
+    s3select_assert_result( res_s3select_alias, 'fifth=my_string="any_value" , my_other_string="aaaa,bbb" ')
 
     # return NULL as first token
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1 from s3object;")  ).replace("\n","")
@@ -1376,33 +1376,37 @@ def test_output_serial_expressions():
     bucket_name = "test"
     upload_csv_object(bucket_name,csv_obj_name,csv_obj)
 
-    res_s3select_1 = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,"select _1, _2 from s3object where nullif(_1,_2) is null ;", "ALWAYS")  ).replace("\n",",")
+    res_s3select_1 = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,"select _1, _2 from s3object where nullif(_1,_2) is null ;", "ALWAYS")  ).replace("\n",",").replace(",","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _1, _2 from s3object where _1 = _2 ;")  ).replace("\n",",")
 
     res_s3select_list = res_s3select.split(',')
-    res_s3select_final = (','.join('"' + item + '"' for item in res_s3select_list)).replace('""','') # remove empty result(first,last)
 
-    s3select_assert_result( res_s3select_1, res_s3select_final)
+    res_s3select_list.pop()
 
-    res_s3select_in = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ASNEEDED", '$', '#')).replace("\n","")
+    res_s3select_final = (''.join('"' + item + '"' for item in res_s3select_list))
+
+    s3select_assert_result( '""'+res_s3select_1+'""', res_s3select_final)
+
+
+    res_s3select_in = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ASNEEDED", '$', '#')).replace("\n","#") ## TODO why \n appears in output?
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","#")
-    res_s3select = res_s3select[1:len(res_s3select)] # remove first redundant
-    res_s3select_final = res_s3select[0:len(res_s3select)-1] # remove last redundant
+    
+    res_s3select_list = res_s3select.split('#')
 
-    s3select_assert_result( res_s3select_in, res_s3select_final )
+    res_s3select_list.pop()
+
+    res_s3select_final = (''.join(item + '#' for item in res_s3select_list))
+
+
+    s3select_assert_result(res_s3select_in , res_s3select_final )
+
 
     res_s3select_quot = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(int(_2)));', "ALWAYS", '$', '#')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) = int(_2);')).replace("\n","#")
-    res_s3select = res_s3select[1:len(res_s3select)] # remove first redundant
-    res_s3select = res_s3select[0:len(res_s3select)-1] # remove last redundant
-
     res_s3select_list = res_s3select.split('#')
-    res_s3select_final = ('#'.join('"' + item + '"' for item in res_s3select_list)).replace('""','')
-    
-    s3select_assert_result( res_s3select_quot, res_s3select_final )
 
     assert res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias") > 0
 
@@ -1423,4 +1427,10 @@ def test_version():
     res_version = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select version() from stdin;") ).replace("\n","")
 
     nose.tools.assert_equal( res_version, "41.a," )
+
+    res_s3select_list.pop()
+
+    res_s3select_final = (''.join('"' + item + '"' + '#' for item in res_s3select_list))
+
+    s3select_assert_result( '""#'+res_s3select_quot+'""#', res_s3select_final )
 
