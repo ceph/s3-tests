@@ -10261,7 +10261,7 @@ def test_lifecycle_cloud_transition():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(8*lc_interval)
+    time.sleep(10*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
     eq(len(expire1_keys['STANDARD']), 2)
 
