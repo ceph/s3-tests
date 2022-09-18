@@ -72,10 +72,10 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         res = remove_xml_tags_from_result( run_s3select(bucket_name,obj_name,"select " + e + " from s3object;",) ).replace(",","")
 
         # accuracy level 
-        epsilon = float(0.000001) 
+        epsilon = float(0.00001) 
 
         # both results should be close (epsilon)
-        assert (1 - (float(res.split("\n")[1]) / eval( e )) ) < epsilon
+        assert(  abs(float(res.split("\n")[1]) - eval(e)) < epsilon )
 
 @attr('s3select')
 def get_random_string():
