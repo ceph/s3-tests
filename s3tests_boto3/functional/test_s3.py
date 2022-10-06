@@ -6289,6 +6289,23 @@ def test_object_copy_zero_size():
 
 @attr(resource='object')
 @attr(method='put')
+@attr(operation='copy 16mb object in same bucket')
+@attr(assertion='works')
+@attr('fails_on_dbstore')
+def test_object_copy_16m():
+    bucket_name = get_new_bucket()
+    key1 = 'obj1'
+    client = get_client()
+    client.put_object(Bucket=bucket_name, Key=key1, Body=bytearray(16*1024*1024))
+
+    copy_source = {'Bucket': bucket_name, 'Key': key1}
+    key2 = 'obj2'
+    client.copy_object(Bucket=bucket_name, Key=key2, CopySource=copy_source)
+    response = client.get_object(Bucket=bucket_name, Key=key2)
+    eq(response['ContentLength'], 16*1024*1024)
+
+@attr(resource='object')
+@attr(method='put')
 @attr(operation='copy object in same bucket')
 @attr(assertion='works')
 @attr('fails_on_dbstore')
