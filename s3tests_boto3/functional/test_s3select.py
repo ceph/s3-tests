@@ -15,7 +15,6 @@ from . import (
 import logging
 logging.basicConfig(level=logging.INFO)
 
-#TODO the following resolve an issue with python version (should be conditional)
 import collections
 collections.Callable = collections.abc.Callable
 
