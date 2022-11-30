@@ -9102,6 +9102,28 @@ def test_versioned_concurrent_object_create_and_remove():
     response = client.list_object_versions(Bucket=bucket_name)
     eq(('Versions' in response), False)
 
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='list versioning with key-marker')
+@attr(assertion='works')
+@attr('versioning')
+def test_versioning_list_with_key_marker():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    keymarker = 'dir/'
+    num_versions = 3
+    create_multiple_versions(client, bucket_name, keymarker, num_versions, None, None, False)
+
+    key = 'dir/1'
+    create_multiple_versions(client, bucket_name, key, 1, None, None, False)
+
+    response = client.list_object_versions(Bucket=bucket_name, KeyMarker=keymarker)
+    versions = response['Versions']
+    eq(len(versions), 1)
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='set lifecycle config')
