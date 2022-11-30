@@ -4382,8 +4382,8 @@ def test_bucket_create_exists():
         response = client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
-        eq(e.status, 409)
-        eq(e.error_code, 'BucketAlreadyOwnedByYou')
+        eq(status, 409)
+        eq(error_code, 'BucketAlreadyOwnedByYou')
 
 @attr(resource='bucket')
 @attr(method='get')
