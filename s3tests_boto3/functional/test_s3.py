@@ -11804,6 +11804,27 @@ def test_get_obj_tagging():
 
 
 @attr(resource='object')
+@attr(method='put')
+@attr(operation='Test Get/PutObjTagging empty tagset')
+@attr(assertion='success')
+@attr('tagging')
+def test_put_obj_empty_tagset():
+    client = get_client()
+
+    key1 = 'testputemptytags1'
+    bucket_name = _create_key_with_random_content(key1)
+    client.put_object_tagging(Bucket=bucket_name, Key=key1, Tagging={'TagSet': []})
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key1)
+    eq(response['TagSet'], [])
+
+    key2 = 'testputemptytags2'
+    bucket_name = _create_key_with_random_content(key2)
+    client.put_object(Bucket=bucket_name, Key=key2, Tagging="")
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key2)
+    eq(response['TagSet'], [])
+
+
+@attr(resource='object')
 @attr(method='get')
 @attr(operation='Test HEAD obj tagging output')
 @attr(assertion='success')
