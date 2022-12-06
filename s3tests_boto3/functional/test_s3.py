@@ -6825,8 +6825,9 @@ def _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size, 
 
     return (upload_id, parts)
 
-def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, version_id=None):
-    client = get_client()
+def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, version_id=None, client=None):
+    if client is None:
+        client = get_client()
 
     if(version_id == None):
         response = client.get_object(Bucket=src_bucket_name, Key=src_key)
@@ -6866,6 +6867,27 @@ def test_multipart_copy_small():
     response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
     eq(size, response['ContentLength'])
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
+
+@attr(resource='object')
+@attr(method='put')
+@attr(operation='check multipart copies with single small part using tenant client')
+def test_multipart_copy_small_with_tenant():
+    tenant_client = get_tenant_client()
+    src_key = 'foo'
+    src_bucket_name = get_new_bucket(client=tenant_client)
+    src_bucket_name = _create_key_with_random_content(src_key, bucket_name=src_bucket_name, client=tenant_client)
+
+    dest_bucket_name = get_new_bucket(client=tenant_client)
+    dest_key = "mymultipart"
+    size = 1
+
+    (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size, client=tenant_client)
+    tenant_client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    response = tenant_client.get_object(Bucket=dest_bucket_name, Key=dest_key)
+    eq(size, response['ContentLength'])
+    _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, client=tenant_client)
+
 
 @attr(resource='object')
 @attr(method='put')
