@@ -8729,6 +8729,51 @@ def test_versioning_obj_list_marker():
         i += 1
 
 @attr(resource='object')
+@attr(operation='list versioned objects')
+@attr('versioning')
+def test_versioning_list_null_marker():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    key = 'testobj'
+    body = 'content'
+
+    num_vers = 5
+
+    for i in xrange(num_vers):
+        client.put_object(Bucket=bucket_name, Key=key, Body=body)
+
+    check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
+
+    # put null version
+    client.put_object(Bucket=bucket_name, Key=key, Body=body)
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    versions = response['Versions']
+    eq(len(versions), num_vers + 1) # 5 versioned keys + 1 null version
+
+    response = client.list_object_versions(Bucket=bucket_name, KeyMarker=key, VersionIdMarker='null')
+    versions = response['Versions']
+    eq(len(versions), num_vers) # only 5 versioned keys
+
+    # test without version
+    bucket_name = get_new_bucket()
+    objnames = ['testobj%s' % i for i in range(num_vers)]
+
+    for objname in objnames:
+        client.put_object(Bucket=bucket_name, Key=objname, Body=body)
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    versions = response['Versions']
+    eq(len(versions), num_vers)
+
+    response = client.list_object_versions(Bucket=bucket_name, KeyMarker=objnames[0], VersionIdMarker='null')
+    versions = response['Versions']
+    eq(len(versions), num_vers - 1) # skip the fist obj testobj0
+
+@attr(resource='object')
 @attr(method='multipart')
 @attr(operation='create and test versioned object copying')
 @attr(assertion='everything works')
