@@ -4029,7 +4029,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=609901, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    eq(res['status_code'], 400 or 403)
 
 @attr(resource='object')
 @attr(method='get')
@@ -4043,7 +4043,7 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=-7, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    eq(res['status_code'], 400 or 403)
 
 
 @attr(resource='object')
