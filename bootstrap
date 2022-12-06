@@ -74,3 +74,7 @@ ${virtualenv} --python=$(which python3.6) virtualenv
 # requirements.txt does not match setup.py requirements -- sucky but
 # good enough for now
 ./virtualenv/bin/python3 setup.py develop
+
+# The wheel that pip installs is broken at PyPI, so use plain source.
+git clone https://github.com/nose-devs/nose.git
+(cd nose && ../virtualenv/bin/python3 setup.py develop)
