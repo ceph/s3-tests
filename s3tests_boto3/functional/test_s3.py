@@ -9881,10 +9881,25 @@ def test_lifecycle_set_deletemarker():
 def test_lifecycle_set_filter():
     bucket_name = get_new_bucket()
     client = get_client()
-    rules=[{'ID': 'rule1', 'Expiration': {'ExpiredObjectDeleteMarker': True}, 'Filter': {'Prefix': 'foo'}, 'Status':'Enabled'}]
+    rules=[{'ID': 'rule1', 'Expiration': {'Days': 1}, 'Filter': {'Prefix': 'foo'}, 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+
+    key = 'foo' + '/abc'
+    body = 'bar'
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    exp_header = response['ResponseMetadata']['HTTPHeaders']['x-amz-expiration']
+    m = re.search(r'expiry-date="(.+)", rule-id="(.+)"', exp_header)
+    eq(m.group(2), 'rule1')
+
+    key = 'nofoo' +'/abc'
+    body = 'bar'
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
+    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    eq('x-amz-expiration' in response['ResponseMetadata']['HTTPHeaders'], False)
+
 
 @attr(resource='bucket')
 @attr(method='put')
