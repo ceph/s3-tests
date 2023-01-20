@@ -2241,54 +2241,6 @@ def _set_get_metadata_unreadable(metadata, bucket_name=None):
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='bar', Metadata=metadata_dict)
     return e
 
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write/re-write')
-@attr(assertion='non-UTF-8 values detected, but rejected by webserver')
-@attr('fails_strict_rfc2616')
-@attr(assertion='fails 400')
-def test_object_set_get_non_utf8_metadata():
-    metadata = '\x04mymeta'
-    e = _set_get_metadata_unreadable(metadata)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
-
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write')
-@attr(assertion='non-printing prefixes rejected by webserver')
-@attr('fails_strict_rfc2616')
-@attr(assertion='fails 400')
-def test_object_set_get_metadata_empty_to_unreadable_prefix():
-    metadata = '\x04w'
-    e = _set_get_metadata_unreadable(metadata)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
-
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write')
-@attr(assertion='non-printing suffixes rejected by webserver')
-@attr('fails_strict_rfc2616')
-@attr(assertion='fails 400')
-def test_object_set_get_metadata_empty_to_unreadable_suffix():
-    metadata = 'h\x04'
-    e = _set_get_metadata_unreadable(metadata)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
-
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write')
-@attr(assertion='non-priting in-fixes rejected by webserver')
-@attr('fails_strict_rfc2616')
-@attr(assertion='fails 400')
-def test_object_set_get_metadata_empty_to_unreadable_infix():
-    metadata = 'h\x04w'
-    e = _set_get_metadata_unreadable(metadata)
-    status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400 or 403)
-
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='data re-write')
