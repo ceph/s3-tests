@@ -6235,18 +6235,26 @@ def test_list_buckets_bad_auth():
     eq(status, 403)
     eq(error_code, 'SignatureDoesNotMatch')
 
+@pytest.fixture
+def override_prefix_a():
+    nuke_prefixed_buckets(prefix='a'+get_prefix())
+    yield
+    nuke_prefixed_buckets(prefix='a'+get_prefix())
+
 @attr(resource='bucket')
 @attr(method='put')
 @attr(operation='create bucket')
 @attr(assertion='name starts with alphabetic works')
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
-@nose.with_setup(
-    setup=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
-    teardown=lambda: nuke_prefixed_buckets(prefix='a'+get_prefix()),
-    )
-def test_bucket_create_naming_good_starts_alpha():
+def test_bucket_create_naming_good_starts_alpha(override_prefix_a):
     check_good_bucket_name('foo', _prefix='a'+get_prefix())
+
+@pytest.fixture
+def override_prefix_0():
+    nuke_prefixed_buckets(prefix='0'+get_prefix())
+    yield
+    nuke_prefixed_buckets(prefix='0'+get_prefix())
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -6254,11 +6262,7 @@ def test_bucket_create_naming_good_starts_alpha():
 @attr(assertion='name starts with numeric works')
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
-@nose.with_setup(
-    setup=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
-    teardown=lambda: nuke_prefixed_buckets(prefix='0'+get_prefix()),
-    )
-def test_bucket_create_naming_good_starts_digit():
+def test_bucket_create_naming_good_starts_digit(override_prefix_0):
     check_good_bucket_name('foo', _prefix='0'+get_prefix())
 
 @attr(resource='bucket')
