@@ -37,6 +37,8 @@ from .utils import assert_raises
 from .policy import Policy, Statement, make_json_policy
 
 from . import (
+    configfile,
+    setup_teardown,
     nuke_prefixed_buckets,
     get_new_bucket,
     get_new_bucket_name,

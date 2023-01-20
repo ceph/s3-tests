@@ -7,6 +7,8 @@ from nose.tools import eq_ as eq
 from s3tests_boto3.functional.utils import assert_raises
 from s3tests_boto3.functional.test_s3 import _multipart_upload
 from . import (
+    configfile,
+    setup_teardown,
     get_alt_client,
     get_iam_client,
     get_new_bucket,

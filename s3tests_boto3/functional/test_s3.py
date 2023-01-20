@@ -41,6 +41,8 @@ from .utils import _get_status
 from .policy import Policy, Statement, make_json_policy
 
 from . import (
+    configfile,
+    setup_teardown,
     get_client,
     get_prefix,
     get_unauthenticated_client,

@@ -27,6 +27,8 @@ from .utils import assert_raises
 from email.header import decode_header
 
 from . import (
+    configfile,
+    setup_teardown,
     _make_raw_request,
     nuke_prefixed_buckets,
     get_new_bucket,

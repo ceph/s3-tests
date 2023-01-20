@@ -19,6 +19,8 @@ from nose.plugins.skip import SkipTest
 from .. import common
 
 from . import (
+    configfile,
+    setup_teardown,
     get_new_bucket,
     get_new_bucket_name,
     s3,

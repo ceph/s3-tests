@@ -9,6 +9,8 @@ import uuid
 from nose.tools import eq_ as eq
 
 from . import (
+    configfile,
+    setup_teardown,
     get_client
     )
 

@@ -10,6 +10,8 @@ from .utils import _get_status_and_error_code
 from .utils import _get_status
 
 from . import (
+    configfile,
+    setup_teardown,
     get_client,
     get_v2_client,
     get_new_bucket,
