@@ -46,37 +46,27 @@ ERRORDOC_TEMPLATE = '<html><h1>ErrorDoc</h1><body>{random}</body></html>'
 
 CAN_WEBSITE = None
 
+@pytest.fixture(autouse=True, scope="module")
 def check_can_test_website():
-    global CAN_WEBSITE
-    # This is a bit expensive, so we cache this
-    if CAN_WEBSITE is None:
-        bucket = get_new_bucket()
-        try:
-            wsconf = bucket.get_website_configuration()
-            CAN_WEBSITE = True
-        except boto.exception.S3ResponseError as e:
-            if e.status == 404 and e.reason == 'Not Found' and e.error_code in ['NoSuchWebsiteConfiguration', 'NoSuchKey']:
-                CAN_WEBSITE = True
-            elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
-                # rgw_enable_static_website is false
-                CAN_WEBSITE = False
-            elif e.status == 403 and e.reason == 'SignatureDoesNotMatch' and e.error_code == 'Forbidden':
-                # This is older versions that do not support the website code
-                CAN_WEBSITE = False
-            elif e.status == 501 and e.error_code == 'NotImplemented':
-                CAN_WEBSITE = False
-            else:
-                raise RuntimeError("Unknown response in checking if WebsiteConf is supported", e)
-        finally:
-            bucket.delete()
-
-    if CAN_WEBSITE is True:
+    bucket = get_new_bucket()
+    try:
+        wsconf = bucket.get_website_configuration()
         return True
-    elif CAN_WEBSITE is False:
-        raise SkipTest
-    else:
-        raise RuntimeError("Unknown cached response in checking if WebsiteConf is supported")
-
+    except boto.exception.S3ResponseError as e:
+        if e.status == 404 and e.reason == 'Not Found' and e.error_code in ['NoSuchWebsiteConfiguration', 'NoSuchKey']:
+            return True
+        elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
+            # rgw_enable_static_website is false
+            raise SkipTest
+        elif e.status == 403 and e.reason == 'SignatureDoesNotMatch' and e.error_code == 'Forbidden':
+            # This is older versions that do not support the website code
+            raise SkipTest
+        elif e.status == 501 and e.error_code == 'NotImplemented':
+            raise SkipTest
+        else:
+            raise RuntimeError("Unknown response in checking if WebsiteConf is supported", e)
+    finally:
+        bucket.delete()
 
 def make_website_config(xml_fragment):
     """
@@ -257,7 +247,6 @@ def _website_request(bucket_name, path, connect_hostname=None, method='GET', tim
 @pytest.mark.s3website
 @attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_s3():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
@@ -274,7 +263,6 @@ def test_website_nonexistant_bucket_s3():
 @pytest.mark.fails_on_s3
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_rgw():
     bucket_name = get_new_bucket_name()
     res = _website_request(bucket_name, '')
@@ -290,7 +278,6 @@ def test_website_nonexistant_bucket_rgw():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 @timed(10)
 def test_website_public_bucket_list_public_index():
     bucket = get_new_bucket()
@@ -321,7 +308,6 @@ def test_website_public_bucket_list_public_index():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_public_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -354,7 +340,6 @@ def test_website_private_bucket_list_public_index():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -373,7 +358,6 @@ def test_website_private_bucket_list_empty():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -391,7 +375,6 @@ def test_website_public_bucket_list_empty():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -419,7 +402,6 @@ def test_website_public_bucket_list_private_index():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -448,7 +430,6 @@ def test_website_private_bucket_list_private_index():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -467,7 +448,6 @@ def test_website_private_bucket_list_empty_missingerrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -485,7 +465,6 @@ def test_website_public_bucket_list_empty_missingerrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -512,7 +491,6 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -540,7 +518,6 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -571,7 +548,6 @@ def test_website_private_bucket_list_empty_blockederrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_pubilc_errordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -625,7 +601,6 @@ def test_website_public_bucket_list_pubilc_errordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -655,7 +630,6 @@ def test_website_public_bucket_list_empty_blockederrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -691,7 +665,6 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -726,7 +699,6 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
 @attr(assertion='empty private buckets via s3website return a 403 for /, good errordoc')
 @attr('s3website')
 @pytest.mark.s3website
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_website_private_bucket_list_empty_gooderrordoc():
@@ -754,7 +726,6 @@ def test_website_private_bucket_list_empty_gooderrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -781,7 +752,6 @@ def test_website_public_bucket_list_empty_gooderrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -813,7 +783,6 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -846,7 +815,6 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_base():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -866,7 +834,6 @@ def test_website_bucket_private_redirectall_base():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -888,7 +855,6 @@ def test_website_bucket_private_redirectall_path():
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path_upgrade():
     bucket = get_new_bucket()
     x = string.Template(WEBSITE_CONFIGS_XMLFRAG['RedirectAll+Protocol']).safe_substitute(RedirectAllRequestsTo_Protocol='https')
@@ -914,7 +880,6 @@ def test_website_bucket_private_redirectall_path_upgrade():
 @pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_nonwebsite():
     bucket = get_new_bucket()
     #f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['RedirectAll'])
@@ -950,7 +915,6 @@ def test_website_xredirect_nonwebsite():
 @pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -981,7 +945,6 @@ def test_website_xredirect_public_relative():
 @pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -1012,7 +975,6 @@ def test_website_xredirect_public_abs():
 @pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_relative():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -1043,7 +1005,6 @@ def test_website_xredirect_private_relative():
 @pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_abs():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDoc'])
@@ -1268,7 +1229,6 @@ def routing_teardown(**kwargs):
     print('Deleting', str(o))
     o.delete()
 
-@common.with_setup_kwargs(setup=routing_setup, teardown=routing_teardown)
 #@timed(10)
 def routing_check(*args, **kwargs):
     bucket = kwargs['bucket']
@@ -1310,7 +1270,6 @@ def routing_check(*args, **kwargs):
 @pytest.mark.s3website
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
         if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:

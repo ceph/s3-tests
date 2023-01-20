@@ -147,6 +147,10 @@ def _clear_custom_headers():
     _custom_headers = {}
     _remove_headers = []
 
+@pytest.fixture(autouse=True)
+def clear_custom_headers(setup_teardown):
+    yield
+    _clear_custom_headers() # clear headers before teardown()
 
 def _add_custom_headers(headers=None, remove=None):
     """ Define header customizations (additions, replacements, removals)
@@ -187,7 +191,6 @@ def tag(*tags):
 @attr(assertion='fails 411')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_none():
     key = _setup_bad_object(remove=('Content-Length',))
 
@@ -202,7 +205,6 @@ def test_object_create_bad_contentlength_none():
 @attr(method='put')
 @attr(operation='create w/content length too long')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_mismatch_above():
@@ -229,7 +231,6 @@ def test_object_create_bad_contentlength_mismatch_above():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_empty():
     key = _setup_bad_object({'Authorization': ''})
 
@@ -245,7 +246,6 @@ def test_object_create_bad_authorization_empty():
 @attr(assertion='succeeds')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
     key = _setup_bad_object({'Date': date, 'X-Amz-Date': date})
@@ -258,7 +258,6 @@ def test_object_create_date_and_amz_date():
 @attr(assertion='succeeds')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_amz_date_and_no_date():
     date = formatdate(usegmt=True)
     key = _setup_bad_object({'X-Amz-Date': date}, ('Date',))
@@ -273,7 +272,6 @@ def test_object_create_amz_date_and_no_date():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_none():
     key = _setup_bad_object(remove=('Authorization',))
 
@@ -290,7 +288,6 @@ def test_object_create_bad_authorization_none():
 @attr(assertion='succeeds')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     get_new_bucket()
@@ -303,7 +300,6 @@ def test_bucket_create_contentlength_none():
 @attr(assertion='succeeds')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_acl_create_contentlength_none():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -331,7 +327,6 @@ def _create_new_connection():
 @attr(method='put')
 @attr(operation='create w/empty content length')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 @attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_contentlength_empty():
@@ -349,7 +344,6 @@ def test_bucket_create_bad_contentlength_empty():
 @attr(assertion='succeeds')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     bucket = get_new_bucket()
@@ -362,7 +356,6 @@ def test_bucket_create_bad_contentlength_none():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_empty():
     _add_custom_headers({'Authorization': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
@@ -379,7 +372,6 @@ def test_bucket_create_bad_authorization_empty():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_none():
     _add_custom_headers(remove=('Authorization',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
@@ -398,7 +390,6 @@ def test_bucket_create_bad_authorization_none():
 @attr(assertion='fails 400')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_mismatch_below_aws2():
     check_aws2_support()
     content = 'bar'
@@ -417,7 +408,6 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_incorrect_aws2():
     check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
@@ -428,7 +418,6 @@ def test_object_create_bad_authorization_incorrect_aws2():
 
 
 @tag('auth_aws2')
-@nose.with_setup(teardown=_clear_custom_headers)
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/invalid authorization')
@@ -450,7 +439,6 @@ def test_object_create_bad_authorization_invalid_aws2():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_none_aws2():
     check_aws2_support()
     key = _setup_bad_object(remove=('Date',))
@@ -465,7 +453,6 @@ def test_object_create_bad_date_none_aws2():
 @attr(method='put')
 @attr(operation='create w/invalid authorization')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_invalid_aws2():
     check_aws2_support()
     _add_custom_headers({'Authorization': 'AWS HAHAHA'})
@@ -481,7 +468,6 @@ def test_bucket_create_bad_authorization_invalid_aws2():
 @attr(assertion='fails 403')
 @attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_none_aws2():
     check_aws2_support()
     _add_custom_headers(remove=('Date',))
@@ -508,7 +494,6 @@ def check_aws2_support():
 @attr(method='put')
 @attr(operation='create w/invalid MD5')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_md5_invalid_garbage_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Content-MD5':'AWS4 HAHAHA'})
@@ -524,7 +509,6 @@ def test_object_create_bad_md5_invalid_garbage_aws4():
 @attr(method='put')
 @attr(operation='create w/content length too short')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_contentlength_mismatch_below_aws4():
     check_aws4_support()
     content = 'bar'
@@ -542,7 +526,6 @@ def test_object_create_bad_contentlength_mismatch_below_aws4():
 @attr(method='put')
 @attr(operation='create w/incorrect authorization')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_authorization_incorrect_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=AKIAIGR7ZNNBHC5BKSUB/20150930/us-east-1/s3/aws4_request,SignedHeaders=host;user-agent,Signature=FWeDfwojDSdS2Ztmpfeubhd9isU='})
@@ -554,7 +537,6 @@ def test_object_create_bad_authorization_incorrect_aws4():
 
 
 @tag('auth_aws4')
-@nose.with_setup(teardown=_clear_custom_headers)
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='create w/invalid authorization')
@@ -574,7 +556,6 @@ def test_object_create_bad_authorization_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/empty user agent')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'User-Agent': ''})
@@ -590,7 +571,6 @@ def test_object_create_bad_ua_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/no user agent')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_ua_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('User-Agent',))
@@ -606,7 +586,6 @@ def test_object_create_bad_ua_none_aws4():
 @attr(method='put')
 @attr(operation='create w/invalid date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_invalid_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Bad Date'})
@@ -618,7 +597,6 @@ def test_object_create_bad_date_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/invalid x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_invalid_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': 'Bad Date'})
@@ -634,7 +612,6 @@ def test_object_create_bad_amz_date_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/empty date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': ''})
@@ -646,7 +623,6 @@ def test_object_create_bad_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/empty x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': ''})
@@ -662,7 +638,6 @@ def test_object_create_bad_amz_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/no date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('Date',))
@@ -674,7 +649,6 @@ def test_object_create_bad_date_none_aws4():
 @attr(method='put')
 @attr(operation='create w/no x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('X-Amz-Date',))
@@ -690,7 +664,6 @@ def test_object_create_bad_amz_date_none_aws4():
 @attr(method='put')
 @attr(operation='create w/date in past')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_before_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
@@ -702,7 +675,6 @@ def test_object_create_bad_date_before_today_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date in past')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_before_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '20100707T215304Z'})
@@ -718,7 +690,6 @@ def test_object_create_bad_amz_date_before_today_aws4():
 @attr(method='put')
 @attr(operation='create w/date in future')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_after_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
@@ -730,7 +701,6 @@ def test_object_create_bad_date_after_today_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date in future')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_after_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '20300707T215304Z'})
@@ -746,7 +716,6 @@ def test_object_create_bad_amz_date_after_today_aws4():
 @attr(method='put')
 @attr(operation='create w/date before epoch')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_before_epoch_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
@@ -758,7 +727,6 @@ def test_object_create_bad_date_before_epoch_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date before epoch')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_before_epoch_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '19500707T215304Z'})
@@ -774,7 +742,6 @@ def test_object_create_bad_amz_date_before_epoch_aws4():
 @attr(method='put')
 @attr(operation='create w/date after 9999')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_date_after_end_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
@@ -786,7 +753,6 @@ def test_object_create_bad_date_after_end_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date after 9999')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_bad_amz_date_after_end_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '99990707T215304Z'})
@@ -802,7 +768,6 @@ def test_object_create_bad_amz_date_after_end_aws4():
 @attr(method='put')
 @attr(operation='create with missing signed custom header')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_missing_signed_custom_header_aws4():
     check_aws4_support()
     method='PUT'
@@ -833,7 +798,6 @@ def test_object_create_missing_signed_custom_header_aws4():
 @attr(method='put')
 @attr(opearation='create with missing signed header')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_object_create_missing_signed_header_aws4():
     check_aws4_support()
     method='PUT'
@@ -865,7 +829,6 @@ def test_object_create_missing_signed_header_aws4():
 @attr(method='put')
 @attr(operation='create w/invalid authorization')
 @attr(assertion='fails 400')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_authorization_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'Authorization': 'AWS4 HAHAHA'})
@@ -881,7 +844,6 @@ def test_bucket_create_bad_authorization_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/empty user agent')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'User-Agent': ''})
@@ -896,7 +858,6 @@ def test_bucket_create_bad_ua_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/no user agent')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_ua_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('User-Agent',))
@@ -912,7 +873,6 @@ def test_bucket_create_bad_ua_none_aws4():
 @attr(method='put')
 @attr(operation='create w/invalid date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Bad Date'})
@@ -924,7 +884,6 @@ def test_bucket_create_bad_date_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/invalid x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': 'Bad Date'})
@@ -940,7 +899,6 @@ def test_bucket_create_bad_amz_date_invalid_aws4():
 @attr(method='put')
 @attr(operation='create w/empty date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': ''})
@@ -952,7 +910,6 @@ def test_bucket_create_bad_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/empty x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': ''})
@@ -967,7 +924,6 @@ def test_bucket_create_bad_amz_date_empty_aws4():
 @attr(method='put')
 @attr(operation='create w/no date')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('Date',))
@@ -979,7 +935,6 @@ def test_bucket_create_bad_date_none_aws4():
 @attr(method='put')
 @attr(operation='create w/no x-amz-date')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('X-Amz-Date',))
@@ -995,7 +950,6 @@ def test_bucket_create_bad_amz_date_none_aws4():
 @attr(method='put')
 @attr(operation='create w/date in past')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_before_today_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
@@ -1007,7 +961,6 @@ def test_bucket_create_bad_date_before_today_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date in past')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_before_today_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '20100707T215304Z'})
@@ -1023,7 +976,6 @@ def test_bucket_create_bad_amz_date_before_today_aws4():
 @attr(method='put')
 @attr(operation='create w/date in future')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_after_today_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
@@ -1035,7 +987,6 @@ def test_bucket_create_bad_date_after_today_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date in future')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_after_today_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '20300707T215304Z'})
@@ -1051,7 +1002,6 @@ def test_bucket_create_bad_amz_date_after_today_aws4():
 @attr(method='put')
 @attr(operation='create w/date before epoch')
 @attr(assertion='succeeds')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_date_before_epoch_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
@@ -1063,7 +1013,6 @@ def test_bucket_create_bad_date_before_epoch_aws4():
 @attr(method='put')
 @attr(operation='create w/x-amz-date before epoch')
 @attr(assertion='fails 403')
-@nose.with_setup(teardown=_clear_custom_headers)
 def test_bucket_create_bad_amz_date_before_epoch_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '19500707T215304Z'})
