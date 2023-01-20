@@ -6,14 +6,10 @@ This is a set of unofficial Amazon AWS S3 compatibility
 tests, that can be useful to people implementing software
 that exposes an S3-like API. The tests use the Boto2 and Boto3 libraries.
 
-The tests use the Nose test framework. To get started, ensure you have
-the ``virtualenv`` software installed; e.g. on Debian/Ubuntu::
+The tests use the Tox tool. To get started, ensure you have the ``tox``
+software installed; e.g. on Debian/Ubuntu::
 
-	sudo apt-get install python-virtualenv
-
-and then run::
-
-	./bootstrap
+	sudo apt-get install tox
 
 You will need to create a configuration file with the location of the
 service and two different credentials. A sample configuration file named
@@ -22,29 +18,25 @@ used to run the s3 tests on a Ceph cluster started with vstart.
 
 Once you have that file copied and edited, you can run the tests with::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests
+	S3TEST_CONF=your.conf tox
 
 You can specify which directory of tests to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional
+	S3TEST_CONF=your.conf tox s3tests_boto3/functional
 
 You can specify which file of tests to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_s3
+	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_s3.py
 
 You can specify which test to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_s3:test_bucket_list_empty
-
-To gather a list of tests being run, use the flags::
-
-	 -v --collect-only
+	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_s3.py::test_bucket_list_empty
 
 Some tests have attributes set based on their current reliability and
 things like AWS not enforcing their spec stricly. You can filter tests
 based on their attributes::
 
-	S3TEST_CONF=aws.conf ./virtualenv/bin/nosetests -a '!fails_on_aws'
+	S3TEST_CONF=aws.conf tox -- -m 'not fails_on_aws'
 
 Most of the tests have both Boto3 and Boto2 versions. Tests written in
 Boto2 are in the ``s3tests`` directory. Tests written in Boto3 are
@@ -52,7 +44,7 @@ located in the ``s3test_boto3`` directory.
 
 You can run only the boto3 tests with::
 
-        S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -s -A 'not fails_on_rgw' s3tests_boto3.functional
+	S3TEST_CONF=your.conf tox -- -m 'not fails_on_aws' s3tests_boto3/functional
 
 ========================
  STS compatibility tests
@@ -62,11 +54,11 @@ This section contains some basic tests for the AssumeRole, GetSessionToken and A
 
 You can run only the sts tests (all the three API's) with::
 
-        S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_sts
+        S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_sts.py
 
 You can filter tests based on the attributes. There is a attribute named ``test_of_sts`` to run AssumeRole and GetSessionToken tests and ``webidentity_test`` to run the AssumeRoleWithWebIdentity tests. If you want to execute only ``test_of_sts`` tests you can apply that filter as below::
 
-        S3TEST_CONF=your.conf ./virtualenv/bin/nosetests -v -s -A 'test_of_sts' s3tests_boto3.functional.test_sts
+        S3TEST_CONF=your.conf tox -- -m test_of_sts s3tests_boto3/functional/test_sts.py
 
 For running ``webidentity_test`` you'll need have Keycloak running.
 
@@ -88,14 +80,14 @@ Adding above capabilities to "iam" user is also taken care by vstart (If Ceph cl
 To run these tests, create configuration file with section "iam" and "s3 alt" refer s3tests.conf.SAMPLE.
 Once you have that configuration file copied and edited, you can run all the tests with::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam
+	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_iam.py
 
 You can also specify specific test to run::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam:test_put_user_policy
+	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_iam.py::test_put_user_policy
 
 Some tests have attributes set such as "fails_on_rgw".
 You can filter tests based on their attributes::
 
-	S3TEST_CONF=your.conf ./virtualenv/bin/nosetests s3tests_boto3.functional.test_iam -a '!fails_on_rgw'
+	S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_iam.py -m 'not fails_on_rgw'
 
