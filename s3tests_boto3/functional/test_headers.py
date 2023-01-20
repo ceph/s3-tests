@@ -2,6 +2,7 @@ import boto3
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import nose
+import pytest
 from botocore.exceptions import ClientError
 from email.utils import formatdate
 
@@ -242,6 +243,7 @@ def test_object_create_bad_expect_none():
 @attr(assertion='fails 400')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_empty():
     e = _add_header_create_bad_object({'Content-Length':''})
     status, error_code = _get_status_and_error_code(e.response)
@@ -253,6 +255,7 @@ def test_object_create_bad_contentlength_empty():
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
+@pytest.mark.fails_on_mod_proxy_fcgi
 def test_object_create_bad_contentlength_negative():
     client = get_client()
     bucket_name = get_new_bucket()
@@ -268,6 +271,7 @@ def test_object_create_bad_contentlength_negative():
 @attr(assertion='fails 411')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_none():
     remove = 'Content-Length'
     e = _remove_header_create_bad_object('Content-Length')
@@ -316,6 +320,7 @@ def test_object_create_bad_contenttype_none():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_empty():
     e = _add_header_create_bad_object({'Authorization': ''})
     status, error_code = _get_status_and_error_code(e.response)
@@ -328,6 +333,7 @@ def test_object_create_bad_authorization_empty():
 @attr(assertion='succeeds')
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
     bucket_name, key_name = _add_header_create_object({'Date': date, 'X-Amz-Date': date})
@@ -341,6 +347,7 @@ def test_object_create_date_and_amz_date():
 @attr(assertion='succeeds')
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_amz_date_and_no_date():
     date = formatdate(usegmt=True)
     bucket_name, key_name = _add_header_create_object({'Date': '', 'X-Amz-Date': date})
@@ -355,6 +362,7 @@ def test_object_create_amz_date_and_no_date():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_none():
     e = _remove_header_create_bad_object('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
@@ -367,6 +375,7 @@ def test_object_create_bad_authorization_none():
 @attr(assertion='succeeds')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_contentlength_none():
     remove = 'Content-Length'
     _remove_header_create_bucket(remove)
@@ -378,6 +387,7 @@ def test_bucket_create_contentlength_none():
 @attr(assertion='succeeds')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_acl_create_contentlength_none():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -439,6 +449,7 @@ def test_bucket_create_bad_expect_empty():
 # TODO: The request isn't even making it to the RGW past the frontend
 # This test had 'fails_on_rgw' before the move to boto3
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_contentlength_empty():
     headers = {'Content-Length': ''}
     e = _add_header_create_bad_bucket(headers)
@@ -451,6 +462,7 @@ def test_bucket_create_bad_contentlength_empty():
 @attr(operation='create w/negative content length')
 @attr(assertion='fails 400')
 @attr('fails_on_mod_proxy_fcgi')
+@pytest.mark.fails_on_mod_proxy_fcgi
 def test_bucket_create_bad_contentlength_negative():
     headers = {'Content-Length': '-1'}
     e = _add_header_create_bad_bucket(headers)
@@ -464,6 +476,7 @@ def test_bucket_create_bad_contentlength_negative():
 @attr(assertion='succeeds')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_contentlength_none():
     remove = 'Content-Length'
     _remove_header_create_bucket(remove)
@@ -475,6 +488,7 @@ def test_bucket_create_bad_contentlength_none():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_empty():
     headers = {'Authorization': ''}
     e = _add_header_create_bad_bucket(headers)
@@ -489,6 +503,7 @@ def test_bucket_create_bad_authorization_empty():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_none():
     e = _remove_header_create_bad_bucket('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
@@ -515,6 +530,7 @@ def test_object_create_bad_md5_invalid_garbage_aws2():
 @attr(assertion='fails 400')
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the Content-Length header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_mismatch_below_aws2():
     v2_client = get_v2_client()
     content = 'bar'
@@ -532,6 +548,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_incorrect_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='}
@@ -547,6 +564,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
 @attr(assertion='fails 400')
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS HAHAHA'}
@@ -610,6 +628,7 @@ def test_object_create_bad_date_empty_aws2():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_object_create_bad_date_none_aws2():
     v2_client = get_v2_client()
     remove = 'x-amz-date'
@@ -664,6 +683,7 @@ def test_object_create_bad_date_after_end_aws2():
 @attr(assertion='fails 400')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS HAHAHA'}
@@ -725,6 +745,7 @@ def test_bucket_create_bad_date_empty_aws2():
 @attr(assertion='fails 403')
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 def test_bucket_create_bad_date_none_aws2():
     v2_client = get_v2_client()
     remove = 'x-amz-date'
