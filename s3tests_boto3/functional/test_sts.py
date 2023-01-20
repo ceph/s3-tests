@@ -5,6 +5,7 @@ from botocore.exceptions import ParamValidationError
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
+import pytest
 import isodate
 import email.utils
 import datetime
@@ -156,7 +157,9 @@ def get_s3_resource_using_iam_creds():
 @attr(operation='check')
 @attr(assertion='s3 ops only accessible by temporary credentials')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_get_session_token():
     iam_client=get_iam_client()
     sts_client=get_sts_client()
@@ -190,7 +193,9 @@ def test_get_session_token():
 @attr(operation='check')
 @attr(assertion='s3 ops denied by permanent credentials')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_get_session_token_permanent_creds_denied():
     s3bucket_error=None
     iam_client=get_iam_client()
@@ -227,7 +232,9 @@ def test_get_session_token_permanent_creds_denied():
 @attr(operation='check')
 @attr(assertion='role policy allows all s3 ops')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_allow():
     iam_client=get_iam_client()    
     sts_client=get_sts_client()
@@ -264,7 +271,9 @@ def test_assume_role_allow():
 @attr(operation='check')
 @attr(assertion='role policy denies all s3 ops')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_deny():
     s3bucket_error=None
     iam_client=get_iam_client()    
@@ -303,7 +312,9 @@ def test_assume_role_deny():
 @attr(operation='check')
 @attr(assertion='creds expire so all s3 ops fails')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_creds_expiry():
     iam_client=get_iam_client()    
     sts_client=get_sts_client()
@@ -342,7 +353,9 @@ def test_assume_role_creds_expiry():
 @attr(operation='check')
 @attr(assertion='HEAD fails with 403 when role policy denies s3:ListBucket')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_deny_head_nonexistent():
     # create a bucket with the normal s3 client
     bucket_name = get_new_bucket_name()
@@ -384,7 +397,9 @@ def test_assume_role_deny_head_nonexistent():
 @attr(operation='check')
 @attr(assertion='HEAD fails with 404 when role policy allows s3:ListBucket')
 @attr('test_of_sts')
+@pytest.mark.test_of_sts
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_allow_head_nonexistent():
     # create a bucket with the normal s3 client
     bucket_name = get_new_bucket_name()
@@ -427,8 +442,11 @@ def test_assume_role_allow_head_nonexistent():
 @attr(operation='check')
 @attr(assertion='assuming role through web token')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('token_claims_trust_policy_test')
+@pytest.mark.token_claims_trust_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity():
     check_webidentity()
     iam_client=get_iam_client()    
@@ -481,6 +499,7 @@ def test_assume_role_with_web_identity():
 @attr(operation='check')
 @attr(assertion='assume_role_with_web_token creds expire')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 def test_assume_role_with_web_identity_invalid_webtoken():
     resp_error=None
     iam_client=get_iam_client()
@@ -531,8 +550,11 @@ def test_assume_role_with_web_identity_invalid_webtoken():
 @attr(operation='check')
 @attr(assertion='checking session policy working for two different buckets')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_on_different_buckets():
     check_webidentity()
     iam_client=get_iam_client()
@@ -604,8 +626,11 @@ def test_session_policy_check_on_different_buckets():
 @attr(operation='check')
 @attr(assertion='checking session policy working for same bucket')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_on_same_bucket():
     check_webidentity()
     iam_client=get_iam_client()
@@ -665,8 +690,11 @@ def test_session_policy_check_on_same_bucket():
 @attr(operation='check')
 @attr(assertion='checking put_obj op denial')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_put_obj_denial():
     check_webidentity()
     iam_client=get_iam_client()
@@ -731,8 +759,11 @@ def test_session_policy_check_put_obj_denial():
 @attr(operation='check')
 @attr(assertion='checking put_obj working by swapping policies')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_swapping_role_policy_and_session_policy():
     check_webidentity()
     iam_client=get_iam_client()
@@ -792,8 +823,11 @@ def test_swapping_role_policy_and_session_policy():
 @attr(operation='check')
 @attr(assertion='checking put_obj working by setting different permissions to role and session policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_different_op_permissions():
     check_webidentity()
     iam_client=get_iam_client()
@@ -858,8 +892,11 @@ def test_session_policy_check_different_op_permissions():
 @attr(operation='check')
 @attr(assertion='checking op behaviour with deny effect')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_with_deny_effect():
     check_webidentity()
     iam_client=get_iam_client()
@@ -923,8 +960,11 @@ def test_session_policy_check_with_deny_effect():
 @attr(operation='check')
 @attr(assertion='checking put_obj working with deny and allow on same op')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_check_with_deny_on_same_op():
     check_webidentity()
     iam_client=get_iam_client()
@@ -988,8 +1028,11 @@ def test_session_policy_check_with_deny_on_same_op():
 @attr(operation='check')
 @attr(assertion='checking op when bucket policy has role arn')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_role_arn():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1068,8 +1111,11 @@ def test_session_policy_bucket_policy_role_arn():
 @attr(operation='check')
 @attr(assertion='checking op when bucket policy has session arn')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_session_arn():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1146,8 +1192,11 @@ def test_session_policy_bucket_policy_session_arn():
 @attr(operation='check')
 @attr(assertion='checking copy object op with role, session and bucket policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_copy_object():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1231,8 +1280,11 @@ def test_session_policy_copy_object():
 @attr(operation='check')
 @attr(assertion='checking op is denied when no role policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_no_bucket_role_policy():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1287,8 +1339,11 @@ def test_session_policy_no_bucket_role_policy():
 @attr(operation='check')
 @attr(assertion='checking op is denied when resource policy denies')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('session_policy')
+@pytest.mark.session_policy
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_deny():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1365,8 +1420,11 @@ def test_session_policy_bucket_policy_deny():
 @attr(operation='check')
 @attr(assertion='assuming role using web token using sub in trust policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('token_claims_trust_policy_test')
+@pytest.mark.token_claims_trust_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_sub():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1418,8 +1476,11 @@ def test_assume_role_with_web_identity_with_sub():
 @attr(operation='check')
 @attr(assertion='assuming role using web token using azp in trust policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('token_claims_trust_policy_test')
+@pytest.mark.token_claims_trust_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_azp():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1471,9 +1532,13 @@ def test_assume_role_with_web_identity_with_azp():
 @attr(operation='check')
 @attr(assertion='assuming role using web token using aws:RequestTag in trust policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_request_tag_trust_policy_test')
+@pytest.mark.token_request_tag_trust_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_request_tag():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1524,9 +1589,13 @@ def test_assume_role_with_web_identity_with_request_tag():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_principal_tag_role_policy_test')
+@pytest.mark.token_principal_tag_role_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_principal_tag():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1577,9 +1646,13 @@ def test_assume_role_with_web_identity_with_principal_tag():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_principal_tag_role_policy_test')
+@pytest.mark.token_principal_tag_role_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_for_all_values():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1630,9 +1703,13 @@ def test_assume_role_with_web_identity_for_all_values():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_principal_tag_role_policy_test')
+@pytest.mark.token_principal_tag_role_policy_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_for_all_values_deny():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1685,9 +1762,13 @@ def test_assume_role_with_web_identity_for_all_values_deny():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with aws:TagKeys in trust policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_tag_keys_test')
+@pytest.mark.token_tag_keys_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_tag_keys_trust_policy():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1738,9 +1819,13 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with aws:TagKeys in role permission policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_tag_keys_test')
+@pytest.mark.token_tag_keys_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_tag_keys_role_policy():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1791,9 +1876,13 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with s3:ResourceTag in role permission policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_resource_tags_test')
+@pytest.mark.token_resource_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1854,9 +1943,13 @@ def test_assume_role_with_web_identity_resource_tag():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with s3:ResourceTag with missing tags on bucket')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_resource_tags_test')
+@pytest.mark.token_resource_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_deny():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1917,9 +2010,13 @@ def test_assume_role_with_web_identity_resource_tag_deny():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with s3:ResourceTag with wrong resource tag in policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_resource_tags_test')
+@pytest.mark.token_resource_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_wrong_resource_tag_deny():
     check_webidentity()
     iam_client=get_iam_client()
@@ -1983,9 +2080,13 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with s3:ResourceTag matching aws:PrincipalTag in role permission policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_resource_tags_test')
+@pytest.mark.token_resource_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_princ_tag():
     check_webidentity()
     iam_client=get_iam_client()
@@ -2051,9 +2152,13 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with s3:ResourceTag used to test copy object')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_resource_tags_test')
+@pytest.mark.token_resource_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_copy_obj():
     check_webidentity()
     iam_client=get_iam_client()
@@ -2146,9 +2251,13 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
 @attr(operation='check')
 @attr(assertion='assuming role using web token with iam:ResourceTag in role trust policy')
 @attr('webidentity_test')
+@pytest.mark.webidentity_test
 @attr('abac_test')
+@pytest.mark.abac_test
 @attr('token_role_tags_test')
+@pytest.mark.token_role_tags_test
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_role_resource_tag():
     check_webidentity()
     iam_client=get_iam_client()

@@ -2,6 +2,7 @@
 import sys
 import collections
 import nose
+import pytest
 import string
 import random
 from pprint import pprint
@@ -45,7 +46,6 @@ ERRORDOC_TEMPLATE = '<html><h1>ErrorDoc</h1><body>{random}</body></html>'
 
 CAN_WEBSITE = None
 
-@attr('fails_on_dbstore')
 def check_can_test_website():
     global CAN_WEBSITE
     # This is a bit expensive, so we cache this
@@ -254,7 +254,9 @@ def _website_request(bucket_name, path, connect_hostname=None, method='GET', tim
 @attr(operation='list')
 @attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket, exposing security risk')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_rgw')
+@pytest.mark.fails_on_rgw
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_s3():
     bucket_name = get_new_bucket_name()
@@ -267,8 +269,11 @@ def test_website_nonexistant_bucket_s3():
 #@attr(assertion='non-existant bucket via website endpoint should give Forbidden, keeping bucket identity secure')
 @attr(assertion='non-existant bucket via website endpoint should give NoSuchBucket')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_s3')
+@pytest.mark.fails_on_s3
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_nonexistant_bucket_rgw():
     bucket_name = get_new_bucket_name()
@@ -282,7 +287,9 @@ def test_website_nonexistant_bucket_rgw():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is public')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 @timed(10)
 def test_website_public_bucket_list_public_index():
@@ -311,7 +318,9 @@ def test_website_public_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_public_index():
     bucket = get_new_bucket()
@@ -342,7 +351,9 @@ def test_website_private_bucket_list_public_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty():
     bucket = get_new_bucket()
@@ -359,7 +370,9 @@ def test_website_private_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty():
     bucket = get_new_bucket()
@@ -375,7 +388,9 @@ def test_website_public_bucket_list_empty():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index():
     bucket = get_new_bucket()
@@ -401,7 +416,9 @@ def test_website_public_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index():
     bucket = get_new_bucket()
@@ -428,7 +445,9 @@ def test_website_private_bucket_list_private_index():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, missing errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
@@ -445,7 +464,9 @@ def test_website_private_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, missing errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_missingerrordoc():
     bucket = get_new_bucket()
@@ -461,7 +482,9 @@ def test_website_public_bucket_list_empty_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
@@ -486,7 +509,9 @@ def test_website_public_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, missing errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_missingerrordoc():
     bucket = get_new_bucket()
@@ -512,7 +537,9 @@ def test_website_private_bucket_list_private_index_missingerrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, blocked errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
@@ -541,7 +568,9 @@ def test_website_private_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='check if there is an invalid payload after serving error doc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_pubilc_errordoc():
     bucket = get_new_bucket()
@@ -593,7 +622,9 @@ def test_website_public_bucket_list_pubilc_errordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, blocked errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_blockederrordoc():
     bucket = get_new_bucket()
@@ -621,7 +652,9 @@ def test_website_public_bucket_list_empty_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
@@ -655,7 +688,9 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private, blocked errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_blockederrordoc():
     bucket = get_new_bucket()
@@ -690,8 +725,10 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
 @attr(operation='list')
 @attr(assertion='empty private buckets via s3website return a 403 for /, good errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 def test_website_private_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
     f = _test_website_prep(bucket, WEBSITE_CONFIGS_XMLFRAG['IndexDocErrorDoc'])
@@ -714,7 +751,9 @@ def test_website_private_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='empty public buckets via s3website return a 404 for /, good errordoc')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_empty_gooderrordoc():
     bucket = get_new_bucket()
@@ -739,7 +778,9 @@ def test_website_public_bucket_list_empty_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty public buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_public_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
@@ -769,7 +810,9 @@ def test_website_public_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='non-empty private buckets via s3website return page for /, where page is private')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_private_bucket_list_private_index_gooderrordoc():
     bucket = get_new_bucket()
@@ -800,7 +843,9 @@ def test_website_private_bucket_list_private_index_gooderrordoc():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_base():
     bucket = get_new_bucket()
@@ -818,7 +863,9 @@ def test_website_bucket_private_redirectall_base():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path():
     bucket = get_new_bucket()
@@ -838,7 +885,9 @@ def test_website_bucket_private_redirectall_path():
 @attr(operation='list')
 @attr(assertion='RedirectAllRequestsTo without protocol should TODO')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_bucket_private_redirectall_path_upgrade():
     bucket = get_new_bucket()
@@ -860,8 +909,11 @@ def test_website_bucket_private_redirectall_path_upgrade():
 @attr(operation='list')
 @attr(assertion='x-amz-website-redirect-location should not fire without websiteconf')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('x-amz-website-redirect-location')
+@pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_nonwebsite():
     bucket = get_new_bucket()
@@ -893,8 +945,11 @@ def test_website_xredirect_nonwebsite():
 @attr(operation='list')
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, public key')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('x-amz-website-redirect-location')
+@pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_relative():
     bucket = get_new_bucket()
@@ -921,8 +976,11 @@ def test_website_xredirect_public_relative():
 @attr(operation='list')
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, public key')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('x-amz-website-redirect-location')
+@pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_public_abs():
     bucket = get_new_bucket()
@@ -949,8 +1007,11 @@ def test_website_xredirect_public_abs():
 @attr(operation='list')
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, relative path, private key')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('x-amz-website-redirect-location')
+@pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_relative():
     bucket = get_new_bucket()
@@ -977,8 +1038,11 @@ def test_website_xredirect_private_relative():
 @attr(operation='list')
 @attr(assertion='x-amz-website-redirect-location should fire websiteconf, absolute, private key')
 @attr('s3website')
+@pytest.mark.s3website
 @attr('x-amz-website-redirect-location')
+@pytest.mark.s3website_redirect_location
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_website_xredirect_private_abs():
     bucket = get_new_bucket()
@@ -1241,8 +1305,11 @@ def routing_check(*args, **kwargs):
         assert(False)
 
 @attr('s3website_RoutingRules')
+@pytest.mark.s3website_routing_rules
 @attr('s3website')
+@pytest.mark.s3website
 @attr('fails_on_dbstore')
+@pytest.mark.fails_on_dbstore
 @nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
 def test_routing_generator():
     for t in ROUTING_RULES_TESTS:
