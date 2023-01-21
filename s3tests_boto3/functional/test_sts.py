@@ -2,7 +2,6 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
-from nose.plugins.attrib import attr
 import pytest
 import isodate
 import email.utils
@@ -19,7 +18,6 @@ import hashlib
 import xml.etree.ElementTree as ET
 import time
 import operator
-import nose
 import os
 import string
 import random
@@ -150,13 +148,7 @@ def get_s3_resource_using_iam_creds():
 
     return s3_res_iam_creds
 
-@attr(resource='get session token')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='s3 ops only accessible by temporary credentials')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_session_token():
     iam_client=get_iam_client()
@@ -186,13 +178,7 @@ def test_get_session_token():
     finally: # clean up user policy even if create_bucket/delete_bucket fails
         iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
 
-@attr(resource='get session token')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='s3 ops denied by permanent credentials')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_session_token_permanent_creds_denied():
     s3bucket_error=None
@@ -225,13 +211,7 @@ def test_get_session_token_permanent_creds_denied():
     assert s3bucket_error == 'AccessDenied'
     iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
 
-@attr(resource='assume role')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='role policy allows all s3 ops')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_allow():
     iam_client=get_iam_client()    
@@ -264,13 +244,7 @@ def test_assume_role_allow():
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
-@attr(resource='assume role')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='role policy denies all s3 ops')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_deny():
     s3bucket_error=None
@@ -305,13 +279,7 @@ def test_assume_role_deny():
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
 
-@attr(resource='assume role')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='creds expire so all s3 ops fails')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_creds_expiry():
     iam_client=get_iam_client()    
@@ -346,13 +314,7 @@ def test_assume_role_creds_expiry():
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
 
-@attr(resource='assume role')
-@attr(method='head')
-@attr(operation='check')
-@attr(assertion='HEAD fails with 403 when role policy denies s3:ListBucket')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_deny_head_nonexistent():
     # create a bucket with the normal s3 client
@@ -390,13 +352,7 @@ def test_assume_role_deny_head_nonexistent():
         status = e.response['ResponseMetadata']['HTTPStatusCode']
     assert status == 403
 
-@attr(resource='assume role')
-@attr(method='head')
-@attr(operation='check')
-@attr(assertion='HEAD fails with 404 when role policy allows s3:ListBucket')
-@attr('test_of_sts')
 @pytest.mark.test_of_sts
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_allow_head_nonexistent():
     # create a bucket with the normal s3 client
@@ -435,15 +391,8 @@ def test_assume_role_allow_head_nonexistent():
     assert status == 404
 
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role through web token')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('token_claims_trust_policy_test')
 @pytest.mark.token_claims_trust_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity():
     check_webidentity()
@@ -492,11 +441,6 @@ def test_assume_role_with_web_identity():
     )
 
 '''
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assume_role_with_web_token creds expire')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
 def test_assume_role_with_web_identity_invalid_webtoken():
     resp_error=None
@@ -543,15 +487,8 @@ def test_assume_role_with_web_identity_invalid_webtoken():
 # Session Policy Tests
 #######################
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='checking session policy working for two different buckets')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_on_different_buckets():
     check_webidentity()
@@ -619,15 +556,8 @@ def test_session_policy_check_on_different_buckets():
     )
 
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking session policy working for same bucket')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_on_same_bucket():
     check_webidentity()
@@ -683,15 +613,8 @@ def test_session_policy_check_on_same_bucket():
     )
 
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='checking put_obj op denial')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_put_obj_denial():
     check_webidentity()
@@ -752,15 +675,8 @@ def test_session_policy_check_put_obj_denial():
     )
 
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='checking put_obj working by swapping policies')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_swapping_role_policy_and_session_policy():
     check_webidentity()
@@ -816,15 +732,8 @@ def test_swapping_role_policy_and_session_policy():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking put_obj working by setting different permissions to role and session policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_different_op_permissions():
     check_webidentity()
@@ -885,15 +794,8 @@ def test_session_policy_check_different_op_permissions():
     )
 
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking op behaviour with deny effect')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_with_deny_effect():
     check_webidentity()
@@ -953,15 +855,8 @@ def test_session_policy_check_with_deny_effect():
     )
 
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking put_obj working with deny and allow on same op')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_with_deny_on_same_op():
     check_webidentity()
@@ -1021,15 +916,8 @@ def test_session_policy_check_with_deny_on_same_op():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking op when bucket policy has role arn')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_role_arn():
     check_webidentity()
@@ -1104,15 +992,8 @@ def test_session_policy_bucket_policy_role_arn():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='checking op when bucket policy has session arn')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_session_arn():
     check_webidentity()
@@ -1185,15 +1066,8 @@ def test_session_policy_bucket_policy_session_arn():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking copy object op with role, session and bucket policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_copy_object():
     check_webidentity()
@@ -1273,15 +1147,8 @@ def test_session_policy_copy_object():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking op is denied when no role policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_no_bucket_role_policy():
     check_webidentity()
@@ -1332,15 +1199,8 @@ def test_session_policy_no_bucket_role_policy():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='checking op is denied when resource policy denies')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('session_policy')
 @pytest.mark.session_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_session_policy_bucket_policy_deny():
     check_webidentity()
@@ -1413,15 +1273,8 @@ def test_session_policy_bucket_policy_deny():
     OpenIDConnectProviderArn=oidc_arn
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token using sub in trust policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('token_claims_trust_policy_test')
 @pytest.mark.token_claims_trust_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_sub():
     check_webidentity()
@@ -1469,15 +1322,8 @@ def test_assume_role_with_web_identity_with_sub():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token using azp in trust policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('token_claims_trust_policy_test')
 @pytest.mark.token_claims_trust_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_azp():
     check_webidentity()
@@ -1525,17 +1371,9 @@ def test_assume_role_with_web_identity_with_azp():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token using aws:RequestTag in trust policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_request_tag_trust_policy_test')
 @pytest.mark.token_request_tag_trust_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_request_tag():
     check_webidentity()
@@ -1582,17 +1420,9 @@ def test_assume_role_with_web_identity_with_request_tag():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_principal_tag_role_policy_test')
 @pytest.mark.token_principal_tag_role_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_with_principal_tag():
     check_webidentity()
@@ -1639,17 +1469,9 @@ def test_assume_role_with_web_identity_with_principal_tag():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_principal_tag_role_policy_test')
 @pytest.mark.token_principal_tag_role_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_for_all_values():
     check_webidentity()
@@ -1696,17 +1518,9 @@ def test_assume_role_with_web_identity_for_all_values():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with aws:PrincipalTag in role policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_principal_tag_role_policy_test')
 @pytest.mark.token_principal_tag_role_policy_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_for_all_values_deny():
     check_webidentity()
@@ -1755,17 +1569,9 @@ def test_assume_role_with_web_identity_for_all_values_deny():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with aws:TagKeys in trust policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_tag_keys_test')
 @pytest.mark.token_tag_keys_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_tag_keys_trust_policy():
     check_webidentity()
@@ -1812,17 +1618,9 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='get')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with aws:TagKeys in role permission policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_tag_keys_test')
 @pytest.mark.token_tag_keys_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_tag_keys_role_policy():
     check_webidentity()
@@ -1869,17 +1667,9 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with s3:ResourceTag in role permission policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_resource_tags_test')
 @pytest.mark.token_resource_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag():
     check_webidentity()
@@ -1936,17 +1726,9 @@ def test_assume_role_with_web_identity_resource_tag():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with s3:ResourceTag with missing tags on bucket')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_resource_tags_test')
 @pytest.mark.token_resource_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_deny():
     check_webidentity()
@@ -2003,17 +1785,9 @@ def test_assume_role_with_web_identity_resource_tag_deny():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with s3:ResourceTag with wrong resource tag in policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_resource_tags_test')
 @pytest.mark.token_resource_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_wrong_resource_tag_deny():
     check_webidentity()
@@ -2073,17 +1847,9 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with s3:ResourceTag matching aws:PrincipalTag in role permission policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_resource_tags_test')
 @pytest.mark.token_resource_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_princ_tag():
     check_webidentity()
@@ -2145,17 +1911,9 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with s3:ResourceTag used to test copy object')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_resource_tags_test')
 @pytest.mark.token_resource_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag_copy_obj():
     check_webidentity()
@@ -2244,17 +2002,9 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
 
-@attr(resource='assume role with web identity')
-@attr(method='put')
-@attr(operation='check')
-@attr(assertion='assuming role using web token with iam:ResourceTag in role trust policy')
-@attr('webidentity_test')
 @pytest.mark.webidentity_test
-@attr('abac_test')
 @pytest.mark.abac_test
-@attr('token_role_tags_test')
 @pytest.mark.token_role_tags_test
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_role_resource_tag():
     check_webidentity()
