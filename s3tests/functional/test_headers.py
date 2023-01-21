@@ -21,7 +21,6 @@ from boto.s3.connection import S3Connection
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
 
 from .utils import assert_raises
 
@@ -482,11 +481,11 @@ def test_bucket_create_bad_date_none_aws2():
 
 def check_aws4_support():
     if 'S3_USE_SIGV4' not in os.environ:
-       raise SkipTest
+        pytest.skip('sigv4 tests not enabled by S3_USE_SIGV4')
 
 def check_aws2_support():
     if 'S3_USE_SIGV4' in os.environ:
-       raise SkipTest
+        pytest.skip('sigv2 tests disabled by S3_USE_SIGV4')
 
 
 @tag('auth_aws4')

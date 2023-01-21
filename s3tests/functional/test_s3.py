@@ -30,7 +30,6 @@ from urllib.parse import urlparse
 
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
 
 from . import utils
 from .utils import assert_raises
@@ -432,7 +431,7 @@ def lc_transitions(transitions=None):
 def test_object_storage_class():
     sc = configured_storage_classes()
     if len(sc) < 2:
-        raise SkipTest
+        pytest.skip('requires multiple storage classes')
 
     bucket = get_new_bucket()
 
@@ -454,7 +453,7 @@ def test_object_storage_class():
 def test_object_storage_class_multipart():
     sc = configured_storage_classes()
     if len(sc) < 2:
-        raise SkipTest
+        pytest.skip('requires multiple storage classes')
 
     bucket = get_new_bucket()
     size = 11 * 1024 * 1024
@@ -470,7 +469,7 @@ def test_object_storage_class_multipart():
 def _do_test_object_modify_storage_class(obj_write_func, size):
     sc = configured_storage_classes()
     if len(sc) < 2:
-        raise SkipTest
+        pytest.skip('requires multiple storage classes')
 
     bucket = get_new_bucket()
 
@@ -515,7 +514,7 @@ def test_object_modify_storage_class_multipart():
 def _do_test_object_storage_class_copy(obj_write_func, size):
     sc = configured_storage_classes()
     if len(sc) < 2:
-        raise SkipTest
+        pytest.skip('requires multiple storage classes')
 
     src_bucket = get_new_bucket()
     dest_bucket = get_new_bucket()
