@@ -2,7 +2,6 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
-from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import pytest
 import isodate
@@ -167,10 +166,10 @@ def test_get_session_token():
     
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
     (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     
     response=sts_client.get_session_token()
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     s3_client=boto3.client('s3',
                 aws_access_key_id = response['Credentials']['AccessKeyId'],
@@ -182,7 +181,7 @@ def test_get_session_token():
     bucket_name = get_new_bucket_name()
     try:
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-        eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+        assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
         finish=s3_client.delete_bucket(Bucket=bucket_name)
     finally: # clean up user policy even if create_bucket/delete_bucket fails
         iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
@@ -206,10 +205,10 @@ def test_get_session_token_permanent_creds_denied():
     
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
     (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     
     response=sts_client.get_session_token()
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     s3_client=boto3.client('s3',
                 aws_access_key_id = s3_main_access_key,
@@ -223,7 +222,7 @@ def test_get_session_token_permanent_creds_denied():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error,'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
     iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
 
 @attr(resource='assume role')
@@ -243,14 +242,14 @@ def test_assume_role_allow():
     
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -261,9 +260,9 @@ def test_assume_role_allow():
 		)
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @attr(resource='assume role')
 @attr(method='get')
@@ -283,14 +282,14 @@ def test_assume_role_deny():
     
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -304,7 +303,7 @@ def test_assume_role_deny():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error,'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
 
 @attr(resource='assume role')
 @attr(method='get')
@@ -323,14 +322,14 @@ def test_assume_role_creds_expiry():
     
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,DurationSeconds=900)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     time.sleep(900)
     
     s3_client = boto3.client('s3',
@@ -345,7 +344,7 @@ def test_assume_role_creds_expiry():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error,'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
 
 @attr(resource='assume role')
 @attr(method='head')
@@ -368,15 +367,15 @@ def test_assume_role_deny_head_nonexistent():
 
     policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name)
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name
 
     # allow GetObject but deny ListBucket
     role_policy = '{"Version":"2012-10-17","Statement":{"Effect":"Allow","Action":"s3:GetObject","Principal":"*","Resource":"arn:aws:s3:::*"}}'
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -389,7 +388,7 @@ def test_assume_role_deny_head_nonexistent():
         s3_client.head_object(Bucket=bucket_name, Key='nonexistent')
     except ClientError as e:
         status = e.response['ResponseMetadata']['HTTPStatusCode']
-    eq(status,403)
+    assert status == 403
 
 @attr(resource='assume role')
 @attr(method='head')
@@ -412,15 +411,15 @@ def test_assume_role_allow_head_nonexistent():
 
     policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name)
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name
 
     # allow GetObject and ListBucket
     role_policy = '{"Version":"2012-10-17","Statement":{"Effect":"Allow","Action":["s3:GetObject","s3:ListBucket"],"Principal":"*","Resource":"arn:aws:s3:::*"}}'
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -433,7 +432,7 @@ def test_assume_role_allow_head_nonexistent():
         s3_client.head_object(Bucket=bucket_name, Key='nonexistent')
     except ClientError as e:
         status = e.response['ResponseMetadata']['HTTPStatusCode']
-    eq(status,404)
+    assert status == 404
 
 
 @attr(resource='assume role with web identity')
@@ -466,14 +465,14 @@ def test_assume_role_with_web_identity():
     
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -484,9 +483,9 @@ def test_assume_role_with_web_identity():
 		)
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
     
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -519,11 +518,11 @@ def test_assume_role_with_web_identity_invalid_webtoken():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=""
     try:
@@ -533,7 +532,7 @@ def test_assume_role_with_web_identity_invalid_webtoken():
         log.debug('{}'.format(e.response.get("Error", {}).get("Code")))
         log.debug('{}'.format(e))
         resp_error = e.response.get("Error", {}).get("Code")
-    eq(resp_error,'AccessDenied')
+    assert resp_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -573,17 +572,17 @@ def test_session_policy_check_on_different_buckets():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::test2\",\"arn:aws:s3:::test2/*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -598,14 +597,14 @@ def test_session_policy_check_on_different_buckets():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name_1)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error, 'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
 
     bucket_name_2 = 'test2'
     try:
         s3bucket = s3_client.create_bucket(Bucket=bucket_name_2)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error, 'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
 
     bucket_body = 'please-write-something'
     #body.encode(encoding='utf_8')
@@ -613,7 +612,7 @@ def test_session_policy_check_on_different_buckets():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error,'NoSuchBucket')
+    assert s3_put_obj_error == 'NoSuchBucket'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -649,23 +648,23 @@ def test_session_policy_check_on_same_bucket():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -677,7 +676,7 @@ def test_session_policy_check_on_same_bucket():
 
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -715,23 +714,23 @@ def test_session_policy_check_put_obj_denial():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -746,7 +745,7 @@ def test_session_policy_check_put_obj_denial():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error, 'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -784,23 +783,23 @@ def test_swapping_role_policy_and_session_policy():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -811,7 +810,7 @@ def test_swapping_role_policy_and_session_policy():
                 )
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -848,23 +847,23 @@ def test_session_policy_check_different_op_permissions():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -879,7 +878,7 @@ def test_session_policy_check_different_op_permissions():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error, 'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -917,23 +916,23 @@ def test_session_policy_check_with_deny_effect():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -947,7 +946,7 @@ def test_session_policy_check_with_deny_effect():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error, 'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -985,23 +984,23 @@ def test_session_policy_check_with_deny_on_same_op():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Deny\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1016,7 +1015,7 @@ def test_session_policy_check_with_deny_on_same_op():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error, 'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1051,16 +1050,16 @@ def test_session_policy_bucket_policy_role_arn():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
     s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
@@ -1082,7 +1081,7 @@ def test_session_policy_bucket_policy_role_arn():
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1093,13 +1092,13 @@ def test_session_policy_bucket_policy_role_arn():
                 )
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     try:
         obj = s3_client.get_object(Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3object_error = e.response.get("Error", {}).get("Code")
-    eq(s3object_error, 'AccessDenied')
+    assert s3object_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1134,16 +1133,16 @@ def test_session_policy_bucket_policy_session_arn():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
     s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
@@ -1165,7 +1164,7 @@ def test_session_policy_bucket_policy_session_arn():
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1176,11 +1175,11 @@ def test_session_policy_bucket_policy_session_arn():
                 )
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
     s3_get_obj = s3_client.get_object(Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_get_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1215,16 +1214,16 @@ def test_session_policy_copy_object():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
     s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
@@ -1247,7 +1246,7 @@ def test_session_policy_copy_object():
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1258,7 +1257,7 @@ def test_session_policy_copy_object():
                 )
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     copy_source = {
     'Bucket': bucket_name_1,
@@ -1268,7 +1267,7 @@ def test_session_policy_copy_object():
     s3_client.copy(copy_source, bucket_name_1, "test-2.txt")
 
     s3_get_obj = s3_client.get_object(Bucket=bucket_name_1, Key="test-2.txt")
-    eq(s3_get_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1303,17 +1302,17 @@ def test_session_policy_no_bucket_role_policy():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
     s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\",\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1327,7 +1326,7 @@ def test_session_policy_no_bucket_role_policy():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3putobj_error = e.response.get("Error", {}).get("Code")
-    eq(s3putobj_error, 'AccessDenied')
+    assert s3putobj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1362,16 +1361,16 @@ def test_session_policy_bucket_policy_deny():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
     s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
@@ -1393,7 +1392,7 @@ def test_session_policy_bucket_policy_deny():
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
                 aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1408,7 +1407,7 @@ def test_session_policy_bucket_policy_deny():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3putobj_error = e.response.get("Error", {}).get("Code")
-    eq(s3putobj_error, 'AccessDenied')
+    assert s3putobj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1444,14 +1443,14 @@ def test_assume_role_with_web_identity_with_sub():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":sub\":\""+sub+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1462,9 +1461,9 @@ def test_assume_role_with_web_identity_with_sub():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1500,14 +1499,14 @@ def test_assume_role_with_web_identity_with_azp():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":azp\":\""+azp+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1518,9 +1517,9 @@ def test_assume_role_with_web_identity_with_azp():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1557,14 +1556,14 @@ def test_assume_role_with_web_identity_with_request_tag():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1575,9 +1574,9 @@ def test_assume_role_with_web_identity_with_request_tag():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1614,14 +1613,14 @@ def test_assume_role_with_web_identity_with_principal_tag():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"aws:PrincipalTag/Department\":\"Engineering\"}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1632,9 +1631,9 @@ def test_assume_role_with_web_identity_with_principal_tag():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1671,14 +1670,14 @@ def test_assume_role_with_web_identity_for_all_values():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"ForAllValues:StringEquals\":{\"aws:PrincipalTag/Department\":[\"Engineering\",\"Marketing\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1689,9 +1688,9 @@ def test_assume_role_with_web_identity_for_all_values():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1728,15 +1727,15 @@ def test_assume_role_with_web_identity_for_all_values_deny():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     #ForAllValues: The condition returns true if every key value in the request matches at least one value in the policy
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"ForAllValues:StringEquals\":{\"aws:PrincipalTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1750,7 +1749,7 @@ def test_assume_role_with_web_identity_for_all_values_deny():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    eq(s3bucket_error,'AccessDenied')
+    assert s3bucket_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1787,14 +1786,14 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:TagKeys\":\"Department\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"ForAnyValue:StringEquals\":{\"aws:PrincipalTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1805,9 +1804,9 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1844,14 +1843,14 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"aws:TagKeys\":[\"Department\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1862,9 +1861,9 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
         )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
-    eq(bkt['ResponseMetadata']['HTTPStatusCode'],204)
+    assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1898,7 +1897,7 @@ def test_assume_role_with_web_identity_resource_tag():
 
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'},{'Key':'Department', 'Value': 'Marketing'}]})
@@ -1912,14 +1911,14 @@ def test_assume_role_with_web_identity_resource_tag():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1931,7 +1930,7 @@ def test_assume_role_with_web_identity_resource_tag():
 
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -1965,7 +1964,7 @@ def test_assume_role_with_web_identity_resource_tag_deny():
 
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_response = iam_client.create_open_id_connect_provider(
     Url='http://localhost:8080/auth/realms/{}'.format(realm),
@@ -1976,14 +1975,14 @@ def test_assume_role_with_web_identity_resource_tag_deny():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -1998,7 +1997,7 @@ def test_assume_role_with_web_identity_resource_tag_deny():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error,'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -2032,7 +2031,7 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
 
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'WrongResourcetag'}]})
@@ -2046,14 +2045,14 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -2068,7 +2067,7 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
         s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
-    eq(s3_put_obj_error,'AccessDenied')
+    assert s3_put_obj_error == 'AccessDenied'
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -2102,7 +2101,7 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
 
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'}]})
@@ -2116,14 +2115,14 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"${aws:PrincipalTag/Department}\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -2137,10 +2136,10 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
     tags = 'Department=Engineering&Department=Marketing'
     key = "test-1.txt"
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key=key, Tagging=tags)
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_get_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
-    eq(s3_get_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -2175,14 +2174,14 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     #create two buckets and add same tags to both
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'}]})
 
     copy_bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=copy_bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(copy_bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'}]})
@@ -2196,14 +2195,14 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"${aws:PrincipalTag/Department}\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -2217,7 +2216,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     tags = 'Department=Engineering'
     key = "test-1.txt"
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key=key, Tagging=tags)
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     #copy to same bucket
     copy_source = {
@@ -2228,7 +2227,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     s3_client.copy(copy_source, bucket_name, "test-2.txt")
 
     s3_get_obj = s3_client.get_object(Bucket=bucket_name, Key="test-2.txt")
-    eq(s3_get_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     #copy to another bucket
     copy_source = {
@@ -2239,7 +2238,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     s3_client.copy(copy_source, copy_bucket_name, "test-1.txt")
 
     s3_get_obj = s3_client.get_object(Bucket=copy_bucket_name, Key="test-1.txt")
-    eq(s3_get_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
@@ -2273,7 +2272,7 @@ def test_assume_role_with_web_identity_role_resource_tag():
 
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
-    eq(s3bucket['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'},{'Key':'Department', 'Value': 'Marketing'}]})
@@ -2293,14 +2292,14 @@ def test_assume_role_with_web_identity_role_resource_tag():
         ]
 
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None,tags_list)
-    eq(role_response['Role']['Arn'],'arn:aws:iam:::role/'+general_role_name+'')
+    assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"Engineering\"]}}}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
-    eq(response['ResponseMetadata']['HTTPStatusCode'],200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
-    eq(resp['ResponseMetadata']['HTTPStatusCode'],200)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client = boto3.client('s3',
         aws_access_key_id = resp['Credentials']['AccessKeyId'],
@@ -2312,7 +2311,7 @@ def test_assume_role_with_web_identity_role_resource_tag():
 
     bucket_body = 'this is a test file'
     s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key="test-1.txt")
-    eq(s3_put_obj['ResponseMetadata']['HTTPStatusCode'],200)
+    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]

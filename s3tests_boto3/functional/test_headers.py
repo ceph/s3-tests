@@ -1,5 +1,4 @@
 import boto3
-from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import nose
 import pytest
@@ -171,8 +170,8 @@ def tag(*tags):
 def test_object_create_bad_md5_invalid_short():
     e = _add_header_create_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidDigest')
+    assert status == 400
+    assert error_code == 'InvalidDigest'
 
 @tag('auth_common')
 @attr(resource='object')
@@ -182,8 +181,8 @@ def test_object_create_bad_md5_invalid_short():
 def test_object_create_bad_md5_bad():
     e = _add_header_create_bad_object({'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'BadDigest')
+    assert status == 400
+    assert error_code == 'BadDigest'
 
 @tag('auth_common')
 @attr(resource='object')
@@ -193,8 +192,8 @@ def test_object_create_bad_md5_bad():
 def test_object_create_bad_md5_empty():
     e = _add_header_create_bad_object({'Content-MD5':''})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidDigest')
+    assert status == 400
+    assert error_code == 'InvalidDigest'
 
 @tag('auth_common')
 @attr(resource='object')
@@ -247,7 +246,7 @@ def test_object_create_bad_expect_none():
 def test_object_create_bad_contentlength_empty():
     e = _add_header_create_bad_object({'Content-Length':''})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @tag('auth_common')
 @attr(resource='object')
@@ -262,7 +261,7 @@ def test_object_create_bad_contentlength_negative():
     key_name = 'foo'
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, ContentLength=-1)
     status = _get_status(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @tag('auth_common')
 @attr(resource='object')
@@ -276,8 +275,8 @@ def test_object_create_bad_contentlength_none():
     remove = 'Content-Length'
     e = _remove_header_create_bad_object('Content-Length')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 411)
-    eq(error_code, 'MissingContentLength')
+    assert status == 411
+    assert error_code == 'MissingContentLength'
 
 @tag('auth_common')
 @attr(resource='object')
@@ -324,7 +323,7 @@ def test_object_create_bad_contenttype_none():
 def test_object_create_bad_authorization_empty():
     e = _add_header_create_bad_object({'Authorization': ''})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 @tag('auth_common')
 @attr(resource='object')
@@ -366,7 +365,7 @@ def test_object_create_amz_date_and_no_date():
 def test_object_create_bad_authorization_none():
     e = _remove_header_create_bad_object('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 @tag('auth_common')
 @attr(resource='bucket')
@@ -416,7 +415,7 @@ def test_bucket_put_bad_canned_acl():
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name, ACL='public-read')
     status = _get_status(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @tag('auth_common')
 @attr(resource='bucket')
@@ -454,7 +453,7 @@ def test_bucket_create_bad_contentlength_empty():
     headers = {'Content-Length': ''}
     e = _add_header_create_bad_bucket(headers)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @tag('auth_common')
 @attr(resource='bucket')
@@ -467,7 +466,7 @@ def test_bucket_create_bad_contentlength_negative():
     headers = {'Content-Length': '-1'}
     e = _add_header_create_bad_bucket(headers)
     status = _get_status(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @tag('auth_common')
 @attr(resource='bucket')
@@ -493,8 +492,8 @@ def test_bucket_create_bad_authorization_empty():
     headers = {'Authorization': ''}
     e = _add_header_create_bad_bucket(headers)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_common')
 @attr(resource='bucket')
@@ -507,8 +506,8 @@ def test_bucket_create_bad_authorization_empty():
 def test_bucket_create_bad_authorization_none():
     e = _remove_header_create_bad_bucket('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -520,8 +519,8 @@ def test_object_create_bad_md5_invalid_garbage_aws2():
     headers = {'Content-MD5': 'AWS HAHAHA'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidDigest')
+    assert status == 400
+    assert error_code == 'InvalidDigest'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -538,8 +537,8 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
     headers = {'Content-Length': str(length)}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'BadDigest')
+    assert status == 400
+    assert error_code == 'BadDigest'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -554,8 +553,8 @@ def test_object_create_bad_authorization_incorrect_aws2():
     headers = {'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'InvalidDigest')
+    assert status == 403
+    assert error_code == 'InvalidDigest'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -570,8 +569,8 @@ def test_object_create_bad_authorization_invalid_aws2():
     headers = {'Authorization': 'AWS HAHAHA'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -605,8 +604,8 @@ def test_object_create_bad_date_invalid_aws2():
     headers = {'x-amz-date': 'Bad Date'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -618,8 +617,8 @@ def test_object_create_bad_date_empty_aws2():
     headers = {'x-amz-date': ''}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -634,8 +633,8 @@ def test_object_create_bad_date_none_aws2():
     remove = 'x-amz-date'
     e = _remove_header_create_bad_object(remove, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -647,8 +646,8 @@ def test_object_create_bad_date_before_today_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 2010 21:53:04 GMT'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'RequestTimeTooSkewed')
+    assert status == 403
+    assert error_code == 'RequestTimeTooSkewed'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -660,8 +659,8 @@ def test_object_create_bad_date_before_epoch_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 1950 21:53:04 GMT'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -673,8 +672,8 @@ def test_object_create_bad_date_after_end_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 9999 21:53:04 GMT'}
     e = _add_header_create_bad_object(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'RequestTimeTooSkewed')
+    assert status == 403
+    assert error_code == 'RequestTimeTooSkewed'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -689,8 +688,8 @@ def test_bucket_create_bad_authorization_invalid_aws2():
     headers = {'Authorization': 'AWS HAHAHA'}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -722,8 +721,8 @@ def test_bucket_create_bad_date_invalid_aws2():
     headers = {'x-amz-date': 'Bad Date'}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -735,8 +734,8 @@ def test_bucket_create_bad_date_empty_aws2():
     headers = {'x-amz-date': ''}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -751,8 +750,8 @@ def test_bucket_create_bad_date_none_aws2():
     remove = 'x-amz-date'
     e = _remove_header_create_bad_bucket(remove, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -764,8 +763,8 @@ def test_bucket_create_bad_date_before_today_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 2010 21:53:04 GMT'}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'RequestTimeTooSkewed')
+    assert status == 403
+    assert error_code == 'RequestTimeTooSkewed'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -777,8 +776,8 @@ def test_bucket_create_bad_date_after_today_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 2030 21:53:04 GMT'}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'RequestTimeTooSkewed')
+    assert status == 403
+    assert error_code == 'RequestTimeTooSkewed'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -790,5 +789,5 @@ def test_bucket_create_bad_date_before_epoch_aws2():
     headers = {'x-amz-date': 'Tue, 07 Jul 1950 21:53:04 GMT'}
     e = _add_header_create_bad_bucket(headers, v2_client)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'

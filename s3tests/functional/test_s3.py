@@ -28,7 +28,6 @@ import re
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 
 from . import utils
@@ -55,9 +54,9 @@ from . import (
 
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(boto.exception.S3ResponseError, fn, *args, **kwargs)
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 def check_bad_bucket_name(name):
     """
@@ -65,9 +64,9 @@ def check_bad_bucket_name(name):
     that the request fails because of an invalid bucket name.
     """
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, targets.main.default, name)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidBucketName')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'InvalidBucketName'
 
 def _create_keys(bucket=None, keys=[]):
     """
@@ -108,9 +107,9 @@ def test_bucket_create_naming_bad_punctuation():
 
 def check_versioning(bucket, status):
     try:
-        eq(bucket.get_versioning_status()['Versioning'], status)
+        assert bucket.get_versioning_status()['Versioning'] == status
     except KeyError:
-        eq(status, None)
+        assert status == None
 
 # amazon is eventual consistent, retry a bit if failed
 def check_configure_versioning_retry(bucket, status, expected_string):
@@ -129,7 +128,7 @@ def check_configure_versioning_retry(bucket, status, expected_string):
 
         time.sleep(1)
 
-    eq(expected_string, read_status)
+    assert expected_string == read_status
 
 @attr(resource='object')
 @attr(method='create')
@@ -152,7 +151,7 @@ def test_versioning_obj_read_not_exist_null():
     key.set_contents_from_string(content)
 
     key = bucket.get_key(objname, version_id='null')
-    eq(key, None)
+    assert key == None
 
 @attr(resource='object')
 @attr(method='put')
@@ -177,11 +176,11 @@ def test_append_object():
     res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
     path2 = path + '&append&position=3'
     res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
-    eq(res.status, 200)
-    eq(res.reason, 'OK')
+    assert res.status == 200
+    assert res.reason == 'OK'
 
     key = bucket.get_key('foo')
-    eq(key.size, 6) 
+    assert key.size == 6 
 
 @attr(resource='object')
 @attr(method='put')
@@ -205,7 +204,7 @@ def test_append_normal_object():
     path = o.path + '?' + o.query
     path = path + '&append&position=3'
     res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path, body='abc', secure=s3.main.is_secure)
-    eq(res.status, 409)
+    assert res.status == 409
 
 
 @attr(resource='object')
@@ -231,8 +230,8 @@ def test_append_object_position_wrong():
     res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path1, body='abc', secure=s3.main.is_secure)
     path2 = path + '&append&position=9'
     res = _make_raw_request(host=s3.main.host, port=s3.main.port, method='PUT', path=path2, body='abc', secure=s3.main.is_secure)
-    eq(res.status, 409)
-    eq(int(res.getheader('x-rgw-next-append-position')), 3)
+    assert res.status == 409
+    assert int(res.getheader('x-rgw-next-append-position')) == 3
 
 
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
@@ -329,13 +328,13 @@ def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
 
 def verify_object(bucket, k, data=None, storage_class=None):
     if storage_class:
-        eq(k.storage_class, storage_class)
+        assert k.storage_class == storage_class
 
     if data:
         read_data = k.get_contents_as_string()
 
         equal = data == read_data # avoid spamming log if data not equal
-        eq(equal, True)
+        assert equal == True
 
 def copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, storage_class):
             query_args=None
@@ -351,7 +350,7 @@ def copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, storag
 
             res = dest_bucket.connection.make_request('PUT', dest_bucket.name, dest_key.name,
                     query_args=query_args, headers=headers)
-            eq(res.status, 200)
+            assert res.status == 200
 
 def _populate_multipart_key(bucket, kname, size, storage_class=None):
     (upload, data) = _multipart_upload(bucket, kname, size, storage_class=storage_class)
@@ -463,8 +462,8 @@ def test_object_storage_class_multipart():
         (upload, data) = _multipart_upload(bucket, key, size, storage_class=storage_class)
         upload.complete_upload()
         key2 = bucket.get_key(key)
-        eq(key2.size, size)
-        eq(key2.storage_class, storage_class)
+        assert key2.size == size
+        assert key2.storage_class == storage_class
 
 def _do_test_object_modify_storage_class(obj_write_func, size):
     sc = configured_storage_classes()
@@ -609,7 +608,7 @@ class FakeFileVerifier(object):
         if self.char == None:
             self.char = data[0]
         self.size += size
-        eq(data.decode(), self.char*size)
+        assert data.decode() == self.char*size
 
 def _verify_atomic_key_data(key, size=-1, char=None):
     """
@@ -618,7 +617,7 @@ def _verify_atomic_key_data(key, size=-1, char=None):
     fp_verify = FakeFileVerifier(char)
     key.get_contents_to_file(fp_verify)
     if size >= 0:
-        eq(fp_verify.size, size)
+        assert fp_verify.size == size
 
 def _test_atomic_dual_conditional_write(file_size):
     """
@@ -647,9 +646,9 @@ def _test_atomic_dual_conditional_write(file_size):
     # key.set_contents_from_file(fp_c, headers={'If-Match': etag_fp_a})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_c,
                       headers={'If-Match': etag_fp_a})
-    eq(e.status, 412)
-    eq(e.reason, 'Precondition Failed')
-    eq(e.error_code, 'PreconditionFailed')
+    assert e.status == 412
+    assert e.reason == 'Precondition Failed'
+    assert e.error_code == 'PreconditionFailed'
 
     # verify the file
     _verify_atomic_key_data(key, file_size, 'B')
@@ -684,9 +683,9 @@ def test_atomic_write_bucket_gone():
     key = bucket.new_key('foo')
     fp_a = FakeWriteFile(1024*1024, 'A', remove_bucket)
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_a)
-    eq(e.status, 404)
-    eq(e.reason, 'Not Found')
-    eq(e.error_code, 'NoSuchBucket')
+    assert e.status == 404
+    assert e.reason == 'Not Found'
+    assert e.error_code == 'NoSuchBucket'
 
 def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
                           do_list=None, init_headers=None, part_headers=None,
@@ -740,7 +739,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
                       _multipart_upload_enc, bucket, key, objlen,
                       init_headers=init_headers, part_headers=part_headers,
                       metadata={'foo': 'bar'})
-    eq(e.status, 400)
+    assert e.status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -770,7 +769,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
                       _multipart_upload_enc, bucket, key, objlen,
                       init_headers=init_headers, part_headers=part_headers,
                       metadata={'foo': 'bar'})
-    eq(e.status, 400)
+    assert e.status == 400
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -841,18 +840,18 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
       }
      ]
     }''' % bucket.name
-    eq(bucket.set_policy(policy), True)
+    assert bucket.set_policy(policy) == True
     res = _make_request('GET', bucket.name, bucket.get_key("foo"),
                         request_headers={'referer': 'http://www.example.com/'})
-    eq(res.status, 200)
+    assert res.status == 200
     res = _make_request('GET', bucket.name, bucket.get_key("foo"),
                         request_headers={'referer': 'http://www.example.com/index.html'})
-    eq(res.status, 200)
+    assert res.status == 200
     res = _make_request('GET', bucket.name, bucket.get_key("foo"))
-    eq(res.status, 200)
+    assert res.status == 200
     res = _make_request('GET', bucket.name, bucket.get_key("foo"),
                         request_headers={'referer': 'http://example.com'})
-    eq(res.status, 403)
+    assert res.status == 403
 
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)

@@ -19,7 +19,6 @@ from urllib.parse import urlparse
 
 from boto.s3.connection import S3Connection
 
-from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 
 from .utils import assert_raises
@@ -194,9 +193,9 @@ def test_object_create_bad_contentlength_none():
     key = _setup_bad_object(remove=('Content-Length',))
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 411)
-    eq(e.reason, 'Length Required')
-    eq(e.error_code,'MissingContentLength')
+    assert e.status == 411
+    assert e.reason == 'Length Required'
+    assert e.error_code == 'MissingContentLength'
 
 
 @tag('auth_common')
@@ -218,9 +217,9 @@ def test_object_create_bad_contentlength_mismatch_above():
     key.should_retry = no_retry
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'RequestTimeout')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'RequestTimeout'
 
 
 @tag('auth_common')
@@ -234,9 +233,9 @@ def test_object_create_bad_authorization_empty():
     key = _setup_bad_object({'Authorization': ''})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 @tag('auth_common')
 @attr(resource='object')
@@ -275,9 +274,9 @@ def test_object_create_bad_authorization_none():
     key = _setup_bad_object(remove=('Authorization',))
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 
 @tag('auth_common')
@@ -332,8 +331,8 @@ def test_bucket_create_bad_contentlength_empty():
     conn = _create_new_connection()
     _add_custom_headers({'Content-Length': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket, conn)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
 
 
 @tag('auth_common')
@@ -358,9 +357,9 @@ def test_bucket_create_bad_contentlength_none():
 def test_bucket_create_bad_authorization_empty():
     _add_custom_headers({'Authorization': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 
 # the teardown is really messed up here. check it out
@@ -374,9 +373,9 @@ def test_bucket_create_bad_authorization_empty():
 def test_bucket_create_bad_authorization_none():
     _add_custom_headers(remove=('Authorization',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 #
 # AWS2 specific tests
@@ -395,9 +394,9 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
     length = len(content) - 1
     key = _setup_bad_object({'Content-Length': length})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'BadDigest')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'BadDigest'
 
 
 @tag('auth_aws2')
@@ -411,8 +410,8 @@ def test_object_create_bad_authorization_incorrect_aws2():
     check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
 
 
@@ -427,9 +426,9 @@ def test_object_create_bad_authorization_invalid_aws2():
     check_aws2_support()
     key = _setup_bad_object({'Authorization': 'AWS HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidArgument')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'InvalidArgument'
 
 @tag('auth_aws2')
 @attr(resource='object')
@@ -442,9 +441,9 @@ def test_object_create_bad_date_none_aws2():
     check_aws2_support()
     key = _setup_bad_object(remove=('Date',))
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 
 @tag('auth_aws2')
@@ -456,9 +455,9 @@ def test_bucket_create_bad_authorization_invalid_aws2():
     check_aws2_support()
     _add_custom_headers({'Authorization': 'AWS HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidArgument')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'InvalidArgument'
 
 @tag('auth_aws2')
 @attr(resource='bucket')
@@ -471,9 +470,9 @@ def test_bucket_create_bad_date_none_aws2():
     check_aws2_support()
     _add_custom_headers(remove=('Date',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'AccessDenied')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'AccessDenied'
 
 #
 # AWS4 specific tests
@@ -498,9 +497,9 @@ def test_object_create_bad_md5_invalid_garbage_aws4():
     key = _setup_bad_object({'Content-MD5':'AWS4 HAHAHA'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidDigest')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'InvalidDigest'
 
 
 @tag('auth_aws4')
@@ -515,9 +514,9 @@ def test_object_create_bad_contentlength_mismatch_below_aws4():
     key = _setup_bad_object({'Content-Length': length})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, content)
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'XAmzContentSHA256Mismatch')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'XAmzContentSHA256Mismatch'
 
 
 @tag('auth_aws4')
@@ -530,8 +529,8 @@ def test_object_create_bad_authorization_incorrect_aws4():
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=AKIAIGR7ZNNBHC5BKSUB/20150930/us-east-1/s3/aws4_request,SignedHeaders=host;user-agent,Signature=FWeDfwojDSdS2Ztmpfeubhd9isU='})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
 
 
@@ -545,8 +544,8 @@ def test_object_create_bad_authorization_invalid_aws4():
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=HAHAHA'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
     assert e.error_code in ('AuthorizationHeaderMalformed', 'InvalidArgument')
 
 
@@ -560,9 +559,9 @@ def test_object_create_bad_ua_empty_aws4():
     key = _setup_bad_object({'User-Agent': ''})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'SignatureDoesNotMatch'
 
 
 @tag('auth_aws4')
@@ -575,9 +574,9 @@ def test_object_create_bad_ua_none_aws4():
     key = _setup_bad_object(remove=('User-Agent',))
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'SignatureDoesNotMatch'
 
 
 @tag('auth_aws4')
@@ -601,8 +600,8 @@ def test_object_create_bad_amz_date_invalid_aws4():
     key = _setup_bad_object({'X-Amz-Date': 'Bad Date'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -627,8 +626,8 @@ def test_object_create_bad_amz_date_empty_aws4():
     key = _setup_bad_object({'X-Amz-Date': ''})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -653,8 +652,8 @@ def test_object_create_bad_amz_date_none_aws4():
     key = _setup_bad_object(remove=('X-Amz-Date',))
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -679,8 +678,8 @@ def test_object_create_bad_amz_date_before_today_aws4():
     key = _setup_bad_object({'X-Amz-Date': '20100707T215304Z'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
@@ -705,8 +704,8 @@ def test_object_create_bad_amz_date_after_today_aws4():
     key = _setup_bad_object({'X-Amz-Date': '20300707T215304Z'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
@@ -731,8 +730,8 @@ def test_object_create_bad_amz_date_before_epoch_aws4():
     key = _setup_bad_object({'X-Amz-Date': '19500707T215304Z'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -757,8 +756,8 @@ def test_object_create_bad_amz_date_after_end_aws4():
     key = _setup_bad_object({'X-Amz-Date': '99990707T215304Z'})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
@@ -788,8 +787,8 @@ def test_object_create_missing_signed_custom_header_aws4():
     res =_make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path,
                            body=body, request_headers=request_headers, secure=s3.main.is_secure)
 
-    eq(res.status, 403)
-    eq(res.reason, 'Forbidden')
+    assert res.status == 403
+    assert res.reason == 'Forbidden'
 
 
 @tag('auth_aws4')
@@ -819,8 +818,8 @@ def test_object_create_missing_signed_header_aws4():
     res =_make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path,
                            body=body, request_headers=request_headers, secure=s3.main.is_secure)
 
-    eq(res.status, 403)
-    eq(res.reason, 'Forbidden')
+    assert res.status == 403
+    assert res.reason == 'Forbidden'
 
 
 @tag('auth_aws4')
@@ -833,9 +832,9 @@ def test_bucket_create_bad_authorization_invalid_aws4():
     _add_custom_headers({'Authorization': 'AWS4 HAHAHA'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 400)
-    eq(e.reason.lower(), 'bad request') # some proxies vary the case
-    eq(e.error_code, 'InvalidArgument')
+    assert e.status == 400
+    assert e.reason.lower() == 'bad request' # some proxies vary the case
+    assert e.error_code == 'InvalidArgument'
 
 
 @tag('auth_aws4')
@@ -848,9 +847,9 @@ def test_bucket_create_bad_ua_empty_aws4():
     _add_custom_headers({'User-Agent': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'SignatureDoesNotMatch'
 
 @tag('auth_aws4')
 @attr(resource='bucket')
@@ -862,9 +861,9 @@ def test_bucket_create_bad_ua_none_aws4():
     _add_custom_headers(remove=('User-Agent',))
 
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
-    eq(e.error_code, 'SignatureDoesNotMatch')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
+    assert e.error_code == 'SignatureDoesNotMatch'
 
 
 @tag('auth_aws4')
@@ -888,8 +887,8 @@ def test_bucket_create_bad_amz_date_invalid_aws4():
     _add_custom_headers({'X-Amz-Date': 'Bad Date'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -914,8 +913,8 @@ def test_bucket_create_bad_amz_date_empty_aws4():
     _add_custom_headers({'X-Amz-Date': ''})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 @tag('auth_aws4')
@@ -939,8 +938,8 @@ def test_bucket_create_bad_amz_date_none_aws4():
     _add_custom_headers(remove=('X-Amz-Date',))
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
@@ -965,8 +964,8 @@ def test_bucket_create_bad_amz_date_before_today_aws4():
     _add_custom_headers({'X-Amz-Date': '20100707T215304Z'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
@@ -991,8 +990,8 @@ def test_bucket_create_bad_amz_date_after_today_aws4():
     _add_custom_headers({'X-Amz-Date': '20300707T215304Z'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
@@ -1017,6 +1016,6 @@ def test_bucket_create_bad_amz_date_before_epoch_aws4():
     _add_custom_headers({'X-Amz-Date': '19500707T215304Z'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
 
-    eq(e.status, 403)
-    eq(e.reason, 'Forbidden')
+    assert e.status == 403
+    assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
