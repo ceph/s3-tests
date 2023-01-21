@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
 from nose.tools import timed
-from nose.plugins.skip import SkipTest
 
 from .. import common
 
@@ -56,13 +55,12 @@ def check_can_test_website():
         if e.status == 404 and e.reason == 'Not Found' and e.error_code in ['NoSuchWebsiteConfiguration', 'NoSuchKey']:
             return True
         elif e.status == 405 and e.reason == 'Method Not Allowed' and e.error_code == 'MethodNotAllowed':
-            # rgw_enable_static_website is false
-            raise SkipTest
+            pytest.skip('rgw_enable_static_website is false')
         elif e.status == 403 and e.reason == 'SignatureDoesNotMatch' and e.error_code == 'Forbidden':
             # This is older versions that do not support the website code
-            raise SkipTest
+            pytest.skip('static website is not implemented')
         elif e.status == 501 and e.error_code == 'NotImplemented':
-            raise SkipTest
+            pytest.skip('static website is not implemented')
         else:
             raise RuntimeError("Unknown response in checking if WebsiteConf is supported", e)
     finally:

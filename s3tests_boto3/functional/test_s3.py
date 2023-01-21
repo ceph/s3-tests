@@ -4,7 +4,6 @@ from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
 import isodate
 import email.utils
 import datetime
@@ -4440,7 +4439,7 @@ def test_bucket_create_exists():
 def test_bucket_get_location():
     location_constraint = get_main_api_name()
     if not location_constraint:
-        raise SkipTest
+        pytest.skip('no api_name configured')
     bucket_name = get_new_bucket_name()
     client = get_client()
 
@@ -10230,7 +10229,7 @@ def _test_encryption_sse_customer_write(file_size):
 def test_lifecycle_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
-        raise SkipTest
+        pytest.skip('requires 3 or more storage classes')
 
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -10281,7 +10280,7 @@ def test_lifecycle_transition():
 def test_lifecycle_transition_single_rule_multi_trans():
     sc = configured_storage_classes()
     if len(sc) < 3:
-        raise SkipTest
+        pytest.skip('requires 3 or more storage classes')
 
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -10328,7 +10327,7 @@ def test_lifecycle_transition_single_rule_multi_trans():
 def test_lifecycle_set_noncurrent_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
-        raise SkipTest
+        pytest.skip('requires 3 or more storage classes')
 
     bucket = get_new_bucket()
     client = get_client()
@@ -10373,7 +10372,7 @@ def test_lifecycle_set_noncurrent_transition():
 def test_lifecycle_noncur_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
-        raise SkipTest
+        pytest.skip('requires 3 or more storage classes')
 
     bucket = get_new_bucket()
     client = get_client()
@@ -10460,7 +10459,7 @@ def verify_object(client, bucket, key, content=None, sc=None):
 def test_lifecycle_cloud_transition():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
-        raise SkipTest
+        pytest.skip('no cloud_storage_class configured')
 
     retain_head_object = get_cloud_retain_head_object()
     target_path = get_cloud_target_path()
@@ -10550,7 +10549,7 @@ def test_lifecycle_cloud_transition():
 def test_lifecycle_cloud_multiple_transition():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
-        raise SkipTest
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
 
     retain_head_object = get_cloud_retain_head_object()
     target_path = get_cloud_target_path()
@@ -10559,7 +10558,7 @@ def test_lifecycle_cloud_multiple_transition():
     sc1 = get_cloud_regular_storage_class()
 
     if (sc1 == None):
-        raise SkipTest
+        pytest.skip('[s3 cloud] section missing storage_class')
 
     sc = ['STANDARD', sc1, cloud_sc]
 
@@ -10623,16 +10622,15 @@ def test_lifecycle_cloud_multiple_transition():
 def test_lifecycle_noncur_cloud_transition():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
-        raise SkipTest
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
 
     retain_head_object = get_cloud_retain_head_object()
     target_path = get_cloud_target_path()
     target_sc = get_cloud_target_storage_class()
 
     sc1 = get_cloud_regular_storage_class()
-
     if (sc1 == None):
-        raise SkipTest
+        pytest.skip('[s3 cloud] section missing storage_class')
 
     sc = ['STANDARD', sc1, cloud_sc]
 
@@ -10720,7 +10718,7 @@ def test_lifecycle_noncur_cloud_transition():
 def test_lifecycle_cloud_transition_large_obj():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
-        raise SkipTest
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
 
     retain_head_object = get_cloud_retain_head_object()
     target_path = get_cloud_target_path()
@@ -11585,7 +11583,7 @@ def test_sse_kms_post_object_authenticated_request():
 def test_sse_kms_transfer_1b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     _test_sse_kms_customer_write(1, key_id = kms_keyid)
 
 
@@ -11600,7 +11598,7 @@ def test_sse_kms_transfer_1b():
 def test_sse_kms_transfer_1kb():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     _test_sse_kms_customer_write(1024, key_id = kms_keyid)
 
 
@@ -11615,7 +11613,7 @@ def test_sse_kms_transfer_1kb():
 def test_sse_kms_transfer_1MB():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     _test_sse_kms_customer_write(1024*1024, key_id = kms_keyid)
 
 
@@ -11630,7 +11628,7 @@ def test_sse_kms_transfer_1MB():
 def test_sse_kms_transfer_13b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     _test_sse_kms_customer_write(13, key_id = kms_keyid)
 
 
@@ -13268,7 +13266,7 @@ def test_bucket_policy_put_obj_s3_kms():
 def test_bucket_policy_put_obj_kms_noenc():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
     client = get_v2_client()
 
@@ -15032,7 +15030,7 @@ def _test_sse_kms_default_upload(file_size):
     """
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption_kms(client, bucket_name)
@@ -15265,7 +15263,7 @@ def test_sse_s3_default_post_object_authenticated_request():
 def test_sse_kms_default_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
-        raise SkipTest
+        pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption_kms(client, bucket_name)

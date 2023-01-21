@@ -4,7 +4,6 @@ from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
-from nose.plugins.skip import SkipTest
 import pytest
 import isodate
 import email.utils
