@@ -12,7 +12,6 @@ import socket
 
 from urllib.parse import urlparse
 
-from nose.tools import eq_ as eq, ok_ as ok
 from nose.plugins.attrib import attr
 from nose.tools import timed
 
@@ -160,7 +159,7 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
     # Cleanup for our validation
     common.assert_xml_equal(config_xmlcmp, config_xmlnew)
     #print("config_xmlcmp\n", config_xmlcmp)
-    #eq (config_xmlnew, config_xmlcmp)
+    #assert config_xmlnew == config_xmlcmp
     f['WebsiteConfiguration'] = config_xmlcmp
     return f
 
@@ -171,9 +170,9 @@ def __website_expected_reponse_status(res, status, reason):
         reason = set([reason])
 
     if status is not IGNORE_FIELD:
-        ok(res.status in status, 'HTTP code was %s should be %s' % (res.status, status))
+        assert res.status in status, 'HTTP code was %s should be %s' % (res.status, status)
     if reason is not IGNORE_FIELD:
-        ok(res.reason in reason, 'HTTP reason was was %s should be %s' % (res.reason, reason))
+        assert res.reason in reason, 'HTTP reason was was %s should be %s' % (res.reason, reason)
 
 def _website_expected_default_html(**kwargs):
     fields = []
@@ -203,22 +202,22 @@ def _website_expected_error_response(res, bucket_name, status, reason, code, con
     errorcode = res.getheader('x-amz-error-code', None)
     if errorcode is not None:
         if code is not IGNORE_FIELD:
-            eq(errorcode, code)
+            assert errorcode == code
 
     if not isinstance(content, collections.Container):
         content = set([content])
     for f in content:
         if f is not IGNORE_FIELD and f is not None:
             f = bytes(f, 'utf-8')
-            ok(f in body, 'HTML should contain "%s"' % (f, ))
+            assert f in body, 'HTML should contain "%s"' % (f, )
 
 def _website_expected_redirect_response(res, status, reason, new_url):
     body = res.read()
     print(body)
     __website_expected_reponse_status(res, status, reason)
     loc = res.getheader('Location', None)
-    eq(loc, new_url, 'Location header should be set "%s" != "%s"' % (loc,new_url,))
-    ok(len(body) == 0, 'Body of a redirect should be empty')
+    assert loc == new_url, 'Location header should be set "%s" != "%s"' % (loc,new_url,)
+    assert len(body) == 0, 'Body of a redirect should be empty'
 
 def _website_request(bucket_name, path, connect_hostname=None, method='GET', timeout=None):
     url = get_website_url(proto='http', bucket=bucket_name, path=path)
@@ -293,7 +292,7 @@ def test_website_public_bucket_list_public_index():
     body = res.read()
     print(body)
     indexstring = bytes(indexstring, 'utf-8')
-    eq(body, indexstring) # default content should match index.html set content
+    assert body == indexstring # default content should match index.html set content
     __website_expected_reponse_status(res, 200, 'OK')
     indexhtml.delete()
     bucket.delete()
@@ -324,7 +323,7 @@ def test_website_private_bucket_list_public_index():
     body = res.read()
     print(body)
     indexstring = bytes(indexstring, 'utf-8')
-    eq(body, indexstring, 'default content should match index.html set content')
+    assert body == indexstring, 'default content should match index.html set content'
     indexhtml.delete()
     bucket.delete()
 
@@ -533,7 +532,7 @@ def test_website_private_bucket_list_empty_blockederrordoc():
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     errorstring = bytes(errorstring, 'utf-8')
-    ok(errorstring not in body, 'error content should NOT match error.html set content')
+    assert errorstring not in body, 'error content should NOT match error.html set content'
 
     errorhtml.delete()
     bucket.delete()
@@ -586,7 +585,7 @@ def test_website_public_bucket_list_pubilc_errordoc():
     except socket.timeout:
         print('no invalid payload')
 
-    ok(resp_len == 0, 'invalid payload')
+    assert resp_len == 0, 'invalid payload'
 
     errorhtml.delete()
     bucket.delete()
@@ -615,7 +614,7 @@ def test_website_public_bucket_list_empty_blockederrordoc():
     print(body)
     _website_expected_error_response(res, bucket.name, 404, 'Not Found', 'NoSuchKey', content=_website_expected_default_html(Code='NoSuchKey'), body=body)
     errorstring = bytes(errorstring, 'utf-8')
-    ok(errorstring not in body, 'error content should match error.html set content')
+    assert errorstring not in body, 'error content should match error.html set content'
 
     errorhtml.delete()
     bucket.delete()
@@ -649,7 +648,7 @@ def test_website_public_bucket_list_private_index_blockederrordoc():
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     errorstring = bytes(errorstring, 'utf-8')
-    ok(errorstring not in body, 'error content should match error.html set content')
+    assert errorstring not in body, 'error content should match error.html set content'
 
     indexhtml.delete()
     errorhtml.delete()
@@ -684,7 +683,7 @@ def test_website_private_bucket_list_private_index_blockederrordoc():
     print(body)
     _website_expected_error_response(res, bucket.name, 403, 'Forbidden', 'AccessDenied', content=_website_expected_default_html(Code='AccessDenied'), body=body)
     errorstring = bytes(errorstring, 'utf-8')
-    ok(errorstring not in body, 'error content should match error.html set content')
+    assert errorstring not in body, 'error content should match error.html set content'
 
     indexhtml.delete()
     errorhtml.delete()
@@ -889,7 +888,7 @@ def test_website_xredirect_nonwebsite():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    eq(k.get_redirect(), redirect_dest)
+    assert k.get_redirect() == redirect_dest
 
     res = _website_request(bucket.name, '/page')
     body = res.read()
@@ -924,7 +923,7 @@ def test_website_xredirect_public_relative():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    eq(k.get_redirect(), redirect_dest)
+    assert k.get_redirect() == redirect_dest
 
     res = _website_request(bucket.name, '/page')
     #new_url =  get_website_url(bucket_name=bucket.name, path=redirect_dest)
@@ -954,7 +953,7 @@ def test_website_xredirect_public_abs():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='public-read')
     redirect = k.get_redirect()
-    eq(k.get_redirect(), redirect_dest)
+    assert k.get_redirect() == redirect_dest
 
     res = _website_request(bucket.name, '/page')
     new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
@@ -984,7 +983,7 @@ def test_website_xredirect_private_relative():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='private')
     redirect = k.get_redirect()
-    eq(k.get_redirect(), redirect_dest)
+    assert k.get_redirect() == redirect_dest
 
     res = _website_request(bucket.name, '/page')
     # We get a 403 because the page is private
@@ -1014,7 +1013,7 @@ def test_website_xredirect_private_abs():
     headers = {'x-amz-website-redirect-location': redirect_dest}
     k.set_contents_from_string(content, headers=headers, policy='private')
     redirect = k.get_redirect()
-    eq(k.get_redirect(), redirect_dest)
+    assert k.get_redirect() == redirect_dest
 
     res = _website_request(bucket.name, '/page')
     new_url =  get_website_url(proto='http', hostname='example.com', path='/foo')
@@ -1253,8 +1252,8 @@ def routing_check(*args, **kwargs):
     if args['code'] >= 200 and args['code'] < 300:
         #body = res.read()
         #print(body)
-        #eq(body, args['content'], 'default content should match index.html set content')
-        ok(int(res.getheader('Content-Length', -1)) > 0)
+        #assert body == args['content'], 'default content should match index.html set content'
+        assert int(res.getheader('Content-Length', -1)) > 0
     elif args['code'] >= 300 and args['code'] < 400:
         _website_expected_redirect_response(res, args['code'], IGNORE_FIELD, new_url)
     elif args['code'] >= 400:

@@ -2,7 +2,6 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
-from nose.tools import eq_ as eq
 from nose.plugins.attrib import attr
 import isodate
 import email.utils
@@ -102,7 +101,7 @@ def _bucket_is_empty(bucket):
 def test_bucket_list_empty():
     bucket = get_new_bucket_resource()
     is_empty = _bucket_is_empty(bucket)
-    eq(is_empty, True)
+    assert is_empty == True
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -115,7 +114,7 @@ def test_bucket_list_distinct():
     bucket2 = get_new_bucket_resource()
     obj = bucket1.put_object(Body='str', Key='asdf')
     is_empty = _bucket_is_empty(bucket2)
-    eq(is_empty, True)
+    assert is_empty == True
 
 def _create_objects(bucket=None, bucket_name=None, keys=[]):
     """
@@ -164,15 +163,15 @@ def test_bucket_list_many():
 
     response = client.list_objects(Bucket=bucket_name, MaxKeys=2)
     keys = _get_keys(response)
-    eq(len(keys), 2)
-    eq(keys, ['bar', 'baz'])
-    eq(response['IsTruncated'], True)
+    assert len(keys) == 2
+    assert keys == ['bar', 'baz']
+    assert response['IsTruncated'] == True
 
     response = client.list_objects(Bucket=bucket_name, Marker='baz',MaxKeys=2)
     keys = _get_keys(response)
-    eq(len(keys), 1)
-    eq(response['IsTruncated'], False)
-    eq(keys, ['foo'])
+    assert len(keys) == 1
+    assert response['IsTruncated'] == False
+    assert keys == ['foo']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -188,15 +187,15 @@ def test_bucket_listv2_many():
 
     response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=2)
     keys = _get_keys(response)
-    eq(len(keys), 2)
-    eq(keys, ['bar', 'baz'])
-    eq(response['IsTruncated'], True)
+    assert len(keys) == 2
+    assert keys == ['bar', 'baz']
+    assert response['IsTruncated'] == True
 
     response = client.list_objects_v2(Bucket=bucket_name, StartAfter='baz',MaxKeys=2)
     keys = _get_keys(response)
-    eq(len(keys), 1)
-    eq(response['IsTruncated'], False)
-    eq(keys, ['foo'])
+    assert len(keys) == 1
+    assert response['IsTruncated'] == False
+    assert keys == ['foo']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -212,7 +211,7 @@ def test_basic_key_count():
     for j in range(5):
             client.put_object(Bucket=bucket_name, Key=str(j))
     response1 = client.list_objects_v2(Bucket=bucket_name)
-    eq(response1['KeyCount'], 5)
+    assert response1['KeyCount'] == 5
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -223,13 +222,13 @@ def test_bucket_list_delimiter_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/')
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
     keys = _get_keys(response)
-    eq(keys, ['asdf'])
+    assert keys == ['asdf']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
-    eq(prefixes, ['foo/', 'quux/'])
+    assert len(prefixes) == 2
+    assert prefixes == ['foo/', 'quux/']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -242,14 +241,14 @@ def test_bucket_listv2_delimiter_basic():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/')
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
     keys = _get_keys(response)
-    eq(keys, ['asdf'])
+    assert keys == ['asdf']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
-    eq(prefixes, ['foo/', 'quux/'])
-    eq(response['KeyCount'], len(prefixes) + len(keys))
+    assert len(prefixes) == 2
+    assert prefixes == ['foo/', 'quux/']
+    assert response['KeyCount'] == len(prefixes) + len(keys)
 
 
 @attr(resource='bucket')
@@ -263,13 +262,13 @@ def test_bucket_listv2_encoding_basic():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/', EncodingType='url')
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
     keys = _get_keys(response)
-    eq(keys, ['asdf%2Bb'])
+    assert keys == ['asdf%2Bb']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 3)
-    eq(prefixes, ['foo%2B1/', 'foo/', 'quux%20ab/'])
+    assert len(prefixes) == 3
+    assert prefixes == ['foo%2B1/', 'foo/', 'quux%20ab/']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -281,13 +280,13 @@ def test_bucket_list_encoding_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/', EncodingType='url')
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
     keys = _get_keys(response)
-    eq(keys, ['asdf%2Bb'])
+    assert keys == ['asdf%2Bb']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 3)
-    eq(prefixes, ['foo%2B1/', 'foo/', 'quux%20ab/'])
+    assert len(prefixes) == 3
+    assert prefixes == ['foo%2B1/', 'foo/', 'quux%20ab/']
 
 
 def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
@@ -295,18 +294,18 @@ def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter=delimiter, Marker=marker, MaxKeys=max_keys, Prefix=prefix)
-    eq(response['IsTruncated'], is_truncated)
+    assert response['IsTruncated'] == is_truncated
     if 'NextMarker' not in response:
         response['NextMarker'] = None
-    eq(response['NextMarker'], next_marker)
+    assert response['NextMarker'] == next_marker
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
 
-    eq(len(keys), len(check_objs))
-    eq(len(prefixes), len(check_prefixes))
-    eq(keys, check_objs)
-    eq(prefixes, check_prefixes)
+    assert len(keys) == len(check_objs)
+    assert len(prefixes) == len(check_prefixes)
+    assert keys == check_objs
+    assert prefixes == check_prefixes
 
     return response['NextMarker']
 
@@ -320,20 +319,20 @@ def validate_bucket_listv2(bucket_name, prefix, delimiter, continuation_token, m
     else:
         params['StartAfter'] = ''
     response = client.list_objects_v2(**params)
-    eq(response['IsTruncated'], is_truncated)
+    assert response['IsTruncated'] == is_truncated
     if 'NextContinuationToken' not in response:
         response['NextContinuationToken'] = None
     if last:
-        eq(response['NextContinuationToken'], None)
+        assert response['NextContinuationToken'] == None
 
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
 
-    eq(len(keys), len(check_objs))
-    eq(len(prefixes), len(check_prefixes))
-    eq(keys, check_objs)
-    eq(prefixes, check_prefixes)
+    assert len(keys) == len(check_objs)
+    assert len(prefixes) == len(check_prefixes)
+    assert keys == check_objs
+    assert prefixes == check_prefixes
 
     return response['NextContinuationToken']
 
@@ -421,16 +420,16 @@ def test_bucket_list_delimiter_alt():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='a')
-    eq(response['Delimiter'], 'a')
+    assert response['Delimiter'] == 'a'
 
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     # bar, baz, and cab should be broken up by the 'a' delimiters
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
-    eq(prefixes, ['ba', 'ca'])
+    assert len(prefixes) == 2
+    assert prefixes == ['ba', 'ca']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -442,16 +441,16 @@ def test_bucket_listv2_delimiter_alt():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='a')
-    eq(response['Delimiter'], 'a')
+    assert response['Delimiter'] == 'a'
 
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     # bar, baz, and cab should be broken up by the 'a' delimiters
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
-    eq(prefixes, ['ba', 'ca'])
+    assert len(prefixes) == 2
+    assert prefixes == ['ba', 'ca']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -517,15 +516,15 @@ def test_bucket_list_delimiter_percentage():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='%')
-    eq(response['Delimiter'], '%')
+    assert response['Delimiter'] == '%'
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b%', 'c%'])
+    assert prefixes == ['b%', 'c%']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -537,15 +536,15 @@ def test_bucket_listv2_delimiter_percentage():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='%')
-    eq(response['Delimiter'], '%')
+    assert response['Delimiter'] == '%'
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b%', 'c%'])
+    assert prefixes == ['b%', 'c%']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -556,15 +555,15 @@ def test_bucket_list_delimiter_whitespace():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter=' ')
-    eq(response['Delimiter'], ' ')
+    assert response['Delimiter'] == ' '
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b ', 'c '])
+    assert prefixes == ['b ', 'c ']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -576,15 +575,15 @@ def test_bucket_listv2_delimiter_whitespace():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter=' ')
-    eq(response['Delimiter'], ' ')
+    assert response['Delimiter'] == ' '
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b ', 'c '])
+    assert prefixes == ['b ', 'c ']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -595,15 +594,15 @@ def test_bucket_list_delimiter_dot():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='.')
-    eq(response['Delimiter'], '.')
+    assert response['Delimiter'] == '.'
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b.', 'c.'])
+    assert prefixes == ['b.', 'c.']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -615,15 +614,15 @@ def test_bucket_listv2_delimiter_dot():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='.')
-    eq(response['Delimiter'], '.')
+    assert response['Delimiter'] == '.'
     keys = _get_keys(response)
     # foo contains no 'a' and so is a complete key
-    eq(keys, ['foo'])
+    assert keys == ['foo']
 
     prefixes = _get_prefixes(response)
-    eq(len(prefixes), 2)
+    assert len(prefixes) == 2
     # bar, baz, and cab should be broken up by the 'a' delimiters
-    eq(prefixes, ['b.', 'c.'])
+    assert prefixes == ['b.', 'c.']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -635,12 +634,12 @@ def test_bucket_list_delimiter_unreadable():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='\x0a')
-    eq(response['Delimiter'], '\x0a')
+    assert response['Delimiter'] == '\x0a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -653,12 +652,12 @@ def test_bucket_listv2_delimiter_unreadable():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='\x0a')
-    eq(response['Delimiter'], '\x0a')
+    assert response['Delimiter'] == '\x0a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -671,12 +670,12 @@ def test_bucket_list_delimiter_empty():
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='')
     # putting an empty value into Delimiter will not return a value in the response
-    eq('Delimiter' in response, False)
+    assert not 'Delimiter' in response
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -690,12 +689,12 @@ def test_bucket_listv2_delimiter_empty():
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='')
     # putting an empty value into Delimiter will not return a value in the response
-    eq('Delimiter' in response, False)
+    assert not 'Delimiter' in response
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -708,12 +707,12 @@ def test_bucket_list_delimiter_none():
 
     response = client.list_objects(Bucket=bucket_name)
     # putting an empty value into Delimiter will not return a value in the response
-    eq('Delimiter' in response, False)
+    assert not 'Delimiter' in response
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -727,12 +726,12 @@ def test_bucket_listv2_delimiter_none():
 
     response = client.list_objects_v2(Bucket=bucket_name)
     # putting an empty value into Delimiter will not return a value in the response
-    eq('Delimiter' in response, False)
+    assert not 'Delimiter' in response
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr('list-objects-v2')
 @pytest.mark.list_objects_v2
@@ -743,7 +742,7 @@ def test_bucket_listv2_fetchowner_notempty():
 
     response = client.list_objects_v2(Bucket=bucket_name, FetchOwner=True)
     objs_list = response['Contents']
-    eq('Owner' in objs_list[0], True)
+    assert 'Owner' in objs_list[0]
 
 @attr('list-objects-v2')
 @pytest.mark.list_objects_v2
@@ -754,7 +753,7 @@ def test_bucket_listv2_fetchowner_defaultempty():
 
     response = client.list_objects_v2(Bucket=bucket_name)
     objs_list = response['Contents']
-    eq('Owner' in objs_list[0], False)
+    assert not 'Owner' in objs_list[0]
 
 @attr('list-objects-v2')
 @pytest.mark.list_objects_v2
@@ -765,10 +764,7 @@ def test_bucket_listv2_fetchowner_empty():
 
     response = client.list_objects_v2(Bucket=bucket_name, FetchOwner= False)
     objs_list = response['Contents']
-    eq('Owner' in objs_list[0], False)
-
-
-
+    assert not 'Owner' in objs_list[0]
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -781,12 +777,12 @@ def test_bucket_list_delimiter_not_exist():
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/')
     # putting an empty value into Delimiter will not return a value in the response
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -800,12 +796,12 @@ def test_bucket_listv2_delimiter_not_exist():
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/')
     # putting an empty value into Delimiter will not return a value in the response
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 
 @attr(resource='bucket')
@@ -822,12 +818,12 @@ def test_bucket_list_delimiter_not_skip_special():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/')
-    eq(response['Delimiter'], '/')
+    assert response['Delimiter'] == '/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names2)
-    eq(prefixes, ['0/'])
+    assert keys == key_names2
+    assert prefixes == ['0/']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -839,12 +835,12 @@ def test_bucket_list_prefix_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='foo/')
-    eq(response['Prefix'], 'foo/')
+    assert response['Prefix'] == 'foo/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['foo/bar', 'foo/baz'])
-    eq(prefixes, [])
+    assert keys == ['foo/bar', 'foo/baz']
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -858,12 +854,12 @@ def test_bucket_listv2_prefix_basic():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='foo/')
-    eq(response['Prefix'], 'foo/')
+    assert response['Prefix'] == 'foo/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['foo/bar', 'foo/baz'])
-    eq(prefixes, [])
+    assert keys == ['foo/bar', 'foo/baz']
+    assert prefixes == []
 
 # just testing that we can do the delimeter and prefix logic on non-slashes
 @attr(resource='bucket')
@@ -876,12 +872,12 @@ def test_bucket_list_prefix_alt():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='ba')
-    eq(response['Prefix'], 'ba')
+    assert response['Prefix'] == 'ba'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['bar', 'baz'])
-    eq(prefixes, [])
+    assert keys == ['bar', 'baz']
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -895,12 +891,12 @@ def test_bucket_listv2_prefix_alt():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='ba')
-    eq(response['Prefix'], 'ba')
+    assert response['Prefix'] == 'ba'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['bar', 'baz'])
-    eq(prefixes, [])
+    assert keys == ['bar', 'baz']
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -912,12 +908,12 @@ def test_bucket_list_prefix_empty():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='')
-    eq(response['Prefix'], '')
+    assert response['Prefix'] == ''
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -931,12 +927,12 @@ def test_bucket_listv2_prefix_empty():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='')
-    eq(response['Prefix'], '')
+    assert response['Prefix'] == ''
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -948,12 +944,12 @@ def test_bucket_list_prefix_none():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='')
-    eq(response['Prefix'], '')
+    assert response['Prefix'] == ''
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -967,12 +963,12 @@ def test_bucket_listv2_prefix_none():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='')
-    eq(response['Prefix'], '')
+    assert response['Prefix'] == ''
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, key_names)
-    eq(prefixes, [])
+    assert keys == key_names
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -984,12 +980,12 @@ def test_bucket_list_prefix_not_exist():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='d')
-    eq(response['Prefix'], 'd')
+    assert response['Prefix'] == 'd'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1003,12 +999,12 @@ def test_bucket_listv2_prefix_not_exist():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='d')
-    eq(response['Prefix'], 'd')
+    assert response['Prefix'] == 'd'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1020,12 +1016,12 @@ def test_bucket_list_prefix_unreadable():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='\x0a')
-    eq(response['Prefix'], '\x0a')
+    assert response['Prefix'] == '\x0a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1039,12 +1035,12 @@ def test_bucket_listv2_prefix_unreadable():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix='\x0a')
-    eq(response['Prefix'], '\x0a')
+    assert response['Prefix'] == '\x0a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1056,13 +1052,13 @@ def test_bucket_list_prefix_delimiter_basic():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='/', Prefix='foo/')
-    eq(response['Prefix'], 'foo/')
-    eq(response['Delimiter'], '/')
+    assert response['Prefix'] == 'foo/'
+    assert response['Delimiter'] == '/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['foo/bar'])
-    eq(prefixes, ['foo/baz/'])
+    assert keys == ['foo/bar']
+    assert prefixes == ['foo/baz/']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1076,13 +1072,13 @@ def test_bucket_listv2_prefix_delimiter_basic():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='/', Prefix='foo/')
-    eq(response['Prefix'], 'foo/')
-    eq(response['Delimiter'], '/')
+    assert response['Prefix'] == 'foo/'
+    assert response['Delimiter'] == '/'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['foo/bar'])
-    eq(prefixes, ['foo/baz/'])
+    assert keys == ['foo/bar']
+    assert prefixes == ['foo/baz/']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1094,13 +1090,13 @@ def test_bucket_list_prefix_delimiter_alt():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Delimiter='a', Prefix='ba')
-    eq(response['Prefix'], 'ba')
-    eq(response['Delimiter'], 'a')
+    assert response['Prefix'] == 'ba'
+    assert response['Delimiter'] == 'a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['bar'])
-    eq(prefixes, ['baza'])
+    assert keys == ['bar']
+    assert prefixes == ['baza']
 
 @attr('list-objects-v2')
 @pytest.mark.list_objects_v2
@@ -1110,13 +1106,13 @@ def test_bucket_listv2_prefix_delimiter_alt():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, Delimiter='a', Prefix='ba')
-    eq(response['Prefix'], 'ba')
-    eq(response['Delimiter'], 'a')
+    assert response['Prefix'] == 'ba'
+    assert response['Delimiter'] == 'a'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['bar'])
-    eq(prefixes, ['baza'])
+    assert keys == ['bar']
+    assert prefixes == ['baza']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1131,8 +1127,8 @@ def test_bucket_list_prefix_delimiter_prefix_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1149,8 +1145,8 @@ def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1165,8 +1161,8 @@ def test_bucket_list_prefix_delimiter_delimiter_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['b/a/c', 'b/a/g', 'b/a/r'])
-    eq(prefixes, [])
+    assert keys == ['b/a/c', 'b/a/g', 'b/a/r']
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1183,8 +1179,8 @@ def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, ['b/a/c', 'b/a/g', 'b/a/r'])
-    eq(prefixes, [])
+    assert keys == ['b/a/c', 'b/a/g', 'b/a/r']
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1199,8 +1195,8 @@ def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1217,8 +1213,8 @@ def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
-    eq(keys, [])
-    eq(prefixes, [])
+    assert keys == []
+    assert prefixes == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1232,16 +1228,16 @@ def test_bucket_list_maxkeys_one():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, MaxKeys=1)
-    eq(response['IsTruncated'], True)
+    assert response['IsTruncated'] == True
 
     keys = _get_keys(response)
-    eq(keys, key_names[0:1])
+    assert keys == key_names[0:1]
 
     response = client.list_objects(Bucket=bucket_name, Marker=key_names[0])
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
 
     keys = _get_keys(response)
-    eq(keys, key_names[1:])
+    assert keys == key_names[1:]
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1257,16 +1253,16 @@ def test_bucket_listv2_maxkeys_one():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1)
-    eq(response['IsTruncated'], True)
+    assert response['IsTruncated'] == True
 
     keys = _get_keys(response)
-    eq(keys, key_names[0:1])
+    assert keys == key_names[0:1]
 
     response = client.list_objects_v2(Bucket=bucket_name, StartAfter=key_names[0])
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
 
     keys = _get_keys(response)
-    eq(keys, key_names[1:])
+    assert keys == key_names[1:]
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1279,9 +1275,9 @@ def test_bucket_list_maxkeys_zero():
 
     response = client.list_objects(Bucket=bucket_name, MaxKeys=0)
 
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, [])
+    assert keys == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1296,9 +1292,9 @@ def test_bucket_listv2_maxkeys_zero():
 
     response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=0)
 
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, [])
+    assert keys == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1310,10 +1306,10 @@ def test_bucket_list_maxkeys_none():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name)
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
-    eq(response['MaxKeys'], 1000)
+    assert keys == key_names
+    assert response['MaxKeys'] == 1000
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1327,10 +1323,10 @@ def test_bucket_listv2_maxkeys_none():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name)
-    eq(response['IsTruncated'], False)
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
-    eq(response['MaxKeys'], 1000)
+    assert keys == key_names
+    assert response['MaxKeys'] == 1000
 
 def get_http_response_body(**kwargs):
     global http_response_body
@@ -1368,11 +1364,11 @@ def test_account_usage():
     xml    = ET.fromstring(http_response_body.decode('utf-8'))
     parsed = parseXmlToJson(xml)
     summary = parsed['Summary']
-    eq(summary['QuotaMaxBytes'], '-1')
-    eq(summary['QuotaMaxBuckets'], '1000')
-    eq(summary['QuotaMaxObjCount'], '-1')
-    eq(summary['QuotaMaxBytesPerBucket'], '-1')
-    eq(summary['QuotaMaxObjCountPerBucket'], '-1')
+    assert summary['QuotaMaxBytes'] == '-1'
+    assert summary['QuotaMaxBuckets'] == '1000'
+    assert summary['QuotaMaxObjCount'] == '-1'
+    assert summary['QuotaMaxBytesPerBucket'] == '-1'
+    assert summary['QuotaMaxObjCountPerBucket'] == '-1'
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -1390,13 +1386,13 @@ def test_head_bucket_usage():
     client.meta.events.register('after-call.s3.HeadBucket', get_http_response)
     client.head_bucket(Bucket=bucket_name)
     hdrs = http_response['headers']
-    eq(hdrs['X-RGW-Object-Count'], '1')
-    eq(hdrs['X-RGW-Bytes-Used'], '3')
-    eq(hdrs['X-RGW-Quota-User-Size'], '-1')
-    eq(hdrs['X-RGW-Quota-User-Objects'], '-1')
-    eq(hdrs['X-RGW-Quota-Max-Buckets'], '1000')
-    eq(hdrs['X-RGW-Quota-Bucket-Size'], '-1')
-    eq(hdrs['X-RGW-Quota-Bucket-Objects'], '-1')
+    assert hdrs['X-RGW-Object-Count'] == '1'
+    assert hdrs['X-RGW-Bytes-Used'] == '3'
+    assert hdrs['X-RGW-Quota-User-Size'] == '-1'
+    assert hdrs['X-RGW-Quota-User-Objects'] == '-1'
+    assert hdrs['X-RGW-Quota-Max-Buckets'] == '1000'
+    assert hdrs['X-RGW-Quota-Bucket-Size'] == '-1'
+    assert hdrs['X-RGW-Quota-Bucket-Objects'] == '-1'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1424,38 +1420,38 @@ def test_bucket_list_unordered():
     # test simple retrieval
     response = client.list_objects(Bucket=bucket_name, MaxKeys=1000)
     unordered_keys_out = _get_keys(response)
-    eq(len(keys_in), len(unordered_keys_out))
-    eq(keys_in.sort(), unordered_keys_out.sort())
+    assert len(keys_in) == len(unordered_keys_out)
+    assert keys_in.sort() == unordered_keys_out.sort()
 
     # test retrieval with prefix
     response = client.list_objects(Bucket=bucket_name,
                                    MaxKeys=1000,
                                    Prefix="abc/")
     unordered_keys_out = _get_keys(response)
-    eq(5, len(unordered_keys_out))
+    assert 5 == len(unordered_keys_out)
 
     # test incremental retrieval with marker
     response = client.list_objects(Bucket=bucket_name, MaxKeys=6)
     unordered_keys_out = _get_keys(response)
-    eq(6, len(unordered_keys_out))
+    assert 6 == len(unordered_keys_out)
 
     # now get the next bunch
     response = client.list_objects(Bucket=bucket_name,
                                    MaxKeys=6,
                                    Marker=unordered_keys_out[-1])
     unordered_keys_out2 = _get_keys(response)
-    eq(6, len(unordered_keys_out2))
+    assert 6 == len(unordered_keys_out2)
 
     # make sure there's no overlap between the incremental retrievals
     intersect = set(unordered_keys_out).intersection(unordered_keys_out2)
-    eq(0, len(intersect))
+    assert 0 == len(intersect)
 
     # verify that unordered used with delimiter results in error
     e = assert_raises(ClientError,
                       client.list_objects, Bucket=bucket_name, Delimiter="/")
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1485,38 +1481,38 @@ def test_bucket_listv2_unordered():
     # test simple retrieval
     response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=1000)
     unordered_keys_out = _get_keys(response)
-    eq(len(keys_in), len(unordered_keys_out))
-    eq(keys_in.sort(), unordered_keys_out.sort())
+    assert len(keys_in) == len(unordered_keys_out)
+    assert keys_in.sort() == unordered_keys_out.sort()
 
     # test retrieval with prefix
     response = client.list_objects_v2(Bucket=bucket_name,
                                    MaxKeys=1000,
                                    Prefix="abc/")
     unordered_keys_out = _get_keys(response)
-    eq(5, len(unordered_keys_out))
+    assert 5 == len(unordered_keys_out)
 
     # test incremental retrieval with marker
     response = client.list_objects_v2(Bucket=bucket_name, MaxKeys=6)
     unordered_keys_out = _get_keys(response)
-    eq(6, len(unordered_keys_out))
+    assert 6 == len(unordered_keys_out)
 
     # now get the next bunch
     response = client.list_objects_v2(Bucket=bucket_name,
                                    MaxKeys=6,
                                    StartAfter=unordered_keys_out[-1])
     unordered_keys_out2 = _get_keys(response)
-    eq(6, len(unordered_keys_out2))
+    assert 6 == len(unordered_keys_out2)
 
     # make sure there's no overlap between the incremental retrievals
     intersect = set(unordered_keys_out).intersection(unordered_keys_out2)
-    eq(0, len(intersect))
+    assert 0 == len(intersect)
 
     # verify that unordered used with delimiter results in error
     e = assert_raises(ClientError,
                       client.list_objects, Bucket=bucket_name, Delimiter="/")
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 
 @attr(resource='bucket')
@@ -1536,8 +1532,8 @@ def test_bucket_list_maxkeys_invalid():
 
     e = assert_raises(ClientError, client.list_objects, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 
 
@@ -1551,7 +1547,7 @@ def test_bucket_list_marker_none():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name)
-    eq(response['Marker'], '')
+    assert response['Marker'] == ''
 
 
 @attr(resource='bucket')
@@ -1564,10 +1560,10 @@ def test_bucket_list_marker_empty():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Marker='')
-    eq(response['Marker'], '')
-    eq(response['IsTruncated'], False)
+    assert response['Marker'] == ''
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
+    assert keys == key_names
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1581,10 +1577,10 @@ def test_bucket_listv2_continuationtoken_empty():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken='')
-    eq(response['ContinuationToken'], '')
-    eq(response['IsTruncated'], False)
+    assert response['ContinuationToken'] == ''
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
+    assert keys == key_names
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1601,11 +1597,11 @@ def test_bucket_listv2_continuationtoken():
     next_continuation_token = response1['NextContinuationToken']
 
     response2 = client.list_objects_v2(Bucket=bucket_name, ContinuationToken=next_continuation_token)
-    eq(response2['ContinuationToken'], next_continuation_token)
-    eq(response2['IsTruncated'], False)
+    assert response2['ContinuationToken'] == next_continuation_token
+    assert response2['IsTruncated'] == False
     key_names2 = ['baz', 'foo', 'quxx']
     keys = _get_keys(response2)
-    eq(keys, key_names2)
+    assert keys == key_names2
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1624,12 +1620,12 @@ def test_bucket_listv2_both_continuationtoken_startafter():
     next_continuation_token = response1['NextContinuationToken']
 
     response2 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken=next_continuation_token)
-    eq(response2['ContinuationToken'], next_continuation_token)
-    eq(response2['StartAfter'], 'bar')
-    eq(response2['IsTruncated'], False)
+    assert response2['ContinuationToken'] == next_continuation_token
+    assert response2['StartAfter'] == 'bar'
+    assert response2['IsTruncated'] == False
     key_names2 = ['foo', 'quxx']
     keys = _get_keys(response2)
-    eq(keys, key_names2)
+    assert keys == key_names2
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1641,10 +1637,10 @@ def test_bucket_list_marker_unreadable():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Marker='\x0a')
-    eq(response['Marker'], '\x0a')
-    eq(response['IsTruncated'], False)
+    assert response['Marker'] == '\x0a'
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
+    assert keys == key_names
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1658,10 +1654,10 @@ def test_bucket_listv2_startafter_unreadable():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, StartAfter='\x0a')
-    eq(response['StartAfter'], '\x0a')
-    eq(response['IsTruncated'], False)
+    assert response['StartAfter'] == '\x0a'
+    assert response['IsTruncated'] == False
     keys = _get_keys(response)
-    eq(keys, key_names)
+    assert keys == key_names
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1673,9 +1669,9 @@ def test_bucket_list_marker_not_in_list():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Marker='blah')
-    eq(response['Marker'], 'blah')
+    assert response['Marker'] == 'blah'
     keys = _get_keys(response)
-    eq(keys, [ 'foo','quxx'])
+    assert keys == [ 'foo','quxx']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1689,9 +1685,9 @@ def test_bucket_listv2_startafter_not_in_list():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, StartAfter='blah')
-    eq(response['StartAfter'], 'blah')
+    assert response['StartAfter'] == 'blah'
     keys = _get_keys(response)
-    eq(keys, ['foo', 'quxx'])
+    assert keys == ['foo', 'quxx']
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1703,10 +1699,10 @@ def test_bucket_list_marker_after_list():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Marker='zzz')
-    eq(response['Marker'], 'zzz')
+    assert response['Marker'] == 'zzz'
     keys = _get_keys(response)
-    eq(response['IsTruncated'], False)
-    eq(keys, [])
+    assert response['IsTruncated'] == False
+    assert keys == []
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1720,10 +1716,10 @@ def test_bucket_listv2_startafter_after_list():
     client = get_client()
 
     response = client.list_objects_v2(Bucket=bucket_name, StartAfter='zzz')
-    eq(response['StartAfter'], 'zzz')
+    assert response['StartAfter'] == 'zzz'
     keys = _get_keys(response)
-    eq(response['IsTruncated'], False)
-    eq(keys, [])
+    assert response['IsTruncated'] == False
+    assert keys == []
 
 def _compare_dates(datetime1, datetime2):
     """
@@ -1732,7 +1728,7 @@ def _compare_dates(datetime1, datetime2):
     # both times are in datetime format but datetime1 has
     # microseconds and datetime2 does not
     datetime1 = datetime1.replace(microsecond=0)
-    eq(datetime1, datetime2)
+    assert datetime1 == datetime2
 
 @attr(resource='object')
 @attr(method='head')
@@ -1764,10 +1760,10 @@ def test_bucket_list_return_data():
     for obj in objs_list:
         key_name = obj['Key']
         key_data = data[key_name]
-        eq(obj['ETag'],key_data['ETag'])
-        eq(obj['Size'],key_data['ContentLength'])
-        eq(obj['Owner']['DisplayName'],key_data['DisplayName'])
-        eq(obj['Owner']['ID'],key_data['ID'])
+        assert obj['ETag'] == key_data['ETag']
+        assert obj['Size'] == key_data['ContentLength']
+        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        assert obj['Owner']['ID'] == key_data['ID']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
 
@@ -1807,11 +1803,11 @@ def test_bucket_list_return_data_versioning():
     for obj in objs_list:
         key_name = obj['Key']
         key_data = data[key_name]
-        eq(obj['Owner']['DisplayName'],key_data['DisplayName'])
-        eq(obj['ETag'],key_data['ETag'])
-        eq(obj['Size'],key_data['ContentLength'])
-        eq(obj['Owner']['ID'],key_data['ID'])
-        eq(obj['VersionId'], key_data['VersionId'])
+        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        assert obj['ETag'] == key_data['ETag']
+        assert obj['Size'] == key_data['ContentLength']
+        assert obj['Owner']['ID'] == key_data['ID']
+        assert obj['VersionId'] == key_data['VersionId']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
 @attr(resource='bucket')
@@ -1851,8 +1847,8 @@ def test_bucket_list_objects_anonymous_fail():
     e = assert_raises(ClientError, unauthenticated_client.list_objects, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1867,8 +1863,8 @@ def test_bucket_listv2_objects_anonymous_fail():
     e = assert_raises(ClientError, unauthenticated_client.list_objects_v2, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1881,8 +1877,8 @@ def test_bucket_notexist():
     e = assert_raises(ClientError, client.list_objects, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -1897,8 +1893,8 @@ def test_bucketv2_notexist():
     e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='bucket')
 @attr(method='delete')
@@ -1911,8 +1907,8 @@ def test_bucket_delete_notexist():
     e = assert_raises(ClientError, client.delete_bucket, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='bucket')
 @attr(method='delete')
@@ -1926,8 +1922,8 @@ def test_bucket_delete_nonempty():
     e = assert_raises(ClientError, client.delete_bucket, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'BucketNotEmpty')
+    assert status == 409
+    assert error_code == 'BucketNotEmpty'
 
 def _do_set_bucket_canned_acl(client, bucket_name, canned_acl, i, results):
     try:
@@ -1965,7 +1961,7 @@ def test_bucket_concurrent_set_canned_acl():
     _do_wait_completion(t)
 
     for r in results:
-        eq(r, True)
+        assert r == True
 
 @attr(resource='object')
 @attr(method='put')
@@ -1979,8 +1975,8 @@ def test_object_write_to_nonexist_bucket():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='foo')
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 
 @attr(resource='bucket')
@@ -1995,8 +1991,8 @@ def test_bucket_create_delete():
     e = assert_raises(ClientError, client.delete_bucket, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='object')
 @attr(method='get')
@@ -2009,8 +2005,8 @@ def test_object_read_not_exist():
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='bar')
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
 http_response = None
 
@@ -2037,7 +2033,7 @@ def test_object_requestid_matches_header_on_error():
     request_id = resp_body_xml.find('.//RequestId').text
 
     assert request_id is not None
-    eq(request_id, e.response['ResponseMetadata']['RequestId'])
+    assert request_id == e.response['ResponseMetadata']['RequestId']
 
 def _make_objs_dict(key_names):
     objs_list = []
@@ -2056,18 +2052,18 @@ def test_multi_object_delete():
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
     response = client.list_objects(Bucket=bucket_name)
-    eq(len(response['Contents']), 3)
+    assert len(response['Contents']) == 3
 
     objs_dict = _make_objs_dict(key_names=key_names)
     response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
 
-    eq(len(response['Deleted']), 3)
+    assert len(response['Deleted']) == 3
     assert 'Errors' not in response
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
 
     response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
-    eq(len(response['Deleted']), 3)
+    assert len(response['Deleted']) == 3
     assert 'Errors' not in response
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
@@ -2083,18 +2079,18 @@ def test_multi_objectv2_delete():
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
     response = client.list_objects_v2(Bucket=bucket_name)
-    eq(len(response['Contents']), 3)
+    assert len(response['Contents']) == 3
 
     objs_dict = _make_objs_dict(key_names=key_names)
     response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
 
-    eq(len(response['Deleted']), 3)
+    assert len(response['Deleted']) == 3
     assert 'Errors' not in response
     response = client.list_objects_v2(Bucket=bucket_name)
     assert 'Contents' not in response
 
     response = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
-    eq(len(response['Deleted']), 3)
+    assert len(response['Deleted']) == 3
     assert 'Errors' not in response
     response = client.list_objects_v2(Bucket=bucket_name)
     assert 'Contents' not in response
@@ -2113,12 +2109,12 @@ def test_multi_object_delete_key_limit():
     numKeys = 0
     for page in pages:
         numKeys += len(page['Contents'])
-    eq(numKeys, 1001)
+    assert numKeys == 1001
 
     objs_dict = _make_objs_dict(key_names=key_names)
     e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -2134,12 +2130,12 @@ def test_multi_objectv2_delete_key_limit():
     numKeys = 0
     for page in pages:
         numKeys += len(page['Contents'])
-    eq(numKeys, 1001)
+    assert numKeys == 1001
 
     objs_dict = _make_objs_dict(key_names=key_names)
     e = assert_raises(ClientError,client.delete_objects,Bucket=bucket_name,Delete=objs_dict)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -2151,7 +2147,7 @@ def test_object_head_zero_bytes():
     client.put_object(Bucket=bucket_name, Key='foo', Body='')
 
     response = client.head_object(Bucket=bucket_name, Key='foo')
-    eq(response['ContentLength'], 0)
+    assert response['ContentLength'] == 0
 
 @attr(resource='object')
 @attr(method='put')
@@ -2161,8 +2157,8 @@ def test_object_write_check_etag():
     bucket_name = get_new_bucket()
     client = get_client()
     response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(response['ETag'], '"37b51d194a7513e45b56f6524f2d51f2"')
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['ETag'] == '"37b51d194a7513e45b56f6524f2d51f2"'
 
 @attr(resource='object')
 @attr(method='put')
@@ -2175,7 +2171,7 @@ def test_object_write_cache_control():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar', CacheControl=cache_control)
 
     response = client.head_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPHeaders']['cache-control'], cache_control)
+    assert response['ResponseMetadata']['HTTPHeaders']['cache-control'] == cache_control
 
 @attr(resource='object')
 @attr(method='put')
@@ -2212,13 +2208,13 @@ def test_object_write_read_update_read_delete():
     # Read
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
     # Update
     client.put_object(Bucket=bucket_name, Key='foo', Body='soup')
     # Read
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'soup')
+    assert body == 'soup'
     # Delete
     client.delete_object(Bucket=bucket_name, Key='foo')
 
@@ -2245,7 +2241,7 @@ def _set_get_metadata(metadata, bucket_name=None):
 @attr(assertion='reread what we wrote')
 def test_object_set_get_metadata_none_to_good():
     got = _set_get_metadata('mymeta')
-    eq(got, 'mymeta')
+    assert got == 'mymeta'
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2253,7 +2249,7 @@ def test_object_set_get_metadata_none_to_good():
 @attr(assertion='write empty value, returns empty value')
 def test_object_set_get_metadata_none_to_empty():
     got = _set_get_metadata('')
-    eq(got, '')
+    assert got == ''
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2262,9 +2258,9 @@ def test_object_set_get_metadata_none_to_empty():
 def test_object_set_get_metadata_overwrite_to_empty():
     bucket_name = get_new_bucket()
     got = _set_get_metadata('oldmeta', bucket_name)
-    eq(got, 'oldmeta')
+    assert got == 'oldmeta'
     got = _set_get_metadata('', bucket_name)
-    eq(got, '')
+    assert got == ''
 
 @attr(resource='object.metadata')
 @attr(method='put')
@@ -2288,7 +2284,7 @@ def test_object_set_get_unicode_metadata():
     got = response['Metadata']['meta1']
     print(got)
     print(u"Hello World\xe9")
-    eq(got, u"Hello World\xe9")
+    assert got == u"Hello World\xe9"
 
 def _set_get_metadata_unreadable(metadata, bucket_name=None):
     """
@@ -2320,7 +2316,7 @@ def test_object_metadata_replaced_on_put():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     got = response['Metadata']
-    eq(got, {})
+    assert got == {}
 
 @attr(resource='object')
 @attr(method='put')
@@ -2334,7 +2330,7 @@ def test_object_write_file():
     client.put_object(Bucket=bucket_name, Key='foo', Body=data)
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 def _get_post_url(bucket_name):
     endpoint = get_config_endpoint()
@@ -2353,10 +2349,10 @@ def test_post_object_anonymous_request():
 
     client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2395,10 +2391,10 @@ def test_post_object_authenticated_request():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2436,10 +2432,10 @@ def test_post_object_authenticated_no_content_type():
     ('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key="foo.txt")
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2478,7 +2474,7 @@ def test_post_object_authenticated_request_bad_access_key():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -2495,9 +2491,9 @@ def test_post_object_set_success_code():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 201)
+    assert r.status_code == 201
     message = ET.fromstring(r.content).find('Key')
-    eq(message.text,'foo.txt')
+    assert message.text == 'foo.txt'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2514,9 +2510,9 @@ def test_post_object_set_invalid_success_code():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     content = r.content.decode()
-    eq(content,'')
+    assert content == ''
 
 @attr(resource='object')
 @attr(method='post')
@@ -2556,10 +2552,10 @@ def test_post_object_upload_larger_than_chunk():
     ("Content-Type" , "text/plain"),('file', foo_string)])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, foo_string)
+    assert body == foo_string
 
 @attr(resource='object')
 @attr(method='post')
@@ -2596,10 +2592,10 @@ def test_post_object_set_key_from_filename():
     ("Content-Type" , "text/plain"),('file', ('foo.txt', 'bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2637,7 +2633,7 @@ def test_post_object_ignored_header():
     ("Content-Type" , "text/plain"),("x-ignore-foo" , "bar"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
 @attr(resource='object')
 @attr(method='post')
@@ -2676,7 +2672,7 @@ def test_post_object_case_insensitive_condition_fields():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
 @attr(resource='object')
 @attr(method='post')
@@ -2713,10 +2709,10 @@ def test_post_object_escaped_field_values():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='\$foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -2758,12 +2754,11 @@ def test_post_object_success_redirect_action():
     ('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 200)
+    assert r.status_code == 200
     url = r.url
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
-    eq(url,
-    '{rurl}?bucket={bucket}&key={key}&etag=%22{etag}%22'.format(rurl = redirect_url,\
-    bucket = bucket_name, key = 'foo.txt', etag = response['ETag'].strip('"')))
+    assert url == '{rurl}?bucket={bucket}&key={key}&etag=%22{etag}%22'.format(\
+    rurl = redirect_url, bucket = bucket_name, key = 'foo.txt', etag = response['ETag'].strip('"'))
 
 @attr(resource='object')
 @attr(method='post')
@@ -2800,7 +2795,7 @@ def test_post_object_invalid_signature():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -2837,7 +2832,7 @@ def test_post_object_invalid_access_key():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -2874,7 +2869,7 @@ def test_post_object_invalid_date_format():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -2910,7 +2905,7 @@ def test_post_object_no_key_specified():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -2947,7 +2942,7 @@ def test_post_object_missing_signature():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -2983,7 +2978,7 @@ def test_post_object_missing_policy_condition():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -3021,9 +3016,9 @@ def test_post_object_user_specified_header():
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
-    eq(response['Metadata']['foo'], 'barclamp')
+    assert response['Metadata']['foo'] == 'barclamp'
 
 @attr(resource='object')
 @attr(method='post')
@@ -3061,7 +3056,7 @@ def test_post_object_request_missing_policy_specified_field():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -3098,7 +3093,7 @@ def test_post_object_condition_is_case_sensitive():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3135,7 +3130,7 @@ def test_post_object_expires_is_case_sensitive():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3172,7 +3167,7 @@ def test_post_object_expired_policy():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -3209,7 +3204,7 @@ def test_post_object_invalid_request_field_value():
     ("Content-Type" , "text/plain"),('x-amz-meta-foo' , 'barclamp'),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 403)
+    assert r.status_code == 403
 
 @attr(resource='object')
 @attr(method='post')
@@ -3246,7 +3241,7 @@ def test_post_object_missing_expires_condition():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3275,7 +3270,7 @@ def test_post_object_missing_conditions_list():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3312,7 +3307,7 @@ def test_post_object_upload_size_limit_exceeded():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3349,7 +3344,7 @@ def test_post_object_missing_content_length_argument():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3386,7 +3381,7 @@ def test_post_object_invalid_content_length_argument():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3423,7 +3418,7 @@ def test_post_object_upload_size_below_minimum():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='post')
@@ -3456,7 +3451,7 @@ def test_post_object_empty_conditions():
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 400)
+    assert r.status_code == 400
 
 @attr(resource='object')
 @attr(method='get')
@@ -3470,7 +3465,7 @@ def test_get_object_ifmatch_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo', IfMatch=etag)
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3483,8 +3478,8 @@ def test_get_object_ifmatch_failed():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfMatch='"ABCORZ"')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3498,8 +3493,8 @@ def test_get_object_ifnonematch_good():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfNoneMatch=etag)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 304)
-    eq(e.response['Error']['Message'], 'Not Modified')
+    assert status == 304
+    assert e.response['Error']['Message'] == 'Not Modified'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3512,7 +3507,7 @@ def test_get_object_ifnonematch_failed():
 
     response = client.get_object(Bucket=bucket_name, Key='foo', IfNoneMatch='ABCORZ')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3525,7 +3520,7 @@ def test_get_object_ifmodifiedsince_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo', IfModifiedSince='Sat, 29 Oct 1994 19:43:31 GMT')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3550,8 +3545,8 @@ def test_get_object_ifmodifiedsince_failed():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfModifiedSince=after_str)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 304)
-    eq(e.response['Error']['Message'], 'Not Modified')
+    assert status == 304
+    assert e.response['Error']['Message'] == 'Not Modified'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3566,8 +3561,8 @@ def test_get_object_ifunmodifiedsince_good():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfUnmodifiedSince='Sat, 29 Oct 1994 19:43:31 GMT')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3580,7 +3575,7 @@ def test_get_object_ifunmodifiedsince_failed():
 
     response = client.get_object(Bucket=bucket_name, Key='foo', IfUnmodifiedSince='Sat, 29 Oct 2100 19:43:31 GMT')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 
 @attr(resource='object')
@@ -3596,7 +3591,7 @@ def test_put_object_ifmatch_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     etag = response['ETag'].replace('"', '')
 
@@ -3607,7 +3602,7 @@ def test_put_object_ifmatch_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'zar')
+    assert body == 'zar'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3621,7 +3616,7 @@ def test_put_object_ifmatch_failed():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     # pass in custom header 'If-Match' before PutObject call
     lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-Match': '"ABCORZ"'}))
@@ -3629,12 +3624,12 @@ def test_put_object_ifmatch_failed():
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='zar')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3648,7 +3643,7 @@ def test_put_object_ifmatch_overwrite_existed_good():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-Match': '*'}))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -3656,7 +3651,7 @@ def test_put_object_ifmatch_overwrite_existed_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'zar')
+    assert body == 'zar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3674,13 +3669,13 @@ def test_put_object_ifmatch_nonexisted_failed():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='bar')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3694,7 +3689,7 @@ def test_put_object_ifnonmatch_good():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-None-Match': 'ABCORZ'}))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -3702,7 +3697,7 @@ def test_put_object_ifnonmatch_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'zar')
+    assert body == 'zar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3719,7 +3714,7 @@ def test_put_object_ifnonmatch_failed():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     etag = response['ETag'].replace('"', '')
 
@@ -3728,12 +3723,12 @@ def test_put_object_ifnonmatch_failed():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='zar')
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3751,7 +3746,7 @@ def test_put_object_ifnonmatch_nonexisted_good():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -3768,19 +3763,19 @@ def test_put_object_ifnonmatch_overwrite_existed_failed():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-None-Match': '*'}))
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='zar')
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 def _setup_bucket_object_acl(bucket_acl, object_acl):
     """
@@ -3813,7 +3808,7 @@ def test_object_raw_get():
 
     unauthenticated_client = get_unauthenticated_client()
     response = unauthenticated_client.get_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='get')
@@ -3830,8 +3825,8 @@ def test_object_raw_get_bucket_gone():
 
     e = assert_raises(ClientError, unauthenticated_client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3848,8 +3843,8 @@ def test_object_delete_key_bucket_gone():
 
     e = assert_raises(ClientError, unauthenticated_client.delete_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='object')
 @attr(method='get')
@@ -3865,8 +3860,8 @@ def test_object_raw_get_object_gone():
 
     e = assert_raises(ClientError, unauthenticated_client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -3877,7 +3872,7 @@ def test_bucket_head():
     client = get_client()
 
     response = client.head_bucket(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -3890,11 +3885,11 @@ def test_bucket_head_notexist():
     e = assert_raises(ClientError, client.head_bucket, Bucket=bucket_name)
 
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
+    assert status == 404
     # n.b., RGW does not send a response document for this operation,
     # which seems consistent with
     # https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
-    #eq(error_code, 'NoSuchKey')
+    #assert error_code == 'NoSuchKey'
 
 @attr('fails_on_aws')
 @pytest.mark.fails_on_aws
@@ -3909,14 +3904,14 @@ def test_bucket_head_extended():
     client = get_client()
 
     response = client.head_bucket(Bucket=bucket_name)
-    eq(int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count']), 0)
-    eq(int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used']), 0)
+    assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count']) == 0
+    assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used']) == 0
 
     _create_objects(bucket_name=bucket_name, keys=['foo','bar','baz'])
     response = client.head_bucket(Bucket=bucket_name)
 
-    eq(int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count']), 3)
-    eq(int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used']), 9)
+    assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count']) == 3
+    assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used']) == 9
 
 @attr(resource='bucket.acl')
 @attr(method='get')
@@ -3927,7 +3922,7 @@ def test_object_raw_get_bucket_acl():
 
     unauthenticated_client = get_unauthenticated_client()
     response = unauthenticated_client.get_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object.acl')
 @attr(method='get')
@@ -3939,8 +3934,8 @@ def test_object_raw_get_object_acl():
     unauthenticated_client = get_unauthenticated_client()
     e = assert_raises(ClientError, unauthenticated_client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='object')
 @attr(method='ACLs')
@@ -3951,7 +3946,7 @@ def test_object_raw_authenticated():
 
     client = get_client()
     response = client.get_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='get')
@@ -3963,12 +3958,12 @@ def test_object_raw_response_headers():
     client = get_client()
 
     response = client.get_object(Bucket=bucket_name, Key='foo', ResponseCacheControl='no-cache', ResponseContentDisposition='bla', ResponseContentEncoding='aaa', ResponseContentLanguage='esperanto', ResponseContentType='foo/bar', ResponseExpires='123')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], 'foo/bar')
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-disposition'], 'bla')
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-language'], 'esperanto')
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-encoding'], 'aaa')
-    eq(response['ResponseMetadata']['HTTPHeaders']['cache-control'], 'no-cache')
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == 'foo/bar'
+    assert response['ResponseMetadata']['HTTPHeaders']['content-disposition'] == 'bla'
+    assert response['ResponseMetadata']['HTTPHeaders']['content-language'] == 'esperanto'
+    assert response['ResponseMetadata']['HTTPHeaders']['content-encoding'] == 'aaa'
+    assert response['ResponseMetadata']['HTTPHeaders']['cache-control'] == 'no-cache'
 
 @attr(resource='object')
 @attr(method='ACLs')
@@ -3979,7 +3974,7 @@ def test_object_raw_authenticated_bucket_acl():
 
     client = get_client()
     response = client.get_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='ACLs')
@@ -3990,7 +3985,7 @@ def test_object_raw_authenticated_object_acl():
 
     client = get_client()
     response = client.get_object(Bucket=bucket_name, Key='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='get')
@@ -4005,8 +4000,8 @@ def test_object_raw_authenticated_bucket_gone():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='object')
 @attr(method='get')
@@ -4020,8 +4015,8 @@ def test_object_raw_authenticated_object_gone():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
 @attr(resource='object')
 @attr(method='get')
@@ -4035,7 +4030,7 @@ def test_object_raw_get_x_amz_expires_not_expired():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 200)
+    assert res['status_code'] == 200
 
 @attr(resource='object')
 @attr(method='get')
@@ -4049,7 +4044,7 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=0, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    assert res['status_code'] == 403
 
 @attr(resource='object')
 @attr(method='get')
@@ -4063,7 +4058,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=609901, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    assert res['status_code'] == 403
 
 @attr(resource='object')
 @attr(method='get')
@@ -4077,7 +4072,7 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=-7, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    assert res['status_code'] == 403
 
 
 @attr(resource='object')
@@ -4094,8 +4089,8 @@ def test_object_anon_put():
 
     e = assert_raises(ClientError, unauthenticated_client.put_object, Bucket=bucket_name, Key='foo', Body='foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='object')
 @attr(method='put')
@@ -4109,7 +4104,7 @@ def test_object_anon_put_write_access():
     unauthenticated_client = get_unauthenticated_client()
 
     response = unauthenticated_client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='put')
@@ -4120,7 +4115,7 @@ def test_object_put_authenticated():
     client = get_client()
 
     response = client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='put')
@@ -4136,7 +4131,7 @@ def test_object_raw_put_authenticated_expired():
 
     # params wouldn't take a 'Body' parameter so we're passing it in here
     res = requests.put(url, data="foo", verify=get_config_ssl_verify()).__dict__
-    eq(res['status_code'], 403)
+    assert res['status_code'] == 403
 
 def check_bad_bucket_name(bucket_name):
     """
@@ -4146,8 +4141,8 @@ def check_bad_bucket_name(bucket_name):
     client = get_client()
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 
 # AWS does not enforce all documented bucket restrictions.
@@ -4216,7 +4211,7 @@ def check_good_bucket_name(name, _prefix=None):
             )
     client = get_client()
     response = client.create_bucket(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def _test_bucket_create_naming_good_long(length):
     """
@@ -4240,7 +4235,7 @@ def _test_bucket_create_naming_good_long(length):
             )
     client = get_client()
     response = client.create_bucket(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 # Breaks DNS with SubdomainCallingFormat
 @attr('fails_with_subdomain')
@@ -4310,7 +4305,7 @@ def test_bucket_list_long_name():
             )
     bucket = get_new_bucket_resource(name=bucket_name)
     is_empty = _bucket_is_empty(bucket)
-    eq(is_empty, True)
+    assert is_empty == True
 
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
@@ -4334,8 +4329,8 @@ def test_bucket_create_naming_bad_ip():
 def test_bucket_create_naming_dns_underscore():
     invalid_bucketname = 'foo_bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 # Breaks DNS with SubdomainCallingFormat
 @attr('fails_with_subdomain')
@@ -4363,8 +4358,8 @@ def test_bucket_create_naming_dns_long():
 def test_bucket_create_naming_dns_dash_at_end():
     invalid_bucketname = 'foo-'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -4379,8 +4374,8 @@ def test_bucket_create_naming_dns_dash_at_end():
 def test_bucket_create_naming_dns_dot_dot():
     invalid_bucketname = 'foo..bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -4395,8 +4390,8 @@ def test_bucket_create_naming_dns_dot_dot():
 def test_bucket_create_naming_dns_dot_dash():
     invalid_bucketname = 'foo.-bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 
 # Breaks DNS with SubdomainCallingFormat
@@ -4411,8 +4406,8 @@ def test_bucket_create_naming_dns_dot_dash():
 def test_bucket_create_naming_dns_dash_dot():
     invalid_bucketname = 'foo-.bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
-    eq(status, 400)
-    eq(error_code, 'InvalidBucketName')
+    assert status == 400
+    assert error_code == 'InvalidBucketName'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -4428,8 +4423,8 @@ def test_bucket_create_exists():
         response = client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
-        eq(e.status, 409)
-        eq(e.error_code, 'BucketAlreadyOwnedByYou')
+        assert e.status == 409
+        assert e.error_code == 'BucketAlreadyOwnedByYou'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -4448,7 +4443,7 @@ def test_bucket_get_location():
     response = client.get_bucket_location(Bucket=bucket_name)
     if location_constraint == "":
         location_constraint = None
-    eq(response['LocationConstraint'], location_constraint)
+    assert response['LocationConstraint'] == location_constraint
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -4467,8 +4462,8 @@ def test_bucket_create_exists_nonowner():
     client.create_bucket(Bucket=bucket_name)
     e = assert_raises(ClientError, alt_client.create_bucket, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'BucketAlreadyExists')
+    assert status == 409
+    assert error_code == 'BucketAlreadyExists'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -4483,8 +4478,8 @@ def test_bucket_recreate_overwrite_acl():
     client.create_bucket(Bucket=bucket_name, ACL='public-read')
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'BucketAlreadyExists')
+    assert status == 409
+    assert error_code == 'BucketAlreadyExists'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -4499,13 +4494,13 @@ def test_bucket_recreate_new_acl():
     client.create_bucket(Bucket=bucket_name)
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name, ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'BucketAlreadyExists')
+    assert status == 409
+    assert error_code == 'BucketAlreadyExists'
 
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(ClientError, fn, *args, **kwargs)
     status = _get_status(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 def check_grants(got, want):
@@ -4513,7 +4508,7 @@ def check_grants(got, want):
     Check that grants list in got matches the dictionaries in want,
     in any order.
     """
-    eq(len(got), len(want))
+    assert len(got) == len(want)
 
     # There are instances when got does not match due the order of item.
     if got[0]["Grantee"].get("DisplayName"):
@@ -4523,13 +4518,13 @@ def check_grants(got, want):
     for g, w in zip(got, want):
         w = dict(w)
         g = dict(g)
-        eq(g.pop('Permission', None), w['Permission'])
-        eq(g['Grantee'].pop('DisplayName', None), w['DisplayName'])
-        eq(g['Grantee'].pop('ID', None), w['ID'])
-        eq(g['Grantee'].pop('Type', None), w['Type'])
-        eq(g['Grantee'].pop('URI', None), w['URI'])
-        eq(g['Grantee'].pop('EmailAddress', None), w['EmailAddress'])
-        eq(g, {'Grantee': {}})
+        assert g.pop('Permission', None) == w['Permission']
+        assert g['Grantee'].pop('DisplayName', None) == w['DisplayName']
+        assert g['Grantee'].pop('ID', None) == w['ID']
+        assert g['Grantee'].pop('Type', None) == w['Type']
+        assert g['Grantee'].pop('URI', None) == w['URI']
+        assert g['Grantee'].pop('EmailAddress', None) == w['EmailAddress']
+        assert g == {'Grantee': {}}
 
 
 @attr(resource='bucket')
@@ -4545,8 +4540,8 @@ def test_bucket_acl_default():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    eq(response['Owner']['DisplayName'], display_name)
-    eq(response['Owner']['ID'], user_id)
+    assert response['Owner']['DisplayName'] == display_name
+    assert response['Owner']['ID'] == user_id
 
     grants = response['Grants']
     check_grants(
@@ -5063,7 +5058,7 @@ def test_object_acl_full_control_verify_owner():
     alt_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grant)
 
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='foo')
-    eq(response['Owner']['ID'], main_user_id)
+    assert response['Owner']['ID'] == main_user_id
 
 def add_obj_user_grant(bucket_name, key, grant):
     """
@@ -5118,8 +5113,8 @@ def test_object_acl_full_control_verify_attributes():
     main_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grants)
 
     response = main_client.get_object(Bucket=bucket_name, Key='foo')
-    eq(content_type, response['ContentType'])
-    eq(etag, response['ETag'])
+    assert content_type == response['ContentType']
+    assert etag == response['ETag']
 
 @attr(resource='bucket')
 @attr(method='ACLs')
@@ -5130,7 +5125,7 @@ def test_bucket_acl_canned_private_to_private():
     client = get_client()
 
     response = client.put_bucket_acl(Bucket=bucket_name, ACL='private')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def add_bucket_user_grant(bucket_name, grant):
     """
@@ -5372,8 +5367,8 @@ def test_bucket_acl_grant_userid_fullcontrol():
     main_display_name = get_main_display_name()
     main_user_id = get_main_user_id()
 
-    eq(owner_id, main_user_id)
-    eq(owner_display_name, main_display_name)
+    assert owner_id == main_user_id
+    assert owner_display_name == main_display_name
 
 @attr(resource='bucket')
 @attr(method='ACLs')
@@ -5465,8 +5460,8 @@ def test_bucket_acl_grant_nonexist_user():
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name, AccessControlPolicy=grant)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='bucket')
 @attr(method='ACLs')
@@ -5753,8 +5748,8 @@ def test_bucket_acl_grant_email_not_exist():
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name, AccessControlPolicy = grant)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'UnresolvableGrantByEmailAddress')
+    assert status == 400
+    assert error_code == 'UnresolvableGrantByEmailAddress'
 
 @attr(resource='bucket')
 @attr(method='ACLs')
@@ -5778,7 +5773,7 @@ def test_bucket_acl_revoke_all():
 
     response = client.get_bucket_acl(Bucket=bucket_name)
 
-    eq(len(response['Grants']), 0)
+    assert len(response['Grants']) == 0
 
     # set policy back to original so that bucket can be cleaned up
     policy['Grants'] = old_grants
@@ -5926,7 +5921,7 @@ def test_access_bucket_private_object_publicread():
     body = _get_body(response)
 
     # a should be public-read, b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
     alt_client2 = get_alt_client()
@@ -5952,7 +5947,7 @@ def test_access_bucket_private_objectv2_publicread():
     body = _get_body(response)
 
     # a should be public-read, b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
     alt_client2 = get_alt_client()
@@ -5976,7 +5971,7 @@ def test_access_bucket_private_object_publicreadwrite():
 
     # a should be public-read-only ... because it is in a private bucket
     # b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
     alt_client2 = get_alt_client()
@@ -6002,7 +5997,7 @@ def test_access_bucket_private_objectv2_publicreadwrite():
 
     # a should be public-read-only ... because it is in a private bucket
     # b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
     alt_client2 = get_alt_client()
@@ -6033,7 +6028,7 @@ def test_access_bucket_publicread_object_private():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -6048,7 +6043,7 @@ def test_access_bucket_publicread_object_publicread():
 
     # a should be public-read, b gets default (private)
     body = _get_body(response)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
 
@@ -6060,7 +6055,7 @@ def test_access_bucket_publicread_object_publicread():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
@@ -6078,7 +6073,7 @@ def test_access_bucket_publicread_object_publicreadwrite():
 
     # a should be public-read-only ... because it is in a r/o bucket
     # b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
 
     check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body='foooverwrite')
 
@@ -6090,7 +6085,7 @@ def test_access_bucket_publicread_object_publicreadwrite():
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client3)
 
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
@@ -6110,7 +6105,7 @@ def test_access_bucket_publicreadwrite_object_private():
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -6125,14 +6120,14 @@ def test_access_bucket_publicreadwrite_object_publicread():
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
 
     body = _get_body(response)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
     alt_client.put_object(Bucket=bucket_name, Key=key1, Body='barcontent')
 
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
 
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='object')
@@ -6146,12 +6141,12 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
     body = _get_body(response)
 
     # a should be public-read-write, b gets default (private)
-    eq(body, 'foocontent')
+    assert body == 'foocontent'
     alt_client.put_object(Bucket=bucket_name, Key=key1, Body='foooverwrite')
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     alt_client.put_object(Bucket=bucket_name, Key=key2, Body='baroverwrite')
     objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    eq(objs, ['bar', 'foo'])
+    assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 @attr(resource='bucket')
@@ -6209,7 +6204,7 @@ def test_list_buckets_anonymous():
     # allowing us to vary the calling format in testing.
     unauthenticated_client = get_unauthenticated_client()
     response = unauthenticated_client.list_buckets()
-    eq(len(response['Buckets']), 0)
+    assert len(response['Buckets']) == 0
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -6219,8 +6214,8 @@ def test_list_buckets_invalid_auth():
     bad_auth_client = get_bad_auth_client()
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'InvalidAccessKeyId')
+    assert status == 403
+    assert error_code == 'InvalidAccessKeyId'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -6231,8 +6226,8 @@ def test_list_buckets_bad_auth():
     bad_auth_client = get_bad_auth_client(aws_access_key_id=main_access_key)
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'SignatureDoesNotMatch')
+    assert status == 403
+    assert error_code == 'SignatureDoesNotMatch'
 
 @pytest.fixture
 def override_prefix_a():
@@ -6287,13 +6282,13 @@ def test_bucket_recreate_not_overriding():
     bucket_name = _create_objects(keys=key_names)
 
     objs_list = get_objects_list(bucket_name)
-    eq(key_names, objs_list)
+    assert key_names == objs_list
 
     client = get_client()
     client.create_bucket(Bucket=bucket_name)
 
     objs_list = get_objects_list(bucket_name)
-    eq(key_names, objs_list)
+    assert key_names == objs_list
 
 @attr(resource='object')
 @attr(method='put')
@@ -6320,15 +6315,15 @@ def test_bucket_create_special_key_names():
     bucket_name = _create_objects(keys=key_names)
 
     objs_list = get_objects_list(bucket_name)
-    eq(key_names, objs_list)
+    assert key_names == objs_list
 
     client = get_client()
 
     for name in key_names:
-        eq((name in objs_list), True)
+        assert name in objs_list
         response = client.get_object(Bucket=bucket_name, Key=name)
         body = _get_body(response)
-        eq(name, body)
+        assert name == body
         client.put_object_acl(Bucket=bucket_name, Key=name, ACL='private')
 
 @attr(resource='bucket')
@@ -6341,10 +6336,10 @@ def test_bucket_list_special_prefix():
 
     objs_list = get_objects_list(bucket_name)
 
-    eq(len(objs_list), 5)
+    assert len(objs_list) == 5
 
     objs_list = get_objects_list(bucket_name, prefix='_bla/')
-    eq(len(objs_list), 4)
+    assert len(objs_list) == 4
 
 @attr(resource='object')
 @attr(method='put')
@@ -6363,7 +6358,7 @@ def test_object_copy_zero_size():
 
     client.copy(copy_source, bucket_name, 'bar321foo')
     response = client.get_object(Bucket=bucket_name, Key='bar321foo')
-    eq(response['ContentLength'], 0)
+    assert response['ContentLength'] == 0
 
 @attr(resource='object')
 @attr(method='put')
@@ -6381,7 +6376,7 @@ def test_object_copy_16m():
     key2 = 'obj2'
     client.copy_object(Bucket=bucket_name, Key=key2, CopySource=copy_source)
     response = client.get_object(Bucket=bucket_name, Key=key2)
-    eq(response['ContentLength'], 16*1024*1024)
+    assert response['ContentLength'] == 16*1024*1024
 
 @attr(resource='object')
 @attr(method='put')
@@ -6400,7 +6395,7 @@ def test_object_copy_same_bucket():
 
     response = client.get_object(Bucket=bucket_name, Key='bar321foo')
     body = _get_body(response)
-    eq('foo', body)
+    assert 'foo' == body
 
 @attr(resource='object')
 @attr(method='put')
@@ -6421,9 +6416,9 @@ def test_object_copy_verify_contenttype():
 
     response = client.get_object(Bucket=bucket_name, Key='bar321foo')
     body = _get_body(response)
-    eq('foo', body)
+    assert 'foo' == body
     response_content_type = response['ContentType']
-    eq(response_content_type, content_type)
+    assert response_content_type == content_type
 
 @attr(resource='object')
 @attr(method='put')
@@ -6438,8 +6433,8 @@ def test_object_copy_to_itself():
 
     e = assert_raises(ClientError, client.copy, copy_source, bucket_name, 'foo123bar')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    assert status == 400
+    assert error_code == 'InvalidRequest'
 
 @attr(resource='object')
 @attr(method='put')
@@ -6456,7 +6451,7 @@ def test_object_copy_to_itself_with_metadata():
 
     client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='foo123bar', Metadata=metadata, MetadataDirective='REPLACE')
     response = client.get_object(Bucket=bucket_name, Key='foo123bar')
-    eq(response['Metadata'], metadata)
+    assert response['Metadata'] == metadata
 
 @attr(resource='object')
 @attr(method='put')
@@ -6477,7 +6472,7 @@ def test_object_copy_diff_bucket():
 
     response = client.get_object(Bucket=bucket_name2, Key='bar321foo')
     body = _get_body(response)
-    eq('foo', body)
+    assert 'foo' == body
 
 @attr(resource='object')
 @attr(method='put')
@@ -6497,7 +6492,7 @@ def test_object_copy_not_owned_bucket():
 
     e = assert_raises(ClientError, alt_client.copy, copy_source, bucket_name2, 'bar321foo')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 @attr(resource='object')
 @attr(method='put')
@@ -6567,10 +6562,10 @@ def test_object_copy_retaining_metadata():
         client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='bar321foo')
 
         response = client.get_object(Bucket=bucket_name, Key='bar321foo')
-        eq(content_type, response['ContentType'])
-        eq(metadata, response['Metadata'])
+        assert content_type == response['ContentType']
+        assert metadata == response['Metadata']
         body = _get_body(response)
-        eq(size, response['ContentLength'])
+        assert size == response['ContentLength']
 
 @attr(resource='object')
 @attr(method='put')
@@ -6593,9 +6588,9 @@ def test_object_copy_replacing_metadata():
         client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='bar321foo', Metadata=metadata, MetadataDirective='REPLACE', ContentType=content_type)
 
         response = client.get_object(Bucket=bucket_name, Key='bar321foo')
-        eq(content_type, response['ContentType'])
-        eq(metadata, response['Metadata'])
-        eq(size, response['ContentLength'])
+        assert content_type == response['ContentType']
+        assert metadata == response['Metadata']
+        assert size == response['ContentLength']
 
 @attr(resource='object')
 @attr(method='put')
@@ -6607,7 +6602,7 @@ def test_object_copy_bucket_not_found():
     copy_source = {'Bucket': bucket_name + "-fake", 'Key': 'foo123bar'}
     e = assert_raises(ClientError, client.copy, copy_source, bucket_name, 'bar321foo')
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
 @attr(resource='object')
 @attr(method='put')
@@ -6619,7 +6614,7 @@ def test_object_copy_key_not_found():
     copy_source = {'Bucket': bucket_name, 'Key': 'foo123bar'}
     e = assert_raises(ClientError, client.copy, copy_source, bucket_name, 'bar321foo')
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
 @attr(resource='object')
 @attr(method='put')
@@ -6647,8 +6642,8 @@ def test_object_copy_versioned_bucket():
     client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key2)
     response = client.get_object(Bucket=bucket_name, Key=key2)
     body = _get_body(response)
-    eq(data_str, body)
-    eq(size, response['ContentLength'])
+    assert data_str == body
+    assert size == response['ContentLength']
 
 
     # second copy
@@ -6658,8 +6653,8 @@ def test_object_copy_versioned_bucket():
     client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key3)
     response = client.get_object(Bucket=bucket_name, Key=key3)
     body = _get_body(response)
-    eq(data_str, body)
-    eq(size, response['ContentLength'])
+    assert data_str == body
+    assert size == response['ContentLength']
 
     # copy to another versioned bucket
     bucket_name2 = get_new_bucket()
@@ -6669,8 +6664,8 @@ def test_object_copy_versioned_bucket():
     client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key=key4)
     response = client.get_object(Bucket=bucket_name2, Key=key4)
     body = _get_body(response)
-    eq(data_str, body)
-    eq(size, response['ContentLength'])
+    assert data_str == body
+    assert size == response['ContentLength']
 
     # copy to another non versioned bucket
     bucket_name3 = get_new_bucket()
@@ -6679,8 +6674,8 @@ def test_object_copy_versioned_bucket():
     client.copy_object(Bucket=bucket_name3, CopySource=copy_source, Key=key5)
     response = client.get_object(Bucket=bucket_name3, Key=key5)
     body = _get_body(response)
-    eq(data_str, body)
-    eq(size, response['ContentLength'])
+    assert data_str == body
+    assert size == response['ContentLength']
 
     # copy from a non versioned bucket
     copy_source = {'Bucket': bucket_name3, 'Key': key5}
@@ -6688,8 +6683,8 @@ def test_object_copy_versioned_bucket():
     client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key6)
     response = client.get_object(Bucket=bucket_name, Key=key6)
     body = _get_body(response)
-    eq(data_str, body)
-    eq(size, response['ContentLength'])
+    assert data_str == body
+    assert size == response['ContentLength']
 
 @attr(resource='object')
 @attr(method='put')
@@ -6790,10 +6785,10 @@ def test_object_copy_versioning_multipart_upload():
     response = client.get_object(Bucket=bucket_name, Key=key2)
     version_id2 = response['VersionId']
     body = _get_body(response)
-    eq(data, body)
-    eq(key1_size, response['ContentLength'])
-    eq(key1_metadata, response['Metadata'])
-    eq(content_type, response['ContentType'])
+    assert data == body
+    assert key1_size == response['ContentLength']
+    assert key1_metadata == response['Metadata']
+    assert content_type == response['ContentType']
 
     # second copy
     copy_source = {'Bucket': bucket_name, 'Key': key2, 'VersionId': version_id2}
@@ -6801,10 +6796,10 @@ def test_object_copy_versioning_multipart_upload():
     client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=key3)
     response = client.get_object(Bucket=bucket_name, Key=key3)
     body = _get_body(response)
-    eq(data, body)
-    eq(key1_size, response['ContentLength'])
-    eq(key1_metadata, response['Metadata'])
-    eq(content_type, response['ContentType'])
+    assert data == body
+    assert key1_size == response['ContentLength']
+    assert key1_metadata == response['Metadata']
+    assert content_type == response['ContentType']
 
     # copy to another versioned bucket
     bucket_name2 = get_new_bucket()
@@ -6815,10 +6810,10 @@ def test_object_copy_versioning_multipart_upload():
     client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key=key4)
     response = client.get_object(Bucket=bucket_name2, Key=key4)
     body = _get_body(response)
-    eq(data, body)
-    eq(key1_size, response['ContentLength'])
-    eq(key1_metadata, response['Metadata'])
-    eq(content_type, response['ContentType'])
+    assert data == body
+    assert key1_size == response['ContentLength']
+    assert key1_metadata == response['Metadata']
+    assert content_type == response['ContentType']
 
     # copy to another non versioned bucket
     bucket_name3 = get_new_bucket()
@@ -6827,10 +6822,10 @@ def test_object_copy_versioning_multipart_upload():
     client.copy_object(Bucket=bucket_name3, CopySource=copy_source, Key=key5)
     response = client.get_object(Bucket=bucket_name3, Key=key5)
     body = _get_body(response)
-    eq(data, body)
-    eq(key1_size, response['ContentLength'])
-    eq(key1_metadata, response['Metadata'])
-    eq(content_type, response['ContentType'])
+    assert data == body
+    assert key1_size == response['ContentLength']
+    assert key1_metadata == response['Metadata']
+    assert content_type == response['ContentType']
 
     # copy from a non versioned bucket
     copy_source = {'Bucket': bucket_name3, 'Key': key5}
@@ -6838,10 +6833,10 @@ def test_object_copy_versioning_multipart_upload():
     client.copy_object(Bucket=bucket_name3, CopySource=copy_source, Key=key6)
     response = client.get_object(Bucket=bucket_name3, Key=key6)
     body = _get_body(response)
-    eq(data, body)
-    eq(key1_size, response['ContentLength'])
-    eq(key1_metadata, response['Metadata'])
-    eq(content_type, response['ContentType'])
+    assert data == body
+    assert key1_size == response['ContentLength']
+    assert key1_metadata == response['Metadata']
+    assert content_type == response['ContentType']
 
 @attr(resource='object')
 @attr(method='put')
@@ -6855,8 +6850,8 @@ def test_multipart_upload_empty():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key1, size=objlen)
     e = assert_raises(ClientError, client.complete_multipart_upload,Bucket=bucket_name, Key=key1, UploadId=upload_id)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 @attr(resource='object')
 @attr(method='put')
@@ -6872,7 +6867,7 @@ def test_multipart_upload_small():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key1, size=objlen)
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
     response = client.get_object(Bucket=bucket_name, Key=key1)
-    eq(response['ContentLength'], objlen)
+    assert response['ContentLength'] == objlen
     # check extra client.complete_multipart_upload
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
@@ -6935,7 +6930,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
     else:
         response = client.get_object(Bucket=src_bucket_name, Key=src_key, Range=r, VersionId=version_id)
     src_data = _get_body(response)
-    eq(src_data, dest_data)
+    assert src_data == dest_data
 
 @attr(resource='object')
 @attr(method='put')
@@ -6955,7 +6950,7 @@ def test_multipart_copy_small():
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
-    eq(size, response['ContentLength'])
+    assert size == response['ContentLength']
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @attr(resource='object')
@@ -6977,7 +6972,7 @@ def test_multipart_copy_invalid_range():
     valid_status = [400, 416]
     if not status in valid_status:
        raise AssertionError("Invalid response " + str(status))
-    eq(error_code, 'InvalidRange')
+    assert error_code == 'InvalidRange'
 
 
 @attr(resource='object')
@@ -7011,8 +7006,8 @@ def test_multipart_copy_improper_range():
                           CopySourceRange=test_range,
                           PartNumber=1)
         status, error_code = _get_status_and_error_code(e.response)
-        eq(status, 400)
-        eq(error_code, 'InvalidArgument')
+        assert status == 400
+        assert error_code == 'InvalidArgument'
 
 
 @attr(resource='object')
@@ -7040,7 +7035,7 @@ def test_multipart_copy_without_range():
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
-    eq(response['ContentLength'], 10)
+    assert response['ContentLength'] == 10
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @attr(resource='object')
@@ -7062,7 +7057,7 @@ def test_multipart_copy_special_names():
         (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size)
         response = client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
         response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
-        eq(size, response['ContentLength'])
+        assert size == response['ContentLength']
         _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 def _check_content_using_range(key, bucket_name, data, step):
@@ -7077,9 +7072,9 @@ def _check_content_using_range(key, bucket_name, data, step):
         end = ofs + toread - 1
         r = 'bytes={s}-{e}'.format(s=ofs, e=end)
         response = client.get_object(Bucket=bucket_name, Key=key, Range=r)
-        eq(response['ContentLength'], toread)
+        assert response['ContentLength'] == toread
         body = _get_body(response)
-        eq(body, data[ofs:end+1])
+        assert body == data[ofs:end+1]
 
 @attr(resource='object')
 @attr(method='put')
@@ -7104,17 +7099,17 @@ def test_multipart_upload():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
-    eq(rgw_bytes_used, objlen)
+    assert rgw_bytes_used == objlen
 
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
-    eq(rgw_object_count, 1)
+    assert rgw_object_count == 1
 
     response = client.get_object(Bucket=bucket_name, Key=key)
-    eq(response['ContentType'], content_type)
-    eq(response['Metadata'], metadata)
+    assert response['ContentType'] == content_type
+    assert response['Metadata'] == metadata
     body = _get_body(response)
-    eq(len(body), response['ContentLength'])
-    eq(body, data)
+    assert len(body) == response['ContentLength']
+    assert body == data
 
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
@@ -7124,9 +7119,9 @@ def check_versioning(bucket_name, status):
 
     try:
         response = client.get_bucket_versioning(Bucket=bucket_name)
-        eq(response['Status'], status)
+        assert response['Status'] == status
     except KeyError:
-        eq(status, None)
+        assert status == None
 
 # amazon is eventual consistent, retry a bit if failed
 def check_configure_versioning_retry(bucket_name, status, expected_string):
@@ -7147,7 +7142,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
         time.sleep(1)
 
-    eq(expected_string, read_status)
+    assert expected_string == read_status
 
 @attr(resource='object')
 @attr(method='put')
@@ -7180,7 +7175,7 @@ def test_multipart_copy_versioned():
         (upload_id, parts) = _multipart_copy(src_bucket_name, src_key, dest_bucket_name, dest_key, size, version_id=vid)
         response = client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
         response = client.get_object(Bucket=dest_bucket_name, Key=dest_key)
-        eq(size, response['ContentLength'])
+        assert size == response['ContentLength']
         _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, version_id=vid)
 
 def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
@@ -7191,11 +7186,11 @@ def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.get_object(Bucket=bucket_name, Key=key)
-    eq(response['ContentType'], content_type)
-    eq(response['Metadata'], metadata)
+    assert response['ContentType'] == content_type
+    assert response['Metadata'] == metadata
     body = _get_body(response)
-    eq(len(body), response['ContentLength'])
-    eq(body, data)
+    assert len(body) == response['ContentLength']
+    assert body == data
 
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
@@ -7304,8 +7299,8 @@ def test_multipart_upload_size_too_small():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=size, part_size=10*1024)
     e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'EntityTooSmall')
+    assert status == 400
+    assert error_code == 'EntityTooSmall'
 
 def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
@@ -7394,10 +7389,10 @@ def test_abort_multipart_upload():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', 0))
-    eq(rgw_bytes_used, 0)
+    assert rgw_bytes_used == 0
 
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 0))
-    eq(rgw_object_count, 0)
+    assert rgw_object_count == 0
 
 @attr(resource='object')
 @attr(method='put')
@@ -7411,8 +7406,8 @@ def test_abort_multipart_upload_not_found():
 
     e = assert_raises(ClientError, client.abort_multipart_upload, Bucket=bucket_name, Key=key, UploadId='56788')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchUpload')
+    assert status == 404
+    assert error_code == 'NoSuchUpload'
 
 @attr(resource='object')
 @attr(method='put')
@@ -7444,7 +7439,7 @@ def test_list_multipart_upload():
         resp_uploadids.append(uploads[i]['UploadId'])
 
     for i in range(0, len(upload_ids)):
-        eq(True, (upload_ids[i] in resp_uploadids))
+        assert True == (upload_ids[i] in resp_uploadids)
 
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id1)
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id2)
@@ -7478,22 +7473,22 @@ def test_list_multipart_upload_owner():
         try:
             # match fields of an Upload from ListMultipartUploadsResult
             def match(upload, key, uploadid, userid, username):
-                eq(upload['Key'], key)
-                eq(upload['UploadId'], uploadid)
-                eq(upload['Initiator']['ID'], userid)
-                eq(upload['Initiator']['DisplayName'], username)
-                eq(upload['Owner']['ID'], userid)
-                eq(upload['Owner']['DisplayName'], username)
+                assert upload['Key'] == key
+                assert upload['UploadId'] == uploadid
+                assert upload['Initiator']['ID'] == userid
+                assert upload['Initiator']['DisplayName'] == username
+                assert upload['Owner']['ID'] == userid
+                assert upload['Owner']['DisplayName'] == username
 
             # list uploads with client1
             uploads1 = client1.list_multipart_uploads(Bucket=bucket_name)['Uploads']
-            eq(len(uploads1), 2)
+            assert len(uploads1) == 2
             match(uploads1[0], key1, upload1, user1, name1)
             match(uploads1[1], key2, upload2, user2, name2)
 
             # list uploads with client2
             uploads2 = client2.list_multipart_uploads(Bucket=bucket_name)['Uploads']
-            eq(len(uploads2), 2)
+            assert len(uploads2) == 2
             match(uploads2[0], key1, upload1, user1, name1)
             match(uploads2[1], key2, upload2, user2, name2)
         finally:
@@ -7520,8 +7515,8 @@ def test_multipart_upload_missing_part():
 
     e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidPart')
+    assert status == 400
+    assert error_code == 'InvalidPart'
 
 @attr(resource='object')
 @attr(method='put')
@@ -7542,8 +7537,8 @@ def test_multipart_upload_incorrect_etag():
 
     e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidPart')
+    assert status == 400
+    assert error_code == 'InvalidPart'
 
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
@@ -7598,12 +7593,12 @@ def test_100_continue():
 
     #NOTES: this test needs to be tested when is_secure is True
     status = _simple_http_req_100_cont(host, port, is_secure, 'PUT', resource)
-    eq(status, '403')
+    assert status == '403'
 
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read-write')
 
     status = _simple_http_req_100_cont(host, port, is_secure, 'PUT', resource)
-    eq(status, '100')
+    assert status == '100'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -7626,21 +7621,21 @@ def test_set_cors():
 
     e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
     client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
     response = client.get_bucket_cors(Bucket=bucket_name)
-    eq(response['CORSRules'][0]['AllowedMethods'], allowed_methods)
-    eq(response['CORSRules'][0]['AllowedOrigins'], allowed_origins)
+    assert response['CORSRules'][0]['AllowedMethods'] == allowed_methods
+    assert response['CORSRules'][0]['AllowedOrigins'] == allowed_origins
 
     client.delete_bucket_cors(Bucket=bucket_name)
     e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
 def _cors_request_and_check(func, url, headers, expect_status, expect_allow_origin, expect_allow_methods):
     r = func(url, headers=headers, verify=get_config_ssl_verify())
-    eq(r.status_code, expect_status)
+    assert r.status_code == expect_status
 
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
     assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
@@ -7673,7 +7668,7 @@ def test_cors_origin_response():
 
     e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
     client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
 
@@ -7744,7 +7739,7 @@ def test_cors_origin_wildcard():
 
     e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
     client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
 
@@ -7775,7 +7770,7 @@ def test_cors_header_option():
 
     e = assert_raises(ClientError, client.get_bucket_cors, Bucket=bucket_name)
     status = _get_status(e.response)
-    eq(status, 404)
+    assert status == 404
 
     client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
 
@@ -7807,23 +7802,23 @@ def test_set_bucket_tagging():
 
     e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchTagSet')
+    assert status == 404
+    assert error_code == 'NoSuchTagSet'
 
     client.put_bucket_tagging(Bucket=bucket_name, Tagging=tags)
 
     response = client.get_bucket_tagging(Bucket=bucket_name)
-    eq(len(response['TagSet']), 1)
-    eq(response['TagSet'][0]['Key'], 'Hello')
-    eq(response['TagSet'][0]['Value'], 'World')
+    assert len(response['TagSet']) == 1
+    assert response['TagSet'][0]['Key'] == 'Hello'
+    assert response['TagSet'][0]['Value'] == 'World'
 
     response = client.delete_bucket_tagging(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     e = assert_raises(ClientError, client.get_bucket_tagging, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchTagSet')
+    assert status == 404
+    assert error_code == 'NoSuchTagSet'
 
 
 class FakeFile(object):
@@ -7877,7 +7872,7 @@ class FakeReadFile(FakeFile):
         self.expected_size = size
 
     def write(self, chars):
-        eq(chars, self.char*len(chars))
+        assert chars == self.char*len(chars)
         self.offset += len(chars)
         self.size += len(chars)
 
@@ -7888,7 +7883,7 @@ class FakeReadFile(FakeFile):
             self.interrupted = True
 
     def close(self):
-        eq(self.size, self.expected_size)
+        assert self.size == self.expected_size
 
 class FakeFileVerifier(object):
     """
@@ -7903,7 +7898,7 @@ class FakeFileVerifier(object):
         if self.char == None:
             self.char = data[0]
         self.size += size
-        eq(data.decode(), self.char*size)
+        assert data.decode() == self.char*size
 
 def _verify_atomic_key_data(bucket_name, key, size=-1, char=None):
     """
@@ -7913,7 +7908,7 @@ def _verify_atomic_key_data(bucket_name, key, size=-1, char=None):
     client = get_client()
     client.download_fileobj(bucket_name, key, fp_verify)
     if size >= 0:
-        eq(fp_verify.size, size)
+        assert fp_verify.size == size
 
 def _test_atomic_read(file_size):
     """
@@ -8124,8 +8119,8 @@ def _test_atomic_dual_conditional_write(file_size):
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=objname, Body=fp_c)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
     # verify the file
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
@@ -8163,8 +8158,8 @@ def test_atomic_write_bucket_gone():
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=objname, Body=fp_a)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchBucket')
+    assert status == 404
+    assert error_code == 'NoSuchBucket'
 
 @attr(resource='object')
 @attr(method='put')
@@ -8180,13 +8175,13 @@ def test_atomic_multipart_upload_write():
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     client.abort_multipart_upload(Bucket=bucket_name, Key='foo', UploadId=upload_id)
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 class Counter:
     def __init__(self, default_val):
@@ -8284,9 +8279,9 @@ def test_ranged_request_response_code():
     response = client.get_object(Bucket=bucket_name, Key='testobj', Range='bytes=4-7')
 
     fetched_content = _get_body(response)
-    eq(fetched_content, content[4:8])
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-range'], 'bytes 4-7/11')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 206)
+    assert fetched_content == content[4:8]
+    assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-7/11'
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 def _generate_random_string(size):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
@@ -8307,9 +8302,9 @@ def test_ranged_big_request_response_code():
     response = client.get_object(Bucket=bucket_name, Key='testobj', Range='bytes=3145728-5242880')
 
     fetched_content = _get_body(response)
-    eq(fetched_content, content[3145728:5242881])
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-range'], 'bytes 3145728-5242880/8388608')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 206)
+    assert fetched_content == content[3145728:5242881]
+    assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 3145728-5242880/8388608'
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @attr(resource='object')
 @attr(method='get')
@@ -8327,9 +8322,9 @@ def test_ranged_request_skip_leading_bytes_response_code():
     response = client.get_object(Bucket=bucket_name, Key='testobj', Range='bytes=4-')
 
     fetched_content = _get_body(response)
-    eq(fetched_content, content[4:])
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-range'], 'bytes 4-10/11')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 206)
+    assert fetched_content == content[4:]
+    assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-10/11'
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @attr(resource='object')
 @attr(method='get')
@@ -8347,9 +8342,9 @@ def test_ranged_request_return_trailing_bytes_response_code():
     response = client.get_object(Bucket=bucket_name, Key='testobj', Range='bytes=-7')
 
     fetched_content = _get_body(response)
-    eq(fetched_content, content[-7:])
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-range'], 'bytes 4-10/11')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 206)
+    assert fetched_content == content[-7:]
+    assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-10/11'
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @attr(resource='object')
 @attr(method='get')
@@ -8366,8 +8361,8 @@ def test_ranged_request_invalid_range():
     # test invalid range
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='testobj', Range='bytes=40-50')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 416)
-    eq(error_code, 'InvalidRange')
+    assert status == 416
+    assert error_code == 'InvalidRange'
 
 @attr(resource='object')
 @attr(method='get')
@@ -8384,8 +8379,8 @@ def test_ranged_request_empty_object():
     # test invalid range
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='testobj', Range='bytes=40-50')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 416)
-    eq(error_code, 'InvalidRange')
+    assert status == 416
+    assert error_code == 'InvalidRange'
 
 @attr(resource='bucket')
 @attr(method='create')
@@ -8404,9 +8399,9 @@ def check_obj_content(client, bucket_name, key, version_id, content):
     response = client.get_object(Bucket=bucket_name, Key=key, VersionId=version_id)
     if content is not None:
         body = _get_body(response)
-        eq(body, content)
+        assert body == content
     else:
-        eq(response['DeleteMarker'], True)
+        assert response['DeleteMarker'] == True
 
 def check_obj_versions(client, bucket_name, key, version_ids, contents):
     # check to see if objects is pointing at correct version
@@ -8419,8 +8414,8 @@ def check_obj_versions(client, bucket_name, key, version_ids, contents):
     i = 0
 
     for version in versions:
-        eq(version['VersionId'], version_ids[i])
-        eq(version['Key'], key)
+        assert version['VersionId'] == version_ids[i]
+        assert version['Key'] == key
         check_obj_content(client, bucket_name, key, version['VersionId'], contents[i])
         i += 1
 
@@ -8442,7 +8437,7 @@ def create_multiple_versions(client, bucket_name, key, num_versions, version_ids
     return (version_ids, contents)
 
 def remove_obj_version(client, bucket_name, key, version_ids, contents, index):
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == len(contents)
     index = index % len(version_ids)
     rm_version_id = version_ids.pop(index)
     rm_content = contents.pop(index)
@@ -8516,19 +8511,19 @@ def test_versioning_obj_create_read_remove_head():
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=removed_version_id)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, contents[-1])
+    assert body == contents[-1]
 
     # add a delete marker
     response = client.delete_object(Bucket=bucket_name, Key=key)
-    eq(response['DeleteMarker'], True)
+    assert response['DeleteMarker'] == True
 
     delete_marker_version_id = response['VersionId']
     version_ids.append(delete_marker_version_id)
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(len(response['Versions']), num_versions)
-    eq(len(response['DeleteMarkers']), 1)
-    eq(response['DeleteMarkers'][0]['VersionId'], delete_marker_version_id)
+    assert len(response['Versions']) == num_versions
+    assert len(response['DeleteMarkers']) == 1
+    assert response['DeleteMarkers'][0]['VersionId'] == delete_marker_version_id
 
     clean_up_bucket(client, bucket_name, key, version_ids)
 
@@ -8551,11 +8546,11 @@ def test_versioning_obj_plain_null_version_removal():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
 @attr(resource='object')
 @attr(method='create')
@@ -8577,23 +8572,23 @@ def test_versioning_obj_plain_null_version_overwrite():
     response = client.put_object(Bucket=bucket_name, Key=key, Body=content2)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, content2)
+    assert body == content2
 
     version_id = response['VersionId']
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, content)
+    assert body == content
 
     client.delete_object(Bucket=bucket_name, Key=key, VersionId='null')
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
 @attr(resource='object')
 @attr(method='create')
@@ -8616,27 +8611,27 @@ def test_versioning_obj_plain_null_version_overwrite_suspended():
     response = client.put_object(Bucket=bucket_name, Key=key, Body=content2)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, content2)
+    assert body == content2
 
     response = client.list_object_versions(Bucket=bucket_name)
     # original object with 'null' version id still counts as a version
-    eq(len(response['Versions']), 1)
+    assert len(response['Versions']) == 1
 
     client.delete_object(Bucket=bucket_name, Key=key, VersionId='null')
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'NoSuchKey')
+    assert status == 404
+    assert error_code == 'NoSuchKey'
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
 def delete_suspended_versioning_obj(client, bucket_name, key, version_ids, contents):
     client.delete_object(Bucket=bucket_name, Key=key)
 
     # clear out old null objects in lists since they will get overwritten
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == len(contents)
     i = 0
     for version_id in version_ids:
         if version_id == 'null':
@@ -8650,7 +8645,7 @@ def overwrite_suspended_versioning_obj(client, bucket_name, key, version_ids, co
     client.put_object(Bucket=bucket_name, Key=key, Body=content)
 
     # clear out old null objects in lists since they will get overwritten
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == len(contents)
     i = 0
     for version_id in version_ids:
         if version_id == 'null':
@@ -8699,8 +8694,8 @@ def test_versioning_obj_suspend_versions():
     for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
-    eq(len(version_ids), 0)
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == 0
+    assert len(version_ids) == len(contents)
 
 @attr(resource='object')
 @attr(method='remove')
@@ -8720,8 +8715,8 @@ def test_versioning_obj_create_versions_remove_all():
     for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
-    eq(len(version_ids), 0)
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == 0
+    assert len(version_ids) == len(contents)
 
 @attr(resource='object')
 @attr(method='remove')
@@ -8742,8 +8737,8 @@ def test_versioning_obj_create_versions_remove_special_names():
         for idx in range(num_versions):
             remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
-        eq(len(version_ids), 0)
-        eq(len(version_ids), len(contents))
+        assert len(version_ids) == 0
+        assert len(version_ids) == len(contents)
 
 @attr(resource='object')
 @attr(method='multipart')
@@ -8777,8 +8772,8 @@ def test_versioning_obj_create_overwrite_multipart():
     for idx in range(num_versions):
         remove_obj_version(client, bucket_name, key, version_ids, contents, idx)
 
-    eq(len(version_ids), 0)
-    eq(len(version_ids), len(contents))
+    assert len(version_ids) == 0
+    assert len(version_ids) == len(contents)
 
 @attr(resource='object')
 @attr(method='multipart')
@@ -8827,16 +8822,16 @@ def test_versioning_obj_list_marker():
     # test the last 5 created objects first
     for i in range(5):
         version = versions[i]
-        eq(version['VersionId'], version_ids2[i])
-        eq(version['Key'], key2)
+        assert version['VersionId'] == version_ids2[i]
+        assert version['Key'] == key2
         check_obj_content(client, bucket_name, key2, version['VersionId'], contents2[i])
         i += 1
 
     # then the first 5
     for j in range(5):
         version = versions[i]
-        eq(version['VersionId'], version_ids[j])
-        eq(version['Key'], key)
+        assert version['VersionId'] == version_ids[j]
+        assert version['Key'] == key
         check_obj_content(client, bucket_name, key, version['VersionId'], contents[j])
         i += 1
 
@@ -8864,7 +8859,7 @@ def test_versioning_copy_obj_version():
         client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=new_key_name)
         response = client.get_object(Bucket=bucket_name, Key=new_key_name)
         body = _get_body(response)
-        eq(body, contents[i])
+        assert body == contents[i]
 
     another_bucket_name = get_new_bucket()
 
@@ -8874,7 +8869,7 @@ def test_versioning_copy_obj_version():
         client.copy_object(Bucket=another_bucket_name, CopySource=copy_source, Key=new_key_name)
         response = client.get_object(Bucket=another_bucket_name, Key=new_key_name)
         body = _get_body(response)
-        eq(body, contents[i])
+        assert body == contents[i]
 
     new_key_name = 'new_key'
     copy_source = {'Bucket': bucket_name, 'Key': key}
@@ -8882,7 +8877,7 @@ def test_versioning_copy_obj_version():
 
     response = client.get_object(Bucket=another_bucket_name, Key=new_key_name)
     body = _get_body(response)
-    eq(body, contents[-1])
+    assert body == contents[-1]
 
 @attr(resource='object')
 @attr(method='delete')
@@ -8908,14 +8903,14 @@ def test_versioning_multi_object_delete():
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
     # now remove again, should all succeed due to idempotency
     for version in versions:
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
 @attr(resource='object')
 @attr(method='delete')
@@ -8939,8 +8934,8 @@ def test_versioning_multi_object_delete_with_marker():
     delete_markers = response['DeleteMarkers']
 
     version_ids.append(delete_markers[0]['VersionId'])
-    eq(len(version_ids), 3)
-    eq(len(delete_markers), 1)
+    assert len(version_ids) == 3
+    assert len(delete_markers) == 1
 
     for version in versions:
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
@@ -8949,8 +8944,8 @@ def test_versioning_multi_object_delete_with_marker():
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=delete_marker['VersionId'])
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
-    eq(('DeleteMarkers' in response), False)
+    assert not 'Versions' in response
+    assert not 'DeleteMarkers' in response
 
     for version in versions:
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
@@ -8960,8 +8955,8 @@ def test_versioning_multi_object_delete_with_marker():
 
     # now remove again, should all succeed due to idempotency
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
-    eq(('DeleteMarkers' in response), False)
+    assert not 'Versions' in response
+    assert not 'DeleteMarkers' in response
 
 @attr(resource='object')
 @attr(method='delete')
@@ -8984,9 +8979,9 @@ def test_versioning_multi_object_delete_with_marker_create():
     response = client.list_object_versions(Bucket=bucket_name)
     delete_markers = response['DeleteMarkers']
 
-    eq(len(delete_markers), 1)
-    eq(delete_marker_version_id, delete_markers[0]['VersionId'])
-    eq(key, delete_markers[0]['Key'])
+    assert len(delete_markers) == 1
+    assert delete_marker_version_id == delete_markers[0]['VersionId']
+    assert key == delete_markers[0]['Key']
 
 @attr(resource='object')
 @attr(method='put')
@@ -9011,8 +9006,8 @@ def test_versioned_object_acl():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    eq(response['Owner']['DisplayName'], display_name)
-    eq(response['Owner']['ID'], user_id)
+    assert response['Owner']['DisplayName'] == display_name
+    assert response['Owner']['ID'] == user_id
 
     grants = response['Grants']
     default_policy = [
@@ -9086,8 +9081,8 @@ def test_versioned_object_acl_no_version_specified():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    eq(response['Owner']['DisplayName'], display_name)
-    eq(response['Owner']['ID'], user_id)
+    assert response['Owner']['DisplayName'] == display_name
+    assert response['Owner']['ID'] == user_id
 
     grants = response['Grants']
     default_policy = [
@@ -9177,13 +9172,13 @@ def test_versioned_concurrent_object_create_concurrent_remove():
         response = client.list_object_versions(Bucket=bucket_name)
         versions = response['Versions']
 
-        eq(len(versions), num_versions)
+        assert len(versions) == num_versions
 
         t = _do_clear_versioned_bucket_concurrent(client, bucket_name)
         _do_wait_completion(t)
 
         response = client.list_object_versions(Bucket=bucket_name)
-        eq(('Versions' in response), False)
+        assert not 'Versions' in response
 
 @attr(resource='object')
 @attr(method='put')
@@ -9216,7 +9211,7 @@ def test_versioned_concurrent_object_create_and_remove():
     _do_wait_completion(t)
 
     response = client.list_object_versions(Bucket=bucket_name)
-    eq(('Versions' in response), False)
+    assert not 'Versions' in response
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9230,7 +9225,7 @@ def test_lifecycle_set():
            {'ID': 'rule2', 'Expiration': {'Days': 2}, 'Prefix': 'test2/', 'Status':'Disabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -9245,7 +9240,7 @@ def test_lifecycle_get():
     lifecycle = {'Rules': rules}
     client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
-    eq(response['Rules'], rules)
+    assert response['Rules'] == rules
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -9269,12 +9264,12 @@ def test_lifecycle_get_no_id():
 
     for lc_rule in current_lc:
         if lc_rule['Prefix'] == rules['rule1'].prefix:
-            eq(lc_rule['Expiration']['Days'], rules['rule1'].days)
-            eq(lc_rule['Status'], rules['rule1'].status)
+            assert lc_rule['Expiration']['Days'] == rules['rule1'].days
+            assert lc_rule['Status'] == rules['rule1'].status
             assert 'ID' in lc_rule
         elif lc_rule['Prefix'] == rules['rule2'].prefix:
-            eq(lc_rule['Expiration']['Days'], rules['rule2'].days)
-            eq(lc_rule['Status'], rules['rule2'].status)
+            assert lc_rule['Expiration']['Days'] == rules['rule2'].days
+            assert lc_rule['Status'] == rules['rule2'].status
             assert 'ID' in lc_rule
         else:
             # neither of the rules we supplied was returned, something wrong
@@ -9318,10 +9313,10 @@ def test_lifecycle_expiration():
     response = client.list_objects(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
-    eq(len(init_objects), 6)
-    eq(len(expire1_objects), 4)
-    eq(len(keep2_objects), 4)
-    eq(len(expire3_objects), 2)
+    assert len(init_objects) == 6
+    assert len(expire1_objects) == 4
+    assert len(keep2_objects) == 4
+    assert len(expire3_objects) == 2
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9361,10 +9356,10 @@ def test_lifecyclev2_expiration():
     response = client.list_objects_v2(Bucket=bucket_name)
     expire3_objects = response['Contents']
 
-    eq(len(init_objects), 6)
-    eq(len(expire1_objects), 4)
-    eq(len(keep2_objects), 4)
-    eq(len(expire3_objects), 2)
+    assert len(init_objects) == 6
+    assert len(expire1_objects) == 4
+    assert len(keep2_objects) == 4
+    assert len(expire3_objects) == 2
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9393,8 +9388,8 @@ def test_lifecycle_expiration_versioning_enabled():
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
     delete_markers = response['DeleteMarkers']
-    eq(len(versions), 1)
-    eq(len(delete_markers), 1)
+    assert len(versions) == 1
+    assert len(delete_markers) == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9417,7 +9412,7 @@ def test_lifecycle_expiration_tags1():
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=tom_key,
                                          Tagging=tom_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lifecycle_config = {
         'Rules': [
@@ -9440,7 +9435,7 @@ def test_lifecycle_expiration_tags1():
 
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lc_interval = get_lc_debug_interval()
 
@@ -9451,7 +9446,7 @@ def test_lifecycle_expiration_tags1():
     except KeyError:
         expire_objects = []
 
-    eq(len(expire_objects), 0)
+    assert len(expire_objects) == 0
 
 # factor out common setup code
 def setup_lifecycle_tags2(client, bucket_name):
@@ -9463,7 +9458,7 @@ def setup_lifecycle_tags2(client, bucket_name):
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=tom_key,
                                          Tagging=tom_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     huck_key = 'days1/huck'
     huck_tagset = {
@@ -9475,7 +9470,7 @@ def setup_lifecycle_tags2(client, bucket_name):
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=huck_key,
                                          Tagging=huck_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lifecycle_config = {
         'Rules': [
@@ -9507,7 +9502,7 @@ def setup_lifecycle_tags2(client, bucket_name):
 
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     return response
 
 @attr(resource='bucket')
@@ -9533,7 +9528,7 @@ def test_lifecycle_expiration_tags2():
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
-    eq(len(expire1_objects), 1)
+    assert len(expire1_objects) == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9561,7 +9556,7 @@ def test_lifecycle_expiration_versioned_tags2():
     response = client.list_objects(Bucket=bucket_name)
     expire1_objects = response['Contents']
 
-    eq(len(expire1_objects), 1)
+    assert len(expire1_objects) == 1
 
 # setup for scenario based on vidushi mishra's in rhbz#1877737
 def setup_lifecycle_noncur_tags(client, bucket_name, days):
@@ -9574,10 +9569,10 @@ def setup_lifecycle_noncur_tags(client, bucket_name, days):
     for ix in range(10):
         body = "%s v%d" % (key, ix)
         response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
-        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
         response = client.put_object_tagging(Bucket=bucket_name, Key=key,
                                              Tagging=tagset)
-        eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lifecycle_config = {
         'Rules': [
@@ -9600,7 +9595,7 @@ def setup_lifecycle_noncur_tags(client, bucket_name, days):
 
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle_config)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     return response
 
 def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
@@ -9639,13 +9634,13 @@ def test_lifecycle_expiration_noncur_tags1():
         client, bucket_name, 2*lc_interval)
 
     # at T+20, 10 objects should exist
-    eq(num_objs, 10)
+    assert num_objs == 10
 
     num_objs = verify_lifecycle_expiration_noncur_tags(
         client, bucket_name, 5*lc_interval)
 
     # at T+60, only the current object version should exist
-    eq(num_objs, 1)
+    assert num_objs == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9661,8 +9656,8 @@ def test_lifecycle_id_too_long():
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9679,8 +9674,8 @@ def test_lifecycle_same_id():
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9696,24 +9691,24 @@ def test_lifecycle_invalid_status():
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 2}, 'Prefix': 'test1/', 'Status':'disabled'}]
     lifecycle = {'Rules': rules}
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
     rules=[{'ID': 'rule1', 'Expiration': {'Days': 2}, 'Prefix': 'test1/', 'Status':'invalid'}]
     lifecycle = {'Rules': rules}
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9727,7 +9722,7 @@ def test_lifecycle_set_date():
     lifecycle = {'Rules': rules}
 
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9743,7 +9738,7 @@ def test_lifecycle_set_invalid_date():
 
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9773,8 +9768,8 @@ def test_lifecycle_expiration_date():
     response = client.list_objects(Bucket=bucket_name)
     expire_objects = response['Contents']
 
-    eq(len(init_objects), 2)
-    eq(len(expire_objects), 1)
+    assert len(init_objects) == 2
+    assert len(expire_objects) == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9798,7 +9793,7 @@ def test_lifecycle_expiration_days0():
     except botocore.exceptions.ClientError as e:
         response_code = e.response['Error']['Code']
 
-    eq(response_code, 'InvalidArgument')
+    assert response_code == 'InvalidArgument'
 
 
 def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
@@ -9809,12 +9804,12 @@ def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days,
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(
         Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     key = rule_prefix + 'foo'
     body = 'bar'
     response = client.put_object(Bucket=bucket_name, Key=key, Body=body)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     return response
 
 def check_lifecycle_expiration_header(response, start_time, rule_id,
@@ -9846,7 +9841,7 @@ def test_lifecycle_expiration_header_put():
     now = datetime.datetime.now(None)
     response = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
-    eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
+    assert check_lifecycle_expiration_header(response, now, 'rule1', 1)
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -9869,8 +9864,8 @@ def test_lifecycle_expiration_header_head():
 
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert check_lifecycle_expiration_header(response, now, 'rule1', 1)
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -9909,8 +9904,8 @@ def test_lifecycle_expiration_header_tags_head():
 
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1), True)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
 
     # test that header is not returning when it should not
     lifecycle={
@@ -9931,8 +9926,8 @@ def test_lifecycle_expiration_header_tags_head():
         Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1), False)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
 
 @attr(resource='bucket')
 @attr(method='head')
@@ -9981,8 +9976,8 @@ def test_lifecycle_expiration_header_and_tags_head():
 
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1), False)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -9996,7 +9991,7 @@ def test_lifecycle_set_noncurrent():
            {'ID': 'rule2', 'NoncurrentVersionExpiration': {'NoncurrentDays': 3}, 'Prefix': 'future/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10031,8 +10026,8 @@ def test_lifecycle_noncur_expiration():
 
     response  = client.list_object_versions(Bucket=bucket_name)
     expire_versions = response['Versions']
-    eq(len(init_versions), 6)
-    eq(len(expire_versions), 4)
+    assert len(init_versions) == 6
+    assert len(expire_versions) == 4
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10045,7 +10040,7 @@ def test_lifecycle_set_deletemarker():
     rules=[{'ID': 'rule1', 'Expiration': {'ExpiredObjectDeleteMarker': True}, 'Prefix': 'test1/', 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10058,7 +10053,7 @@ def test_lifecycle_set_filter():
     rules=[{'ID': 'rule1', 'Expiration': {'ExpiredObjectDeleteMarker': True}, 'Filter': {'Prefix': 'foo'}, 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10071,7 +10066,7 @@ def test_lifecycle_set_empty_filter():
     rules=[{'ID': 'rule1', 'Expiration': {'ExpiredObjectDeleteMarker': True}, 'Filter': {}, 'Status':'Enabled'}]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10112,8 +10107,8 @@ def test_lifecycle_deletemarker_expiration():
     deleted_versions = response['DeleteMarkers']
     total_expire_versions = init_versions + deleted_versions
 
-    eq(len(total_init_versions), 4)
-    eq(len(total_expire_versions), 2)
+    assert len(total_init_versions) == 4
+    assert len(total_expire_versions) == 2
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10131,7 +10126,7 @@ def test_lifecycle_set_multipart():
     ]
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10172,8 +10167,8 @@ def test_lifecycle_multipart_expiration():
 
     response = client.list_multipart_uploads(Bucket=bucket_name)
     expired_uploads = response['Uploads']
-    eq(len(init_uploads), 2)
-    eq(len(expired_uploads), 1)
+    assert len(init_uploads) == 2
+    assert len(expired_uploads) == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10188,7 +10183,7 @@ def test_lifecycle_transition_set_invalid_date():
     lifecycle = {'Rules': rules}
     e = assert_raises(ClientError, client.put_bucket_lifecycle_configuration, Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 def _test_encryption_sse_customer_write(file_size):
     """
@@ -10214,7 +10209,7 @@ def _test_encryption_sse_customer_write(file_size):
     client.meta.events.register('before-call.s3.GetObject', lf)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @attr(resource='bucket')
@@ -10242,30 +10237,30 @@ def test_lifecycle_transition():
     # Get list of all keys
     response = client.list_objects(Bucket=bucket_name)
     init_keys = _get_keys(response)
-    eq(len(init_keys), 6)
+    assert len(init_keys) == 6
 
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire1_keys['STANDARD']), 4)
-    eq(len(expire1_keys[sc[1]]), 2)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 4
+    assert len(expire1_keys[sc[1]]) == 2
+    assert len(expire1_keys[sc[2]]) == 0
 
     # Wait for next expiration cycle
     time.sleep(lc_interval)
     keep2_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(keep2_keys['STANDARD']), 4)
-    eq(len(keep2_keys[sc[1]]), 2)
-    eq(len(keep2_keys[sc[2]]), 0)
+    assert len(keep2_keys['STANDARD']) == 4
+    assert len(keep2_keys[sc[1]]) == 2
+    assert len(keep2_keys[sc[2]]) == 0
 
     # Wait for final expiration cycle
     time.sleep(5*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire3_keys['STANDARD']), 2)
-    eq(len(expire3_keys[sc[1]]), 2)
-    eq(len(expire3_keys[sc[2]]), 2)
+    assert len(expire3_keys['STANDARD']) == 2
+    assert len(expire3_keys[sc[1]]) == 2
+    assert len(expire3_keys[sc[2]]) == 2
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @attr(resource='bucket')
@@ -10292,30 +10287,30 @@ def test_lifecycle_transition_single_rule_multi_trans():
     # Get list of all keys
     response = client.list_objects(Bucket=bucket_name)
     init_keys = _get_keys(response)
-    eq(len(init_keys), 6)
+    assert len(init_keys) == 6
 
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(5*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire1_keys['STANDARD']), 4)
-    eq(len(expire1_keys[sc[1]]), 2)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 4
+    assert len(expire1_keys[sc[1]]) == 2
+    assert len(expire1_keys[sc[2]]) == 0
 
     # Wait for next expiration cycle
     time.sleep(lc_interval)
     keep2_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(keep2_keys['STANDARD']), 4)
-    eq(len(keep2_keys[sc[1]]), 2)
-    eq(len(keep2_keys[sc[2]]), 0)
+    assert len(keep2_keys['STANDARD']) == 4
+    assert len(keep2_keys[sc[1]]) == 2
+    assert len(keep2_keys[sc[2]]) == 0
 
     # Wait for final expiration cycle
     time.sleep(6*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire3_keys['STANDARD']), 4)
-    eq(len(expire3_keys[sc[1]]), 0)
-    eq(len(expire3_keys[sc[2]]), 2)
+    assert len(expire3_keys['STANDARD']) == 4
+    assert len(expire3_keys[sc[1]]) == 0
+    assert len(expire3_keys[sc[2]]) == 2
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -10355,7 +10350,7 @@ def test_lifecycle_set_noncurrent_transition():
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
 @attr(resource='bucket')
@@ -10405,27 +10400,27 @@ def test_lifecycle_noncur_transition():
     create_multiple_versions(client, bucket, "test1/b", 3)
 
     init_keys = list_bucket_storage_class(client, bucket)
-    eq(len(init_keys['STANDARD']), 6)
+    assert len(init_keys['STANDARD']) == 6
 
     lc_interval = get_lc_debug_interval()
 
     time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 4)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 4
+    assert len(expire1_keys[sc[2]]) == 0
 
     time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 0)
-    eq(len(expire1_keys[sc[2]]), 4)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 0
+    assert len(expire1_keys[sc[2]]) == 4
 
     time.sleep(6*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 0)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 0
+    assert len(expire1_keys[sc[2]]) == 0
 
 def verify_object(client, bucket, key, content=None, sc=None):
     response = client.get_object(Bucket=bucket, Key=key)
@@ -10434,13 +10429,13 @@ def verify_object(client, bucket, key, content=None, sc=None):
         sc = 'STANDARD'
 
     if ('StorageClass' in response):
-        eq(response['StorageClass'], sc)
+        assert response['StorageClass'] == sc
     else: #storage class should be STANDARD
-        eq('STANDARD', sc)
+        assert 'STANDARD' == sc
 
     if (content != None):
         body = _get_body(response)
-        eq(body, content)
+        assert body == content
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @attr(resource='bucket')
@@ -10475,19 +10470,19 @@ def test_lifecycle_cloud_transition():
     # Get list of all keys
     response = client.list_objects(Bucket=bucket_name)
     init_keys = _get_keys(response)
-    eq(len(init_keys), 4)
+    assert len(init_keys) == 4
 
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(10*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire1_keys['STANDARD']), 2)
+    assert len(expire1_keys['STANDARD']) == 2
 
     if (retain_head_object != None and retain_head_object == "true"):
-        eq(len(expire1_keys[cloud_sc]), 2)
+        assert len(expire1_keys[cloud_sc]) == 2
     else:
-        eq(len(expire1_keys[cloud_sc]), 0)
+        assert len(expire1_keys[cloud_sc]) == 0
 
     time.sleep(2*lc_interval)
     # Check if objects copied to target path
@@ -10509,28 +10504,28 @@ def test_lifecycle_cloud_transition():
     if (retain_head_object != None and retain_head_object == "true"):
         # verify HEAD response
         response = client.head_object(Bucket=bucket_name, Key=keys[0])
-        eq(0, response['ContentLength'])
-        eq(cloud_sc, response['StorageClass'])
+        assert 0 == response['ContentLength']
+        assert cloud_sc == response['StorageClass']
     
         # GET should return InvalidObjectState error
         e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=src_key)
         status, error_code = _get_status_and_error_code(e.response)
-        eq(status, 403)
-        eq(error_code, 'InvalidObjectState')
+        assert status == 403
+        assert error_code == 'InvalidObjectState'
 
         # COPY of object should return InvalidObjectState error
         copy_source = {'Bucket': bucket_name, 'Key': src_key}
         e = assert_raises(ClientError, client.copy, CopySource=copy_source, Bucket=bucket_name, Key='copy_obj')
         status, error_code = _get_status_and_error_code(e.response)
-        eq(status, 403)
-        eq(error_code, 'InvalidObjectState')
+        assert status == 403
+        assert error_code == 'InvalidObjectState'
 
         # DELETE should succeed
         response = client.delete_object(Bucket=bucket_name, Key=src_key)
         e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=src_key)
         status, error_code = _get_status_and_error_code(e.response)
-        eq(status, 404)
-        eq(error_code, 'NoSuchKey')
+        assert status == 404
+        assert error_code == 'NoSuchKey'
 
 # Similar to 'test_lifecycle_transition' but for cloud transition
 @attr(resource='bucket')
@@ -10574,34 +10569,34 @@ def test_lifecycle_cloud_multiple_transition():
     # Get list of all keys
     response = client.list_objects(Bucket=bucket_name)
     init_keys = _get_keys(response)
-    eq(len(init_keys), 4)
+    assert len(init_keys) == 4
 
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 2)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 2
+    assert len(expire1_keys[sc[2]]) == 0
 
     # Wait for next expiration cycle
     time.sleep(7*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 0
 
     if (retain_head_object != None and retain_head_object == "true"):
-        eq(len(expire1_keys[sc[2]]), 2)
+        assert len(expire1_keys[sc[2]]) == 2
     else:
-        eq(len(expire1_keys[sc[2]]), 0)
+        assert len(expire1_keys[sc[2]]) == 0
 
     # Wait for final expiration cycle
     time.sleep(12*lc_interval)
     expire3_keys = list_bucket_storage_class(client, bucket_name)
-    eq(len(expire3_keys['STANDARD']), 2)
-    eq(len(expire3_keys[sc[1]]), 0)
-    eq(len(expire3_keys[sc[2]]), 0)
+    assert len(expire3_keys['STANDARD']) == 2
+    assert len(expire3_keys[sc[1]]) == 0
+    assert len(expire3_keys[sc[2]]) == 0
 
 # Noncurrent objects for cloud transition
 @attr(resource='bucket')
@@ -10664,7 +10659,7 @@ def test_lifecycle_noncur_cloud_transition():
         create_multiple_versions(client, bucket, k, 3)
 
     init_keys = list_bucket_storage_class(client, bucket)
-    eq(len(init_keys['STANDARD']), 6)
+    assert len(init_keys['STANDARD']) == 6
 
     response  = client.list_object_versions(Bucket=bucket)
 
@@ -10672,19 +10667,19 @@ def test_lifecycle_noncur_cloud_transition():
 
     time.sleep(4*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 4)
-    eq(len(expire1_keys[sc[2]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 4
+    assert len(expire1_keys[sc[2]]) == 0
 
     time.sleep(10*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 2)
-    eq(len(expire1_keys[sc[1]]), 0)
+    assert len(expire1_keys['STANDARD']) == 2
+    assert len(expire1_keys[sc[1]]) == 0
 
     if (retain_head_object == None or retain_head_object == "false"):
-        eq(len(expire1_keys[sc[2]]), 0)
+        assert len(expire1_keys[sc[2]]) == 0
     else:
-        eq(len(expire1_keys[sc[2]]), 4)
+        assert len(expire1_keys[sc[2]]) == 4
 
     #check if versioned object exists on cloud endpoint
     if target_path == None:
@@ -10744,13 +10739,13 @@ def test_lifecycle_cloud_transition_large_obj():
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(8*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
-    eq(len(expire1_keys['STANDARD']), 1)
+    assert len(expire1_keys['STANDARD']) == 1
 
     
     if (retain_head_object != None and retain_head_object == "true"):
-        eq(len(expire1_keys[cloud_sc]), 1)
+        assert len(expire1_keys[cloud_sc]) == 1
     else:
-        eq(len(expire1_keys[cloud_sc]), 0)
+        assert len(expire1_keys[cloud_sc]) == 0
 
     # Check if objects copied to target path
     if target_path == None:
@@ -10832,12 +10827,12 @@ def test_encryption_sse_c_method_head():
 
     e = assert_raises(ClientError, client.head_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.HeadObject', lf)
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @attr(resource='object')
 @attr(method='put')
@@ -10862,7 +10857,7 @@ def test_encryption_sse_c_present():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -10894,7 +10889,7 @@ def test_encryption_sse_c_other_key():
     client.meta.events.register('before-call.s3.GetObject', lf)
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -10917,7 +10912,7 @@ def test_encryption_sse_c_invalid_md5():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -10978,7 +10973,7 @@ def test_encryption_key_no_sse_c():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 def _multipart_upload_enc(client, bucket_name, key, size, part_size, init_headers, part_headers, metadata, resend_parts):
     """
@@ -11028,8 +11023,8 @@ def _check_content_using_range_enc(client, bucket_name, key, data, step, enc_hea
         response = client.get_object(Bucket=bucket_name, Key=key, Range=r)
         read_range = response['ContentLength']
         body = _get_body(response)
-        eq(read_range, toread)
-        eq(body, data[ofs:end+1])
+        assert read_range == toread
+        assert body == data[ofs:end+1]
 
 @attr(resource='object')
 @attr(method='put')
@@ -11065,21 +11060,21 @@ def test_encryption_sse_c_multipart_upload():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
-    eq(rgw_object_count, 1)
+    assert rgw_object_count == 1
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
-    eq(rgw_bytes_used, objlen)
+    assert rgw_bytes_used == objlen
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(enc_headers))
     client.meta.events.register('before-call.s3.GetObject', lf)
     response = client.get_object(Bucket=bucket_name, Key=key)
 
-    eq(response['Metadata'], metadata)
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], content_type)
+    assert response['Metadata'] == metadata
+    assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
 
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
     size = response['ContentLength']
-    eq(len(body), size)
+    assert len(body) == size
 
     _check_content_using_range_enc(client, bucket_name, key, data, 1000000, enc_headers=enc_headers)
     _check_content_using_range_enc(client, bucket_name, key, data, 10000000, enc_headers=enc_headers)
@@ -11116,7 +11111,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
     e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
             key=key, size=objlen, part_size=5*1024*1024, init_headers=init_headers, part_headers=part_headers, metadata=metadata, resend_parts=resend_parts)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -11150,7 +11145,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
             key=key, size=objlen, part_size=5*1024*1024, init_headers=init_headers, part_headers=part_headers, metadata=metadata, resend_parts=resend_parts)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -11189,22 +11184,22 @@ def test_encryption_sse_c_multipart_bad_download():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
-    eq(rgw_object_count, 1)
+    assert rgw_object_count == 1
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
-    eq(rgw_bytes_used, objlen)
+    assert rgw_bytes_used == objlen
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(put_headers))
     client.meta.events.register('before-call.s3.GetObject', lf)
     response = client.get_object(Bucket=bucket_name, Key=key)
 
-    eq(response['Metadata'], metadata)
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], content_type)
+    assert response['Metadata'] == metadata
+    assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(get_headers))
     client.meta.events.register('before-call.s3.GetObject', lf)
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 
 @attr(resource='object')
@@ -11254,7 +11249,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     ('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
     get_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
@@ -11265,7 +11260,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     client.meta.events.register('before-call.s3.GetObject', lf)
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(assertion='success')
 @attr('encryption')
@@ -11292,7 +11287,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
 
     response = client.get_object(Bucket=bucket_name, Key='testobj')
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 
 
@@ -11323,14 +11318,14 @@ def test_sse_kms_method_head():
     client.put_object(Bucket=bucket_name, Key=key, Body=data)
 
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'aws:kms'
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'] == kms_keyid
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_kms_client_headers))
     client.meta.events.register('before-call.s3.HeadObject', lf)
     e = assert_raises(ClientError, client.head_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -11357,7 +11352,7 @@ def test_sse_kms_present():
 
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 @attr(resource='object')
 @attr(method='put')
@@ -11400,7 +11395,7 @@ def test_sse_kms_not_declared():
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -11434,22 +11429,22 @@ def test_sse_kms_multipart_upload():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
-    eq(rgw_object_count, 1)
+    assert rgw_object_count == 1
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
-    eq(rgw_bytes_used, objlen)
+    assert rgw_bytes_used == objlen
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(part_headers))
     client.meta.events.register('before-call.s3.UploadPart', lf)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
 
-    eq(response['Metadata'], metadata)
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], content_type)
+    assert response['Metadata'] == metadata
+    assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
 
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
     size = response['ContentLength']
-    eq(len(body), size)
+    assert len(body) == size
 
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
@@ -11566,11 +11561,11 @@ def test_sse_kms_post_object_authenticated_request():
     ('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='put')
@@ -11654,7 +11649,7 @@ def test_sse_kms_read_declare():
 
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -11688,7 +11683,7 @@ def test_bucket_policy():
 
     alt_client = get_alt_client()
     response = alt_client.list_objects(Bucket=bucket_name)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr('bucket-policy')
 @pytest.mark.bucket_policy
@@ -11720,7 +11715,7 @@ def test_bucketv2_policy():
 
     alt_client = get_alt_client()
     response = alt_client.list_objects_v2(Bucket=bucket_name)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -11756,8 +11751,8 @@ def test_bucket_policy_acl():
     alt_client = get_alt_client()
     e = assert_raises(ClientError, alt_client.list_objects, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
@@ -11798,8 +11793,8 @@ def test_bucketv2_policy_acl():
     alt_client = get_alt_client()
     e = assert_raises(ClientError, alt_client.list_objects_v2, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
@@ -11852,7 +11847,7 @@ def test_bucket_policy_different_tenant():
     #alt_client = get_alt_client()
     #response = alt_client.list_objects(Bucket=bucket_name)
 
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -11904,7 +11899,7 @@ def test_bucketv2_policy_different_tenant():
     #alt_client = get_alt_client()
     #response = alt_client.list_objects_v2(Bucket=bucket_name)
 
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -11942,11 +11937,11 @@ def test_bucket_policy_another_bucket():
 
     alt_client = get_alt_client()
     response = alt_client.list_objects(Bucket=bucket_name)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
     alt_client = get_alt_client()
     response = alt_client.list_objects(Bucket=bucket_name2)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -11986,11 +11981,11 @@ def test_bucketv2_policy_another_bucket():
 
     alt_client = get_alt_client()
     response = alt_client.list_objects_v2(Bucket=bucket_name)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
     alt_client = get_alt_client()
     response = alt_client.list_objects_v2(Bucket=bucket_name2)
-    eq(len(response['Contents']), 1)
+    assert len(response['Contents']) == 1
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -12030,7 +12025,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     client.meta.events.register('before-call.s3.GetObject', lf)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     request_headers={'referer': 'http://www.example.com/index.html'}
 
@@ -12038,11 +12033,11 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     client.meta.events.register('before-call.s3.GetObject', lf)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # the 'referer' headers need to be removed for this one
     #response = client.get_object(Bucket=bucket_name, Key=key)
-    #eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    #assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     request_headers={'referer': 'http://example.com'}
 
@@ -12052,7 +12047,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     # TODO: Compare Requests sent in Boto3, Wireshark, RGW Log for both boto and boto3
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     response =  client.get_bucket_policy(Bucket=bucket_name)
     print(response)
@@ -12083,10 +12078,10 @@ def test_get_obj_tagging():
 
     input_tagset = _create_simple_tagset(2)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
 
 @attr(resource='object')
@@ -12103,11 +12098,11 @@ def test_get_obj_head_tagging():
 
     input_tagset = _create_simple_tagset(count)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-tagging-count'], str(count))
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-tagging-count'] == str(count)
 
 @attr(resource='object')
 @attr(method='get')
@@ -12124,10 +12119,10 @@ def test_put_max_tags():
 
     input_tagset = _create_simple_tagset(10)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
 @attr(resource='object')
 @attr(method='get')
@@ -12143,11 +12138,11 @@ def test_put_excess_tags():
     input_tagset = _create_simple_tagset(11)
     e = assert_raises(ClientError, client.put_object_tagging, Bucket=bucket_name, Key=key, Tagging=input_tagset)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidTag')
+    assert status == 400
+    assert error_code == 'InvalidTag'
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(len(response['TagSet']), 0)
+    assert len(response['TagSet']) == 0
 
 @attr(resource='object')
 @attr(method='get')
@@ -12169,11 +12164,11 @@ def test_put_max_kvsize_tags():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     for kv_pair in response['TagSet']:
-        eq((kv_pair in input_tagset['TagSet']), True)
+        assert kv_pair in input_tagset['TagSet']
 
 @attr(resource='object')
 @attr(method='get')
@@ -12196,11 +12191,11 @@ def test_put_excess_key_tags():
 
     e = assert_raises(ClientError, client.put_object_tagging, Bucket=bucket_name, Key=key, Tagging=input_tagset)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidTag')
+    assert status == 400
+    assert error_code == 'InvalidTag'
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(len(response['TagSet']), 0)
+    assert len(response['TagSet']) == 0
 
 @attr(resource='object')
 @attr(method='get')
@@ -12223,11 +12218,11 @@ def test_put_excess_val_tags():
 
     e = assert_raises(ClientError, client.put_object_tagging, Bucket=bucket_name, Key=key, Tagging=input_tagset)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidTag')
+    assert status == 400
+    assert error_code == 'InvalidTag'
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(len(response['TagSet']), 0)
+    assert len(response['TagSet']) == 0
 
 @attr(resource='object')
 @attr(method='get')
@@ -12249,10 +12244,10 @@ def test_put_modify_tags():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
     tagset2 = []
     tagset2.append({'Key': 'key3', 'Value': 'val3'})
@@ -12260,10 +12255,10 @@ def test_put_modify_tags():
     input_tagset2 = {'TagSet': tagset2}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset2)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset2['TagSet'])
+    assert response['TagSet'] == input_tagset2['TagSet']
 
 @attr(resource='object')
 @attr(method='get')
@@ -12280,16 +12275,16 @@ def test_put_delete_tags():
 
     input_tagset = _create_simple_tagset(2)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
     response = client.delete_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(len(response['TagSet']), 0)
+    assert len(response['TagSet']) == 0
 
 @attr(resource='object')
 @attr(method='post')
@@ -12321,13 +12316,13 @@ def test_post_object_tags_anonymous_request():
     ])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key=key_name)
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key_name)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
 @attr(resource='object')
 @attr(method='post')
@@ -12374,10 +12369,10 @@ def test_post_object_tags_authenticated_request():
         ('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    eq(r.status_code, 204)
+    assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 
 @attr(resource='object')
@@ -12408,12 +12403,12 @@ def test_put_obj_with_tags():
     client.put_object(Bucket=bucket_name, Key=key, Body=data)
     response = client.get_object(Bucket=bucket_name, Key=key)
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     response_tagset = response['TagSet']
     tagset = tagset
-    eq(response_tagset, tagset)
+    assert response_tagset == tagset
 
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
@@ -12441,12 +12436,12 @@ def test_get_tags_acl_public():
 
     input_tagset = _create_simple_tagset(10)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
 
     response = alt_client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
 @attr(resource='object')
 @attr(method='get')
@@ -12472,10 +12467,10 @@ def test_put_tags_acl_public():
     input_tagset = _create_simple_tagset(10)
     alt_client = get_alt_client()
     response = alt_client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['TagSet'], input_tagset['TagSet'])
+    assert response['TagSet'] == input_tagset['TagSet']
 
 @attr(resource='object')
 @attr(method='get')
@@ -12498,15 +12493,15 @@ def test_delete_tags_obj_public():
 
     input_tagset = _create_simple_tagset(10)
     response = client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
 
     response = alt_client.delete_object_tagging(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
-    eq(len(response['TagSet']), 0)
+    assert len(response['TagSet']) == 0
 
 @attr(resource='object')
 @attr(method='put')
@@ -12526,21 +12521,21 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
     for version in versions:
-        eq(version['VersionId'], version_id)
+        assert version['VersionId'] == version_id
 
 
     # for versioning-default-bucket, no version-id should return.
     bucket_name = get_new_bucket()
     key = 'baz'
     response = client.put_object(Bucket=bucket_name, Key=key)
-    eq(('VersionId' in response), False)
+    assert not 'VersionId' in response
 
     # for versioning-suspended-bucket, no version-id should return.
     bucket_name = get_new_bucket()
     key = 'baz'
     check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
     response = client.put_object(Bucket=bucket_name, Key=key)
-    eq(('VersionId' in response), False)
+    assert not 'VersionId' in response
 
 @attr(resource='object')
 @attr(method='put')
@@ -12567,7 +12562,7 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     response  = client.list_object_versions(Bucket=bucket_name)
     versions = response['Versions']
     for version in versions:
-        eq(version['VersionId'], version_id)
+        assert version['VersionId'] == version_id
 
     # for versioning-default-bucket, no version-id should return.
     bucket_name = get_new_bucket()
@@ -12576,7 +12571,7 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, client=client, content_type=content_type, metadata=metadata)
 
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    eq(('VersionId' in response), False)
+    assert not 'VersionId' in response
 
     # for versioning-suspended-bucket, no version-id should return
     bucket_name = get_new_bucket()
@@ -12586,7 +12581,7 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, client=client, content_type=content_type, metadata=metadata)
 
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    eq(('VersionId' in response), False)
+    assert not 'VersionId' in response
 
 @attr(resource='object')
 @attr(method='get')
@@ -12620,7 +12615,7 @@ def test_bucket_policy_get_obj_existing_tag():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset2 = []
     tagset2.append({'Key': 'security', 'Value': 'private'})
@@ -12628,7 +12623,7 @@ def test_bucket_policy_get_obj_existing_tag():
     input_tagset = {'TagSet': tagset2}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='privatetag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset3 = []
     tagset3.append({'Key': 'security1', 'Value': 'public'})
@@ -12636,19 +12631,19 @@ def test_bucket_policy_get_obj_existing_tag():
     input_tagset = {'TagSet': tagset3}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='invalidtag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
     response = alt_client.get_object(Bucket=bucket_name, Key='publictag')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     e = assert_raises(ClientError, alt_client.get_object, Bucket=bucket_name, Key='privatetag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, alt_client.get_object, Bucket=bucket_name, Key='invalidtag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 @attr(resource='object')
 @attr(method='get')
@@ -12682,7 +12677,7 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset2 = []
     tagset2.append({'Key': 'security', 'Value': 'private'})
@@ -12690,7 +12685,7 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
     input_tagset = {'TagSet': tagset2}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='privatetag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset3 = []
     tagset3.append({'Key': 'security1', 'Value': 'public'})
@@ -12698,25 +12693,25 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
     input_tagset = {'TagSet': tagset3}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='invalidtag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
     response = alt_client.get_object_tagging(Bucket=bucket_name, Key='publictag')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # A get object itself should fail since we allowed only GetObjectTagging
     e = assert_raises(ClientError, alt_client.get_object, Bucket=bucket_name, Key='publictag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, alt_client.get_object_tagging, Bucket=bucket_name, Key='privatetag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
     e = assert_raises(ClientError, alt_client.get_object_tagging, Bucket=bucket_name, Key='invalidtag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='object')
@@ -12751,7 +12746,7 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset2 = []
     tagset2.append({'Key': 'security', 'Value': 'private'})
@@ -12759,7 +12754,7 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     input_tagset = {'TagSet': tagset2}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='privatetag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
     # PUT requests with object tagging are a bit wierd, if you forget to put
@@ -12773,11 +12768,11 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     input_tagset = {'TagSet': testtagset1}
 
     response = alt_client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     e = assert_raises(ClientError, alt_client.put_object_tagging, Bucket=bucket_name, Key='privatetag', Tagging=input_tagset)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     testtagset2 = []
     testtagset2.append({'Key': 'security', 'Value': 'private'})
@@ -12785,14 +12780,14 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     input_tagset = {'TagSet': testtagset2}
 
     response = alt_client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # Now try putting the original tags again, this should fail
     input_tagset = {'TagSet': testtagset1}
 
     e = assert_raises(ClientError, alt_client.put_object_tagging, Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='object')
@@ -12837,14 +12832,14 @@ def test_bucket_policy_put_obj_copy_source():
     # policy on how to do this right
     response = alt_client.get_object(Bucket=bucket_name2, Key='new_foo')
     body = _get_body(response)
-    eq(body, 'public/foo')
+    assert body == 'public/foo'
 
     copy_source = {'Bucket': bucket_name, 'Key': 'public/bar'}
     alt_client.copy_object(Bucket=bucket_name2, CopySource=copy_source, Key='new_foo2')
 
     response = alt_client.get_object(Bucket=bucket_name2, Key='new_foo2')
     body = _get_body(response)
-    eq(body, 'public/bar')
+    assert body == 'public/bar'
 
     copy_source = {'Bucket': bucket_name, 'Key': 'private/foo'}
     check_access_denied(alt_client.copy_object, Bucket=bucket_name2, CopySource=copy_source, Key='new_foo2')
@@ -12894,7 +12889,7 @@ def test_bucket_policy_put_obj_copy_source_meta():
     # policy on how to do this right
     response = alt_client.get_object(Bucket=bucket_name, Key='new_foo')
     body = _get_body(response)
-    eq(body, 'public/foo')
+    assert body == 'public/foo'
 
     # remove the x-amz-metadata-directive header
     def remove_header(**kwargs):
@@ -12942,7 +12937,7 @@ def test_bucket_policy_put_obj_acl():
     # as an ERROR anyway
     response = alt_client.put_object(Bucket=bucket_name, Key=key1, Body=key1)
     #response = alt_client.put_object_acl(Bucket=bucket_name, Key=key1, ACL='private')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     key2 = 'public-key'
 
@@ -12951,7 +12946,7 @@ def test_bucket_policy_put_obj_acl():
 
     e = assert_raises(ClientError, alt_client.put_object, Bucket=bucket_name, Key=key2, Body=key2)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='object')
@@ -12997,7 +12992,7 @@ def test_bucket_policy_put_obj_grant():
     alt_client.meta.events.register('before-call.s3.PutObject', lf)
 
     response = alt_client.put_object(Bucket=bucket_name, Key=key1, Body=key1)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     def remove_header(**kwargs):
         if ("x-amz-grant-full-control" in kwargs['params']['headers']):
@@ -13007,7 +13002,7 @@ def test_bucket_policy_put_obj_grant():
 
     key2 = 'key2'
     response = alt_client.put_object(Bucket=bucket_name2, Key=key2, Body=key2)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     acl1_response = client.get_object_acl(Bucket=bucket_name, Key=key1)
 
@@ -13017,8 +13012,8 @@ def test_bucket_policy_put_obj_grant():
 
     acl2_response = alt_client.get_object_acl(Bucket=bucket_name2, Key=key2)
 
-    eq(acl1_response['Grants'][0]['Grantee']['ID'], main_user_id)
-    eq(acl2_response['Grants'][0]['Grantee']['ID'], alt_user_id)
+    assert acl1_response['Grants'][0]['Grantee']['ID'] == main_user_id
+    assert acl2_response['Grants'][0]['Grantee']['ID'] == alt_user_id
 
 
 @attr(resource='object')
@@ -13046,8 +13041,8 @@ def test_put_obj_enc_conflict_c_s3():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='object')
 @attr(method='put')
@@ -13078,8 +13073,8 @@ def test_put_obj_enc_conflict_c_kms():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='object')
 @attr(method='put')
@@ -13107,8 +13102,8 @@ def test_put_obj_enc_conflict_s3_kms():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='object')
 @attr(method='put')
@@ -13135,8 +13130,8 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidArgument')
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @attr(resource='object')
 @attr(method='put')
@@ -13193,7 +13188,7 @@ def test_bucket_policy_put_obj_s3_noenc():
     # first validate that writing a sse-s3 object works
     response = client.put_object(Bucket=bucket_name, Key=key1_str, ServerSideEncryption='AES256')
     response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption']
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     # then validate that a non-encrypted object fails.
     # (this also breaks the connection--non-sse bug, probably because the server
@@ -13302,8 +13297,8 @@ def test_bucket_policy_put_obj_kms_noenc():
     #  breaks next call...
     response = client.put_object(Bucket=bucket_name, Key=key1_str,
          ServerSideEncryption='aws:kms', SSEKMSKeyId=kms_keyid)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'aws:kms'
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'] == kms_keyid
 
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key2_str, Body=key2_str)
 
@@ -13423,7 +13418,7 @@ def test_bucket_policy_get_obj_acl_existing_tag():
     input_tagset = {'TagSet': tagset}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='publictag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset2 = []
     tagset2.append({'Key': 'security', 'Value': 'private'})
@@ -13431,7 +13426,7 @@ def test_bucket_policy_get_obj_acl_existing_tag():
     input_tagset = {'TagSet': tagset2}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='privatetag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     tagset3 = []
     tagset3.append({'Key': 'security1', 'Value': 'public'})
@@ -13439,24 +13434,24 @@ def test_bucket_policy_get_obj_acl_existing_tag():
     input_tagset = {'TagSet': tagset3}
 
     response = client.put_object_tagging(Bucket=bucket_name, Key='invalidtag', Tagging=input_tagset)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     alt_client = get_alt_client()
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='publictag')
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # A get object itself should fail since we allowed only GetObjectTagging
     e = assert_raises(ClientError, alt_client.get_object, Bucket=bucket_name, Key='publictag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, alt_client.get_object_tagging, Bucket=bucket_name, Key='privatetag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, alt_client.get_object_tagging, Bucket=bucket_name, Key='invalidtag')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='bucket')
@@ -13480,7 +13475,7 @@ def test_object_lock_put_obj_lock():
     response = client.put_object_lock_configuration(
         Bucket=bucket_name,
         ObjectLockConfiguration=conf)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
@@ -13492,10 +13487,10 @@ def test_object_lock_put_obj_lock():
     response = client.put_object_lock_configuration(
         Bucket=bucket_name,
         ObjectLockConfiguration=conf)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response = client.get_bucket_versioning(Bucket=bucket_name)
-    eq(response['Status'], 'Enabled')
+    assert response['Status'] == 'Enabled'
 
 
 @attr(resource='bucket')
@@ -13516,8 +13511,8 @@ def test_object_lock_put_obj_lock_invalid_bucket():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'InvalidBucketState')
+    assert status == 409
+    assert error_code == 'InvalidBucketState'
 
 
 @attr(resource='bucket')
@@ -13541,8 +13536,8 @@ def test_object_lock_put_obj_lock_with_days_and_years():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 
 @attr(resource='bucket')
@@ -13565,8 +13560,8 @@ def test_object_lock_put_obj_lock_invalid_days():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRetentionPeriod')
+    assert status == 400
+    assert error_code == 'InvalidRetentionPeriod'
 
 
 @attr(resource='bucket')
@@ -13589,8 +13584,8 @@ def test_object_lock_put_obj_lock_invalid_years():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRetentionPeriod')
+    assert status == 400
+    assert error_code == 'InvalidRetentionPeriod'
 
 
 @attr(resource='bucket')
@@ -13613,8 +13608,8 @@ def test_object_lock_put_obj_lock_invalid_mode():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
@@ -13625,8 +13620,8 @@ def test_object_lock_put_obj_lock_invalid_mode():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 
 attr(resource='bucket')
@@ -13649,8 +13644,8 @@ def test_object_lock_put_obj_lock_invalid_status():
             }}
     e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 
 attr(resource='bucket')
@@ -13666,8 +13661,8 @@ def test_object_lock_suspend_versioning():
     client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     e = assert_raises(ClientError, client.put_bucket_versioning, Bucket=bucket_name, VersioningConfiguration={'Status': 'Suspended'})
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 409)
-    eq(error_code, 'InvalidBucketState')
+    assert status == 409
+    assert error_code == 'InvalidBucketState'
 
 
 @attr(resource='bucket')
@@ -13692,7 +13687,7 @@ def test_object_lock_get_obj_lock():
         Bucket=bucket_name,
         ObjectLockConfiguration=conf)
     response = client.get_object_lock_configuration(Bucket=bucket_name)
-    eq(response['ObjectLockConfiguration'], conf)
+    assert response['ObjectLockConfiguration'] == conf
 
 
 @attr(resource='bucket')
@@ -13706,8 +13701,8 @@ def test_object_lock_get_obj_lock_invalid_bucket():
     client.create_bucket(Bucket=bucket_name)
     e = assert_raises(ClientError, client.get_object_lock_configuration, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 404)
-    eq(error_code, 'ObjectLockConfigurationNotFoundError')
+    assert status == 404
+    assert error_code == 'ObjectLockConfigurationNotFoundError'
 
 
 @attr(resource='bucket')
@@ -13726,7 +13721,7 @@ def test_object_lock_put_obj_retention():
     version_id = response['VersionId']
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     response = client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13745,8 +13740,8 @@ def test_object_lock_put_obj_retention_invalid_bucket():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    assert status == 400
+    assert error_code == 'InvalidRequest'
 
 
 @attr(resource='bucket')
@@ -13765,14 +13760,14 @@ def test_object_lock_put_obj_retention_invalid_mode():
     retention = {'Mode':'governance', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
     retention = {'Mode':'abc', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 
 @attr(resource='bucket')
@@ -13792,7 +13787,7 @@ def test_object_lock_get_obj_retention():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     response = client.get_object_retention(Bucket=bucket_name, Key=key)
-    eq(response['Retention'], retention)
+    assert response['Retention'] == retention
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13833,8 +13828,8 @@ def test_object_lock_get_obj_retention_invalid_bucket():
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     e = assert_raises(ClientError, client.get_object_retention, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    assert status == 400
+    assert error_code == 'InvalidRequest'
 
 
 @attr(resource='bucket')
@@ -13855,7 +13850,7 @@ def test_object_lock_put_obj_retention_versionid():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, VersionId=version_id, Retention=retention)
     response = client.get_object_retention(Bucket=bucket_name, Key=key, VersionId=version_id)
-    eq(response['Retention'], retention)
+    assert response['Retention'] == retention
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13886,7 +13881,7 @@ def test_object_lock_put_obj_retention_override_default_retention():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     response = client.get_object_retention(Bucket=bucket_name, Key=key)
-    eq(response['Retention'], retention)
+    assert response['Retention'] == retention
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13909,7 +13904,7 @@ def test_object_lock_put_obj_retention_increase_period():
     retention2 = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,3,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention2)
     response = client.get_object_retention(Bucket=bucket_name, Key=key)
-    eq(response['Retention'], retention2)
+    assert response['Retention'] == retention2
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13932,8 +13927,8 @@ def test_object_lock_put_obj_retention_shorten_period():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13956,7 +13951,7 @@ def test_object_lock_put_obj_retention_shorten_period_bypass():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
     response = client.get_object_retention(Bucket=bucket_name, Key=key)
-    eq(response['Retention'], retention)
+    assert response['Retention'] == retention
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
@@ -13978,11 +13973,11 @@ def test_object_lock_delete_object_with_retention():
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @attr(resource='bucket')
 @attr(method='delete')
@@ -14003,17 +13998,17 @@ def test_object_lock_delete_object_with_retention_and_marker():
     del_response = client.delete_object(Bucket=bucket_name, Key=key)
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=del_response['VersionId'])
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @attr(resource='object')
 @attr(method='delete')
@@ -14055,17 +14050,17 @@ def test_object_lock_multi_delete_object_with_retention():
         }
     )
 
-    eq(len(delete_response['Deleted']), 1)
-    eq(len(delete_response['Errors']), 1)
+    assert len(delete_response['Deleted']) == 1
+    assert len(delete_response['Errors']) == 1
     
     failed_object = delete_response['Errors'][0]
-    eq(failed_object['Code'], 'AccessDenied')
-    eq(failed_object['Key'], key1)
-    eq(failed_object['VersionId'], versionId1)
+    assert failed_object['Code'] == 'AccessDenied'
+    assert failed_object['Key'] == key1
+    assert failed_object['VersionId'] == versionId1
 
     deleted_object = delete_response['Deleted'][0]
-    eq(deleted_object['Key'], key2)
-    eq(deleted_object['VersionId'], versionId2)
+    assert deleted_object['Key'] == key2
+    assert deleted_object['VersionId'] == versionId2
 
     delete_response = client.delete_objects(
         Bucket=bucket_name,
@@ -14081,10 +14076,10 @@ def test_object_lock_multi_delete_object_with_retention():
     )
 
     assert( ('Errors' not in delete_response) or (len(delete_response['Errors']) == 0) )
-    eq(len(delete_response['Deleted']), 1)
+    assert len(delete_response['Deleted']) == 1
     deleted_object = delete_response['Deleted'][0]
-    eq(deleted_object['Key'], key1)
-    eq(deleted_object['VersionId'], versionId1)
+    assert deleted_object['Key'] == key1
+    assert deleted_object['VersionId'] == versionId1
 
 
 
@@ -14103,9 +14098,9 @@ def test_object_lock_put_legal_hold():
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'ON'}
     response = client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold=legal_hold)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     response = client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
 @attr(resource='bucket')
@@ -14122,8 +14117,8 @@ def test_object_lock_put_legal_hold_invalid_bucket():
     legal_hold = {'Status': 'ON'}
     e = assert_raises(ClientError, client.put_object_legal_hold, Bucket=bucket_name, Key=key, LegalHold=legal_hold)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    assert status == 400
+    assert error_code == 'InvalidRequest'
 
 
 @attr(resource='bucket')
@@ -14142,8 +14137,8 @@ def test_object_lock_put_legal_hold_invalid_status():
     legal_hold = {'Status': 'abc'}
     e = assert_raises(ClientError, client.put_object_legal_hold, Bucket=bucket_name, Key=key, LegalHold=legal_hold)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'MalformedXML')
+    assert status == 400
+    assert error_code == 'MalformedXML'
 
 
 @attr(resource='bucket')
@@ -14162,11 +14157,11 @@ def test_object_lock_get_legal_hold():
     legal_hold = {'Status': 'ON'}
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold=legal_hold)
     response = client.get_object_legal_hold(Bucket=bucket_name, Key=key)
-    eq(response['LegalHold'], legal_hold)
+    assert response['LegalHold'] == legal_hold
     legal_hold_off = {'Status': 'OFF'}
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold=legal_hold_off)
     response = client.get_object_legal_hold(Bucket=bucket_name, Key=key)
-    eq(response['LegalHold'], legal_hold_off)
+    assert response['LegalHold'] == legal_hold_off
 
 
 @attr(resource='bucket')
@@ -14182,8 +14177,8 @@ def test_object_lock_get_legal_hold_invalid_bucket():
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     e = assert_raises(ClientError, client.get_object_legal_hold, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(error_code, 'InvalidRequest')
+    assert status == 400
+    assert error_code == 'InvalidRequest'
 
 
 @attr(resource='bucket')
@@ -14202,8 +14197,8 @@ def test_object_lock_delete_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status': 'ON'})
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 
@@ -14222,7 +14217,7 @@ def test_object_lock_delete_object_with_legal_hold_off():
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status': 'OFF'})
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 
 @attr(resource='bucket')
@@ -14243,9 +14238,9 @@ def test_object_lock_get_obj_metadata():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ObjectLockMode'], retention['Mode'])
-    eq(response['ObjectLockRetainUntilDate'], retention['RetainUntilDate'])
-    eq(response['ObjectLockLegalHoldStatus'], legal_hold['Status'])
+    assert response['ObjectLockMode'] == retention['Mode']
+    assert response['ObjectLockRetainUntilDate'] == retention['RetainUntilDate']
+    assert response['ObjectLockLegalHoldStatus'] == legal_hold['Status']
 
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
@@ -14267,9 +14262,9 @@ def test_object_lock_uploading_obj():
                       ObjectLockRetainUntilDate=datetime.datetime(2030,1,1,tzinfo=pytz.UTC), ObjectLockLegalHoldStatus='ON')
 
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ObjectLockMode'], 'GOVERNANCE')
-    eq(response['ObjectLockRetainUntilDate'], datetime.datetime(2030,1,1,tzinfo=pytz.UTC))
-    eq(response['ObjectLockLegalHoldStatus'], 'ON')
+    assert response['ObjectLockMode'] == 'GOVERNANCE'
+    assert response['ObjectLockRetainUntilDate'] == datetime.datetime(2030,1,1,tzinfo=pytz.UTC)
+    assert response['ObjectLockLegalHoldStatus'] == 'ON'
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
@@ -14313,8 +14308,8 @@ def test_object_lock_changing_mode_from_governance_without_bypass():
     retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='object')
 @attr(method='put')
@@ -14336,8 +14331,8 @@ def test_object_lock_changing_mode_from_compliance():
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':retain_until}
     e = assert_raises(ClientError, client.put_object_retention, Bucket=bucket_name, Key=key, Retention=retention)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
-    eq(error_code, 'AccessDenied')
+    assert status == 403
+    assert error_code == 'AccessDenied'
 
 @attr(resource='object')
 @attr(method='copy')
@@ -14353,7 +14348,7 @@ def test_copy_object_ifmatch_good():
     client.copy_object(Bucket=bucket_name, CopySource=bucket_name+'/foo', CopySourceIfMatch=resp['ETag'], Key='bar')
     response = client.get_object(Bucket=bucket_name, Key='bar')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='copy')
@@ -14369,8 +14364,8 @@ def test_copy_object_ifmatch_failed():
 
     e = assert_raises(ClientError, client.copy_object, Bucket=bucket_name, CopySource=bucket_name+'/foo', CopySourceIfMatch='ABCORZ', Key='bar')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
 @attr(resource='object')
 @attr(method='copy')
@@ -14386,8 +14381,8 @@ def test_copy_object_ifnonematch_good():
 
     e = assert_raises(ClientError, client.copy_object, Bucket=bucket_name, CopySource=bucket_name+'/foo', CopySourceIfNoneMatch=resp['ETag'], Key='bar')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 412)
-    eq(error_code, 'PreconditionFailed')
+    assert status == 412
+    assert error_code == 'PreconditionFailed'
 
 @attr(resource='object')
 @attr(method='copy')
@@ -14403,7 +14398,7 @@ def test_copy_object_ifnonematch_failed():
     client.copy_object(Bucket=bucket_name, CopySource=bucket_name+'/foo', CopySourceIfNoneMatch='ABCORZ', Key='bar')
     response = client.get_object(Bucket=bucket_name, Key='bar')
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='get')
@@ -14417,8 +14412,8 @@ def test_object_read_unreadable():
     client = get_client()
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='\xae\x8a-')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
-    eq(e.response['Error']['Message'], 'Couldn\'t parse the specified URI.')
+    assert status == 400
+    assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -14451,7 +14446,7 @@ def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],False)
+    assert resp['PolicyStatus']['IsPublic'] == False
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -14464,7 +14459,7 @@ def test_get_public_acl_bucket_policy_status():
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],True)
+    assert resp['PolicyStatus']['IsPublic'] == True
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -14477,7 +14472,7 @@ def test_get_authpublic_acl_bucket_policy_status():
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='authenticated-read')
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],True)
+    assert resp['PolicyStatus']['IsPublic'] == True
 
 
 @attr(resource='bucket')
@@ -14491,7 +14486,7 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],False)
+    assert resp['PolicyStatus']['IsPublic'] == False
 
     resource1 = "arn:aws:s3:::" + bucket_name
     resource2 = "arn:aws:s3:::" + bucket_name + "/*"
@@ -14511,7 +14506,7 @@ def test_get_publicpolicy_acl_bucket_policy_status():
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],True)
+    assert resp['PolicyStatus']['IsPublic'] == True
 
 
 @attr(resource='bucket')
@@ -14525,7 +14520,7 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],False)
+    assert resp['PolicyStatus']['IsPublic'] == False
 
     resource1 = "arn:aws:s3:::" + bucket_name
     resource2 = "arn:aws:s3:::" + bucket_name + "/*"
@@ -14549,7 +14544,7 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],False)
+    assert resp['PolicyStatus']['IsPublic'] == False
 
 
 @attr(resource='bucket')
@@ -14562,7 +14557,7 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
     client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],False)
+    assert resp['PolicyStatus']['IsPublic'] == False
 
     resource1 = "arn:aws:s3:::" + bucket_name
     resource2 = "arn:aws:s3:::" + bucket_name + "/*"
@@ -14582,7 +14577,7 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    eq(resp['PolicyStatus']['IsPublic'],True)
+    assert resp['PolicyStatus']['IsPublic'] == True
 
 @attr(resource='bucket')
 @attr(method='get')
@@ -14595,10 +14590,10 @@ def test_get_default_public_block():
     client = get_client()
 
     resp = client.get_public_access_block(Bucket=bucket_name)
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicAcls'], False)
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'], False)
-    eq(resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'], False)
-    eq(resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'], False)
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == False
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == False
+    assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == False
+    assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == False
 
 @attr(resource='bucket')
 @attr(method='put')
@@ -14618,10 +14613,10 @@ def test_put_public_block():
     client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
 
     resp = client.get_public_access_block(Bucket=bucket_name)
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicAcls'], access_conf['BlockPublicAcls'])
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'], access_conf['BlockPublicPolicy'])
-    eq(resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'], access_conf['IgnorePublicAcls'])
-    eq(resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'], access_conf['RestrictPublicBuckets'])
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == access_conf['BlockPublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == access_conf['BlockPublicPolicy']
+    assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == access_conf['IgnorePublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == access_conf['RestrictPublicBuckets']
 
 
 @attr(resource='bucket')
@@ -14642,20 +14637,20 @@ def test_block_public_put_bucket_acls():
     client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
 
     resp = client.get_public_access_block(Bucket=bucket_name)
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicAcls'], access_conf['BlockPublicAcls'])
-    eq(resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'], access_conf['BlockPublicPolicy'])
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == access_conf['BlockPublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == access_conf['BlockPublicPolicy']
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name,ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name,ACL='public-read-write')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, client.put_bucket_acl, Bucket=bucket_name,ACL='authenticated-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='bucket')
@@ -14675,21 +14670,21 @@ def test_block_public_object_canned_acls():
     client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
 
     # resp = client.get_public_access_block(Bucket=bucket_name)
-    # eq(resp['PublicAccessBlockConfiguration']['BlockPublicAcls'], access_conf['BlockPublicAcls'])
-    # eq(resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'], access_conf['BlockPublicPolicy'])
+    # assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == access_conf['BlockPublicAcls']
+    # assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == access_conf['BlockPublicPolicy']
 
     #FIXME: use empty body until #42208
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo1', Body='', ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo2', Body='', ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo3', Body='', ACL='authenticated-read')
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 403)
+    assert status == 403
 
 
 @attr(resource='bucket')
@@ -14730,7 +14725,7 @@ def test_ignore_public_acls():
 
     client.put_object(Bucket=bucket_name,Key='key1',Body='abcde',ACL='public-read')
     resp=alt_client.get_object(Bucket=bucket_name, Key='key1')
-    eq(_get_body(resp), 'abcde')
+    assert _get_body(resp) == 'abcde'
 
     access_conf = {'BlockPublicAcls': False,
                    'IgnorePublicAcls': True,
@@ -14774,7 +14769,7 @@ def test_multipart_upload_on_a_bucket_with_policy():
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, client=client)
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def _put_bucket_encryption_s3(client, bucket_name):
     """
@@ -14790,7 +14785,7 @@ def _put_bucket_encryption_s3(client, bucket_name):
         ]
     }
     response = client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def _put_bucket_encryption_kms(client, bucket_name):
     """
@@ -14810,7 +14805,7 @@ def _put_bucket_encryption_kms(client, bucket_name):
         ]
     }
     response = client.put_bucket_encryption(Bucket=bucket_name, ServerSideEncryptionConfiguration=server_side_encryption_conf)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
 @attr(resource='bucket')
@@ -14852,13 +14847,13 @@ def test_get_bucket_encryption_s3():
     except ClientError as e:
         response_code = e.response['Error']['Code']
 
-    eq(response_code, 'ServerSideEncryptionConfigurationNotFoundError')
+    assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
     _put_bucket_encryption_s3(client, bucket_name)
 
     response = client.get_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'], 'AES256')
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'] == 'AES256'
 
 
 @attr(resource='bucket')
@@ -14880,14 +14875,14 @@ def test_get_bucket_encryption_kms():
     except ClientError as e:
         response_code = e.response['Error']['Code']
 
-    eq(response_code, 'ServerSideEncryptionConfigurationNotFoundError')
+    assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
     _put_bucket_encryption_kms(client, bucket_name)
 
     response = client.get_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
-    eq(response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'], 'aws:kms')
-    eq(response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['KMSMasterKeyID'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'] == 'aws:kms'
+    assert response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['KMSMasterKeyID'] == kms_keyid
 
 
 @attr(resource='bucket')
@@ -14901,12 +14896,12 @@ def test_delete_bucket_encryption_s3():
     client = get_client()
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     _put_bucket_encryption_s3(client, bucket_name)
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     response_code = ""
     try:
@@ -14914,7 +14909,7 @@ def test_delete_bucket_encryption_s3():
     except ClientError as e:
         response_code = e.response['Error']['Code']
 
-    eq(response_code, 'ServerSideEncryptionConfigurationNotFoundError')
+    assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
 
 @attr(resource='bucket')
@@ -14928,12 +14923,12 @@ def test_delete_bucket_encryption_kms():
     client = get_client()
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     _put_bucket_encryption_kms(client, bucket_name)
 
     response = client.delete_bucket_encryption(Bucket=bucket_name)
-    eq(response['ResponseMetadata']['HTTPStatusCode'], 204)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
     response_code = ""
     try:
@@ -14941,7 +14936,7 @@ def test_delete_bucket_encryption_kms():
     except ClientError as e:
         response_code = e.response['Error']['Code']
 
-    eq(response_code, 'ServerSideEncryptionConfigurationNotFoundError')
+    assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
 def _test_sse_s3_default_upload(file_size):
     """
@@ -14955,12 +14950,12 @@ def _test_sse_s3_default_upload(file_size):
 
     data = 'A'*file_size
     response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     response = client.get_object(Bucket=bucket_name, Key='testobj')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 @attr(resource='object')
 @attr(method='put')
@@ -15037,14 +15032,14 @@ def _test_sse_kms_default_upload(file_size):
 
     data = 'A'*file_size
     response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'aws:kms'
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'] == kms_keyid
 
     response = client.get_object(Bucket=bucket_name, Key='testobj')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'aws:kms'
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'] == kms_keyid
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 @attr(resource='object')
 @attr(method='put')
@@ -15130,7 +15125,7 @@ def test_sse_s3_default_method_head():
     client.put_object(Bucket=bucket_name, Key=key, Body=data)
 
     response = client.head_object(Bucket=bucket_name, Key=key)
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     sse_s3_headers = {
         'x-amz-server-side-encryption': 'AES256',
@@ -15139,7 +15134,7 @@ def test_sse_s3_default_method_head():
     client.meta.events.register('before-call.s3.HeadObject', lf)
     e = assert_raises(ClientError, client.head_object, Bucket=bucket_name, Key=key)
     status, error_code = _get_status_and_error_code(e.response)
-    eq(status, 400)
+    assert status == 400
 
 @attr(resource='object')
 @attr(method='put')
@@ -15176,22 +15171,22 @@ def test_sse_s3_default_multipart_upload():
 
     response = client.head_bucket(Bucket=bucket_name)
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 1))
-    eq(rgw_object_count, 1)
+    assert rgw_object_count == 1
     rgw_bytes_used = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-bytes-used', objlen))
-    eq(rgw_bytes_used, objlen)
+    assert rgw_bytes_used == objlen
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(part_headers))
     client.meta.events.register('before-call.s3.UploadPart', lf)
 
     response = client.get_object(Bucket=bucket_name, Key=key)
 
-    eq(response['Metadata'], metadata)
-    eq(response['ResponseMetadata']['HTTPHeaders']['content-type'], content_type)
+    assert response['Metadata'] == metadata
+    assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
 
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
     size = response['ContentLength']
-    eq(len(body), size)
+    assert len(body) == size
 
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
@@ -15243,12 +15238,12 @@ def test_sse_s3_default_post_object_authenticated_request():
     ('file', ('bar'))])
 
     r = requests.post(url, files = payload)
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 @attr(resource='object')
 @attr(method='post')
@@ -15298,13 +15293,13 @@ def test_sse_kms_default_post_object_authenticated_request():
     ('file', ('bar'))])
 
     r = requests.post(url, files = payload)
-    eq(r.status_code, 204)
+    assert r.status_code == 204
 
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'aws:kms')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'], kms_keyid)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'aws:kms'
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption-aws-kms-key-id'] == kms_keyid
     body = _get_body(response)
-    eq(body, 'bar')
+    assert body == 'bar'
 
 
 def _test_sse_s3_encrypted_upload(file_size):
@@ -15316,12 +15311,12 @@ def _test_sse_s3_encrypted_upload(file_size):
 
     data = 'A'*file_size
     response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data, ServerSideEncryption='AES256')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     response = client.get_object(Bucket=bucket_name, Key='testobj')
-    eq(response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'], 'AES256')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
     body = _get_body(response)
-    eq(body, data)
+    assert body == data
 
 @attr(resource='object')
 @attr(method='put')
