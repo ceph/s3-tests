@@ -7,7 +7,6 @@ import datetime
 import time
 import email.utils
 import isodate
-import nose
 import pytest
 import operator
 import socket
@@ -27,8 +26,6 @@ import re
 
 from collections import defaultdict
 from urllib.parse import urlparse
-
-from nose.plugins.attrib import attr
 
 from . import utils
 from .utils import assert_raises
@@ -95,12 +92,7 @@ def _get_alt_connection():
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
 @pytest.mark.fails_with_subdomain
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/! in name')
-@attr(assertion='fails with subdomain')
 def test_bucket_create_naming_bad_punctuation():
     # characters other than [a-zA-Z0-9._-]
     check_bad_bucket_name('alpha!soup')
@@ -130,13 +122,7 @@ def check_configure_versioning_retry(bucket, status, expected_string):
 
     assert expected_string == read_status
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create versioned object, read not exist null version')
-@attr(assertion='read null version behaves correctly')
-@attr('versioning')
 @pytest.mark.versioning
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_versioning_obj_read_not_exist_null():
     bucket = get_new_bucket()
@@ -153,17 +139,9 @@ def test_versioning_obj_read_not_exist_null():
     key = bucket.get_key(objname, version_id='null')
     assert key == None
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='append object')
-@attr(assertion='success')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_with_subdomain')
 @pytest.mark.fails_with_subdomain
-@attr('appendobject')
 @pytest.mark.appendobject
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_append_object():
     bucket = get_new_bucket()
@@ -182,17 +160,9 @@ def test_append_object():
     key = bucket.get_key('foo')
     assert key.size == 6 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='append to normal object')
-@attr(assertion='fails 409')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_with_subdomain')
 @pytest.mark.fails_with_subdomain
-@attr('appendobject')
 @pytest.mark.appendobject
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_append_normal_object():
     bucket = get_new_bucket()
@@ -207,17 +177,9 @@ def test_append_normal_object():
     assert res.status == 409
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='append position not right')
-@attr(assertion='fails 409')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_with_subdomain')
 @pytest.mark.fails_with_subdomain
-@attr('appendobject')
 @pytest.mark.appendobject
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_append_object_position_wrong():
     bucket = get_new_bucket()
@@ -236,11 +198,6 @@ def test_append_object_position_wrong():
 
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
-@attr(resource='bucket.log')
-@attr(method='put')
-@attr(operation='set/enable/disable logging target')
-@attr(assertion='operations succeed')
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_logging_toggle():
     bucket = get_new_bucket()
@@ -418,14 +375,8 @@ def lc_transitions(transitions=None):
     return result
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test create object with storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_storage_class():
     sc = configured_storage_classes()
@@ -440,14 +391,8 @@ def test_object_storage_class():
 
         verify_object(bucket, k, data, storage_class)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test create multipart object with storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_storage_class_multipart():
     sc = configured_storage_classes()
@@ -485,27 +430,15 @@ def _do_test_object_modify_storage_class(obj_write_func, size):
             copy_object_storage_class(bucket, k, bucket, k, new_storage_class)
             verify_object(bucket, k, data, storage_class)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test changing objects storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_modify_storage_class():
     _do_test_object_modify_storage_class(_populate_key, size=9*1024*1024)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test changing objects storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_modify_storage_class_multipart():
     _do_test_object_modify_storage_class(_populate_multipart_key, size=11*1024*1024)
@@ -531,26 +464,14 @@ def _do_test_object_storage_class_copy(obj_write_func, size):
         copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, new_storage_class)
         verify_object(dest_bucket, dest_key, data, new_storage_class)
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='test copy object to object with different storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_storage_class_copy():
     _do_test_object_storage_class_copy(_populate_key, size=9*1024*1024)
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='test changing objects storage class')
-@attr('storage_class')
 @pytest.mark.storage_class
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_storage_class_copy_multipart():
     _do_test_object_storage_class_copy(_populate_multipart_key, size=9*1024*1024)
@@ -653,24 +574,12 @@ def _test_atomic_dual_conditional_write(file_size):
     # verify the file
     _verify_atomic_key_data(key, file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write one or the other')
-@attr(assertion='1MB successful')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_atomic_dual_conditional_write_1mb():
     _test_atomic_dual_conditional_write(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write file in deleted bucket')
-@attr(assertion='fail 404')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()
@@ -711,13 +620,7 @@ def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
 
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart upload with bad key for uploading chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket = get_new_bucket()
@@ -741,13 +644,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
                       metadata={'foo': 'bar'})
     assert e.status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart upload with bad md5 for chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket = get_new_bucket()
@@ -771,15 +668,8 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
                       metadata={'foo': 'bar'})
     assert e.status == 400
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy for a user belonging to a different tenant')
-@attr(assertion='succeeds')
-@attr('fails_with_subdomain')
 @pytest.mark.fails_with_subdomain
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_different_tenant():
     bucket = get_new_bucket()
@@ -815,12 +705,7 @@ def test_bucket_policy_different_tenant():
     b = new_conn.get_bucket(bucket_name)
     b.get_all_keys()
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put condition operator end with ifExists')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_set_condition_operator_end_with_IfExists():
     bucket = _create_keys(keys=['foo'])
@@ -856,15 +741,8 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='put obj with RequestObjectTag')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_request_obj_tag():
 

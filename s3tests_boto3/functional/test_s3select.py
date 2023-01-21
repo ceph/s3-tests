@@ -1,9 +1,7 @@
-import nose
 import pytest
 import random
 import string
 import re
-from nose.plugins.attrib import attr
 from botocore.exceptions import ClientError
 
 import uuid
@@ -78,13 +76,11 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         # both results should be close (epsilon)
         assert(  abs(float(res.split("\n")[1]) - eval(e)) < epsilon )
 
-@attr('s3select')
 @pytest.mark.s3select
 def get_random_string():
 
     return uuid.uuid4().hex[:6].upper()
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_generate_where_clause():
 
@@ -97,7 +93,6 @@ def test_generate_where_clause():
     for _ in range(100): 
         generate_s3select_where_clause(bucket_name,obj_name)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_generate_projection():
 
@@ -313,7 +308,6 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
 
     return list_of_int
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_count_operation():
     csv_obj_name = get_random_string()
@@ -325,7 +319,6 @@ def test_count_operation():
 
     s3select_assert_result( num_of_rows, int( res ))
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_column_sum_min_max():
     csv_obj = create_random_csv_object(10000,10)
@@ -391,7 +384,6 @@ def test_column_sum_min_max():
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_nullif_expressions():
 
@@ -447,7 +439,6 @@ def test_nullif_expressions():
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_nulliftrue_expressions():
 
@@ -475,7 +466,6 @@ def test_nulliftrue_expressions():
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_is_not_null_expressions():
 
@@ -497,7 +487,6 @@ def test_is_not_null_expressions():
 
     s3select_assert_result( res_s3select_null, res_s3select)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_lowerupper_expressions():
 
@@ -515,7 +504,6 @@ def test_lowerupper_expressions():
 
     s3select_assert_result( res_s3select, "AB12CD$$")
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_in_expressions():
 
@@ -586,7 +574,6 @@ def test_in_expressions():
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_true_false_in_expressions():
 
@@ -632,7 +619,6 @@ def test_true_false_in_expressions():
 
     s3select_assert_result( res_s3select_in, res_s3select )  
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_like_expressions():
 
@@ -720,7 +706,6 @@ def test_like_expressions():
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_truefalselike_expressions():
 
@@ -766,7 +751,6 @@ def test_truefalselike_expressions():
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_nullif_expressions():
 
@@ -794,7 +778,6 @@ def test_nullif_expressions():
 
     assert res_s3select_nullif == res_s3select
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_lowerupper_expressions():
 
@@ -812,7 +795,6 @@ def test_lowerupper_expressions():
 
     assert res_s3select == "AB12CD$$"
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_in_expressions():
 
@@ -853,7 +835,6 @@ def test_in_expressions():
 
     assert res_s3select_in == res_s3select 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_like_expressions():
 
@@ -900,7 +881,6 @@ def test_like_expressions():
     assert res_s3select_in == res_s3select 
 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_complex_expressions():
 
@@ -933,7 +913,6 @@ def test_complex_expressions():
 
     s3select_assert_result( res_s3select_between_numbers, res_s3select_eq_modolu)
     
-@attr('s3select')
 @pytest.mark.s3select
 def test_alias():
 
@@ -955,7 +934,6 @@ def test_alias():
     s3select_assert_result( res_s3select_alias, res_s3select_no_alias)
 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_alias_cyclic_refernce():
 
@@ -974,7 +952,6 @@ def test_alias_cyclic_refernce():
     
     assert int(find_res) >= 0 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_datetime():
 
@@ -1006,7 +983,6 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time_to_timestamp, res_s3select_substring)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_true_false_datetime():
 
@@ -1041,7 +1017,6 @@ def test_true_false_datetime():
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_csv_parser():
 
@@ -1082,7 +1057,6 @@ def test_csv_parser():
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from s3object;")  ).replace("\n","")
     s3select_assert_result( res_s3select_alias, 'null')
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_csv_definition():
 
@@ -1113,7 +1087,6 @@ def test_csv_definition():
     s3select_assert_result( res_s3select, __res )
 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_schema_definition():
 
@@ -1149,7 +1122,6 @@ def test_schema_definition():
 
     assert ((res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias"))  >= 0)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_when_then_else_expressions():
 
@@ -1179,7 +1151,6 @@ def test_when_then_else_expressions():
 
     s3select_assert_result( str(count3) , res2)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_coalesce_expressions():
 
@@ -1202,7 +1173,6 @@ def test_coalesce_expressions():
     s3select_assert_result( res_s3select, res_coalesce)
 
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_cast_expressions():
 
@@ -1224,7 +1194,6 @@ def test_cast_expressions():
 
     s3select_assert_result( res_s3select, res)
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_version():
 
@@ -1243,7 +1212,6 @@ def test_version():
 
     s3select_assert_result( res_version, "41.a," )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_trim_expressions():
 
@@ -1283,7 +1251,6 @@ def test_trim_expressions():
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_truefalse_trim_expressions():
 
@@ -1323,7 +1290,6 @@ def test_truefalse_trim_expressions():
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_escape_expressions():
 
@@ -1345,7 +1311,6 @@ def test_escape_expressions():
 
     s3select_assert_result( res_s3select_escape, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_case_value_expressions():
 
@@ -1361,7 +1326,6 @@ def test_case_value_expressions():
 
     s3select_assert_result( res_s3select_case, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_bool_cast_expressions():
 
@@ -1377,7 +1341,6 @@ def test_bool_cast_expressions():
 
     s3select_assert_result( res_s3select_cast, res_s3select )
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_progress_expressions():
 
@@ -1405,7 +1368,6 @@ def test_progress_expressions():
     # end response
     s3select_assert_result({}, res_s3select_response[total_response-1])
 
-@attr('s3select')
 @pytest.mark.s3select
 def test_output_serial_expressions():
     return # TODO fix test

@@ -2,7 +2,6 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
-from nose.plugins.attrib import attr
 import isodate
 import email.utils
 import datetime
@@ -18,7 +17,6 @@ import hashlib
 import xml.etree.ElementTree as ET
 import time
 import operator
-import nose
 import pytest
 import os
 import string
@@ -94,20 +92,11 @@ def _bucket_is_empty(bucket):
         break
     return is_empty
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='empty buckets return no contents')
 def test_bucket_list_empty():
     bucket = get_new_bucket_resource()
     is_empty = _bucket_is_empty(bucket)
     assert is_empty == True
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='distinct buckets have different contents')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_list_distinct():
     bucket1 = get_new_bucket_resource()
@@ -151,11 +140,6 @@ def _get_prefixes(response):
         prefixes = [prefix['Prefix'] for prefix in prefix_list]
     return prefixes
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='pagination w/max_keys=2, no marker')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_many():
     bucket_name = _create_objects(keys=['foo', 'bar', 'baz'])
@@ -173,13 +157,7 @@ def test_bucket_list_many():
     assert response['IsTruncated'] == False
     assert keys == ['foo']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='pagination w/max_keys=2, no marker')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_many():
     bucket_name = _create_objects(keys=['foo', 'bar', 'baz'])
@@ -197,11 +175,6 @@ def test_bucket_listv2_many():
     assert response['IsTruncated'] == False
     assert keys == ['foo']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='keycount in listobjectsv2')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_basic_key_count():
     client = get_client()
@@ -213,10 +186,6 @@ def test_basic_key_count():
     response1 = client.list_objects_v2(Bucket=bucket_name)
     assert response1['KeyCount'] == 5
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes in multi-component object names')
 def test_bucket_list_delimiter_basic():
     bucket_name = _create_objects(keys=['foo/bar', 'foo/bar/xyzzy', 'quux/thud', 'asdf'])
     client = get_client()
@@ -230,11 +199,6 @@ def test_bucket_list_delimiter_basic():
     assert len(prefixes) == 2
     assert prefixes == ['foo/', 'quux/']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes in multi-component object names')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_basic():
     bucket_name = _create_objects(keys=['foo/bar', 'foo/bar/xyzzy', 'quux/thud', 'asdf'])
@@ -251,11 +215,6 @@ def test_bucket_listv2_delimiter_basic():
     assert response['KeyCount'] == len(prefixes) + len(keys)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='test url encoding')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_encoding_basic():
     bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
@@ -270,11 +229,6 @@ def test_bucket_listv2_encoding_basic():
     assert len(prefixes) == 3
     assert prefixes == ['foo%2B1/', 'foo/', 'quux%20ab/']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='test url encoding')
-@attr('list-objects')
 def test_bucket_list_encoding_basic():
     bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
     client = get_client()
@@ -336,11 +290,6 @@ def validate_bucket_listv2(bucket_name, prefix, delimiter, continuation_token, m
 
     return response['NextContinuationToken']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes in multi-component object names')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_delimiter_prefix():
     bucket_name = _create_objects(keys=['asdf', 'boo/bar', 'boo/baz/xyzzy', 'cquux/thud', 'cquux/bla'])
@@ -363,13 +312,7 @@ def test_bucket_list_delimiter_prefix():
 
     marker = validate_bucket_list(bucket_name, prefix, delim, '', 2, False, ['boo/bar'], ['boo/baz/'], None)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes in multi-component object names')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_delimiter_prefix():
     bucket_name = _create_objects(keys=['asdf', 'boo/bar', 'boo/baz/xyzzy', 'cquux/thud', 'cquux/bla'])
@@ -393,28 +336,15 @@ def test_bucket_listv2_delimiter_prefix():
     continuation_token = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, False, ['boo/bar'], ['boo/baz/'], last=True)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefix and delimiter handling when object ends with delimiter')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_prefix_ends_with_delimiter():
     bucket_name = _create_objects(keys=['asdf/'])
     validate_bucket_listv2(bucket_name, 'asdf/', '/', None, 1000, False, ['asdf/'], [], last=True)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefix and delimiter handling when object ends with delimiter')
 def test_bucket_list_delimiter_prefix_ends_with_delimiter():
     bucket_name = _create_objects(keys=['asdf/'])
     validate_bucket_list(bucket_name, 'asdf/', '/', '', 1000, False, ['asdf/'], [], None)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='non-slash delimiter characters')
 def test_bucket_list_delimiter_alt():
     bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
     client = get_client()
@@ -431,10 +361,6 @@ def test_bucket_list_delimiter_alt():
     assert len(prefixes) == 2
     assert prefixes == ['ba', 'ca']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='non-slash delimiter characters')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_alt():
     bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
@@ -452,11 +378,6 @@ def test_bucket_listv2_delimiter_alt():
     assert len(prefixes) == 2
     assert prefixes == ['ba', 'ca']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes starting with underscore')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_delimiter_prefix_underscore():
     bucket_name = _create_objects(keys=['_obj1_','_under1/bar', '_under1/baz/xyzzy', '_under2/thud', '_under2/bla'])
@@ -478,13 +399,7 @@ def test_bucket_list_delimiter_prefix_underscore():
 
     marker = validate_bucket_list(bucket_name, prefix, delim, '', 2, False, ['_under1/bar'], ['_under1/baz/'], None)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='prefixes starting with underscore')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_delimiter_prefix_underscore():
     bucket_name = _create_objects(keys=['_obj1_','_under1/bar', '_under1/baz/xyzzy', '_under2/thud', '_under2/bla'])
@@ -507,10 +422,6 @@ def test_bucket_listv2_delimiter_prefix_underscore():
     continuation_token  = validate_bucket_listv2(bucket_name, prefix, delim, None, 2, False, ['_under1/bar'], ['_under1/baz/'], last=True)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='percentage delimiter characters')
 def test_bucket_list_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
     client = get_client()
@@ -526,10 +437,6 @@ def test_bucket_list_delimiter_percentage():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b%', 'c%']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='percentage delimiter characters')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
@@ -546,10 +453,6 @@ def test_bucket_listv2_delimiter_percentage():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b%', 'c%']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='whitespace delimiter characters')
 def test_bucket_list_delimiter_whitespace():
     bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
     client = get_client()
@@ -565,10 +468,6 @@ def test_bucket_list_delimiter_whitespace():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b ', 'c ']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='whitespace delimiter characters')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_whitespace():
     bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
@@ -585,10 +484,6 @@ def test_bucket_listv2_delimiter_whitespace():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b ', 'c ']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='dot delimiter characters')
 def test_bucket_list_delimiter_dot():
     bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
     client = get_client()
@@ -604,10 +499,6 @@ def test_bucket_list_delimiter_dot():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b.', 'c.']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='dot delimiter characters')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_dot():
     bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
@@ -624,10 +515,6 @@ def test_bucket_listv2_delimiter_dot():
     # bar, baz, and cab should be broken up by the 'a' delimiters
     assert prefixes == ['b.', 'c.']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='non-printable delimiter can be specified')
 def test_bucket_list_delimiter_unreadable():
     key_names=['bar', 'baz', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -641,10 +528,6 @@ def test_bucket_list_delimiter_unreadable():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='non-printable delimiter can be specified')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_unreadable():
     key_names=['bar', 'baz', 'cab', 'foo']
@@ -659,10 +542,6 @@ def test_bucket_listv2_delimiter_unreadable():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='empty delimiter can be specified')
 def test_bucket_list_delimiter_empty():
     key_names = ['bar', 'baz', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -677,10 +556,6 @@ def test_bucket_list_delimiter_empty():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='empty delimiter can be specified')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_empty():
     key_names = ['bar', 'baz', 'cab', 'foo']
@@ -696,10 +571,6 @@ def test_bucket_listv2_delimiter_empty():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='unspecified delimiter defaults to none')
 def test_bucket_list_delimiter_none():
     key_names = ['bar', 'baz', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -714,10 +585,6 @@ def test_bucket_list_delimiter_none():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='unspecified delimiter defaults to none')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_none():
     key_names = ['bar', 'baz', 'cab', 'foo']
@@ -733,7 +600,6 @@ def test_bucket_listv2_delimiter_none():
     assert keys == key_names
     assert prefixes == []
 
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_fetchowner_notempty():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -744,7 +610,6 @@ def test_bucket_listv2_fetchowner_notempty():
     objs_list = response['Contents']
     assert 'Owner' in objs_list[0]
 
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_fetchowner_defaultempty():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -755,7 +620,6 @@ def test_bucket_listv2_fetchowner_defaultempty():
     objs_list = response['Contents']
     assert not 'Owner' in objs_list[0]
 
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_fetchowner_empty():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -766,10 +630,6 @@ def test_bucket_listv2_fetchowner_empty():
     objs_list = response['Contents']
     assert not 'Owner' in objs_list[0]
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='unused delimiter is not found')
 def test_bucket_list_delimiter_not_exist():
     key_names = ['bar', 'baz', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -784,10 +644,6 @@ def test_bucket_list_delimiter_not_exist():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(assertion='unused delimiter is not found')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_delimiter_not_exist():
     key_names = ['bar', 'baz', 'cab', 'foo']
@@ -804,11 +660,6 @@ def test_bucket_listv2_delimiter_not_exist():
     assert prefixes == []
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list')
-@attr(assertion='list with delimiter not skip special keys')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_delimiter_not_skip_special():
     key_names = ['0/'] + ['0/%s' % i for i in range(1000, 1999)]
@@ -825,10 +676,6 @@ def test_bucket_list_delimiter_not_skip_special():
     assert keys == key_names2
     assert prefixes == ['0/']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='returns only objects under prefix')
 def test_bucket_list_prefix_basic():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -842,11 +689,6 @@ def test_bucket_list_prefix_basic():
     assert keys == ['foo/bar', 'foo/baz']
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='returns only objects under prefix')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_basic():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -862,10 +704,6 @@ def test_bucket_listv2_prefix_basic():
     assert prefixes == []
 
 # just testing that we can do the delimeter and prefix logic on non-slashes
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='prefixes w/o delimiters')
 def test_bucket_list_prefix_alt():
     key_names = ['bar', 'baz', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -879,11 +717,6 @@ def test_bucket_list_prefix_alt():
     assert keys == ['bar', 'baz']
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='prefixes w/o delimiters')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_alt():
     key_names = ['bar', 'baz', 'foo']
@@ -898,10 +731,6 @@ def test_bucket_listv2_prefix_alt():
     assert keys == ['bar', 'baz']
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='empty prefix returns everything')
 def test_bucket_list_prefix_empty():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -915,11 +744,6 @@ def test_bucket_list_prefix_empty():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='empty prefix returns everything')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_empty():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -934,10 +758,6 @@ def test_bucket_listv2_prefix_empty():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='unspecified prefix returns everything')
 def test_bucket_list_prefix_none():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -951,11 +771,6 @@ def test_bucket_list_prefix_none():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='unspecified prefix returns everything')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_none():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -970,10 +785,6 @@ def test_bucket_listv2_prefix_none():
     assert keys == key_names
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='nonexistent prefix returns nothing')
 def test_bucket_list_prefix_not_exist():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -987,11 +798,6 @@ def test_bucket_list_prefix_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='nonexistent prefix returns nothing')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_not_exist():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -1006,10 +812,6 @@ def test_bucket_listv2_prefix_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix')
-@attr(assertion='non-printable prefix can be specified')
 def test_bucket_list_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -1023,11 +825,6 @@ def test_bucket_list_prefix_unreadable():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix with list-objects-v2')
-@attr(assertion='non-printable prefix can be specified')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
@@ -1042,10 +839,6 @@ def test_bucket_listv2_prefix_unreadable():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix w/delimiter')
-@attr(assertion='returns only objects directly under prefix')
 def test_bucket_list_prefix_delimiter_basic():
     key_names = ['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf']
     bucket_name = _create_objects(keys=key_names)
@@ -1060,11 +853,6 @@ def test_bucket_list_prefix_delimiter_basic():
     assert keys == ['foo/bar']
     assert prefixes == ['foo/baz/']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list-objects-v2 under prefix w/delimiter')
-@attr(assertion='returns only objects directly under prefix')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_delimiter_basic():
     key_names = ['foo/bar', 'foo/baz/xyzzy', 'quux/thud', 'asdf']
@@ -1080,10 +868,6 @@ def test_bucket_listv2_prefix_delimiter_basic():
     assert keys == ['foo/bar']
     assert prefixes == ['foo/baz/']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix w/delimiter')
-@attr(assertion='non-slash delimiters')
 def test_bucket_list_prefix_delimiter_alt():
     key_names = ['bar', 'bazar', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -1098,7 +882,6 @@ def test_bucket_list_prefix_delimiter_alt():
     assert keys == ['bar']
     assert prefixes == ['baza']
 
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_delimiter_alt():
     key_names = ['bar', 'bazar', 'cab', 'foo']
@@ -1114,10 +897,6 @@ def test_bucket_listv2_prefix_delimiter_alt():
     assert keys == ['bar']
     assert prefixes == ['baza']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix w/delimiter')
-@attr(assertion='finds nothing w/unmatched prefix')
 def test_bucket_list_prefix_delimiter_prefix_not_exist():
     key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1130,11 +909,6 @@ def test_bucket_list_prefix_delimiter_prefix_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list-objects-v2 under prefix w/delimiter')
-@attr(assertion='finds nothing w/unmatched prefix')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
     key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
@@ -1148,10 +922,6 @@ def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix w/delimiter')
-@attr(assertion='over-ridden slash ceases to be a delimiter')
 def test_bucket_list_prefix_delimiter_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1164,11 +934,6 @@ def test_bucket_list_prefix_delimiter_delimiter_not_exist():
     assert keys == ['b/a/c', 'b/a/g', 'b/a/r']
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list-objects-v2 under prefix w/delimiter')
-@attr(assertion='over-ridden slash ceases to be a delimiter')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
@@ -1182,10 +947,6 @@ def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
     assert keys == ['b/a/c', 'b/a/g', 'b/a/r']
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list under prefix w/delimiter')
-@attr(assertion='finds nothing w/unmatched prefix and delimiter')
 def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1198,11 +959,6 @@ def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list-objects-v2 under prefix w/delimiter')
-@attr(assertion='finds nothing w/unmatched prefix and delimiter')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
@@ -1216,11 +972,6 @@ def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
     assert keys == []
     assert prefixes == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='pagination w/max_keys=1, marker')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_maxkeys_one():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1239,13 +990,7 @@ def test_bucket_list_maxkeys_one():
     keys = _get_keys(response)
     assert keys == key_names[1:]
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='pagination w/max_keys=1, marker')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_maxkeys_one():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1264,10 +1009,6 @@ def test_bucket_listv2_maxkeys_one():
     keys = _get_keys(response)
     assert keys == key_names[1:]
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='pagination w/max_keys=0')
 def test_bucket_list_maxkeys_zero():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1279,11 +1020,6 @@ def test_bucket_list_maxkeys_zero():
     keys = _get_keys(response)
     assert keys == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='pagination w/max_keys=0')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_maxkeys_zero():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1296,10 +1032,6 @@ def test_bucket_listv2_maxkeys_zero():
     keys = _get_keys(response)
     assert keys == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='pagination w/o max_keys')
 def test_bucket_list_maxkeys_none():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1311,11 +1043,6 @@ def test_bucket_list_maxkeys_none():
     assert keys == key_names
     assert response['MaxKeys'] == 1000
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='pagination w/o max_keys')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_maxkeys_none():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1346,11 +1073,6 @@ def parseXmlToJson(xml):
 
   return response
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get usage by client')
-@attr(assertion='account usage api')
-@attr('fails_on_aws') # allow-unordered is a non-standard extension
 @pytest.mark.fails_on_aws
 def test_account_usage():
     # boto3.set_stream_logger(name='botocore')
@@ -1370,13 +1092,7 @@ def test_account_usage():
     assert summary['QuotaMaxBytesPerBucket'] == '-1'
     assert summary['QuotaMaxObjCountPerBucket'] == '-1'
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='get usage by client')
-@attr(assertion='account usage by head bucket')
-@attr('fails_on_aws') # allow-unordered is a non-standard extension
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_head_bucket_usage():
     # boto3.set_stream_logger(name='botocore')
@@ -1394,13 +1110,7 @@ def test_head_bucket_usage():
     assert hdrs['X-RGW-Quota-Bucket-Size'] == '-1'
     assert hdrs['X-RGW-Quota-Bucket-Objects'] == '-1'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='bucket list unordered')
-@attr('fails_on_aws') # allow-unordered is a non-standard extension
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_unordered():
     # boto3.set_stream_logger(name='botocore')
@@ -1453,15 +1163,8 @@ def test_bucket_list_unordered():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='bucket list unordered')
-@attr('fails_on_aws') # allow-unordered is a non-standard extension
 @pytest.mark.fails_on_aws
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_unordered():
     # boto3.set_stream_logger(name='botocore')
@@ -1515,10 +1218,6 @@ def test_bucket_listv2_unordered():
     assert error_code == 'InvalidArgument'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='invalid max_keys')
 def test_bucket_list_maxkeys_invalid():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1537,10 +1236,6 @@ def test_bucket_list_maxkeys_invalid():
 
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='no pagination, no marker')
 def test_bucket_list_marker_none():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1550,10 +1245,6 @@ def test_bucket_list_marker_none():
     assert response['Marker'] == ''
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='no pagination, empty marker')
 def test_bucket_list_marker_empty():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1565,11 +1256,6 @@ def test_bucket_list_marker_empty():
     keys = _get_keys(response)
     assert keys == key_names
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='no pagination, empty continuationtoken')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_continuationtoken_empty():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1582,11 +1268,6 @@ def test_bucket_listv2_continuationtoken_empty():
     keys = _get_keys(response)
     assert keys == key_names
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list keys with list-objects-v2')
-@attr(assertion='no pagination, non-empty continuationtoken')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_continuationtoken():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1603,13 +1284,7 @@ def test_bucket_listv2_continuationtoken():
     keys = _get_keys(response2)
     assert keys == key_names2
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list keys with list-objects-v2')
-@attr(assertion='no pagination, non-empty continuationtoken and startafter')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_listv2_both_continuationtoken_startafter():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1627,10 +1302,6 @@ def test_bucket_listv2_both_continuationtoken_startafter():
     keys = _get_keys(response2)
     assert keys == key_names2
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='non-printing marker')
 def test_bucket_list_marker_unreadable():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1642,11 +1313,6 @@ def test_bucket_list_marker_unreadable():
     keys = _get_keys(response)
     assert keys == key_names
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='non-printing startafter')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_startafter_unreadable():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1659,10 +1325,6 @@ def test_bucket_listv2_startafter_unreadable():
     keys = _get_keys(response)
     assert keys == key_names
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='marker not-in-list')
 def test_bucket_list_marker_not_in_list():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1673,11 +1335,6 @@ def test_bucket_list_marker_not_in_list():
     keys = _get_keys(response)
     assert keys == [ 'foo','quxx']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='startafter not-in-list')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_startafter_not_in_list():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1689,10 +1346,6 @@ def test_bucket_listv2_startafter_not_in_list():
     keys = _get_keys(response)
     assert keys == ['foo', 'quxx']
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys')
-@attr(assertion='marker after list')
 def test_bucket_list_marker_after_list():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1704,11 +1357,6 @@ def test_bucket_list_marker_after_list():
     assert response['IsTruncated'] == False
     assert keys == []
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all keys with list-objects-v2')
-@attr(assertion='startafter after list')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_startafter_after_list():
     key_names = ['bar', 'baz', 'foo', 'quxx']
@@ -1730,11 +1378,6 @@ def _compare_dates(datetime1, datetime2):
     datetime1 = datetime1.replace(microsecond=0)
     assert datetime1 == datetime2
 
-@attr(resource='object')
-@attr(method='head')
-@attr(operation='compare w/bucket list')
-@attr(assertion='return same metadata')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_return_data():
     key_names = ['bar', 'baz', 'foo']
@@ -1767,12 +1410,6 @@ def test_bucket_list_return_data():
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
 
-@attr(resource='object')
-@attr(method='head')
-@attr(operation='compare w/bucket list when bucket versioning is configured')
-@attr(assertion='return same metadata')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_return_data_versioning():
     bucket_name = get_new_bucket()
@@ -1810,10 +1447,6 @@ def test_bucket_list_return_data_versioning():
         assert obj['VersionId'] == key_data['VersionId']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all objects (anonymous)')
-@attr(assertion='succeeds')
 def test_bucket_list_objects_anonymous():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -1822,11 +1455,6 @@ def test_bucket_list_objects_anonymous():
     unauthenticated_client = get_unauthenticated_client()
     unauthenticated_client.list_objects(Bucket=bucket_name)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all objects (anonymous) with list-objects-v2')
-@attr(assertion='succeeds')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_objects_anonymous():
     bucket_name = get_new_bucket()
@@ -1836,10 +1464,6 @@ def test_bucket_listv2_objects_anonymous():
     unauthenticated_client = get_unauthenticated_client()
     unauthenticated_client.list_objects_v2(Bucket=bucket_name)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all objects (anonymous)')
-@attr(assertion='fails')
 def test_bucket_list_objects_anonymous_fail():
     bucket_name = get_new_bucket()
 
@@ -1850,11 +1474,6 @@ def test_bucket_list_objects_anonymous_fail():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all objects (anonymous) with list-objects-v2')
-@attr(assertion='fails')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_objects_anonymous_fail():
     bucket_name = get_new_bucket()
@@ -1866,10 +1485,6 @@ def test_bucket_listv2_objects_anonymous_fail():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='non-existant bucket')
-@attr(assertion='fails 404')
 def test_bucket_notexist():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -1880,11 +1495,6 @@ def test_bucket_notexist():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='non-existant bucket with list-objects-v2')
-@attr(assertion='fails 404')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucketv2_notexist():
     bucket_name = get_new_bucket_name()
@@ -1896,10 +1506,6 @@ def test_bucketv2_notexist():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='non-existant bucket')
-@attr(assertion='fails 404')
 def test_bucket_delete_notexist():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -1910,10 +1516,6 @@ def test_bucket_delete_notexist():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='non-empty bucket')
-@attr(assertion='fails 409')
 def test_bucket_delete_nonempty():
     key_names = ['foo']
     bucket_name = _create_objects(keys=key_names)
@@ -1944,10 +1546,6 @@ def _do_wait_completion(t):
     for thr in t:
         thr.join()
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='concurrent set of acls on a bucket')
-@attr(assertion='works')
 def test_bucket_concurrent_set_canned_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -1963,10 +1561,6 @@ def test_bucket_concurrent_set_canned_acl():
     for r in results:
         assert r == True
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='non-existant bucket')
-@attr(assertion='fails 404')
 def test_object_write_to_nonexist_bucket():
     key_names = ['foo']
     bucket_name = 'whatchutalkinboutwillis'
@@ -1979,10 +1573,6 @@ def test_object_write_to_nonexist_bucket():
     assert error_code == 'NoSuchBucket'
 
 
-@attr(resource='bucket')
-@attr(method='del')
-@attr(operation='deleted bucket')
-@attr(assertion='fails 404')
 def test_bucket_create_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -1994,10 +1584,6 @@ def test_bucket_create_delete():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='read contents that were never written')
-@attr(assertion='fails 404')
 def test_object_read_not_exist():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2014,11 +1600,6 @@ def get_http_response(**kwargs):
     global http_response
     http_response = kwargs['http_response'].__dict__
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='read contents that were never written to raise one error response')
-@attr(assertion='RequestId appears in the error response')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_requestid_matches_header_on_error():
     bucket_name = get_new_bucket()
@@ -2043,10 +1624,6 @@ def _make_objs_dict(key_names):
     objs_dict = {'Objects': objs_list}
     return objs_dict
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='delete multiple objects')
-@attr(assertion='deletes multiple objects with a single call')
 def test_multi_object_delete():
     key_names = ['key0', 'key1', 'key2']
     bucket_name = _create_objects(keys=key_names)
@@ -2068,11 +1645,6 @@ def test_multi_object_delete():
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='delete multiple objects with list-objects-v2')
-@attr(assertion='deletes multiple objects with a single call')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_multi_objectv2_delete():
     key_names = ['key0', 'key1', 'key2']
@@ -2095,10 +1667,6 @@ def test_multi_objectv2_delete():
     response = client.list_objects_v2(Bucket=bucket_name)
     assert 'Contents' not in response
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='delete multiple objects has upper limit of 1000 keys')
-@attr(assertion='fails 400')
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2116,10 +1684,6 @@ def test_multi_object_delete_key_limit():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='delete multiple objects has upper limit of 1000 keys with list-objects-v2')
-@attr(assertion='fails 400')
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2137,10 +1701,6 @@ def test_multi_objectv2_delete_key_limit():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write zero-byte key')
-@attr(assertion='correct content length')
 def test_object_head_zero_bytes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2149,10 +1709,6 @@ def test_object_head_zero_bytes():
     response = client.head_object(Bucket=bucket_name, Key='foo')
     assert response['ContentLength'] == 0
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write key')
-@attr(assertion='correct etag')
 def test_object_write_check_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2160,10 +1716,6 @@ def test_object_write_check_etag():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert response['ETag'] == '"37b51d194a7513e45b56f6524f2d51f2"'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write key')
-@attr(assertion='correct cache control header')
 def test_object_write_cache_control():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2173,10 +1725,6 @@ def test_object_write_cache_control():
     response = client.head_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPHeaders']['cache-control'] == cache_control
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write key')
-@attr(assertion='correct expires header')
 def test_object_write_expires():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2195,10 +1743,6 @@ def _get_body(response):
         got = got.decode()
     return got
 
-@attr(resource='object')
-@attr(method='all')
-@attr(operation='complete object life cycle')
-@attr(assertion='read back what we wrote and rewrote')
 def test_object_write_read_update_read_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2235,26 +1779,14 @@ def _set_get_metadata(metadata, bucket_name=None):
     response = client.get_object(Bucket=bucket_name, Key='foo')
     return response['Metadata']['meta1']
 
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write/re-read')
-@attr(assertion='reread what we wrote')
 def test_object_set_get_metadata_none_to_good():
     got = _set_get_metadata('mymeta')
     assert got == 'mymeta'
 
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write/re-read')
-@attr(assertion='write empty value, returns empty value')
 def test_object_set_get_metadata_none_to_empty():
     got = _set_get_metadata('')
     assert got == ''
 
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write/re-write')
-@attr(assertion='empty value replaces old')
 def test_object_set_get_metadata_overwrite_to_empty():
     bucket_name = get_new_bucket()
     got = _set_get_metadata('oldmeta', bucket_name)
@@ -2262,12 +1794,7 @@ def test_object_set_get_metadata_overwrite_to_empty():
     got = _set_get_metadata('', bucket_name)
     assert got == ''
 
-@attr(resource='object.metadata')
-@attr(method='put')
-@attr(operation='metadata write/re-write')
-@attr(assertion='UTF-8 values passed through')
 # TODO: the decoding of this unicode metadata is not happening properly for unknown reasons
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_object_set_get_unicode_metadata():
     bucket_name = get_new_bucket()
@@ -2302,10 +1829,6 @@ def _set_get_metadata_unreadable(metadata, bucket_name=None):
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='bar', Metadata=metadata_dict)
     return e
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='data re-write')
-@attr(assertion='replaces previous metadata')
 def test_object_metadata_replaced_on_put():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2318,10 +1841,6 @@ def test_object_metadata_replaced_on_put():
     got = response['Metadata']
     assert got == {}
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='data write from file (w/100-Continue)')
-@attr(assertion='succeeds and returns written data')
 def test_object_write_file():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2336,10 +1855,6 @@ def _get_post_url(bucket_name):
     endpoint = get_config_endpoint()
     return '{endpoint}/{bucket_name}'.format(endpoint=endpoint, bucket_name=bucket_name)
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='anonymous browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
 def test_post_object_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2354,10 +1869,6 @@ def test_post_object_anonymous_request():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
 def test_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2396,10 +1907,6 @@ def test_post_object_authenticated_request():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request, no content-type header')
-@attr(assertion='succeeds and returns written data')
 def test_post_object_authenticated_no_content_type():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2437,10 +1944,6 @@ def test_post_object_authenticated_no_content_type():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request, bad access key')
-@attr(assertion='fails')
 def test_post_object_authenticated_request_bad_access_key():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2476,10 +1979,6 @@ def test_post_object_authenticated_request_bad_access_key():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='anonymous browser based upload via POST request')
-@attr(assertion='succeeds with status 201')
 def test_post_object_set_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2495,10 +1994,6 @@ def test_post_object_set_success_code():
     message = ET.fromstring(r.content).find('Key')
     assert message.text == 'foo.txt'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='anonymous browser based upload via POST request')
-@attr(assertion='succeeds with status 204')
 def test_post_object_set_invalid_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2514,10 +2009,6 @@ def test_post_object_set_invalid_success_code():
     content = r.content.decode()
     assert content == ''
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
 def test_post_object_upload_larger_than_chunk():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2557,10 +2048,6 @@ def test_post_object_upload_larger_than_chunk():
     body = _get_body(response)
     assert body == foo_string
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
 def test_post_object_set_key_from_filename():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2597,10 +2084,6 @@ def test_post_object_set_key_from_filename():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds with status 204')
 def test_post_object_ignored_header():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2635,10 +2118,6 @@ def test_post_object_ignored_header():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 204
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds with status 204')
 def test_post_object_case_insensitive_condition_fields():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2674,10 +2153,6 @@ def test_post_object_case_insensitive_condition_fields():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 204
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds with escaped leading $ and returns written data')
 def test_post_object_escaped_field_values():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2714,10 +2189,6 @@ def test_post_object_escaped_field_values():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds and returns redirect url')
 def test_post_object_success_redirect_action():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2760,10 +2231,6 @@ def test_post_object_success_redirect_action():
     assert url == '{rurl}?bucket={bucket}&key={key}&etag=%22{etag}%22'.format(\
     rurl = redirect_url, bucket = bucket_name, key = 'foo.txt', etag = response['ETag'].strip('"'))
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with invalid signature error')
 def test_post_object_invalid_signature():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2797,10 +2264,6 @@ def test_post_object_invalid_signature():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with access key does not exist error')
 def test_post_object_invalid_access_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2834,10 +2297,6 @@ def test_post_object_invalid_access_key():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with invalid expiration error')
 def test_post_object_invalid_date_format():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2871,10 +2330,6 @@ def test_post_object_invalid_date_format():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with missing key error')
 def test_post_object_no_key_specified():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2907,10 +2362,6 @@ def test_post_object_no_key_specified():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with missing signature error')
 def test_post_object_missing_signature():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2944,10 +2395,6 @@ def test_post_object_missing_signature():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with extra input fields policy error')
 def test_post_object_missing_policy_condition():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2980,10 +2427,6 @@ def test_post_object_missing_policy_condition():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds using starts-with restriction on metadata header')
 def test_post_object_user_specified_header():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3020,10 +2463,6 @@ def test_post_object_user_specified_header():
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
     assert response['Metadata']['foo'] == 'barclamp'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with policy condition failed error due to missing field in POST request')
 def test_post_object_request_missing_policy_specified_field():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3058,10 +2497,6 @@ def test_post_object_request_missing_policy_specified_field():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with conditions must be list error')
 def test_post_object_condition_is_case_sensitive():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3095,10 +2530,6 @@ def test_post_object_condition_is_case_sensitive():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with expiration must be string error')
 def test_post_object_expires_is_case_sensitive():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3132,10 +2563,6 @@ def test_post_object_expires_is_case_sensitive():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with policy expired error')
 def test_post_object_expired_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3169,10 +2596,6 @@ def test_post_object_expired_policy():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails using equality restriction on metadata header')
 def test_post_object_invalid_request_field_value():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3206,10 +2629,6 @@ def test_post_object_invalid_request_field_value():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 403
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with policy missing expiration error')
 def test_post_object_missing_expires_condition():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3243,10 +2662,6 @@ def test_post_object_missing_expires_condition():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with policy missing conditions error')
 def test_post_object_missing_conditions_list():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3272,10 +2687,6 @@ def test_post_object_missing_conditions_list():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with allowable upload size exceeded error')
 def test_post_object_upload_size_limit_exceeded():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3309,10 +2720,6 @@ def test_post_object_upload_size_limit_exceeded():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with invalid content length error')
 def test_post_object_missing_content_length_argument():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3346,10 +2753,6 @@ def test_post_object_missing_content_length_argument():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with invalid JSON error')
 def test_post_object_invalid_content_length_argument():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3383,10 +2786,6 @@ def test_post_object_invalid_content_length_argument():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='fails with upload size less than minimum allowable error')
 def test_post_object_upload_size_below_minimum():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3420,10 +2819,6 @@ def test_post_object_upload_size_below_minimum():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='empty conditions return appropriate error response')
 def test_post_object_empty_conditions():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3453,10 +2848,6 @@ def test_post_object_empty_conditions():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Match: the latest ETag')
-@attr(assertion='succeeds')
 def test_get_object_ifmatch_good():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3467,10 +2858,6 @@ def test_get_object_ifmatch_good():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Match: bogus ETag')
-@attr(assertion='fails 412')
 def test_get_object_ifmatch_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3481,10 +2868,6 @@ def test_get_object_ifmatch_failed():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-None-Match: the latest ETag')
-@attr(assertion='fails 304')
 def test_get_object_ifnonematch_good():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3496,10 +2879,6 @@ def test_get_object_ifnonematch_good():
     assert status == 304
     assert e.response['Error']['Message'] == 'Not Modified'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-None-Match: bogus ETag')
-@attr(assertion='succeeds')
 def test_get_object_ifnonematch_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3509,10 +2888,6 @@ def test_get_object_ifnonematch_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Modified-Since: before')
-@attr(assertion='succeeds')
 def test_get_object_ifmodifiedsince_good():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3522,11 +2897,6 @@ def test_get_object_ifmodifiedsince_good():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Modified-Since: after')
-@attr(assertion='fails 304')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_object_ifmodifiedsince_failed():
     bucket_name = get_new_bucket()
@@ -3548,11 +2918,6 @@ def test_get_object_ifmodifiedsince_failed():
     assert status == 304
     assert e.response['Error']['Message'] == 'Not Modified'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Unmodified-Since: before')
-@attr(assertion='fails 412')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_object_ifunmodifiedsince_good():
     bucket_name = get_new_bucket()
@@ -3564,10 +2929,6 @@ def test_get_object_ifunmodifiedsince_good():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Unmodified-Since: after')
-@attr(assertion='succeeds')
 def test_get_object_ifunmodifiedsince_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3578,11 +2939,6 @@ def test_get_object_ifunmodifiedsince_failed():
     assert body == 'bar'
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='data re-write w/ If-Match: the latest ETag')
-@attr(assertion='replaces previous data and metadata')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_put_object_ifmatch_good():
     bucket_name = get_new_bucket()
@@ -3604,11 +2960,6 @@ def test_put_object_ifmatch_good():
     body = _get_body(response)
     assert body == 'zar'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='get w/ If-Match: bogus ETag')
-@attr(assertion='fails 412')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_object_ifmatch_failed():
     bucket_name = get_new_bucket()
@@ -3631,11 +2982,6 @@ def test_put_object_ifmatch_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite existing object w/ If-Match: *')
-@attr(assertion='replaces previous data and metadata')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_put_object_ifmatch_overwrite_existed_good():
     bucket_name = get_new_bucket()
@@ -3653,13 +2999,7 @@ def test_put_object_ifmatch_overwrite_existed_good():
     body = _get_body(response)
     assert body == 'zar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite non-existing object w/ If-Match: *')
-@attr(assertion='fails 412')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_object_ifmatch_nonexisted_failed():
     bucket_name = get_new_bucket()
@@ -3677,11 +3017,6 @@ def test_put_object_ifmatch_nonexisted_failed():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite existing object w/ If-None-Match: outdated ETag')
-@attr(assertion='replaces previous data and metadata')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_put_object_ifnonmatch_good():
     bucket_name = get_new_bucket()
@@ -3699,13 +3034,7 @@ def test_put_object_ifnonmatch_good():
     body = _get_body(response)
     assert body == 'zar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite existing object w/ If-None-Match: the latest ETag')
-@attr(assertion='fails 412')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_object_ifnonmatch_failed():
     bucket_name = get_new_bucket()
@@ -3730,11 +3059,6 @@ def test_put_object_ifnonmatch_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite non-existing object w/ If-None-Match: *')
-@attr(assertion='succeeds')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_put_object_ifnonmatch_nonexisted_good():
     bucket_name = get_new_bucket()
@@ -3748,13 +3072,7 @@ def test_put_object_ifnonmatch_nonexisted_good():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='overwrite existing object w/ If-None-Match: *')
-@attr(assertion='fails 412')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_object_ifnonmatch_overwrite_existed_failed():
     bucket_name = get_new_bucket()
@@ -3799,10 +3117,6 @@ def _setup_bucket_acl(bucket_acl=None):
 
     return bucket_name
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='publically readable bucket')
-@attr(assertion='bucket is readable')
 def test_object_raw_get():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
 
@@ -3810,10 +3124,6 @@ def test_object_raw_get():
     response = unauthenticated_client.get_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='deleted object and bucket')
-@attr(assertion='fails 404')
 def test_object_raw_get_bucket_gone():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -3828,10 +3138,6 @@ def test_object_raw_get_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='deleted object and bucket')
-@attr(assertion='fails 404')
 def test_object_delete_key_bucket_gone():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -3846,10 +3152,6 @@ def test_object_delete_key_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='deleted object')
-@attr(assertion='fails 404')
 def test_object_raw_get_object_gone():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -3863,10 +3165,6 @@ def test_object_raw_get_object_gone():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='head bucket')
-@attr(assertion='succeeds')
 def test_bucket_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3874,10 +3172,6 @@ def test_bucket_head():
     response = client.head_bucket(Bucket=bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='non-existant bucket')
-@attr(assertion='fails 404')
 def test_bucket_head_notexist():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -3891,13 +3185,7 @@ def test_bucket_head_notexist():
     # https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
     #assert error_code == 'NoSuchKey'
 
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='read bucket extended information')
-@attr(assertion='extended information is getting updated')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_head_extended():
     bucket_name = get_new_bucket()
@@ -3913,10 +3201,6 @@ def test_bucket_head_extended():
     assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-object-count']) == 3
     assert int(response['ResponseMetadata']['HTTPHeaders']['x-rgw-bytes-used']) == 9
 
-@attr(resource='bucket.acl')
-@attr(method='get')
-@attr(operation='unauthenticated on private bucket')
-@attr(assertion='succeeds')
 def test_object_raw_get_bucket_acl():
     bucket_name = _setup_bucket_object_acl('private', 'public-read')
 
@@ -3924,10 +3208,6 @@ def test_object_raw_get_bucket_acl():
     response = unauthenticated_client.get_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object.acl')
-@attr(method='get')
-@attr(operation='unauthenticated on private object')
-@attr(assertion='fails 403')
 def test_object_raw_get_object_acl():
     bucket_name = _setup_bucket_object_acl('public-read', 'private')
 
@@ -3937,10 +3217,6 @@ def test_object_raw_get_object_acl():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='authenticated on public bucket/object')
-@attr(assertion='succeeds')
 def test_object_raw_authenticated():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
 
@@ -3948,10 +3224,6 @@ def test_object_raw_authenticated():
     response = client.get_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='authenticated on private bucket/private object with modified response headers')
-@attr(assertion='succeeds')
 def test_object_raw_response_headers():
     bucket_name = _setup_bucket_object_acl('private', 'private')
 
@@ -3965,10 +3237,6 @@ def test_object_raw_response_headers():
     assert response['ResponseMetadata']['HTTPHeaders']['content-encoding'] == 'aaa'
     assert response['ResponseMetadata']['HTTPHeaders']['cache-control'] == 'no-cache'
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='authenticated on private bucket/public object')
-@attr(assertion='succeeds')
 def test_object_raw_authenticated_bucket_acl():
     bucket_name = _setup_bucket_object_acl('private', 'public-read')
 
@@ -3976,10 +3244,6 @@ def test_object_raw_authenticated_bucket_acl():
     response = client.get_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='authenticated on public bucket/private object')
-@attr(assertion='succeeds')
 def test_object_raw_authenticated_object_acl():
     bucket_name = _setup_bucket_object_acl('public-read', 'private')
 
@@ -3987,10 +3251,6 @@ def test_object_raw_authenticated_object_acl():
     response = client.get_object(Bucket=bucket_name, Key='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='authenticated on deleted object and bucket')
-@attr(assertion='fails 404')
 def test_object_raw_authenticated_bucket_gone():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4003,10 +3263,6 @@ def test_object_raw_authenticated_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='authenticated on deleted object')
-@attr(assertion='fails 404')
 def test_object_raw_authenticated_object_gone():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4018,10 +3274,6 @@ def test_object_raw_authenticated_object_gone():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='x-amz-expires check not expired')
-@attr(assertion='succeeds')
 def test_object_raw_get_x_amz_expires_not_expired():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4032,10 +3284,6 @@ def test_object_raw_get_x_amz_expires_not_expired():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 200
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='check x-amz-expires value out of range zero')
-@attr(assertion='fails 403')
 def test_object_raw_get_x_amz_expires_out_range_zero():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4046,10 +3294,6 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='check x-amz-expires value out of max range')
-@attr(assertion='fails 403')
 def test_object_raw_get_x_amz_expires_out_max_range():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4060,10 +3304,6 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='check x-amz-expires value out of positive range')
-@attr(assertion='succeeds')
 def test_object_raw_get_x_amz_expires_out_positive_range():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4075,10 +3315,6 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     assert res['status_code'] == 403
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='unauthenticated, no object acls')
-@attr(assertion='fails 403')
 def test_object_anon_put():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4092,10 +3328,6 @@ def test_object_anon_put():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='unauthenticated, publically writable object')
-@attr(assertion='succeeds')
 def test_object_anon_put_write_access():
     bucket_name = _setup_bucket_acl('public-read-write')
     client = get_client()
@@ -4106,10 +3338,6 @@ def test_object_anon_put_write_access():
     response = unauthenticated_client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='authenticated, no object acls')
-@attr(assertion='succeeds')
 def test_object_put_authenticated():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4117,10 +3345,6 @@ def test_object_put_authenticated():
     response = client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='authenticated, no object acls')
-@attr(assertion='succeeds')
 def test_object_raw_put_authenticated_expired():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4147,14 +3371,8 @@ def check_bad_bucket_name(bucket_name):
 
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='name begins with underscore')
-@attr(assertion='fails with subdomain: 400')
 def test_bucket_create_naming_bad_starts_nonalpha():
     bucket_name = get_new_bucket_name()
     check_bad_bucket_name('_' + bucket_name)
@@ -4177,17 +3395,9 @@ def check_invalid_bucketname(invalid_name):
     status, error_code = _get_status_and_error_code(e.response)
     return (status, error_code)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='short (one character) name')
-@attr(assertion='fails 400')
 def test_bucket_create_naming_bad_short_one():
     check_bad_bucket_name('a')
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='short (two character) name')
-@attr(assertion='fails 400')
 def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name('aa')
 
@@ -4238,36 +3448,18 @@ def _test_bucket_create_naming_good_long(length):
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/60 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_60():
     _test_bucket_create_naming_good_long(60)
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/61 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_61():
     _test_bucket_create_naming_good_long(61)
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/62 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_62():
@@ -4275,22 +3467,11 @@ def test_bucket_create_naming_good_long_62():
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/63 byte name')
-@attr(assertion='fails with subdomain')
 def test_bucket_create_naming_good_long_63():
     _test_bucket_create_naming_good_long(63)
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list w/61 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_list_long_name():
@@ -4309,21 +3490,11 @@ def test_bucket_list_long_name():
 
 # AWS does not enforce all documented bucket restrictions.
 # http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/ip address for name')
-@attr(assertion='fails on aws')
 def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
 
 # test_bucket_create_naming_dns_* are valid but not recommended
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/underscore in name')
-@attr(assertion='fails')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_underscore():
@@ -4333,12 +3504,6 @@ def test_bucket_create_naming_dns_underscore():
     assert error_code == 'InvalidBucketName'
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/100 byte name')
-@attr(assertion='fails with subdomain')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 def test_bucket_create_naming_dns_long():
     prefix = get_prefix()
@@ -4347,12 +3512,6 @@ def test_bucket_create_naming_dns_long():
     check_good_bucket_name(num * 'a')
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/dash at end of name')
-@attr(assertion='fails')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dash_at_end():
@@ -4363,12 +3522,6 @@ def test_bucket_create_naming_dns_dash_at_end():
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/.. in name')
-@attr(assertion='fails')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dot_dot():
@@ -4379,12 +3532,6 @@ def test_bucket_create_naming_dns_dot_dot():
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/.- in name')
-@attr(assertion='fails')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dot_dash():
@@ -4395,12 +3542,6 @@ def test_bucket_create_naming_dns_dot_dash():
 
 
 # Breaks DNS with SubdomainCallingFormat
-@attr('fails_with_subdomain')
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create w/-. in name')
-@attr(assertion='fails')
-@attr('fails_on_aws') # <Error><Code>InvalidBucketName</Code><Message>The specified bucket is not valid.</Message>...</Error>
 @pytest.mark.fails_on_aws
 # Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dash_dot():
@@ -4409,9 +3550,6 @@ def test_bucket_create_naming_dns_dash_dot():
     assert status == 400
     assert error_code == 'InvalidBucketName'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='re-create')
 def test_bucket_create_exists():
     # aws-s3 default region allows recreation of buckets
     # but all other regions fail with BucketAlreadyOwnedByYou.
@@ -4426,10 +3564,6 @@ def test_bucket_create_exists():
         assert e.status == 409
         assert e.error_code == 'BucketAlreadyOwnedByYou'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get location')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_get_location():
     location_constraint = get_main_api_name()
@@ -4445,11 +3579,6 @@ def test_bucket_get_location():
         location_constraint = None
     assert response['LocationConstraint'] == location_constraint
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='re-create by non-owner')
-@attr(assertion='fails 409')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_exists_nonowner():
     # Names are shared across a global namespace. As such, no two
@@ -4465,11 +3594,6 @@ def test_bucket_create_exists_nonowner():
     assert status == 409
     assert error_code == 'BucketAlreadyExists'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='re-create with existing acl')
-@attr(assertion='fails 409')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_recreate_overwrite_acl():
     bucket_name = get_new_bucket_name()
@@ -4481,11 +3605,6 @@ def test_bucket_recreate_overwrite_acl():
     assert status == 409
     assert error_code == 'BucketAlreadyExists'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='re-create with new acl')
-@attr(assertion='fails 409')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_recreate_new_acl():
     bucket_name = get_new_bucket_name()
@@ -4527,10 +3646,6 @@ def check_grants(got, want):
         assert g == {'Grantee': {}}
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='default acl')
-@attr(assertion='read back expected defaults')
 def test_bucket_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4558,11 +3673,6 @@ def test_bucket_acl_default():
             ],
         )
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='public-read acl')
-@attr(assertion='read back expected defaults')
-@attr('fails_on_aws') # <Error><Code>IllegalLocationConstraintException</Code><Message>The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.</Message>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_canned_during_create():
     bucket_name = get_new_bucket_name()
@@ -4596,10 +3706,6 @@ def test_bucket_acl_canned_during_create():
             ],
         )
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='acl: public-read,private')
-@attr(assertion='read back expected values')
 def test_bucket_acl_canned():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4650,10 +3756,6 @@ def test_bucket_acl_canned():
             ],
         )
 
-@attr(resource='bucket.acls')
-@attr(method='put')
-@attr(operation='acl: public-read-write')
-@attr(assertion='read back expected values')
 def test_bucket_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4693,10 +3795,6 @@ def test_bucket_acl_canned_publicreadwrite():
             ],
         )
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='acl: authenticated-read')
-@attr(assertion='read back expected values')
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4729,10 +3827,6 @@ def test_bucket_acl_canned_authenticatedread():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='get')
-@attr(operation='default acl')
-@attr(assertion='read back expected defaults')
 def test_object_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4759,10 +3853,6 @@ def test_object_acl_default():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='acl public-read')
-@attr(assertion='read back expected values')
 def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4797,10 +3887,6 @@ def test_object_acl_canned_during_create():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='acl public-read,private')
-@attr(assertion='read back expected values')
 def test_object_acl_canned():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4854,10 +3940,6 @@ def test_object_acl_canned():
             ],
         )
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='acl public-read-write')
-@attr(assertion='read back expected values')
 def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4899,10 +3981,6 @@ def test_object_acl_canned_publicreadwrite():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='acl authenticated-read')
-@attr(assertion='read back expected values')
 def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4936,10 +4014,6 @@ def test_object_acl_canned_authenticatedread():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='acl bucket-owner-read')
-@attr(assertion='read back expected values')
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -4982,10 +4056,6 @@ def test_object_acl_canned_bucketownerread():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='acl bucket-owner-read')
-@attr(assertion='read back expected values')
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5028,11 +4098,6 @@ def test_object_acl_canned_bucketownerfullcontrol():
             ],
         )
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='set write-acp')
-@attr(assertion='does not modify owner')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl_full_control_verify_owner():
     bucket_name = get_new_bucket_name()
@@ -5082,10 +4147,6 @@ def add_obj_user_grant(bucket_name, key, grant):
 
     return grant
 
-@attr(resource='object.acls')
-@attr(method='put')
-@attr(operation='set write-acp')
-@attr(assertion='does not modify other attributes')
 def test_object_acl_full_control_verify_attributes():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5116,10 +4177,6 @@ def test_object_acl_full_control_verify_attributes():
     assert content_type == response['ContentType']
     assert etag == response['ETag']
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl private')
-@attr(assertion='a private object can be set to private')
 def test_bucket_acl_canned_private_to_private():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5188,49 +4245,24 @@ def _check_object_acl(permission):
         )
 
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set acl FULL_CONTRO')
-@attr(assertion='reads back correctly')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl():
     _check_object_acl('FULL_CONTROL')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set acl WRITE')
-@attr(assertion='reads back correctly')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl_write():
     _check_object_acl('WRITE')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set acl WRITE_ACP')
-@attr(assertion='reads back correctly')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl_writeacp():
     _check_object_acl('WRITE_ACP')
 
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set acl READ')
-@attr(assertion='reads back correctly')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl_read():
     _check_object_acl('READ')
 
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set acl READ_ACP')
-@attr(assertion='reads back correctly')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_acl_readacp():
     _check_object_acl('READ_ACP')
@@ -5340,11 +4372,6 @@ def _check_bucket_acl_grant_cant_writeacp(bucket_name):
     alt_client = get_alt_client()
     check_access_denied(alt_client.put_bucket_acl,Bucket=bucket_name, ACL='public-read')
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/userid FULL_CONTROL')
-@attr(assertion='can read/write data/acls')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${USER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_fullcontrol():
     bucket_name = _bucket_acl_grant_userid('FULL_CONTROL')
@@ -5370,11 +4397,6 @@ def test_bucket_acl_grant_userid_fullcontrol():
     assert owner_id == main_user_id
     assert owner_display_name == main_display_name
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/userid READ')
-@attr(assertion='can read data, no other r/w')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_read():
     bucket_name = _bucket_acl_grant_userid('READ')
@@ -5388,11 +4410,6 @@ def test_bucket_acl_grant_userid_read():
     # can't write acl
     _check_bucket_acl_grant_cant_writeacp(bucket_name)
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/userid READ_ACP')
-@attr(assertion='can read acl, no other r/w')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_readacp():
     bucket_name = _bucket_acl_grant_userid('READ_ACP')
@@ -5407,11 +4424,6 @@ def test_bucket_acl_grant_userid_readacp():
     #_check_bucket_acl_grant_cant_writeacp_can_readacp(bucket)
     _check_bucket_acl_grant_cant_writeacp(bucket_name)
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/userid WRITE')
-@attr(assertion='can write data, no other r/w')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_write():
     bucket_name = _bucket_acl_grant_userid('WRITE')
@@ -5425,11 +4437,6 @@ def test_bucket_acl_grant_userid_write():
     # can't write acl
     _check_bucket_acl_grant_cant_writeacp(bucket_name)
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/userid WRITE_ACP')
-@attr(assertion='can write acls, no other r/w')
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_writeacp():
     bucket_name = _bucket_acl_grant_userid('WRITE_ACP')
@@ -5443,10 +4450,6 @@ def test_bucket_acl_grant_userid_writeacp():
     # can write acl
     _check_bucket_acl_grant_can_writeacp(bucket_name)
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='set acl w/invalid userid')
-@attr(assertion='fails 400')
 def test_bucket_acl_grant_nonexist_user():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5463,10 +4466,6 @@ def test_bucket_acl_grant_nonexist_user():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='revoke all ACLs')
-@attr(assertion='can: read obj, get/set bucket acl, cannot write objs')
 def test_bucket_acl_no_grants():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5520,13 +4519,7 @@ def _get_acl_header(user_id=None, perms=None):
 
     return headers
 
-@attr(resource='object')
-@attr(method='PUT')
-@attr(operation='add all grants to user through headers')
-@attr(assertion='adds all grants individually to second user')
-@attr('fails_on_dho')
 @pytest.mark.fails_on_dho
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_object_header_acl_grants():
     bucket_name = get_new_bucket()
@@ -5594,13 +4587,7 @@ def test_object_header_acl_grants():
             ],
         )
 
-@attr(resource='bucket')
-@attr(method='PUT')
-@attr(operation='add all grants to user through headers')
-@attr(assertion='adds all grants individually to second user')
-@attr('fails_on_dho')
 @pytest.mark.fails_on_dho
-@attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @pytest.mark.fails_on_aws
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
@@ -5680,11 +4667,6 @@ def test_bucket_header_acl_grants():
 # This test will fail on DH Objects. DHO allows multiple users with one account, which
 # would violate the uniqueness requirement of a user's email. As such, DHO users are
 # created without an email.
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='add second FULL_CONTROL user')
-@attr(assertion='works for S3, fails for DHO')
-@attr('fails_on_aws') #  <Error><Code>AmbiguousGrantByEmailAddress</Code><Message>The e-mail address you provided is associated with more than one account. Please retry your request using a different identification method or after resolving the ambiguity.</Message>
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_email():
     bucket_name = get_new_bucket()
@@ -5728,10 +4710,6 @@ def test_bucket_acl_grant_email():
         ]
     )
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='add acl for nonexistent user')
-@attr(assertion='fail 400')
 def test_bucket_acl_grant_email_not_exist():
     # behavior not documented by amazon
     bucket_name = get_new_bucket()
@@ -5751,10 +4729,6 @@ def test_bucket_acl_grant_email_not_exist():
     assert status == 400
     assert error_code == 'UnresolvableGrantByEmailAddress'
 
-@attr(resource='bucket')
-@attr(method='ACLs')
-@attr(operation='revoke all ACLs')
-@attr(assertion='acls read back as empty')
 def test_bucket_acl_revoke_all():
     # revoke all access, including the owner's access
     bucket_name = get_new_bucket()
@@ -5781,11 +4755,6 @@ def test_bucket_acl_revoke_all():
 
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
-@attr(resource='bucket.log')
-@attr(method='put')
-@attr(operation='set/enable/disable logging target')
-@attr(assertion='operations succeed')
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_logging_toggle():
     bucket_name = get_new_bucket()
@@ -5844,10 +4813,6 @@ def list_bucket_versions(client, bucket_name):
 
     return result
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/private')
-@attr(assertion='public has no access to bucket or objects')
 def test_access_bucket_private_object_private():
     # all the test_access_* tests follow this template
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='private')
@@ -5875,11 +4840,6 @@ def test_access_bucket_private_object_private():
     alt_client3 = get_alt_client()
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/private with list-objects-v2')
-@attr(assertion='public has no access to bucket or objects')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_private():
     # all the test_access_* tests follow this template
@@ -5908,10 +4868,6 @@ def test_access_bucket_private_objectv2_private():
     alt_client3 = get_alt_client()
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/public-read')
-@attr(assertion='public can only read readable object')
 def test_access_bucket_private_object_publicread():
 
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read')
@@ -5932,11 +4888,6 @@ def test_access_bucket_private_object_publicread():
     check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/public-read with list-objects-v2')
-@attr(assertion='public can only read readable object')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_publicread():
 
@@ -5958,10 +4909,6 @@ def test_access_bucket_private_objectv2_publicread():
     check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/public-read/write')
-@attr(assertion='public can only read the readable object')
 def test_access_bucket_private_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -5982,11 +4929,6 @@ def test_access_bucket_private_object_publicreadwrite():
     check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: private/public-read/write with list-objects-v2')
-@attr(assertion='public can only read the readable object')
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
@@ -6008,10 +4950,6 @@ def test_access_bucket_private_objectv2_publicreadwrite():
     check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read/private')
-@attr(assertion='public can only list the bucket')
 def test_access_bucket_publicread_object_private():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='private')
     alt_client = get_alt_client()
@@ -6031,10 +4969,6 @@ def test_access_bucket_publicread_object_private():
     assert objs == ['bar', 'foo']
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read/public-read')
-@attr(assertion='public can read readable objects and list bucket')
 def test_access_bucket_publicread_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='public-read')
     alt_client = get_alt_client()
@@ -6059,10 +4993,6 @@ def test_access_bucket_publicread_object_publicread():
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read/public-read-write')
-@attr(assertion='public can read readable objects and list bucket')
 def test_access_bucket_publicread_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6089,10 +5019,6 @@ def test_access_bucket_publicread_object_publicreadwrite():
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read-write/private')
-@attr(assertion='private objects cannot be read, but can be overwritten')
 def test_access_bucket_publicreadwrite_object_private():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='private')
     alt_client = get_alt_client()
@@ -6108,10 +5034,6 @@ def test_access_bucket_publicreadwrite_object_private():
     assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read-write/public-read')
-@attr(assertion='private objects cannot be read, but can be overwritten')
 def test_access_bucket_publicreadwrite_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='public-read')
     alt_client = get_alt_client()
@@ -6130,10 +5052,6 @@ def test_access_bucket_publicreadwrite_object_publicread():
     assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='object')
-@attr(method='ACLs')
-@attr(operation='set bucket/object acls: public-read-write/public-read-write')
-@attr(assertion='private objects cannot be read, but can be overwritten')
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='public-read-write', object_acl='public-read-write')
     alt_client = get_alt_client()
@@ -6149,10 +5067,6 @@ def test_access_bucket_publicreadwrite_object_publicreadwrite():
     assert objs == ['bar', 'foo']
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body='newcontent')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all buckets')
-@attr(assertion='returns all expected buckets')
 def test_buckets_create_then_list():
     client = get_client()
     bucket_names = []
@@ -6173,10 +5087,6 @@ def test_buckets_create_then_list():
         if name not in buckets_list:
             raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all buckets')
-@attr(assertion='all buckets have a sane creation time')
 def test_buckets_list_ctime():
     # check that creation times are within a day
     before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
@@ -6190,11 +5100,6 @@ def test_buckets_list_ctime():
         ctime = bucket['CreationDate']
         assert before <= ctime, '%r > %r' % (before, ctime)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all buckets (anonymous)')
-@attr(assertion='succeeds')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_list_buckets_anonymous():
     # Get a connection with bad authorization, then change it to be our new Anonymous auth mechanism,
@@ -6206,10 +5111,6 @@ def test_list_buckets_anonymous():
     response = unauthenticated_client.list_buckets()
     assert len(response['Buckets']) == 0
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all buckets (bad auth)')
-@attr(assertion='fails 403')
 def test_list_buckets_invalid_auth():
     bad_auth_client = get_bad_auth_client()
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
@@ -6217,10 +5118,6 @@ def test_list_buckets_invalid_auth():
     assert status == 403
     assert error_code == 'InvalidAccessKeyId'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list all buckets (bad auth)')
-@attr(assertion='fails 403')
 def test_list_buckets_bad_auth():
     main_access_key = get_main_aws_access_key()
     bad_auth_client = get_bad_auth_client(aws_access_key_id=main_access_key)
@@ -6235,10 +5132,6 @@ def override_prefix_a():
     yield
     nuke_prefixed_buckets(prefix='a'+get_prefix())
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create bucket')
-@attr(assertion='name starts with alphabetic works')
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
 def test_bucket_create_naming_good_starts_alpha(override_prefix_a):
@@ -6250,33 +5143,17 @@ def override_prefix_0():
     yield
     nuke_prefixed_buckets(prefix='0'+get_prefix())
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create bucket')
-@attr(assertion='name starts with numeric works')
 # this test goes outside the user-configure prefix because it needs to
 # control the initial character of the bucket name
 def test_bucket_create_naming_good_starts_digit(override_prefix_0):
     check_good_bucket_name('foo', _prefix='0'+get_prefix())
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create bucket')
-@attr(assertion='name containing dot works')
 def test_bucket_create_naming_good_contains_period():
     check_good_bucket_name('aaa.111')
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create bucket')
-@attr(assertion='name containing hyphen works')
 def test_bucket_create_naming_good_contains_hyphen():
     check_good_bucket_name('aaa-111')
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='create bucket with objects and recreate it')
-@attr(assertion='bucket recreation not overriding index')
 def test_bucket_recreate_not_overriding():
     key_names = ['mykey1', 'mykey2']
     bucket_name = _create_objects(keys=key_names)
@@ -6290,11 +5167,6 @@ def test_bucket_recreate_not_overriding():
     objs_list = get_objects_list(bucket_name)
     assert key_names == objs_list
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='create and list objects with special names')
-@attr(assertion='special names work')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_special_key_names():
     key_names = [
@@ -6326,10 +5198,6 @@ def test_bucket_create_special_key_names():
         assert name == body
         client.put_object_acl(Bucket=bucket_name, Key=name, ACL='private')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='create and list objects with underscore as prefix, list using prefix')
-@attr(assertion='listing works correctly')
 def test_bucket_list_special_prefix():
     key_names = ['_bla/1', '_bla/2', '_bla/3', '_bla/4', 'abcd']
     bucket_name = _create_objects(keys=key_names)
@@ -6341,11 +5209,6 @@ def test_bucket_list_special_prefix():
     objs_list = get_objects_list(bucket_name, prefix='_bla/')
     assert len(objs_list) == 4
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy zero sized object in same bucket')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_zero_size():
     key = 'foo123bar'
@@ -6360,11 +5223,6 @@ def test_object_copy_zero_size():
     response = client.get_object(Bucket=bucket_name, Key='bar321foo')
     assert response['ContentLength'] == 0
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy 16mb object in same bucket')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_16m():
     bucket_name = get_new_bucket()
@@ -6378,11 +5236,6 @@ def test_object_copy_16m():
     response = client.get_object(Bucket=bucket_name, Key=key2)
     assert response['ContentLength'] == 16*1024*1024
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object in same bucket')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_same_bucket():
     bucket_name = get_new_bucket()
@@ -6397,11 +5250,6 @@ def test_object_copy_same_bucket():
     body = _get_body(response)
     assert 'foo' == body
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object with content-type')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_verify_contenttype():
     bucket_name = get_new_bucket()
@@ -6420,10 +5268,6 @@ def test_object_copy_verify_contenttype():
     response_content_type = response['ContentType']
     assert response_content_type == content_type
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object to itself')
-@attr(assertion='fails')
 def test_object_copy_to_itself():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6436,11 +5280,6 @@ def test_object_copy_to_itself():
     assert status == 400
     assert error_code == 'InvalidRequest'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='modify object metadata by copying')
-@attr(assertion='fails')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_to_itself_with_metadata():
     bucket_name = get_new_bucket()
@@ -6453,11 +5292,6 @@ def test_object_copy_to_itself_with_metadata():
     response = client.get_object(Bucket=bucket_name, Key='foo123bar')
     assert response['Metadata'] == metadata
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object from different bucket')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_diff_bucket():
     bucket_name1 = get_new_bucket()
@@ -6474,10 +5308,6 @@ def test_object_copy_diff_bucket():
     body = _get_body(response)
     assert 'foo' == body
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy to an inaccessible bucket')
-@attr(assertion='fails w/AttributeError')
 def test_object_copy_not_owned_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -6494,10 +5324,6 @@ def test_object_copy_not_owned_bucket():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy a non-owned object in a non-owned bucket, but with perms')
-@attr(assertion='works')
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -6519,11 +5345,6 @@ def test_object_copy_not_owned_object_bucket():
     copy_source = {'Bucket': bucket_name, 'Key': 'foo123bar'}
     alt_client.copy(copy_source, bucket_name, 'bar321foo')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object and change acl')
-@attr(assertion='works')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_canned_acl():
     bucket_name = get_new_bucket()
@@ -6544,10 +5365,6 @@ def test_object_copy_canned_acl():
     # check ACL is applied by doing GET from another user
     alt_client.get_object(Bucket=bucket_name, Key='foo123bar')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object and retain metadata')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_retaining_metadata():
     for size in [3, 1024 * 1024]:
@@ -6567,10 +5384,6 @@ def test_object_copy_retaining_metadata():
         body = _get_body(response)
         assert size == response['ContentLength']
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object and replace metadata')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_replacing_metadata():
     for size in [3, 1024 * 1024]:
@@ -6592,9 +5405,6 @@ def test_object_copy_replacing_metadata():
         assert metadata == response['Metadata']
         assert size == response['ContentLength']
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy from non-existent bucket')
 def test_object_copy_bucket_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6604,9 +5414,6 @@ def test_object_copy_bucket_not_found():
     status = _get_status(e.response)
     assert status == 404
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy from non-existent object')
 def test_object_copy_key_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6616,12 +5423,6 @@ def test_object_copy_key_not_found():
     status = _get_status(e.response)
     assert status == 404
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object to/from versioned bucket')
-@attr(assertion='works')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioned_bucket():
     bucket_name = get_new_bucket()
@@ -6686,12 +5487,6 @@ def test_object_copy_versioned_bucket():
     assert data_str == body
     assert size == response['ContentLength']
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='copy object to/from versioned bucket with url-encoded name')
-@attr(assertion='works')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioned_url_encoding():
     bucket = get_new_bucket_resource()
@@ -6755,12 +5550,6 @@ def _multipart_upload(bucket_name, key, size, part_size=5*1024*1024, client=None
 
     return (upload_id, s, parts)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test copy object of a multipart upload')
-@attr(assertion='successful')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioning_multipart_upload():
     bucket_name = get_new_bucket()
@@ -6838,9 +5627,6 @@ def test_object_copy_versioning_multipart_upload():
     assert key1_metadata == response['Metadata']
     assert content_type == response['ContentType']
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart upload without parts')
 def test_multipart_upload_empty():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6853,10 +5639,6 @@ def test_multipart_upload_empty():
     assert status == 400
     assert error_code == 'MalformedXML'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart uploads with single small part')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_upload_small():
     bucket_name = get_new_bucket()
@@ -6932,10 +5714,6 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
     src_data = _get_body(response)
     assert src_data == dest_data
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies with single small part')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_small():
     src_key = 'foo'
@@ -6953,9 +5731,6 @@ def test_multipart_copy_small():
     assert size == response['ContentLength']
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies with an invalid range')
 def test_multipart_copy_invalid_range():
     client = get_client()
     src_key = 'source'
@@ -6975,11 +5750,7 @@ def test_multipart_copy_invalid_range():
     assert error_code == 'InvalidRange'
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copy with an improperly formatted range')
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_multipart_copy_improper_range():
     client = get_client()
@@ -7010,9 +5781,6 @@ def test_multipart_copy_improper_range():
         assert error_code == 'InvalidArgument'
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies without x-amz-copy-source-range')
 def test_multipart_copy_without_range():
     client = get_client()
     src_key = 'source'
@@ -7038,10 +5806,6 @@ def test_multipart_copy_without_range():
     assert response['ContentLength'] == 10
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies with single small part')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
@@ -7076,13 +5840,7 @@ def _check_content_using_range(key, bucket_name, data, step):
         body = _get_body(response)
         assert body == data[ofs:end+1]
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multi-part upload')
-@attr(assertion='successful')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_upload():
     bucket_name = get_new_bucket()
@@ -7144,11 +5902,6 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
     assert expected_string == read_status
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check multipart copies of versioned objects')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
@@ -7195,14 +5948,6 @@ def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multiple multi-part upload with different sizes')
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multi-part upload')
-@attr(assertion='successful')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_upload_resend_part():
     bucket_name = get_new_bucket()
@@ -7215,7 +5960,6 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [1,2])
     _check_upload_multipart_resend(bucket_name, key, objlen, [0,1,2,3,4,5])
 
-@attr(assertion='successful')
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7245,8 +5989,6 @@ def test_multipart_upload_multiple_sizes():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen)
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
-@attr(assertion='successful')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
@@ -7286,10 +6028,6 @@ def test_multipart_copy_multiple_sizes():
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check failure on multiple multi-part upload with size too small')
-@attr(assertion='fails 400')
 def test_multipart_upload_size_too_small():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7335,20 +6073,11 @@ def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
 
     return all_payload
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='check contents of multi-part upload')
-@attr(assertion='successful')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_multipart_upload_contents():
     bucket_name = get_new_bucket()
     _do_test_multipart_upload_contents(bucket_name, 'mymultipart', 3)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation=' multi-part upload overwrites existing key')
-@attr(assertion='successful')
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7374,10 +6103,6 @@ def test_multipart_upload_overwrite_existing_object():
 
     assert test_string == payload*num_parts
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='abort multi-part upload')
-@attr(assertion='successful')
 def test_abort_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -7394,10 +6119,6 @@ def test_abort_multipart_upload():
     rgw_object_count = int(response['ResponseMetadata']['HTTPHeaders'].get('x-rgw-object-count', 0))
     assert rgw_object_count == 0
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='abort non-existent multi-part upload')
-@attr(assertion='fails 404')
 def test_abort_multipart_upload_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7409,11 +6130,6 @@ def test_abort_multipart_upload_not_found():
     assert status == 404
     assert error_code == 'NoSuchUpload'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='concurrent multi-part uploads')
-@attr(assertion='successful')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_list_multipart_upload():
     bucket_name = get_new_bucket()
@@ -7445,11 +6161,6 @@ def test_list_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id2)
     client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id3)
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='list multipart uploads with different owners')
-@attr(assertion='successful')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_list_multipart_upload_owner():
     bucket_name = get_new_bucket()
@@ -7496,9 +6207,6 @@ def test_list_multipart_upload_owner():
     finally:
         client1.abort_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload1)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multi-part upload with missing part')
 def test_multipart_upload_missing_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7518,9 +6226,6 @@ def test_multipart_upload_missing_part():
     assert status == 400
     assert error_code == 'InvalidPart'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multi-part upload with incorrect ETag')
 def test_multipart_upload_incorrect_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7574,12 +6279,6 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     return l[1]
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='w/expect continue')
-@attr(assertion='succeeds if object is public-read-write')
-@attr('100_continue')
-@attr('fails_on_mod_proxy_fcgi')
 def test_100_continue():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -7600,11 +6299,6 @@ def test_100_continue():
     status = _simple_http_req_100_cont(host, port, is_secure, 'PUT', resource)
     assert status == '100'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set cors')
-@attr(assertion='succeeds')
-@attr('cors')
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7640,11 +6334,6 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
     assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='check cors response when origin header set')
-@attr(assertion='returning cors header')
-@attr('cors')
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -7720,11 +6409,6 @@ def test_cors_origin_response():
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'GET'}, 403, None, None)
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'PUT'}, 200, 'foo.put', 'PUT')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='check cors response when origin is set to wildcard')
-@attr(assertion='returning cors header')
-@attr('cors')
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -7750,11 +6434,6 @@ def test_cors_origin_wildcard():
     _cors_request_and_check(requests.get, url, None, 200, None, None)
     _cors_request_and_check(requests.get, url, {'Origin': 'example.origin'}, 200, '*', 'GET')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='check cors response when Access-Control-Request-Headers is set in option request')
-@attr(assertion='returning cors header')
-@attr('cors')
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -7781,11 +6460,6 @@ def test_cors_header_option():
 
     _cors_request_and_check(requests.options, obj_url, {'Origin': 'example.origin','Access-Control-Request-Headers':'x-amz-meta-header2','Access-Control-Request-Method':'GET'}, 403, None, None)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='put tags')
-@attr(assertion='succeeds')
-@attr('tagging')
 @pytest.mark.tagging
 def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
@@ -7935,24 +6609,12 @@ def _test_atomic_read(file_size):
 
     _verify_atomic_key_data(bucket_name, 'testobj', file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='read atomicity')
-@attr(assertion='1MB successful')
 def test_atomic_read_1mb():
     _test_atomic_read(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='read atomicity')
-@attr(assertion='4MB successful')
 def test_atomic_read_4mb():
     _test_atomic_read(1024*1024*4)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='read atomicity')
-@attr(assertion='8MB successful')
 def test_atomic_read_8mb():
     _test_atomic_read(1024*1024*8)
 
@@ -7988,24 +6650,12 @@ def _test_atomic_write(file_size):
     # verify B's
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write atomicity')
-@attr(assertion='1MB successful')
 def test_atomic_write_1mb():
     _test_atomic_write(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write atomicity')
-@attr(assertion='4MB successful')
 def test_atomic_write_4mb():
     _test_atomic_write(1024*1024*4)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write atomicity')
-@attr(assertion='8MB successful')
 def test_atomic_write_8mb():
     _test_atomic_write(1024*1024*8)
 
@@ -8033,24 +6683,12 @@ def _test_atomic_dual_write(file_size):
     # verify the file
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write one or the other')
-@attr(assertion='1MB successful')
 def test_atomic_dual_write_1mb():
     _test_atomic_dual_write(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write one or the other')
-@attr(assertion='4MB successful')
 def test_atomic_dual_write_4mb():
     _test_atomic_dual_write(1024*1024*4)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write one or the other')
-@attr(assertion='8MB successful')
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
 
@@ -8083,11 +6721,6 @@ def _test_atomic_conditional_write(file_size):
     # verify B's
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write atomicity')
-@attr(assertion='1MB successful')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_atomic_conditional_write_1mb():
     _test_atomic_conditional_write(1024*1024)
@@ -8125,26 +6758,14 @@ def _test_atomic_dual_conditional_write(file_size):
     # verify the file
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write one or the other')
-@attr(assertion='1MB successful')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 # TODO: test not passing with SSL, fix this
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_atomic_dual_conditional_write_1mb():
     _test_atomic_dual_conditional_write(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write file in deleted bucket')
-@attr(assertion='fail 404')
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 # TODO: test not passing with SSL, fix this
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_atomic_write_bucket_gone():
     bucket_name = get_new_bucket()
@@ -8161,10 +6782,6 @@ def test_atomic_write_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='begin to overwrite file with multipart upload then abort')
-@attr(assertion='read back original key contents')
 def test_atomic_multipart_upload_write():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8203,10 +6820,6 @@ class ActionOnCount:
         if self.count == self.trigger_count:
             self.result = self.action()
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart check for two writes of the same part, first write finishes last')
-@attr(assertion='object contains correct content')
 def test_multipart_resend_first_finishes_last():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8263,11 +6876,6 @@ def test_multipart_resend_first_finishes_last():
 
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns correct data, 206')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_ranged_request_response_code():
     content = 'testcontent'
@@ -8286,11 +6894,6 @@ def test_ranged_request_response_code():
 def _generate_random_string(size):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns correct data, 206')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_ranged_big_request_response_code():
     content = _generate_random_string(8*1024*1024)
@@ -8306,11 +6909,6 @@ def test_ranged_big_request_response_code():
     assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 3145728-5242880/8388608'
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns correct data, 206')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_ranged_request_skip_leading_bytes_response_code():
     content = 'testcontent'
@@ -8326,11 +6924,6 @@ def test_ranged_request_skip_leading_bytes_response_code():
     assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-10/11'
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns correct data, 206')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_ranged_request_return_trailing_bytes_response_code():
     content = 'testcontent'
@@ -8346,10 +6939,6 @@ def test_ranged_request_return_trailing_bytes_response_code():
     assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-10/11'
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns invalid range, 416')
 def test_ranged_request_invalid_range():
     content = 'testcontent'
 
@@ -8364,10 +6953,6 @@ def test_ranged_request_invalid_range():
     assert status == 416
     assert error_code == 'InvalidRange'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='range')
-@attr(assertion='returns invalid range, 416')
 def test_ranged_request_empty_object():
     content = ''
 
@@ -8382,10 +6967,6 @@ def test_ranged_request_empty_object():
     assert status == 416
     assert error_code == 'InvalidRange'
 
-@attr(resource='bucket')
-@attr(method='create')
-@attr(operation='create versioned bucket')
-@attr(assertion='can create and suspend bucket versioning')
 def test_versioning_bucket_create_suspend():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8469,11 +7050,6 @@ def _do_test_create_remove_versions(client, bucket_name, key, num_versions, remo
         print(response['Versions'])
 
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create and remove versioned object')
-@attr(assertion='can create access and remove appropriate versions')
-@attr('versioning')
 def test_versioning_obj_create_read_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8488,11 +7064,6 @@ def test_versioning_obj_create_read_remove():
     _do_test_create_remove_versions(client, bucket_name, key, num_versions, 4, -1)
     _do_test_create_remove_versions(client, bucket_name, key, num_versions, 3, 3)
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create and remove versioned object and head')
-@attr(assertion='can create access and remove appropriate versions')
-@attr('versioning')
 def test_versioning_obj_create_read_remove_head():
     bucket_name = get_new_bucket()
 
@@ -8527,11 +7098,6 @@ def test_versioning_obj_create_read_remove_head():
 
     clean_up_bucket(client, bucket_name, key, version_ids)
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create object, then switch to versioning')
-@attr(assertion='behaves correctly')
-@attr('versioning')
 def test_versioning_obj_plain_null_version_removal():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8552,11 +7118,6 @@ def test_versioning_obj_plain_null_version_removal():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create object, then switch to versioning')
-@attr(assertion='behaves correctly')
-@attr('versioning')
 def test_versioning_obj_plain_null_version_overwrite():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8590,11 +7151,6 @@ def test_versioning_obj_plain_null_version_overwrite():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='create object, then switch to versioning')
-@attr(assertion='behaves correctly')
-@attr('versioning')
 def test_versioning_obj_plain_null_version_overwrite_suspended():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -8660,11 +7216,6 @@ def overwrite_suspended_versioning_obj(client, bucket_name, key, version_ids, co
     return (version_ids, contents)
 
 
-@attr(resource='object')
-@attr(method='create')
-@attr(operation='suspend versioned bucket')
-@attr(assertion='suspended versioning behaves correctly')
-@attr('versioning')
 def test_versioning_obj_suspend_versions():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8697,11 +7248,6 @@ def test_versioning_obj_suspend_versions():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
-@attr(resource='object')
-@attr(method='remove')
-@attr(operation='create and remove versions')
-@attr(assertion='everything works')
-@attr('versioning')
 def test_versioning_obj_create_versions_remove_all():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8718,11 +7264,6 @@ def test_versioning_obj_create_versions_remove_all():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
-@attr(resource='object')
-@attr(method='remove')
-@attr(operation='create and remove versions')
-@attr(assertion='everything works')
-@attr('versioning')
 def test_versioning_obj_create_versions_remove_special_names():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8740,12 +7281,6 @@ def test_versioning_obj_create_versions_remove_special_names():
         assert len(version_ids) == 0
         assert len(version_ids) == len(contents)
 
-@attr(resource='object')
-@attr(method='multipart')
-@attr(operation='create and test multipart object')
-@attr(assertion='everything works')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_versioning_obj_create_overwrite_multipart():
     bucket_name = get_new_bucket()
@@ -8775,11 +7310,6 @@ def test_versioning_obj_create_overwrite_multipart():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
-@attr(resource='object')
-@attr(method='multipart')
-@attr(operation='list versioned objects')
-@attr(assertion='everything works')
-@attr('versioning')
 def test_versioning_obj_list_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8835,12 +7365,6 @@ def test_versioning_obj_list_marker():
         check_obj_content(client, bucket_name, key, version['VersionId'], contents[j])
         i += 1
 
-@attr(resource='object')
-@attr(method='multipart')
-@attr(operation='create and test versioned object copying')
-@attr(assertion='everything works')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_versioning_copy_obj_version():
     bucket_name = get_new_bucket()
@@ -8879,11 +7403,6 @@ def test_versioning_copy_obj_version():
     body = _get_body(response)
     assert body == contents[-1]
 
-@attr(resource='object')
-@attr(method='delete')
-@attr(operation='delete multiple versions')
-@attr(assertion='deletes multiple versions of an object with a single call')
-@attr('versioning')
 def test_versioning_multi_object_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8912,11 +7431,6 @@ def test_versioning_multi_object_delete():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
-@attr(resource='object')
-@attr(method='delete')
-@attr(operation='delete multiple versions')
-@attr(assertion='deletes multiple versions of an object and delete marker with a single call')
-@attr('versioning')
 def test_versioning_multi_object_delete_with_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8958,12 +7472,6 @@ def test_versioning_multi_object_delete_with_marker():
     assert not 'Versions' in response
     assert not 'DeleteMarkers' in response
 
-@attr(resource='object')
-@attr(method='delete')
-@attr(operation='multi delete create marker')
-@attr(assertion='returns correct marker version id')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_versioning_multi_object_delete_with_marker_create():
     bucket_name = get_new_bucket()
@@ -8983,11 +7491,6 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert delete_marker_version_id == delete_markers[0]['VersionId']
     assert key == delete_markers[0]['Key']
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='change acl on an object version changes specific version')
-@attr(assertion='works')
-@attr('versioning')
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9055,12 +7558,6 @@ def test_versioned_object_acl():
     grants = response['Grants']
     check_grants(grants, default_policy)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='change acl on an object with no version specified changes latest version')
-@attr(assertion='works')
-@attr('versioning')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_versioned_object_acl_no_version_specified():
     bucket_name = get_new_bucket()
@@ -9148,14 +7645,8 @@ def _do_clear_versioned_bucket_concurrent(client, bucket_name):
         t.append(thr)
     return t
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='concurrent creation of objects, concurrent removal')
-@attr(assertion='works')
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/39142 is resolved
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
-@attr('versioning')
 def test_versioned_concurrent_object_create_concurrent_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9180,11 +7671,6 @@ def test_versioned_concurrent_object_create_concurrent_remove():
         response = client.list_object_versions(Bucket=bucket_name)
         assert not 'Versions' in response
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='concurrent creation and removal of objects')
-@attr(assertion='works')
-@attr('versioning')
 def test_versioned_concurrent_object_create_and_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9213,10 +7699,6 @@ def test_versioned_concurrent_object_create_and_remove():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set():
     bucket_name = get_new_bucket()
@@ -9227,10 +7709,6 @@ def test_lifecycle_set():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get lifecycle config')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_get():
     bucket_name = get_new_bucket()
@@ -9242,10 +7720,6 @@ def test_lifecycle_get():
     response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
     assert response['Rules'] == rules
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get lifecycle config no id')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_get_no_id():
     bucket_name = get_new_bucket()
@@ -9277,16 +7751,9 @@ def test_lifecycle_get_no_id():
             assert False
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
@@ -9318,18 +7785,10 @@ def test_lifecycle_expiration():
     assert len(keep2_objects) == 4
     assert len(expire3_objects) == 2
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with list-objects-v2')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecyclev2_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
@@ -9361,14 +7820,8 @@ def test_lifecyclev2_expiration():
     assert len(keep2_objects) == 4
     assert len(expire3_objects) == 2
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration on versioning enabled bucket')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_lifecycle_expiration_versioning_enabled():
     bucket_name = get_new_bucket()
@@ -9391,14 +7844,8 @@ def test_lifecycle_expiration_versioning_enabled():
     assert len(versions) == 1
     assert len(delete_markers) == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with 1 tag')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_lifecycle_expiration_tags1():
     bucket_name = get_new_bucket()
@@ -9505,16 +7952,9 @@ def setup_lifecycle_tags2(client, bucket_name):
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     return response
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with 2 tags')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_tags2():
     bucket_name = get_new_bucket()
@@ -9530,16 +7970,9 @@ def test_lifecycle_expiration_tags2():
 
     assert len(expire1_objects) == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with versioning and 2 tags')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_versioned_tags2():
     bucket_name = get_new_bucket()
@@ -9607,16 +8040,9 @@ def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
         objs_list = []
     return len(objs_list)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle noncurrent expiration with 1 tag filter')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_noncur_tags1():
     bucket_name = get_new_bucket()
@@ -9642,12 +8068,7 @@ def test_lifecycle_expiration_noncur_tags1():
     # at T+60, only the current object version should exist
     assert num_objs == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='id too long in lifecycle rule')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr(assertion='fails 400')
 def test_lifecycle_id_too_long():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9659,12 +8080,7 @@ def test_lifecycle_id_too_long():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='same id')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr(assertion='fails 400')
 def test_lifecycle_same_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9677,12 +8093,7 @@ def test_lifecycle_same_id():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='invalid status in lifecycle rule')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr(assertion='fails 400')
 def test_lifecycle_invalid_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9710,10 +8121,6 @@ def test_lifecycle_invalid_status():
     assert status == 400
     assert error_code == 'MalformedXML'
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with expiration date')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_date():
     bucket_name = get_new_bucket()
@@ -9724,12 +8131,7 @@ def test_lifecycle_set_date():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with not iso8601 date')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr(assertion='fails 400')
 def test_lifecycle_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9740,16 +8142,9 @@ def test_lifecycle_set_invalid_date():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration with date')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_date():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
@@ -9771,12 +8166,7 @@ def test_lifecycle_expiration_date():
     assert len(init_objects) == 2
     assert len(expire_objects) == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration days 0')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
 def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
@@ -9827,12 +8217,7 @@ def check_lifecycle_expiration_header(response, start_time, rule_id,
 
     return  days_to_expire and rule_eq_id
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration header put')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
 def test_lifecycle_expiration_header_put():
     bucket_name = get_new_bucket()
@@ -9843,14 +8228,8 @@ def test_lifecycle_expiration_header_put():
         client, bucket_name, 'rule1', 1, 'days1/')
     assert check_lifecycle_expiration_header(response, now, 'rule1', 1)
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='test lifecycle expiration header head')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_header_head():
     bucket_name = get_new_bucket()
@@ -9867,14 +8246,8 @@ def test_lifecycle_expiration_header_head():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert check_lifecycle_expiration_header(response, now, 'rule1', 1)
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='test lifecycle expiration header head with tags')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_header_tags_head():
     bucket_name = get_new_bucket()
@@ -9929,12 +8302,7 @@ def test_lifecycle_expiration_header_tags_head():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
 
-@attr(resource='bucket')
-@attr(method='head')
-@attr(operation='test lifecycle expiration header head with tags and And')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
 def test_lifecycle_expiration_header_and_tags_head():
     now = datetime.datetime.now(None)
@@ -9979,10 +8347,6 @@ def test_lifecycle_expiration_header_and_tags_head():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with noncurrent version expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_noncurrent():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
@@ -9993,16 +8357,9 @@ def test_lifecycle_set_noncurrent():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle non-current version expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_noncur_expiration():
     bucket_name = get_new_bucket()
@@ -10029,10 +8386,6 @@ def test_lifecycle_noncur_expiration():
     assert len(init_versions) == 6
     assert len(expire_versions) == 4
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with delete marker expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_deletemarker():
     bucket_name = get_new_bucket()
@@ -10042,10 +8395,6 @@ def test_lifecycle_set_deletemarker():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with Filter')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_filter():
     bucket_name = get_new_bucket()
@@ -10055,10 +8404,6 @@ def test_lifecycle_set_filter():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with empty Filter')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_empty_filter():
     bucket_name = get_new_bucket()
@@ -10068,16 +8413,9 @@ def test_lifecycle_set_empty_filter():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle delete marker expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_deletemarker_expiration():
     bucket_name = get_new_bucket()
@@ -10110,10 +8448,6 @@ def test_lifecycle_deletemarker_expiration():
     assert len(total_init_versions) == 4
     assert len(total_expire_versions) == 2
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with multipart expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
@@ -10128,16 +8462,9 @@ def test_lifecycle_set_multipart():
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle multipart expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_multipart_expiration():
     bucket_name = get_new_bucket()
@@ -10170,12 +8497,7 @@ def test_lifecycle_multipart_expiration():
     assert len(init_uploads) == 2
     assert len(expired_uploads) == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config transition with not iso8601 date')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr(assertion='fails 400')
 def test_lifecycle_transition_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10212,14 +8534,8 @@ def _test_encryption_sse_customer_write(file_size):
     assert body == data
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle transition')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_lifecycle_transition():
     sc = configured_storage_classes()
@@ -10263,14 +8579,8 @@ def test_lifecycle_transition():
     assert len(expire3_keys[sc[2]]) == 2
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_lifecycle_transition_single_rule_multi_trans():
     sc = configured_storage_classes()
@@ -10312,12 +8622,7 @@ def test_lifecycle_transition_single_rule_multi_trans():
     assert len(expire3_keys[sc[1]]) == 0
     assert len(expire3_keys[sc[2]]) == 2
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='set lifecycle config with noncurrent version expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
 def test_lifecycle_set_noncurrent_transition():
     sc = configured_storage_classes()
@@ -10353,16 +8658,9 @@ def test_lifecycle_set_noncurrent_transition():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle non-current version expiration')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
 def test_lifecycle_noncur_transition():
     sc = configured_storage_classes()
@@ -10438,18 +8736,10 @@ def verify_object(client, bucket, key, content=None, sc=None):
         assert body == content
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle transition for cloud')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('cloud_transition')
 @pytest.mark.cloud_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_cloud_transition():
     cloud_sc = get_cloud_storage_class()
@@ -10528,18 +8818,10 @@ def test_lifecycle_cloud_transition():
         assert error_code == 'NoSuchKey'
 
 # Similar to 'test_lifecycle_transition' but for cloud transition
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle transition for cloud')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('cloud_transition')
 @pytest.mark.cloud_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_cloud_multiple_transition():
     cloud_sc = get_cloud_storage_class()
@@ -10599,20 +8881,11 @@ def test_lifecycle_cloud_multiple_transition():
     assert len(expire3_keys[sc[2]]) == 0
 
 # Noncurrent objects for cloud transition
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle non-current version expiration on cloud transition')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_expiration')
 @pytest.mark.lifecycle_expiration
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('cloud_transition')
 @pytest.mark.cloud_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_noncur_cloud_transition():
     cloud_sc = get_cloud_storage_class()
@@ -10697,18 +8970,10 @@ def test_lifecycle_noncur_cloud_transition():
             verify_object(cloud_client, target_path, expire1_key1_str, None, target_sc)
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='test lifecycle transition for cloud')
-@attr('lifecycle')
 @pytest.mark.lifecycle
-@attr('lifecycle_transition')
 @pytest.mark.lifecycle_transition
-@attr('cloud_transition')
 @pytest.mark.cloud_transition
-@attr('fails_on_aws')
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_lifecycle_cloud_transition_large_obj():
     cloud_sc = get_cloud_storage_class()
@@ -10759,56 +9024,30 @@ def test_lifecycle_cloud_transition_large_obj():
     expire1_key1_str = prefix + keys[1]
     verify_object(cloud_client, target_path, expire1_key1_str, data, target_sc)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-C encrypted transfer 1 byte')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encrypted_transfer_1b():
     _test_encryption_sse_customer_write(1)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-C encrypted transfer 1KB')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encrypted_transfer_1kb():
     _test_encryption_sse_customer_write(1024)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-C encrypted transfer 1MB')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encrypted_transfer_1MB():
     _test_encryption_sse_customer_write(1024*1024)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-C encrypted transfer 13 bytes')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encrypted_transfer_13b():
     _test_encryption_sse_customer_write(13)
 
 
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_method_head():
     bucket_name = get_new_bucket()
@@ -10834,11 +9073,6 @@ def test_encryption_sse_c_method_head():
     response = client.head_object(Bucket=bucket_name, Key=key)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-C and read without SSE-C')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_present():
     bucket_name = get_new_bucket()
@@ -10859,11 +9093,6 @@ def test_encryption_sse_c_present():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-C but read with other key')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_other_key():
     bucket_name = get_new_bucket()
@@ -10891,11 +9120,6 @@ def test_encryption_sse_c_other_key():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-C, but md5 is bad')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_invalid_md5():
     bucket_name = get_new_bucket()
@@ -10914,11 +9138,6 @@ def test_encryption_sse_c_invalid_md5():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-C, but dont provide MD5')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_no_md5():
     bucket_name = get_new_bucket()
@@ -10934,11 +9153,6 @@ def test_encryption_sse_c_no_md5():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='declare SSE-C but do not provide key')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_sse_c_no_key():
     bucket_name = get_new_bucket()
@@ -10953,11 +9167,6 @@ def test_encryption_sse_c_no_key():
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Do not declare SSE-C but provide key and MD5')
-@attr(assertion='operation successfull, no encryption')
-@attr('encryption')
 @pytest.mark.encryption
 def test_encryption_key_no_sse_c():
     bucket_name = get_new_bucket()
@@ -11026,15 +9235,8 @@ def _check_content_using_range_enc(client, bucket_name, key, data, step, enc_hea
         assert read_range == toread
         assert body == data[ofs:end+1]
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multi-part upload')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_aws') # allow-unordered is a non-standard extension
 @pytest.mark.fails_on_aws
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_upload():
     bucket_name = get_new_bucket()
@@ -11079,14 +9281,8 @@ def test_encryption_sse_c_multipart_upload():
     _check_content_using_range_enc(client, bucket_name, key, data, 1000000, enc_headers=enc_headers)
     _check_content_using_range_enc(client, bucket_name, key, data, 10000000, enc_headers=enc_headers)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart upload with bad key for uploading chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket_name = get_new_bucket()
@@ -11113,14 +9309,8 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart upload with bad md5 for chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket_name = get_new_bucket()
@@ -11147,13 +9337,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete multi-part upload and download with bad key')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
@@ -11202,13 +9386,7 @@ def test_encryption_sse_c_multipart_bad_download():
     assert status == 400
 
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_post_object_authenticated_request():
     bucket_name = get_new_bucket()
@@ -11262,10 +9440,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
     """
@@ -11294,13 +9469,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
 
 
 
-@attr(resource='object')
-@attr(method='head')
-@attr(operation='Test SSE-KMS encrypted does perform head properly')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_method_head():
     kms_keyid = get_main_kms_keyid()
@@ -11327,13 +9496,7 @@ def test_sse_kms_method_head():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='write encrypted with SSE-KMS and read without SSE-KMS')
-@attr(assertion='operation success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_present():
     kms_keyid = get_main_kms_keyid()
@@ -11354,11 +9517,6 @@ def test_sse_kms_present():
     body = _get_body(response)
     assert body == data
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='declare SSE-KMS but do not provide key_id')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_sse_kms_no_key():
     bucket_name = get_new_bucket()
@@ -11375,11 +9533,6 @@ def test_sse_kms_no_key():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Do not declare SSE-KMS but provide key_id')
-@attr(assertion='operation successfull, no encryption')
-@attr('encryption')
 @pytest.mark.encryption
 def test_sse_kms_not_declared():
     bucket_name = get_new_bucket()
@@ -11397,13 +9550,7 @@ def test_sse_kms_not_declared():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete KMS multi-part upload')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_upload():
     kms_keyid = get_main_kms_keyid()
@@ -11450,13 +9597,7 @@ def test_sse_kms_multipart_upload():
     _check_content_using_range(key, bucket_name, data, 10000000)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart KMS upload with bad key_id for uploading chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_invalid_chunks_1():
     kms_keyid = get_main_kms_keyid()
@@ -11483,13 +9624,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
             resend_parts=resend_parts)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='multipart KMS upload with unexistent key_id for chunks')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_invalid_chunks_2():
     kms_keyid = get_main_kms_keyid()
@@ -11515,13 +9650,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
             resend_parts=resend_parts)
 
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated KMS browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
@@ -11567,13 +9696,7 @@ def test_sse_kms_post_object_authenticated_request():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1 byte')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1b():
     kms_keyid = get_main_kms_keyid()
@@ -11582,13 +9705,7 @@ def test_sse_kms_transfer_1b():
     _test_sse_kms_customer_write(1, key_id = kms_keyid)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1KB')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1kb():
     kms_keyid = get_main_kms_keyid()
@@ -11597,13 +9714,7 @@ def test_sse_kms_transfer_1kb():
     _test_sse_kms_customer_write(1024, key_id = kms_keyid)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 1MB')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1MB():
     kms_keyid = get_main_kms_keyid()
@@ -11612,13 +9723,7 @@ def test_sse_kms_transfer_1MB():
     _test_sse_kms_customer_write(1024*1024, key_id = kms_keyid)
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test SSE-KMS encrypted transfer 13 bytes')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_13b():
     kms_keyid = get_main_kms_keyid()
@@ -11627,11 +9732,6 @@ def test_sse_kms_transfer_13b():
     _test_sse_kms_customer_write(13, key_id = kms_keyid)
 
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='write encrypted with SSE-KMS and read with SSE-KMS')
-@attr(assertion='operation fails')
-@attr('encryption')
 @pytest.mark.encryption
 def test_sse_kms_read_declare():
     bucket_name = get_new_bucket()
@@ -11651,11 +9751,6 @@ def test_sse_kms_read_declare():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy')
-@attr(assertion='succeeds')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy():
     bucket_name = get_new_bucket()
@@ -11685,9 +9780,7 @@ def test_bucket_policy():
     response = alt_client.list_objects(Bucket=bucket_name)
     assert len(response['Contents']) == 1
 
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucketv2_policy():
     bucket_name = get_new_bucket()
@@ -11717,11 +9810,6 @@ def test_bucketv2_policy():
     response = alt_client.list_objects_v2(Bucket=bucket_name)
     assert len(response['Contents']) == 1
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy and ACL')
-@attr(assertion='fails')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_acl():
     bucket_name = get_new_bucket()
@@ -11757,13 +9845,7 @@ def test_bucket_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy and ACL with list-objects-v2')
-@attr(assertion='fails')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucketv2_policy_acl():
     bucket_name = get_new_bucket()
@@ -11799,14 +9881,8 @@ def test_bucketv2_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy for a user belonging to a different tenant')
-@attr(assertion='succeeds')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
@@ -11849,16 +9925,9 @@ def test_bucket_policy_different_tenant():
 
     assert len(response['Contents']) == 1
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy for a user belonging to a different tenant')
-@attr(assertion='succeeds')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucketv2_policy_different_tenant():
     bucket_name = get_new_bucket()
@@ -11901,11 +9970,6 @@ def test_bucketv2_policy_different_tenant():
 
     assert len(response['Contents']) == 1
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy on another bucket')
-@attr(assertion='succeeds')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_another_bucket():
     bucket_name = get_new_bucket()
@@ -11943,13 +10007,7 @@ def test_bucket_policy_another_bucket():
     response = alt_client.list_objects(Bucket=bucket_name2)
     assert len(response['Contents']) == 1
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test Bucket Policy on another bucket with list-objects-v2')
-@attr(assertion='succeeds')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('list-objects-v2')
 @pytest.mark.list_objects_v2
 def test_bucketv2_policy_another_bucket():
     bucket_name = get_new_bucket()
@@ -11987,13 +10045,8 @@ def test_bucketv2_policy_another_bucket():
     response = alt_client.list_objects_v2(Bucket=bucket_name2)
     assert len(response['Contents']) == 1
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put condition operator end with ifExists')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_bucket_policy_set_condition_operator_end_with_IfExists():
     bucket_name = get_new_bucket()
@@ -12063,13 +10116,7 @@ def _make_random_string(size):
     return ''.join(random.choice(string.ascii_letters) for _ in range(size))
 
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test Get/PutObjTagging output')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_obj_tagging():
     key = 'testputtags'
@@ -12084,11 +10131,6 @@ def test_get_obj_tagging():
     assert response['TagSet'] == input_tagset['TagSet']
 
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test HEAD obj tagging output')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
 def test_get_obj_head_tagging():
     key = 'testputtags'
@@ -12104,13 +10146,7 @@ def test_get_obj_head_tagging():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert response['ResponseMetadata']['HTTPHeaders']['x-amz-tagging-count'] == str(count)
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test Put max allowed tags')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_max_tags():
     key = 'testputmaxtags'
@@ -12124,11 +10160,6 @@ def test_put_max_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert response['TagSet'] == input_tagset['TagSet']
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test Put max allowed tags')
-@attr(assertion='fails')
-@attr('tagging')
 @pytest.mark.tagging
 def test_put_excess_tags():
     key = 'testputmaxtags'
@@ -12144,11 +10175,6 @@ def test_put_excess_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test Put max allowed k-v size')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
 def test_put_max_kvsize_tags():
     key = 'testputmaxkeysize'
@@ -12170,11 +10196,6 @@ def test_put_max_kvsize_tags():
     for kv_pair in response['TagSet']:
         assert kv_pair in input_tagset['TagSet']
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test exceed key size')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
 def test_put_excess_key_tags():
     key = 'testputexcesskeytags'
@@ -12197,11 +10218,6 @@ def test_put_excess_key_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test exceed val size')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
 def test_put_excess_val_tags():
     key = 'testputexcesskeytags'
@@ -12224,13 +10240,7 @@ def test_put_excess_val_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test PUT modifies existing tags')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_modify_tags():
     key = 'testputmodifytags'
@@ -12260,13 +10270,7 @@ def test_put_modify_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert response['TagSet'] == input_tagset2['TagSet']
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test Delete tags')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_delete_tags():
     key = 'testputmodifytags'
@@ -12286,13 +10290,7 @@ def test_put_delete_tags():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='anonymous browser based upload via POST request')
-@attr('tagging')
 @pytest.mark.tagging
-@attr(assertion='succeeds and returns written data')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_post_object_tags_anonymous_request():
     bucket_name = get_new_bucket_name()
@@ -12324,12 +10322,7 @@ def test_post_object_tags_anonymous_request():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key_name)
     assert response['TagSet'] == input_tagset['TagSet']
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated browser based upload via POST request')
-@attr('tagging')
 @pytest.mark.tagging
-@attr(assertion='succeeds and returns written data')
 def test_post_object_tags_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12375,13 +10368,7 @@ def test_post_object_tags_authenticated_request():
     assert body == 'bar'
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test PutObj with tagging headers')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_obj_with_tags():
     bucket_name = get_new_bucket()
@@ -12413,15 +10400,8 @@ def test_put_obj_with_tags():
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test GetObjTagging public read')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_get_tags_acl_public():
     key = 'testputtagsacl'
@@ -12443,15 +10423,8 @@ def test_get_tags_acl_public():
     response = alt_client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert response['TagSet'] == input_tagset['TagSet']
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test PutObjTagging public wrote')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_put_tags_acl_public():
     key = 'testputtagsacl'
@@ -12472,13 +10445,7 @@ def test_put_tags_acl_public():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert response['TagSet'] == input_tagset['TagSet']
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='test deleteobjtagging public')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_delete_tags_obj_public():
     key = 'testputtagsacl'
@@ -12503,11 +10470,6 @@ def test_delete_tags_obj_public():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test whether a correct version-id returned')
-@attr(assertion='version-id is same as bucket list')
-@attr('versioning')
 def test_versioning_bucket_atomic_upload_return_version_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12537,11 +10499,6 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response = client.put_object(Bucket=bucket_name, Key=key)
     assert not 'VersionId' in response
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='test whether a correct version-id returned')
-@attr(assertion='version-id is same as bucket list')
-@attr('versioning')
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
@@ -12583,15 +10540,8 @@ def test_versioning_bucket_multipart_upload_return_version_id():
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     assert not 'VersionId' in response
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test ExistingObjectTag conditional on get object')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_get_obj_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
@@ -12645,15 +10595,8 @@ def test_bucket_policy_get_obj_existing_tag():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test ExistingObjectTag conditional on get object tagging')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_get_obj_tagging_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
@@ -12714,15 +10657,8 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
     assert status == 403
 
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test ExistingObjectTag conditional on put object tagging')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_tagging_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
@@ -12790,15 +10726,8 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     assert status == 403
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test copy-source conditional on put obj')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_copy_source():
     bucket_name = _create_objects(keys=['public/foo', 'public/bar', 'private/foo'])
@@ -12844,15 +10773,8 @@ def test_bucket_policy_put_obj_copy_source():
     copy_source = {'Bucket': bucket_name, 'Key': 'private/foo'}
     check_access_denied(alt_client.copy_object, Bucket=bucket_name2, CopySource=copy_source, Key='new_foo2')
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test copy-source conditional on put obj')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_copy_source_meta():
     src_bucket_name = _create_objects(keys=['public/foo', 'public/bar'])
@@ -12902,13 +10824,7 @@ def test_bucket_policy_put_obj_copy_source_meta():
     check_access_denied(alt_client.copy_object, Bucket=bucket_name, CopySource=copy_source, Key='new_foo2', Metadata={"foo": "bar"})
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test put obj with canned-acl not to be public')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_acl():
     bucket_name = get_new_bucket()
@@ -12949,11 +10865,6 @@ def test_bucket_policy_put_obj_acl():
     assert status == 403
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test put obj with amz-grant back to bucket-owner')
-@attr(assertion='success')
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_grant():
 
@@ -13016,11 +10927,6 @@ def test_bucket_policy_put_obj_grant():
     assert acl2_response['Grants'][0]['Grantee']['ID'] == alt_user_id
 
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj specifying both sse-c and sse-s3')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
@@ -13044,11 +10950,6 @@ def test_put_obj_enc_conflict_c_s3():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj specifying both sse-c and sse-kms')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_c_kms():
     kms_keyid = get_main_kms_keyid()
@@ -13076,11 +10977,6 @@ def test_put_obj_enc_conflict_c_kms():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj specifying sse-s3 with kms key id')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_s3_kms():
     kms_keyid = get_main_kms_keyid()
@@ -13105,11 +11001,6 @@ def test_put_obj_enc_conflict_s3_kms():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj specifying invalid algorithm' )
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_bad_enc_kms():
     kms_keyid = get_main_kms_keyid()
@@ -13133,17 +11024,9 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj requests if not sse-s3: without encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_noenc():
     bucket_name = get_new_bucket()
@@ -13195,15 +11078,8 @@ def test_bucket_policy_put_obj_s3_noenc():
     #  errors out before it consumes the data...)
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj requests if not sse-s3: kms')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('sse-s3')
 @pytest.mark.sse_s3
 def test_bucket_policy_put_obj_s3_kms():
     kms_keyid = get_main_kms_keyid()
@@ -13248,15 +11124,8 @@ def test_bucket_policy_put_obj_s3_kms():
     client.meta.events.register('before-call.s3.PutObject', lf)
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj requests if not sse-kms: without encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_noenc():
     kms_keyid = get_main_kms_keyid()
@@ -13302,13 +11171,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key2_str, Body=key2_str)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Deny put obj requests if not sse-kms: s3')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
@@ -13349,16 +11212,9 @@ def test_bucket_policy_put_obj_kms_s3():
     client.meta.events.register('before-call.s3.PutObject', lf)
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='put obj with RequestObjectTag')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_bucket_policy_put_obj_request_obj_tag():
     bucket_name = get_new_bucket()
@@ -13386,15 +11242,8 @@ def test_bucket_policy_put_obj_request_obj_tag():
     #TODO: why is this a 400 and not passing
     alt_client.put_object(Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='Test ExistingObjectTag conditional on get object acl')
-@attr(assertion='success')
-@attr('tagging')
 @pytest.mark.tagging
-@attr('bucket-policy')
 @pytest.mark.bucket_policy
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_get_obj_acl_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
@@ -13454,12 +11303,6 @@ def test_bucket_policy_get_obj_acl_existing_tag():
     assert status == 403
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with defalut retention')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock():
     bucket_name = get_new_bucket_name()
@@ -13493,11 +11336,6 @@ def test_object_lock_put_obj_lock():
     assert response['Status'] == 'Enabled'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with bucket object lock not enabled')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_put_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13515,12 +11353,6 @@ def test_object_lock_put_obj_lock_invalid_bucket():
     assert error_code == 'InvalidBucketState'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with days and years')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
@@ -13540,12 +11372,6 @@ def test_object_lock_put_obj_lock_with_days_and_years():
     assert error_code == 'MalformedXML'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with invalid days')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
@@ -13564,12 +11390,6 @@ def test_object_lock_put_obj_lock_invalid_days():
     assert error_code == 'InvalidRetentionPeriod'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with invalid years')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
@@ -13588,12 +11408,6 @@ def test_object_lock_put_obj_lock_invalid_years():
     assert error_code == 'InvalidRetentionPeriod'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with invalid mode')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
@@ -13624,12 +11438,6 @@ def test_object_lock_put_obj_lock_invalid_mode():
     assert error_code == 'MalformedXML'
 
 
-attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object lock with invalid status')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
@@ -13648,12 +11456,6 @@ def test_object_lock_put_obj_lock_invalid_status():
     assert error_code == 'MalformedXML'
 
 
-attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test suspend versioning when object lock enabled')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_suspend_versioning():
     bucket_name = get_new_bucket_name()
@@ -13665,12 +11467,6 @@ def test_object_lock_suspend_versioning():
     assert error_code == 'InvalidBucketState'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get object lock')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_get_obj_lock():
     bucket_name = get_new_bucket_name()
@@ -13690,11 +11486,6 @@ def test_object_lock_get_obj_lock():
     assert response['ObjectLockConfiguration'] == conf
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get object lock with bucket object lock not enabled')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_get_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13705,12 +11496,6 @@ def test_object_lock_get_obj_lock_invalid_bucket():
     assert error_code == 'ObjectLockConfigurationNotFoundError'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test put object retention')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention():
     bucket_name = get_new_bucket_name()
@@ -13726,11 +11511,6 @@ def test_object_lock_put_obj_retention():
 
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention with bucket object lock not enabled')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13744,12 +11524,6 @@ def test_object_lock_put_obj_retention_invalid_bucket():
     assert error_code == 'InvalidRequest'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention with invalid mode')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_invalid_mode():
     bucket_name = get_new_bucket_name()
@@ -13770,12 +11544,6 @@ def test_object_lock_put_obj_retention_invalid_mode():
     assert error_code == 'MalformedXML'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get object retention')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_get_obj_retention():
     bucket_name = get_new_bucket_name()
@@ -13791,12 +11559,6 @@ def test_object_lock_get_obj_retention():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test object retention date formatting')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_get_obj_retention_iso8601():
     bucket_name = get_new_bucket_name()
@@ -13815,11 +11577,6 @@ def test_object_lock_get_obj_retention_iso8601():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get object retention with invalid bucket')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13832,12 +11589,6 @@ def test_object_lock_get_obj_retention_invalid_bucket():
     assert error_code == 'InvalidRequest'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention with version id')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_versionid():
     bucket_name = get_new_bucket_name()
@@ -13854,12 +11605,6 @@ def test_object_lock_put_obj_retention_versionid():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention to override default retention')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_override_default_retention():
     bucket_name = get_new_bucket_name()
@@ -13885,12 +11630,6 @@ def test_object_lock_put_obj_retention_override_default_retention():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention to increase retention period')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_increase_period():
     bucket_name = get_new_bucket_name()
@@ -13908,12 +11647,6 @@ def test_object_lock_put_obj_retention_increase_period():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention to shorten period')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_shorten_period():
     bucket_name = get_new_bucket_name()
@@ -13932,12 +11665,6 @@ def test_object_lock_put_obj_retention_shorten_period():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put object retention to shorten period with bypass header')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_retention_shorten_period_bypass():
     bucket_name = get_new_bucket_name()
@@ -13955,12 +11682,6 @@ def test_object_lock_put_obj_retention_shorten_period_bypass():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='Test delete object with retention')
-@attr(assertion='retention period make effects')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
@@ -13979,12 +11700,6 @@ def test_object_lock_delete_object_with_retention():
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='Test delete object with retention and delete marker')
-@attr(assertion='retention period make effects')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_retention_and_marker():
     bucket_name = get_new_bucket_name()
@@ -14010,12 +11725,6 @@ def test_object_lock_delete_object_with_retention_and_marker():
     response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
-@attr(resource='object')
-@attr(method='delete')
-@attr(operation='Test multi-delete object with retention')
-@attr(assertion='retention period make effects')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_multi_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
@@ -14083,12 +11792,6 @@ def test_object_lock_multi_delete_object_with_retention():
 
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put legal hold')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_legal_hold():
     bucket_name = get_new_bucket_name()
@@ -14103,11 +11806,6 @@ def test_object_lock_put_legal_hold():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put legal hold with invalid bucket')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14121,12 +11819,6 @@ def test_object_lock_put_legal_hold_invalid_bucket():
     assert error_code == 'InvalidRequest'
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put legal hold with invalid status')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_legal_hold_invalid_status():
     bucket_name = get_new_bucket_name()
@@ -14141,12 +11833,6 @@ def test_object_lock_put_legal_hold_invalid_status():
     assert error_code == 'MalformedXML'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get legal hold')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
@@ -14164,11 +11850,6 @@ def test_object_lock_get_legal_hold():
     assert response['LegalHold'] == legal_hold_off
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get legal hold with invalid bucket')
-@attr(assertion='fails')
-@attr('object-lock')
 def test_object_lock_get_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14181,12 +11862,6 @@ def test_object_lock_get_legal_hold_invalid_bucket():
     assert error_code == 'InvalidRequest'
 
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='Test delete object with legal hold on')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
@@ -14202,12 +11877,6 @@ def test_object_lock_delete_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='Test delete object with legal hold off')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_legal_hold_off():
     bucket_name = get_new_bucket_name()
@@ -14220,12 +11889,6 @@ def test_object_lock_delete_object_with_legal_hold_off():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test get object metadata')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_get_obj_metadata():
     bucket_name = get_new_bucket_name()
@@ -14246,12 +11909,6 @@ def test_object_lock_get_obj_metadata():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='Test put legal hold and retention when uploading object')
-@attr(assertion='success')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_uploading_obj():
     bucket_name = get_new_bucket_name()
@@ -14268,12 +11925,6 @@ def test_object_lock_uploading_obj():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE with bypass')
-@attr(assertion='succeeds')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_changing_mode_from_governance_with_bypass():
     bucket_name = get_new_bucket_name()
@@ -14288,12 +11939,6 @@ def test_object_lock_changing_mode_from_governance_with_bypass():
     retention = {'Mode':'COMPLIANCE', 'RetainUntilDate':retain_until}
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test changing object retention mode from GOVERNANCE to COMPLIANCE without bypass')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_changing_mode_from_governance_without_bypass():
     bucket_name = get_new_bucket_name()
@@ -14311,12 +11956,6 @@ def test_object_lock_changing_mode_from_governance_without_bypass():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test changing object retention mode from COMPLIANCE to GOVERNANCE')
-@attr(assertion='fails')
-@attr('object-lock')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_object_lock_changing_mode_from_compliance():
     bucket_name = get_new_bucket_name()
@@ -14334,11 +11973,6 @@ def test_object_lock_changing_mode_from_compliance():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='copy w/ x-amz-copy-source-if-match: the latest ETag')
-@attr(assertion='succeeds')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_copy_object_ifmatch_good():
     bucket_name = get_new_bucket()
@@ -14350,12 +11984,7 @@ def test_copy_object_ifmatch_good():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='copy w/ x-amz-copy-source-if-match: bogus ETag')
-@attr(assertion='fails 412')
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40808 is resolved
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_copy_object_ifmatch_failed():
     bucket_name = get_new_bucket()
@@ -14367,12 +11996,7 @@ def test_copy_object_ifmatch_failed():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='copy w/ x-amz-copy-source-if-none-match: the latest ETag')
-@attr(assertion='fails 412')
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40808 is resolved
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_copy_object_ifnonematch_good():
     bucket_name = get_new_bucket()
@@ -14384,11 +12008,6 @@ def test_copy_object_ifnonematch_good():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
-@attr(resource='object')
-@attr(method='copy')
-@attr(operation='copy w/ x-amz-copy-source-if-none-match: bogus ETag')
-@attr(assertion='succeeds')
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_copy_object_ifnonematch_failed():
     bucket_name = get_new_bucket()
@@ -14400,12 +12019,7 @@ def test_copy_object_ifnonematch_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='get')
-@attr(operation='read to invalid key')
-@attr(assertion='fails 400')
 # TODO: results in a 404 instead of 400 on the RGW
-@attr('fails_on_rgw')
 @pytest.mark.fails_on_rgw
 def test_object_read_unreadable():
     bucket_name = get_new_bucket()
@@ -14415,11 +12029,6 @@ def test_object_read_unreadable():
     assert status == 400
     assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test User Policy')
-@attr(assertion='succeeds')
-@attr('user-policy')
 def test_user_policy():
     client = get_tenant_iam_client()
 
@@ -14437,22 +12046,12 @@ def test_user_policy():
     )
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a new bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == False
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a public acl bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14461,11 +12060,6 @@ def test_get_public_acl_bucket_policy_status():
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a authenticated acl bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14475,11 +12069,6 @@ def test_get_authpublic_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == True
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a public policy bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14509,11 +12098,6 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == True
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a public policy bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14547,11 +12131,6 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket policy status on a public policy bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_nonpublicpolicy_deny_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14579,11 +12158,6 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get public access block on a bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_get_default_public_block():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -14595,11 +12169,6 @@ def test_get_default_public_block():
     assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == False
     assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == False
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='get public access block on a bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_put_public_block():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -14619,11 +12188,6 @@ def test_put_public_block():
     assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == access_conf['RestrictPublicBuckets']
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='get public access block on a bucket')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_block_public_put_bucket_acls():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -14653,11 +12217,6 @@ def test_block_public_put_bucket_acls():
     assert status == 403
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='block public acls on canned acls')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_block_public_object_canned_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14687,11 +12246,6 @@ def test_block_public_object_canned_acls():
     assert status == 403
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='block public acls on canned acls')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_block_public_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14709,11 +12263,6 @@ def test_block_public_policy():
     check_access_denied(client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='ignore public acls on canned acls')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14741,11 +12290,6 @@ def test_ignore_public_acls():
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key='key1')
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='multipart upload on a bucket with a policy')
-@attr(assertion='succeeds')
-@attr('policy_status')
 def test_multipart_upload_on_a_bucket_with_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14808,22 +12352,12 @@ def _put_bucket_encryption_kms(client, bucket_name):
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='put bucket encryption on bucket - s3')
-@attr(assertion='succeeds')
-@attr('sse-s3')
 @pytest.mark.sse_s3
 def test_put_bucket_encryption_s3():
     bucket_name = get_new_bucket()
     client = get_client()
     _put_bucket_encryption_s3(client, bucket_name)
 
-@attr(resource='bucket')
-@attr(method='put')
-@attr(operation='put bucket encryption on bucket - kms')
-@attr(assertion='succeeds')
-@attr('encryption')
 @pytest.mark.encryption
 def test_put_bucket_encryption_kms():
     bucket_name = get_new_bucket()
@@ -14831,11 +12365,6 @@ def test_put_bucket_encryption_kms():
     _put_bucket_encryption_kms(client, bucket_name)
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket encryption on bucket - s3')
-@attr(assertion='succeeds')
-@attr('sse-s3')
 @pytest.mark.sse_s3
 def test_get_bucket_encryption_s3():
     bucket_name = get_new_bucket()
@@ -14856,11 +12385,6 @@ def test_get_bucket_encryption_s3():
     assert response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm'] == 'AES256'
 
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='get bucket encryption on bucket - kms')
-@attr(assertion='succeeds')
-@attr('encryption')
 @pytest.mark.encryption
 def test_get_bucket_encryption_kms():
     kms_keyid = get_main_kms_keyid()
@@ -14885,11 +12409,6 @@ def test_get_bucket_encryption_kms():
     assert response['ServerSideEncryptionConfiguration']['Rules'][0]['ApplyServerSideEncryptionByDefault']['KMSMasterKeyID'] == kms_keyid
 
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='delete bucket encryption on bucket - s3')
-@attr(assertion='succeeds')
-@attr('sse-s3')
 @pytest.mark.sse_s3
 def test_delete_bucket_encryption_s3():
     bucket_name = get_new_bucket()
@@ -14912,11 +12431,6 @@ def test_delete_bucket_encryption_s3():
     assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
 
-@attr(resource='bucket')
-@attr(method='delete')
-@attr(operation='delete bucket encryption on bucket - kms')
-@attr(assertion='succeeds')
-@attr('encryption')
 @pytest.mark.encryption
 def test_delete_bucket_encryption_kms():
     bucket_name = get_new_bucket()
@@ -14957,62 +12471,30 @@ def _test_sse_s3_default_upload(file_size):
     body = _get_body(response)
     assert body == data
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1 byte upload to SSE-S3 default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_upload_1b():
     _test_sse_s3_default_upload(1)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1KB upload to SSE-S3 default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_upload_1kb():
     _test_sse_s3_default_upload(1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1MB upload to SSE-S3 default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_upload_1mb():
     _test_sse_s3_default_upload(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 8MB upload to SSE-S3 default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_upload_8mb():
     _test_sse_s3_default_upload(8*1024*1024)
@@ -15041,79 +12523,39 @@ def _test_sse_kms_default_upload(file_size):
     body = _get_body(response)
     assert body == data
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1 byte upload to SSE-KMS default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_upload_1b():
     _test_sse_kms_default_upload(1)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1KB upload to SSE-KMS default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_upload_1kb():
     _test_sse_kms_default_upload(1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1MB upload to SSE-KMS default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_upload_1mb():
     _test_sse_kms_default_upload(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 8MB upload to SSE-KMS default-encrypted bucket')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_upload_8mb():
     _test_sse_kms_default_upload(8*1024*1024)
 
 
 
-@attr(resource='object')
-@attr(method='head')
-@attr(operation='Test head operation on SSE-S3 default-encrypted object')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_method_head():
     bucket_name = get_new_bucket()
@@ -15136,17 +12578,9 @@ def test_sse_s3_default_method_head():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='complete SSE-S3 multi-part upload')
-@attr(assertion='successful')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_multipart_upload():
     bucket_name = get_new_bucket()
@@ -15191,17 +12625,9 @@ def test_sse_s3_default_multipart_upload():
     _check_content_using_range(key, bucket_name, data, 1000000)
     _check_content_using_range(key, bucket_name, data, 10000000)
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated SSE-S3 browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_default_post_object_authenticated_request():
     bucket_name = get_new_bucket()
@@ -15245,15 +12671,8 @@ def test_sse_s3_default_post_object_authenticated_request():
     body = _get_body(response)
     assert body == 'bar'
 
-@attr(resource='object')
-@attr(method='post')
-@attr(operation='authenticated SSE-kMS browser based upload via POST request')
-@attr(assertion='succeeds and returns written data')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('bucket-encryption')
 @pytest.mark.bucket_encryption
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
@@ -15318,54 +12737,26 @@ def _test_sse_s3_encrypted_upload(file_size):
     body = _get_body(response)
     assert body == data
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1 byte upload with SSE-S3 encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_1b():
     _test_sse_s3_encrypted_upload(1)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1Kb upload with SSE-S3 encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_1kb():
     _test_sse_s3_encrypted_upload(1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 1MB upload with SSE-S3 encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_1mb():
     _test_sse_s3_encrypted_upload(1024*1024)
 
-@attr(resource='object')
-@attr(method='put')
-@attr(operation='Test 8MB upload with SSE-S3 encryption')
-@attr(assertion='success')
-@attr('encryption')
 @pytest.mark.encryption
-@attr('sse-s3')
 @pytest.mark.sse_s3
-@attr('fails_on_dbstore')
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
