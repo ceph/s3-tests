@@ -1807,7 +1807,6 @@ def test_object_set_get_unicode_metadata():
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     response = client.get_object(Bucket=bucket_name, Key='foo')
-    got = response['Metadata']['meta1'].decode('utf-8')
     got = response['Metadata']['meta1']
     print(got)
     print(u"Hello World\xe9")
@@ -12055,14 +12054,12 @@ def test_get_bucket_policy_status():
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
-    client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
-    client = get_client()
     client = get_client()
     client.put_bucket_acl(Bucket=bucket_name, ACL='authenticated-read')
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
@@ -12071,7 +12068,6 @@ def test_get_authpublic_acl_bucket_policy_status():
 
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
-    client = get_client()
     client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
@@ -12100,7 +12096,6 @@ def test_get_publicpolicy_acl_bucket_policy_status():
 
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
-    client = get_client()
     client = get_client()
 
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
