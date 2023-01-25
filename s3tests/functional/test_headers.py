@@ -168,18 +168,11 @@ def _setup_bad_object(headers=None, remove=None):
     _add_custom_headers(headers=headers, remove=remove)
     return bucket.new_key('foo')
 
-def tag(*tags):
-    def wrap(func):
-        for tag in tags:
-            setattr(func, tag, True)
-        return func
-    return wrap
-
 #
 # common tests
 #
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_contentlength_none():
     key = _setup_bad_object(remove=('Content-Length',))
@@ -190,7 +183,7 @@ def test_object_create_bad_contentlength_none():
     assert e.error_code == 'MissingContentLength'
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_mismatch_above():
     content = 'bar'
@@ -209,7 +202,7 @@ def test_object_create_bad_contentlength_mismatch_above():
     assert e.error_code == 'RequestTimeout'
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_authorization_empty():
     key = _setup_bad_object({'Authorization': ''})
@@ -219,14 +212,14 @@ def test_object_create_bad_authorization_empty():
     assert e.reason == 'Forbidden'
     assert e.error_code == 'AccessDenied'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
     key = _setup_bad_object({'Date': date, 'X-Amz-Date': date})
     key.set_contents_from_string('bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_create_amz_date_and_no_date():
     date = formatdate(usegmt=True)
@@ -235,7 +228,7 @@ def test_object_create_amz_date_and_no_date():
 
 
 # the teardown is really messed up here. check it out
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_authorization_none():
     key = _setup_bad_object(remove=('Authorization',))
@@ -246,14 +239,14 @@ def test_object_create_bad_authorization_none():
     assert e.error_code == 'AccessDenied'
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     get_new_bucket()
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_object_acl_create_contentlength_none():
     bucket = get_new_bucket()
@@ -277,7 +270,7 @@ def _create_new_connection():
         )
     return TargetConnection(targets.main.default.conf, conn)
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_contentlength_empty():
     conn = _create_new_connection()
@@ -287,14 +280,14 @@ def test_bucket_create_bad_contentlength_empty():
     assert e.reason.lower() == 'bad request' # some proxies vary the case
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_bad_contentlength_none():
     _add_custom_headers(remove=('Content-Length',))
     bucket = get_new_bucket()
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_bad_authorization_empty():
     _add_custom_headers({'Authorization': ''})
@@ -305,7 +298,7 @@ def test_bucket_create_bad_authorization_empty():
 
 
 # the teardown is really messed up here. check it out
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_bad_authorization_none():
     _add_custom_headers(remove=('Authorization',))
@@ -318,7 +311,7 @@ def test_bucket_create_bad_authorization_none():
 # AWS2 specific tests
 #
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_contentlength_mismatch_below_aws2():
     check_aws2_support()
@@ -331,7 +324,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
     assert e.error_code == 'BadDigest'
 
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_authorization_incorrect_aws2():
     check_aws2_support()
@@ -342,7 +335,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
 
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_authorization_invalid_aws2():
     check_aws2_support()
@@ -352,7 +345,7 @@ def test_object_create_bad_authorization_invalid_aws2():
     assert e.reason.lower() == 'bad request' # some proxies vary the case
     assert e.error_code == 'InvalidArgument'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 @pytest.mark.fails_on_dbstore
 def test_object_create_bad_date_none_aws2():
     check_aws2_support()
@@ -363,7 +356,7 @@ def test_object_create_bad_date_none_aws2():
     assert e.error_code == 'AccessDenied'
 
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_authorization_invalid_aws2():
     check_aws2_support()
     _add_custom_headers({'Authorization': 'AWS HAHAHA'})
@@ -372,7 +365,7 @@ def test_bucket_create_bad_authorization_invalid_aws2():
     assert e.reason.lower() == 'bad request' # some proxies vary the case
     assert e.error_code == 'InvalidArgument'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 @pytest.mark.fails_on_dbstore
 def test_bucket_create_bad_date_none_aws2():
     check_aws2_support()
@@ -395,7 +388,7 @@ def check_aws2_support():
         pytest.skip('sigv2 tests disabled by S3_USE_SIGV4')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_md5_invalid_garbage_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Content-MD5':'AWS4 HAHAHA'})
@@ -406,7 +399,7 @@ def test_object_create_bad_md5_invalid_garbage_aws4():
     assert e.error_code == 'InvalidDigest'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_contentlength_mismatch_below_aws4():
     check_aws4_support()
     content = 'bar'
@@ -419,7 +412,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws4():
     assert e.error_code == 'XAmzContentSHA256Mismatch'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_authorization_incorrect_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=AKIAIGR7ZNNBHC5BKSUB/20150930/us-east-1/s3/aws4_request,SignedHeaders=host;user-agent,Signature=FWeDfwojDSdS2Ztmpfeubhd9isU='})
@@ -430,7 +423,7 @@ def test_object_create_bad_authorization_incorrect_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_authorization_invalid_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=HAHAHA'})
@@ -441,7 +434,7 @@ def test_object_create_bad_authorization_invalid_aws4():
     assert e.error_code in ('AuthorizationHeaderMalformed', 'InvalidArgument')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_ua_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'User-Agent': ''})
@@ -452,7 +445,7 @@ def test_object_create_bad_ua_empty_aws4():
     assert e.error_code == 'SignatureDoesNotMatch'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_ua_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('User-Agent',))
@@ -463,14 +456,14 @@ def test_object_create_bad_ua_none_aws4():
     assert e.error_code == 'SignatureDoesNotMatch'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_invalid_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Bad Date'})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_invalid_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': 'Bad Date'})
@@ -481,14 +474,14 @@ def test_object_create_bad_amz_date_invalid_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': ''})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_empty_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': ''})
@@ -499,14 +492,14 @@ def test_object_create_bad_amz_date_empty_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('Date',))
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_none_aws4():
     check_aws4_support()
     key = _setup_bad_object(remove=('X-Amz-Date',))
@@ -517,14 +510,14 @@ def test_object_create_bad_amz_date_none_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_before_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_before_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '20100707T215304Z'})
@@ -535,14 +528,14 @@ def test_object_create_bad_amz_date_before_today_aws4():
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_after_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_after_today_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '20300707T215304Z'})
@@ -553,14 +546,14 @@ def test_object_create_bad_amz_date_after_today_aws4():
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_before_epoch_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_before_epoch_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '19500707T215304Z'})
@@ -571,14 +564,14 @@ def test_object_create_bad_amz_date_before_epoch_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_date_after_end_aws4():
     check_aws4_support()
     key = _setup_bad_object({'Date': 'Tue, 07 Jul 9999 21:53:04 GMT'})
     key.set_contents_from_string('bar')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_bad_amz_date_after_end_aws4():
     check_aws4_support()
     key = _setup_bad_object({'X-Amz-Date': '99990707T215304Z'})
@@ -589,7 +582,7 @@ def test_object_create_bad_amz_date_after_end_aws4():
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_missing_signed_custom_header_aws4():
     check_aws4_support()
     method='PUT'
@@ -615,7 +608,7 @@ def test_object_create_missing_signed_custom_header_aws4():
     assert res.reason == 'Forbidden'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_object_create_missing_signed_header_aws4():
     check_aws4_support()
     method='PUT'
@@ -642,7 +635,7 @@ def test_object_create_missing_signed_header_aws4():
     assert res.reason == 'Forbidden'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_authorization_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'Authorization': 'AWS4 HAHAHA'})
@@ -653,7 +646,7 @@ def test_bucket_create_bad_authorization_invalid_aws4():
     assert e.error_code == 'InvalidArgument'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_ua_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'User-Agent': ''})
@@ -663,7 +656,7 @@ def test_bucket_create_bad_ua_empty_aws4():
     assert e.reason == 'Forbidden'
     assert e.error_code == 'SignatureDoesNotMatch'
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_ua_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('User-Agent',))
@@ -674,14 +667,14 @@ def test_bucket_create_bad_ua_none_aws4():
     assert e.error_code == 'SignatureDoesNotMatch'
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Bad Date'})
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_invalid_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': 'Bad Date'})
@@ -692,14 +685,14 @@ def test_bucket_create_bad_amz_date_invalid_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': ''})
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_empty_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': ''})
@@ -709,14 +702,14 @@ def test_bucket_create_bad_amz_date_empty_aws4():
     assert e.reason == 'Forbidden'
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('Date',))
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_none_aws4():
     check_aws4_support()
     _add_custom_headers(remove=('X-Amz-Date',))
@@ -727,14 +720,14 @@ def test_bucket_create_bad_amz_date_none_aws4():
     assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_before_today_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2010 21:53:04 GMT'})
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_before_today_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '20100707T215304Z'})
@@ -745,14 +738,14 @@ def test_bucket_create_bad_amz_date_before_today_aws4():
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_after_today_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 2030 21:53:04 GMT'})
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_after_today_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '20300707T215304Z'})
@@ -763,14 +756,14 @@ def test_bucket_create_bad_amz_date_after_today_aws4():
     assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_date_before_epoch_aws4():
     check_aws4_support()
     _add_custom_headers({'Date': 'Tue, 07 Jul 1950 21:53:04 GMT'})
     get_new_bucket()
 
 
-@tag('auth_aws4')
+@pytest.mark.auth_aws4
 def test_bucket_create_bad_amz_date_before_epoch_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '19500707T215304Z'})
