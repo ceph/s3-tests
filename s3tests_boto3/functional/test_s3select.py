@@ -1,14 +1,14 @@
-import nose
+import pytest
 import random
 import string
 import re
-from nose.plugins.attrib import attr
 from botocore.exceptions import ClientError
 
 import uuid
-from nose.tools import eq_ as eq
 
 from . import (
+    configfile,
+    setup_teardown,
     get_client
     )
 
@@ -76,12 +76,12 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         # both results should be close (epsilon)
         assert(  abs(float(res.split("\n")[1]) - eval(e)) < epsilon )
 
-@attr('s3select')
+@pytest.mark.s3select
 def get_random_string():
 
     return uuid.uuid4().hex[:6].upper()
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_generate_where_clause():
 
     # create small csv file for testing the random expressions
@@ -93,7 +93,7 @@ def test_generate_where_clause():
     for _ in range(100): 
         generate_s3select_where_clause(bucket_name,obj_name)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_generate_projection():
 
     # create small csv file for testing the random expressions
@@ -114,8 +114,7 @@ def s3select_assert_result(a,b):
     else:
         assert a != ""
         assert b != ""
-    
-    nose.tools.assert_equal(a,b)
+    assert a == b
 
 def create_csv_object_for_datetime(rows,columns):
         result = ""
@@ -219,7 +218,7 @@ def upload_csv_object(bucket_name,new_key,obj):
         # validate uploaded object
         c2 = get_client()
         response = c2.get_object(Bucket=bucket_name, Key=new_key)
-        eq(response['Body'].read().decode('utf-8'), obj, 's3select error[ downloaded object not equal to uploaded objecy')
+        assert response['Body'].read().decode('utf-8') == obj, 's3select error[ downloaded object not equal to uploaded objecy'
 
 def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',esc_char='\\',csv_header_info="NONE", progress = False):
 
@@ -291,7 +290,7 @@ def remove_xml_tags_from_result(obj):
     x = bool(re.search("^failure.*$", result_strip))
     if x:
         logging.info(result)
-    nose.tools.assert_equal(x, False)
+    assert x == False
 
     return result
 
@@ -309,7 +308,7 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
 
     return list_of_int
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_count_operation():
     csv_obj_name = get_random_string()
     bucket_name = "test"
@@ -320,7 +319,7 @@ def test_count_operation():
 
     s3select_assert_result( num_of_rows, int( res ))
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_column_sum_min_max():
     csv_obj = create_random_csv_object(10000,10)
 
@@ -385,7 +384,7 @@ def test_column_sum_min_max():
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_nullif_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -440,7 +439,7 @@ def test_nullif_expressions():
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_nulliftrue_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -467,7 +466,7 @@ def test_nulliftrue_expressions():
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_is_not_null_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -488,7 +487,7 @@ def test_is_not_null_expressions():
 
     s3select_assert_result( res_s3select_null, res_s3select)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_lowerupper_expressions():
 
     csv_obj = create_random_csv_object(1,10)
@@ -505,7 +504,7 @@ def test_lowerupper_expressions():
 
     s3select_assert_result( res_s3select, "AB12CD$$")
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_in_expressions():
 
     # purpose of test: engine is process correctly several projections containing aggregation-functions
@@ -575,7 +574,7 @@ def test_in_expressions():
 
     s3select_assert_result( res_s3select_in, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_true_false_in_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -620,7 +619,7 @@ def test_true_false_in_expressions():
 
     s3select_assert_result( res_s3select_in, res_s3select )  
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_like_expressions():
 
     csv_obj = create_random_csv_object_string(1000,10)
@@ -707,7 +706,7 @@ def test_like_expressions():
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_truefalselike_expressions():
 
     csv_obj = create_random_csv_object_string(1000,10)
@@ -752,7 +751,7 @@ def test_truefalselike_expressions():
 
     s3select_assert_result( res_s3select_like, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_nullif_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -765,21 +764,21 @@ def test_nullif_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 = _2  ;")  ).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+    assert res_s3select_nullif == res_s3select
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where not nullif(_1,_2) is null ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 != _2  ;")  ).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+    assert res_s3select_nullif == res_s3select
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where  nullif(_1,_2) = _1 ;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where _1 != _2  ;")  ).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_nullif, res_s3select)
+    assert res_s3select_nullif == res_s3select
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_lowerupper_expressions():
 
     csv_obj = create_random_csv_object(1,10)
@@ -790,13 +789,13 @@ def test_lowerupper_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select lower("AB12cd$$") from stdin ;')  ).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select, "ab12cd$$")
+    assert res_s3select == "ab12cd$$"
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select upper("ab12CD$$") from stdin ;')  ).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select, "AB12CD$$")
+    assert res_s3select == "AB12CD$$"
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_in_expressions():
 
     # purpose of test: engine is process correctly several projections containing aggregation-functions 
@@ -810,33 +809,33 @@ def test_in_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) = 1;')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) in(1,0);')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) = 1 or int(_1) = 0;')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2) in(1,0,2);')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2) = 1 or int(_2) = 0 or int(_2) = 2;')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2)*2 in(int(_3)*2,int(_4)*3,int(_5)*5);')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_2) from stdin where int(_2)*2 = int(_3)*2 or int(_2)*2 = int(_4)*3 or int(_2)*2 = int(_5)*5;')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where character_length(_1) = 2 and substring(_1,2,1) in ("3");')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where _1 like "_3";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_like_expressions():
 
     csv_obj = create_random_csv_object_string(10000,10)
@@ -849,40 +848,40 @@ def test_like_expressions():
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,11,4) = "aeio" ;')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "cbcd%";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_1,1,4) = "cbcd";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _3 like "%y[y-z]";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_3,character_length(_3),1) between "y" and "z" and substring(_3,character_length(_3)-1,1) = "y";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _2 like "%yz";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_2,character_length(_2),1) = "z" and substring(_2,character_length(_2)-1,1) = "y";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _3 like "c%z";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_3,character_length(_3),1) = "z" and substring(_3,1,1) = "c";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _2 like "%xy_";')).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name, 'select count(*) from stdin where substring(_2,character_length(_2)-1,1) = "y" and substring(_2,character_length(_2)-2,1) = "x";')).replace("\n","")
 
-    nose.tools.assert_equal( res_s3select_in, res_s3select )
+    assert res_s3select_in == res_s3select 
 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_complex_expressions():
 
     # purpose of test: engine is process correctly several projections containing aggregation-functions 
@@ -914,7 +913,7 @@ def test_complex_expressions():
 
     s3select_assert_result( res_s3select_between_numbers, res_s3select_eq_modolu)
     
-@attr('s3select')
+@pytest.mark.s3select
 def test_alias():
 
     # purpose: test is comparing result of exactly the same queries , one with alias the other without.
@@ -935,7 +934,7 @@ def test_alias():
     s3select_assert_result( res_s3select_alias, res_s3select_no_alias)
 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_alias_cyclic_refernce():
 
     number_of_rows = 10000
@@ -953,7 +952,7 @@ def test_alias_cyclic_refernce():
     
     assert int(find_res) >= 0 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_datetime():
 
     # purpose of test is to validate date-time functionality is correct,
@@ -984,7 +983,7 @@ def test_datetime():
 
     s3select_assert_result( res_s3select_date_time_to_timestamp, res_s3select_substring)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_true_false_datetime():
 
     # purpose of test is to validate date-time functionality is correct,
@@ -1018,7 +1017,7 @@ def test_true_false_datetime():
 
     s3select_assert_result( res_s3select_date_time_utcnow, res_s3select_count)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_csv_parser():
 
     # purpuse: test default csv values(, \n " \ ), return value may contain meta-char 
@@ -1058,7 +1057,7 @@ def test_csv_parser():
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select _9 from s3object;")  ).replace("\n","")
     s3select_assert_result( res_s3select_alias, 'null')
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_csv_definition():
 
     number_of_rows = 10000
@@ -1088,7 +1087,7 @@ def test_csv_definition():
     s3select_assert_result( res_s3select, __res )
 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_schema_definition():
 
     number_of_rows = 10000
@@ -1123,7 +1122,7 @@ def test_schema_definition():
 
     assert ((res_multiple_defintion.find("multiple definition of column {c4} as schema-column and alias"))  >= 0)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_when_then_else_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -1152,7 +1151,7 @@ def test_when_then_else_expressions():
 
     s3select_assert_result( str(count3) , res2)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_coalesce_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -1174,7 +1173,7 @@ def test_coalesce_expressions():
     s3select_assert_result( res_s3select, res_coalesce)
 
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_cast_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -1195,7 +1194,7 @@ def test_cast_expressions():
 
     s3select_assert_result( res_s3select, res)
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_version():
 
     return
@@ -1213,7 +1212,7 @@ def test_version():
 
     s3select_assert_result( res_version, "41.a," )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_trim_expressions():
 
     csv_obj = create_random_csv_object_trim(10000,10)
@@ -1252,7 +1251,7 @@ def test_trim_expressions():
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_truefalse_trim_expressions():
 
     csv_obj = create_random_csv_object_trim(10000,10)
@@ -1291,7 +1290,7 @@ def test_truefalse_trim_expressions():
 
     s3select_assert_result( res_s3select_trim, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_escape_expressions():
 
     csv_obj = create_random_csv_object_escape(10000,10)
@@ -1312,7 +1311,7 @@ def test_escape_expressions():
 
     s3select_assert_result( res_s3select_escape, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_case_value_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -1327,7 +1326,7 @@ def test_case_value_expressions():
 
     s3select_assert_result( res_s3select_case, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_bool_cast_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -1342,7 +1341,7 @@ def test_bool_cast_expressions():
 
     s3select_assert_result( res_s3select_cast, res_s3select )
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_progress_expressions():
 
     csv_obj = create_random_csv_object(1000000,10)
@@ -1369,7 +1368,7 @@ def test_progress_expressions():
     # end response
     s3select_assert_result({}, res_s3select_response[total_response-1])
 
-@attr('s3select')
+@pytest.mark.s3select
 def test_output_serial_expressions():
     return # TODO fix test
 

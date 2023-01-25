@@ -3,8 +3,6 @@ import requests
 import string
 import time
 
-from nose.tools import eq_ as eq
-
 def assert_raises(excClass, callableObj, *args, **kwargs):
     """
     Like unittest.TestCase.assertRaises, but returns the exception.

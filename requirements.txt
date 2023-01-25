@@ -1,5 +1,4 @@
 PyYAML
-nose >=1.0.0
 boto >=2.6.0
 boto3 >=1.0.0
 # botocore-1.28 broke v2 signatures, see https://tracker.ceph.com/issues/58059
@@ -12,3 +11,4 @@ requests >=2.23.0
 pytz >=2011k
 httplib2
 lxml
+pytest

@@ -1,3 +1,4 @@
+import pytest
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
@@ -307,6 +308,16 @@ def teardown():
                     )
     except:
         pass
+
+@pytest.fixture(scope="package")
+def configfile():
+    setup()
+    return config
+
+@pytest.fixture(autouse=True)
+def setup_teardown(configfile):
+    yield
+    teardown()
 
 def check_webidentity():
     cfg = configparser.RawConfigParser()
