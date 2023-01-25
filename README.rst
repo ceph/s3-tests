@@ -52,6 +52,15 @@ You can run only the boto3 tests with::
 
 This section contains some basic tests for the AssumeRole, GetSessionToken and AssumeRoleWithWebIdentity API's. The test file is located under ``s3tests_boto3/functional``.
 
+To run the STS tests, the vstart cluster should be started with the following parameter (in addition to any parameters already used with it)::
+
+        vstart.sh -o rgw_sts_key=abcdefghijklmnop -o rgw_s3_auth_use_sts=true
+
+Note that the ``rgw_sts_key`` can be set to anything that is 128 bits in length.
+After the cluster is up the following command should be executed::
+
+      radosgw-admin caps add --tenant=testx --uid="9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef" --caps="roles=*"
+
 You can run only the sts tests (all the three API's) with::
 
         S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_sts.py
