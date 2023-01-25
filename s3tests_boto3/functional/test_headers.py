@@ -149,63 +149,56 @@ def _remove_header_create_bad_bucket(remove, client=None):
 
     return e
 
-def tag(*tags):
-    def wrap(func):
-        for tag in tags:
-            setattr(func, tag, True)
-        return func
-    return wrap
-
 #
 # common tests
 #
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_md5_invalid_short():
     e = _add_header_create_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'InvalidDigest'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_md5_bad():
     e = _add_header_create_bad_object({'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'BadDigest'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_md5_empty():
     e = _add_header_create_bad_object({'Content-MD5':''})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'InvalidDigest'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_md5_none():
     bucket_name, key_name = _remove_header_create_object('Content-MD5')
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_expect_mismatch():
     bucket_name, key_name = _add_header_create_object({'Expect': 200})
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_expect_empty():
     bucket_name, key_name = _add_header_create_object({'Expect': ''})
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_expect_none():
     bucket_name, key_name = _remove_header_create_object('Expect')
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_empty():
@@ -213,7 +206,7 @@ def test_object_create_bad_contentlength_empty():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_mod_proxy_fcgi
 def test_object_create_bad_contentlength_negative():
     client = get_client()
@@ -223,7 +216,7 @@ def test_object_create_bad_contentlength_negative():
     status = _get_status(e.response)
     assert status == 400
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_none():
@@ -233,20 +226,20 @@ def test_object_create_bad_contentlength_none():
     assert status == 411
     assert error_code == 'MissingContentLength'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_contenttype_invalid():
     bucket_name, key_name = _add_header_create_object({'Content-Type': 'text/plain'})
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_contenttype_empty():
     client = get_client()
     key_name = 'foo'
     bucket_name = get_new_bucket()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar', ContentType='')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_object_create_bad_contenttype_none():
     bucket_name = get_new_bucket()
     key_name = 'foo'
@@ -255,7 +248,7 @@ def test_object_create_bad_contenttype_none():
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_empty():
@@ -263,7 +256,7 @@ def test_object_create_bad_authorization_empty():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @pytest.mark.fails_on_rgw
 def test_object_create_date_and_amz_date():
@@ -272,7 +265,7 @@ def test_object_create_date_and_amz_date():
     client = get_client()
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @pytest.mark.fails_on_rgw
 def test_object_create_amz_date_and_no_date():
@@ -282,7 +275,7 @@ def test_object_create_amz_date_and_no_date():
     client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
 # the teardown is really messed up here. check it out
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_none():
@@ -290,14 +283,14 @@ def test_object_create_bad_authorization_none():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_contentlength_none():
     remove = 'Content-Length'
     _remove_header_create_bucket(remove)
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_acl_create_contentlength_none():
@@ -313,7 +306,7 @@ def test_object_acl_create_contentlength_none():
     client.meta.events.register('before-call.s3.PutObjectAcl', remove_header)
     client.put_object_acl(Bucket=bucket_name, Key='foo', ACL='public-read')
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_bucket_put_bad_canned_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -326,7 +319,7 @@ def test_bucket_put_bad_canned_acl():
     status = _get_status(e.response)
     assert status == 400
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_bucket_create_bad_expect_mismatch():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -336,12 +329,12 @@ def test_bucket_create_bad_expect_mismatch():
     client.meta.events.register('before-call.s3.CreateBucket', add_headers)
     client.create_bucket(Bucket=bucket_name)
 
-@tag('auth_common')
+@pytest.mark.auth_common
 def test_bucket_create_bad_expect_empty():
     headers = {'Expect': ''}
     _add_header_create_bucket(headers)
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: The request isn't even making it to the RGW past the frontend
 # This test had 'fails_on_rgw' before the move to boto3
 @pytest.mark.fails_on_rgw
@@ -351,7 +344,7 @@ def test_bucket_create_bad_contentlength_empty():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
-@tag('auth_common')
+@pytest.mark.auth_common
 @pytest.mark.fails_on_mod_proxy_fcgi
 def test_bucket_create_bad_contentlength_negative():
     headers = {'Content-Length': '-1'}
@@ -359,14 +352,14 @@ def test_bucket_create_bad_contentlength_negative():
     status = _get_status(e.response)
     assert status == 400
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_contentlength_none():
     remove = 'Content-Length'
     _remove_header_create_bucket(remove)
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_empty():
@@ -376,7 +369,7 @@ def test_bucket_create_bad_authorization_empty():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_common')
+@pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_none():
@@ -385,7 +378,7 @@ def test_bucket_create_bad_authorization_none():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_md5_invalid_garbage_aws2():
     v2_client = get_v2_client()
     headers = {'Content-MD5': 'AWS HAHAHA'}
@@ -394,7 +387,7 @@ def test_object_create_bad_md5_invalid_garbage_aws2():
     assert status == 400
     assert error_code == 'InvalidDigest'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the Content-Length header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_mismatch_below_aws2():
@@ -407,7 +400,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
     assert status == 400
     assert error_code == 'BadDigest'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_incorrect_aws2():
@@ -418,7 +411,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
     assert status == 403
     assert error_code == 'InvalidDigest'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_invalid_aws2():
@@ -429,21 +422,21 @@ def test_object_create_bad_authorization_invalid_aws2():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_ua_empty_aws2():
     v2_client = get_v2_client()
     headers = {'User-Agent': ''}
     bucket_name, key_name = _add_header_create_object(headers, v2_client)
     v2_client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_ua_none_aws2():
     v2_client = get_v2_client()
     remove = 'User-Agent'
     bucket_name, key_name = _remove_header_create_object(remove, v2_client)
     v2_client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_date_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Bad Date'}
@@ -452,7 +445,7 @@ def test_object_create_bad_date_invalid_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_date_empty_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': ''}
@@ -461,7 +454,7 @@ def test_object_create_bad_date_empty_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_date_none_aws2():
@@ -472,7 +465,7 @@ def test_object_create_bad_date_none_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_date_before_today_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 2010 21:53:04 GMT'}
@@ -481,7 +474,7 @@ def test_object_create_bad_date_before_today_aws2():
     assert status == 403
     assert error_code == 'RequestTimeTooSkewed'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_date_before_epoch_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 1950 21:53:04 GMT'}
@@ -490,7 +483,7 @@ def test_object_create_bad_date_before_epoch_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_object_create_bad_date_after_end_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 9999 21:53:04 GMT'}
@@ -499,7 +492,7 @@ def test_object_create_bad_date_after_end_aws2():
     assert status == 403
     assert error_code == 'RequestTimeTooSkewed'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_authorization_invalid_aws2():
@@ -510,19 +503,19 @@ def test_bucket_create_bad_authorization_invalid_aws2():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_ua_empty_aws2():
     v2_client = get_v2_client()
     headers = {'User-Agent': ''}
     _add_header_create_bucket(headers, v2_client)
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_ua_none_aws2():
     v2_client = get_v2_client()
     remove = 'User-Agent'
     _remove_header_create_bucket(remove, v2_client)
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_date_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Bad Date'}
@@ -531,7 +524,7 @@ def test_bucket_create_bad_date_invalid_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_date_empty_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': ''}
@@ -540,7 +533,7 @@ def test_bucket_create_bad_date_empty_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
 def test_bucket_create_bad_date_none_aws2():
@@ -551,7 +544,7 @@ def test_bucket_create_bad_date_none_aws2():
     assert status == 403
     assert error_code == 'AccessDenied'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_date_before_today_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 2010 21:53:04 GMT'}
@@ -560,7 +553,7 @@ def test_bucket_create_bad_date_before_today_aws2():
     assert status == 403
     assert error_code == 'RequestTimeTooSkewed'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_date_after_today_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 2030 21:53:04 GMT'}
@@ -569,7 +562,7 @@ def test_bucket_create_bad_date_after_today_aws2():
     assert status == 403
     assert error_code == 'RequestTimeTooSkewed'
 
-@tag('auth_aws2')
+@pytest.mark.auth_aws2
 def test_bucket_create_bad_date_before_epoch_aws2():
     v2_client = get_v2_client()
     headers = {'x-amz-date': 'Tue, 07 Jul 1950 21:53:04 GMT'}
