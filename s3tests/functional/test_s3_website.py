@@ -1,6 +1,7 @@
 
 import sys
 import collections
+import collections.abc
 import nose
 import string
 import random
