@@ -14170,28 +14170,6 @@ def test_object_read_unreadable():
     eq(status, 400)
     eq(e.response['Error']['Message'], 'Couldn\'t parse the specified URI.')
 
-@attr(resource='bucket')
-@attr(method='get')
-@attr(operation='Test User Policy')
-@attr(assertion='succeeds')
-@attr('user-policy')
-@attr('fails_on_dbstore')
-def test_user_policy():
-    client = get_tenant_iam_client()
-
-    policy_document = json.dumps(
-    {"Version":"2012-10-17",
-     "Statement": {
-         "Effect":"Allow",
-         "Action":"*",
-         "Resource":"*"}}
-    )
-    client.put_user_policy(
-        PolicyDocument= policy_document,
-        PolicyName='AllAccessPolicy',
-        UserName=get_tenant_user_id(),
-    )
-
 
 @attr(resource='bucket')
 @attr(method='get')
