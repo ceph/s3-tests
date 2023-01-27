@@ -12028,23 +12028,6 @@ def test_object_read_unreadable():
     assert status == 400
     assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
 
-def test_user_policy():
-    client = get_tenant_iam_client()
-
-    policy_document = json.dumps(
-    {"Version":"2012-10-17",
-     "Statement": {
-         "Effect":"Allow",
-         "Action":"*",
-         "Resource":"*"}}
-    )
-    client.put_user_policy(
-        PolicyDocument= policy_document,
-        PolicyName='AllAccessPolicy',
-        UserName=get_tenant_user_id(),
-    )
-
-
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
