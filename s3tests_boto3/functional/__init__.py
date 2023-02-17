@@ -82,18 +82,13 @@ def get_objects_list(bucket, client=None, prefix=None):
 # generator function that returns object listings in batches, where each
 # batch is a list of dicts compatible with delete_objects()
 def list_versions(client, bucket, batch_size):
-    key_marker = ''
-    version_marker = ''
+    kwargs = {'Bucket': bucket, 'MaxKeys': batch_size}
     truncated = True
     while truncated:
-        listing = client.list_object_versions(
-                Bucket=bucket,
-                KeyMarker=key_marker,
-                VersionIdMarker=version_marker,
-                MaxKeys=batch_size)
+        listing = client.list_object_versions(**kwargs)
 
-        key_marker = listing.get('NextKeyMarker')
-        version_marker = listing.get('NextVersionIdMarker')
+        kwargs['KeyMarker'] = listing.get('NextKeyMarker')
+        kwargs['VersionIdMarker'] = listing.get('NextVersionIdMarker')
         truncated = listing['IsTruncated']
 
         objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
