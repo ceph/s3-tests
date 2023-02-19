@@ -12786,3 +12786,24 @@ def test_sse_s3_encrypted_upload_1mb():
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
+
+def test_get_object_torrent():
+    client = get_client()
+    bucket_name = get_new_bucket()
+    key = 'Avatar.mpg'
+
+    file_size = 7 * 1024 * 1024
+    data = 'A' * file_size
+
+    client.put_object(Bucket=bucket_name, Key=key, Body=data)
+
+    response = None
+    try:
+        response = client.get_object_torrent(Bucket=bucket_name, Key=key)
+        # if successful, verify the torrent contents are different from the body
+        assert data != _get_body(response)
+    except ClientError as e:
+        # accept 404 errors - torrent support may not be configured
+        status, error_code = _get_status_and_error_code(e.response)
+        assert status == 404
+        assert error_code == 'NoSuchKey'
