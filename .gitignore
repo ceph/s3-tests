@@ -10,5 +10,6 @@
 
 /*.egg-info
 /virtualenv
+/venv
 
 config.yaml

@@ -12,3 +12,4 @@ pytz >=2011k
 httplib2
 lxml
 pytest
+tox
