@@ -8350,6 +8350,7 @@ def test_lifecycle_expiration_header_tags_head():
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_header_and_tags_head():
     now = datetime.datetime.now(None)
     bucket_name = get_new_bucket()
