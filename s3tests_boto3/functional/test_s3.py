@@ -1573,6 +1573,19 @@ def test_object_write_to_nonexist_bucket():
     assert error_code == 'NoSuchBucket'
 
 
+def _ev_add_te_header(request, **kwargs):
+    request.headers.add_header('Transfer-Encoding', 'chunked')
+
+def test_object_write_with_chunked_transfer_encoding():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    client.meta.events.register_first('before-sign.*.*', _ev_add_te_header)
+    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
 def test_bucket_create_delete():
     bucket_name = get_new_bucket()
     client = get_client()
