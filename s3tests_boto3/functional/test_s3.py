@@ -8346,7 +8346,7 @@ def test_lifecycle_expiration_header_tags_head():
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1) == False
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
@@ -8392,7 +8392,7 @@ def test_lifecycle_expiration_header_and_tags_head():
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1) == False
 
 @pytest.mark.lifecycle
 def test_lifecycle_set_noncurrent():
