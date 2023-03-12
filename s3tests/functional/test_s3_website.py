@@ -1,5 +1,5 @@
 import sys
-import collections
+from collections.abc import Container
 import pytest
 import string
 import random
@@ -159,9 +159,9 @@ def _test_website_prep(bucket, xml_template, hardcoded_fields = {}, expect_fail=
     return f
 
 def __website_expected_reponse_status(res, status, reason):
-    if not isinstance(status, collections.Container):
+    if not isinstance(status, Container):
         status = set([status])
-    if not isinstance(reason, collections.Container):
+    if not isinstance(reason, Container):
         reason = set([reason])
 
     if status is not IGNORE_FIELD:
@@ -179,7 +179,7 @@ def _website_expected_default_html(**kwargs):
         v = kwargs[k]
         if isinstance(v, str):
             v = [v]
-        elif not isinstance(v, collections.Container):
+        elif not isinstance(v, Container):
             v = [v]
         for v2 in v:
             s = '<li>%s: %s</li>' % (k,v2)
@@ -199,7 +199,7 @@ def _website_expected_error_response(res, bucket_name, status, reason, code, con
         if code is not IGNORE_FIELD:
             assert errorcode == code
 
-    if not isinstance(content, collections.Container):
+    if not isinstance(content, Container):
         content = set([content])
     for f in content:
         if f is not IGNORE_FIELD and f is not None:
