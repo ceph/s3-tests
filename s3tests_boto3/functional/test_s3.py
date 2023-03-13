@@ -7459,20 +7459,17 @@ def test_versioning_multi_object_delete():
     num_versions = 2
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
+    assert len(version_ids) == 2
 
-    response = client.list_object_versions(Bucket=bucket_name)
-    versions = response['Versions']
-    versions.reverse()
-
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
+    # delete both versions
+    objects = [{'Key': key, 'VersionId': v} for v in version_ids]
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
     # now remove again, should all succeed due to idempotency
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
@@ -7487,33 +7484,24 @@ def test_versioning_multi_object_delete_with_marker():
     num_versions = 2
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
+    assert len(version_ids) == num_versions
+    objects = [{'Key': key, 'VersionId': v} for v in version_ids]
 
-    client.delete_object(Bucket=bucket_name, Key=key)
-    response = client.list_object_versions(Bucket=bucket_name)
-    versions = response['Versions']
-    delete_markers = response['DeleteMarkers']
+    # create a delete marker
+    response = client.delete_object(Bucket=bucket_name, Key=key)
+    assert response['DeleteMarker']
+    objects += [{'Key': key, 'VersionId': response['VersionId']}]
 
-    version_ids.append(delete_markers[0]['VersionId'])
-    assert len(version_ids) == 3
-    assert len(delete_markers) == 1
-
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
-
-    for delete_marker in delete_markers:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=delete_marker['VersionId'])
+    # delete all versions
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
     assert not 'DeleteMarkers' in response
 
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
-
-    for delete_marker in delete_markers:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=delete_marker['VersionId'])
-
     # now remove again, should all succeed due to idempotency
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
+
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
     assert not 'DeleteMarkers' in response
@@ -7527,8 +7515,11 @@ def test_versioning_multi_object_delete_with_marker_create():
 
     key = 'key'
 
-    response = client.delete_object(Bucket=bucket_name, Key=key)
-    delete_marker_version_id = response['VersionId']
+    # use delete_objects() to create a delete marker
+    response = client.delete_objects(Bucket=bucket_name, Delete={'Objects': [{'Key': key}]})
+    assert len(response['Deleted']) == 1
+    assert response['Deleted'][0]['DeleteMarker']
+    delete_marker_version_id = response['Deleted'][0]['DeleteMarkerVersionId']
 
     response = client.list_object_versions(Bucket=bucket_name)
     delete_markers = response['DeleteMarkers']
