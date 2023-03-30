@@ -6345,6 +6345,21 @@ def test_100_continue():
     status = _simple_http_req_100_cont(host, port, is_secure, 'PUT', resource)
     assert status == '100'
 
+def test_error_before_100_continue():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'key'
+    body = 'foo'
+    boto3.set_stream_logger(name='botocore')
+
+    # PutObject expects 100-continue, but the invalid ACL should fail with 400 before that
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=body, ACL='privateabc')
+    status = _get_status(e.response)
+    assert status == 400
+
+    # the next request with valid ACL should succeed
+    client.put_object(Bucket=bucket_name, Key=key, Body=body)
+
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
