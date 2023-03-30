@@ -12646,6 +12646,7 @@ def test_sse_s3_default_multipart_upload():
 
     assert response['Metadata'] == metadata
     assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     body = _get_body(response)
     assert body == data
