@@ -75,7 +75,7 @@ def generate_s3select_expression_projection(bucket_name,obj_name):
         epsilon = float(0.00001) 
 
         # both results should be close (epsilon)
-        assert(  abs(float(res.split("\n")[1]) - eval(e)) < epsilon )
+        assert(  abs(float(res.split("\n")[0]) - eval(e)) < epsilon )
 
 @pytest.mark.s3select
 def get_random_string():
