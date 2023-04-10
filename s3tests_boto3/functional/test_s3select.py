@@ -297,18 +297,19 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
                 result += records
     else:
         result = []
+        max_progress_scanned = 0
         for event in r['Payload']:
             if 'Records' in event:
                 records = event['Records']
                 result.append(records.copy())
             if 'Progress' in event:
-                progress = event['Progress']
-                result_status['Progress'] = event['Progress']
+                if(event['Progress']['Details']['BytesScanned'] > max_progress_scanned):
+                    max_progress_scanned = event['Progress']['Details']['BytesScanned']
+                    result_status['Progress'] = event['Progress']
+
             if 'Stats' in event:
-                stats = event['Stats']
                 result_status['Stats'] = event['Stats']
             if 'End' in event:
-                end = event['End']
                 result_status['End'] = event['End']
 
     if progress == False:
