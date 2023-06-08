@@ -1573,6 +1573,19 @@ def test_object_write_to_nonexist_bucket():
     assert error_code == 'NoSuchBucket'
 
 
+def _ev_add_te_header(request, **kwargs):
+    request.headers.add_header('Transfer-Encoding', 'chunked')
+
+def test_object_write_with_chunked_transfer_encoding():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    client.meta.events.register_first('before-sign.*.*', _ev_add_te_header)
+    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
 def test_bucket_create_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -1623,6 +1636,39 @@ def _make_objs_dict(key_names):
         objs_list.append(obj_dict)
     objs_dict = {'Objects': objs_list}
     return objs_dict
+
+def test_versioning_concurrent_multi_object_delete():
+    num_objects = 5
+    num_threads = 5
+    bucket_name = get_new_bucket()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    key_names = ["key_{:d}".format(x) for x in range(num_objects)]
+    bucket = _create_objects(bucket_name=bucket_name, keys=key_names)
+
+    client = get_client()
+    versions = client.list_object_versions(Bucket=bucket_name)['Versions']
+    assert len(versions) == num_objects
+    objs_dict = {'Objects': [dict((k, v[k]) for k in ["Key", "VersionId"]) for v in versions]}
+    results = [None] * num_threads
+
+    def do_request(n):
+        results[n] = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
+
+    t = []
+    for i in range(num_threads):
+        thr = threading.Thread(target = do_request, args=[i])
+        thr.start()
+        t.append(thr)
+    _do_wait_completion(t)
+
+    for response in results:
+        assert len(response['Deleted']) == num_objects
+        assert 'Errors' not in response
+
+    response = client.list_objects(Bucket=bucket_name)
+    assert 'Contents' not in response
 
 def test_multi_object_delete():
     key_names = ['key0', 'key1', 'key2']
@@ -2817,6 +2863,53 @@ def test_post_object_upload_size_below_minimum():
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
+
+def test_post_object_upload_size_rgw_chunk_size_bug():
+    # Test for https://tracker.ceph.com/issues/58627
+    # TODO: if this value is different in Teuthology runs, this would need tuning
+    # https://github.com/ceph/ceph/blob/main/qa/suites/rgw/verify/striping%24/stripe-greater-than-chunk.yaml
+    _rgw_max_chunk_size = 4 * 2**20 # 4MiB
+    min_size = _rgw_max_chunk_size
+    max_size = _rgw_max_chunk_size * 3
+    # [(chunk),(small)]
+    test_payload_size = _rgw_max_chunk_size + 200 # extra bit to push it over the chunk boundary
+    # it should be valid when we run this test!
+    assert test_payload_size > min_size
+    assert test_payload_size < max_size
+
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    url = _get_post_url(bucket_name)
+    utc = pytz.utc
+    expires = datetime.datetime.now(utc) + datetime.timedelta(seconds=+6000)
+
+    policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
+    "conditions": [\
+    {"bucket": bucket_name},\
+    ["starts-with", "$key", "foo"],\
+    {"acl": "private"},\
+    ["starts-with", "$Content-Type", "text/plain"],\
+    ["content-length-range", min_size, max_size],\
+    ]\
+    }
+
+    test_payload = 'x' * test_payload_size
+
+    json_policy_document = json.JSONEncoder().encode(policy_document)
+    bytes_json_policy_document = bytes(json_policy_document, 'utf-8')
+    policy = base64.b64encode(bytes_json_policy_document)
+    aws_secret_access_key = get_main_aws_secret_key()
+    aws_access_key_id = get_main_aws_access_key()
+
+    signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())
+
+    payload = OrderedDict([ ("key" , "foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
+    ("acl" , "private"),("signature" , signature),("policy" , policy),\
+    ("Content-Type" , "text/plain"),('file', (test_payload))])
+
+    r = requests.post(url, files=payload, verify=get_config_ssl_verify())
+    assert r.status_code == 204
 
 def test_post_object_empty_conditions():
     bucket_name = get_new_bucket()
@@ -7412,20 +7505,17 @@ def test_versioning_multi_object_delete():
     num_versions = 2
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
+    assert len(version_ids) == 2
 
-    response = client.list_object_versions(Bucket=bucket_name)
-    versions = response['Versions']
-    versions.reverse()
-
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
+    # delete both versions
+    objects = [{'Key': key, 'VersionId': v} for v in version_ids]
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
     # now remove again, should all succeed due to idempotency
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
@@ -7440,33 +7530,24 @@ def test_versioning_multi_object_delete_with_marker():
     num_versions = 2
 
     (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
+    assert len(version_ids) == num_versions
+    objects = [{'Key': key, 'VersionId': v} for v in version_ids]
 
-    client.delete_object(Bucket=bucket_name, Key=key)
-    response = client.list_object_versions(Bucket=bucket_name)
-    versions = response['Versions']
-    delete_markers = response['DeleteMarkers']
+    # create a delete marker
+    response = client.delete_object(Bucket=bucket_name, Key=key)
+    assert response['DeleteMarker']
+    objects += [{'Key': key, 'VersionId': response['VersionId']}]
 
-    version_ids.append(delete_markers[0]['VersionId'])
-    assert len(version_ids) == 3
-    assert len(delete_markers) == 1
-
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
-
-    for delete_marker in delete_markers:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=delete_marker['VersionId'])
+    # delete all versions
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
 
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
     assert not 'DeleteMarkers' in response
 
-    for version in versions:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=version['VersionId'])
-
-    for delete_marker in delete_markers:
-        client.delete_object(Bucket=bucket_name, Key=key, VersionId=delete_marker['VersionId'])
-
     # now remove again, should all succeed due to idempotency
+    client.delete_objects(Bucket=bucket_name, Delete={'Objects': objects})
+
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
     assert not 'DeleteMarkers' in response
@@ -7480,8 +7561,11 @@ def test_versioning_multi_object_delete_with_marker_create():
 
     key = 'key'
 
-    response = client.delete_object(Bucket=bucket_name, Key=key)
-    delete_marker_version_id = response['VersionId']
+    # use delete_objects() to create a delete marker
+    response = client.delete_objects(Bucket=bucket_name, Delete={'Objects': [{'Key': key}]})
+    assert len(response['Deleted']) == 1
+    assert response['Deleted'][0]['DeleteMarker']
+    delete_marker_version_id = response['Deleted'][0]['DeleteMarkerVersionId']
 
     response = client.list_object_versions(Bucket=bucket_name)
     delete_markers = response['DeleteMarkers']
@@ -8299,10 +8383,11 @@ def test_lifecycle_expiration_header_tags_head():
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1) == False
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_dbstore
 def test_lifecycle_expiration_header_and_tags_head():
     now = datetime.datetime.now(None)
     bucket_name = get_new_bucket()
@@ -8344,7 +8429,7 @@ def test_lifecycle_expiration_header_and_tags_head():
     # stat the object, check header
     response = client.head_object(Bucket=bucket_name, Key=key1)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1)
+    assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1) == False
 
 @pytest.mark.lifecycle
 def test_lifecycle_set_noncurrent():
@@ -12594,6 +12679,7 @@ def test_sse_s3_default_multipart_upload():
 
     assert response['Metadata'] == metadata
     assert response['ResponseMetadata']['HTTPHeaders']['content-type'] == content_type
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
 
     body = _get_body(response)
     assert body == data
@@ -12738,3 +12824,24 @@ def test_sse_s3_encrypted_upload_1mb():
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
+
+def test_get_object_torrent():
+    client = get_client()
+    bucket_name = get_new_bucket()
+    key = 'Avatar.mpg'
+
+    file_size = 7 * 1024 * 1024
+    data = 'A' * file_size
+
+    client.put_object(Bucket=bucket_name, Key=key, Body=data)
+
+    response = None
+    try:
+        response = client.get_object_torrent(Bucket=bucket_name, Key=key)
+        # if successful, verify the torrent contents are different from the body
+        assert data != _get_body(response)
+    except ClientError as e:
+        # accept 404 errors - torrent support may not be configured
+        status, error_code = _get_status_and_error_code(e.response)
+        assert status == 404
+        assert error_code == 'NoSuchKey'
