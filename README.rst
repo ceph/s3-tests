@@ -44,7 +44,7 @@ located in the ``s3test_boto3`` directory.
 
 You can run only the boto3 tests with::
 
-	S3TEST_CONF=your.conf tox -- -m 'not fails_on_aws' s3tests_boto3/functional
+	S3TEST_CONF=your.conf tox -- -m 'not fails_on_rgw' s3tests_boto3/functional
 
 ========================
  STS compatibility tests
