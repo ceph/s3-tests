@@ -71,8 +71,12 @@ case "$ID" in
 esac
 
 
-# s3-tests only works on python 3.6 not newer versions of python3
-${virtualenv} --python=$(which python3.6) virtualenv
+# s3-tests with nose work on python 3.6 and with pytest on python3.10
+if [ $(which python3.6) ]; then
+    ${virtualenv} --python=$(which python3.6) virtualenv
+elif [ $(which python3.10) ]; then
+    ${virtualenv} --python=$(which python3.10) virtualenv
+fi
 
 # avoid pip bugs
 ./virtualenv/bin/pip3 install --upgrade pip
