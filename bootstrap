@@ -29,7 +29,7 @@ case "$ID" in
         done
 
         if [ -n "$missing" ]; then
-            echo "$0: Missing required packages: ${missing}." 1>&2  
+            echo "$0: Missing required packages: ${missing}." 1>&2
             sudo pacman -S $missing
         fi
         ;;
@@ -71,8 +71,8 @@ case "$ID" in
 esac
 
 
-# s3-tests only works on python 3.6 not newer versions of python3
-${virtualenv} --python=$(which python3.6) virtualenv
+# s3-tests only works on python older python versions like 3.8 on ubntu22-04
+${virtualenv} --python=$(which python3.8) virtualenv
 
 # avoid pip bugs
 ./virtualenv/bin/pip3 install --upgrade pip
