@@ -11,7 +11,8 @@ import uuid
 from . import (
     configfile,
     setup_teardown,
-    get_client
+    get_client,
+    get_new_bucket_name
     )
 
 import logging
@@ -88,7 +89,7 @@ def test_generate_where_clause():
 
     # create small csv file for testing the random expressions
     single_line_csv = create_random_csv_object(1,1)
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
     obj_name = get_random_string() #"single_line_csv.csv"
     upload_object(bucket_name,obj_name,single_line_csv)
        
@@ -100,7 +101,7 @@ def test_generate_projection():
 
     # create small csv file for testing the random expressions
     single_line_csv = create_random_csv_object(1,1)
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
     obj_name = get_random_string() #"single_line_csv.csv"
     upload_object(bucket_name,obj_name,single_line_csv)
        
@@ -400,7 +401,7 @@ def create_list_of_int(column_pos,obj,field_split=",",row_split="\n"):
 @pytest.mark.s3select
 def test_count_operation():
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
     num_of_rows = 1234
     obj_to_load = create_random_csv_object(num_of_rows,10)
     upload_object(bucket_name,csv_obj_name,obj_to_load)
@@ -411,7 +412,8 @@ def test_count_operation():
 @pytest.mark.s3select
 def test_count_json_operation():
     json_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     num_of_rows = 1
     obj_to_load = create_random_json_object(num_of_rows,10)
     upload_object(bucket_name,json_obj_name,obj_to_load)
@@ -433,7 +435,8 @@ def test_json_column_sum_min_max():
     json_obj = csv_to_json(csv_obj);
 
     json_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,json_obj_name,json_obj)
     
     json_obj_name_2 = get_random_string()
@@ -499,7 +502,8 @@ def test_json_nullif_expressions():
     json_obj = create_random_json_object(10000,10)
 
     json_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,json_obj_name,json_obj)
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where nullif(_1.c1,_1.c2) is null ;")  ).replace("\n","")
@@ -538,7 +542,8 @@ def test_column_sum_min_max():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+    
     upload_object(bucket_name,csv_obj_name,csv_obj)
     
     csv_obj_name_2 = get_random_string()
@@ -604,7 +609,8 @@ def test_nullif_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where nullif(_1,_2) is null ;")  ).replace("\n","")
@@ -659,7 +665,8 @@ def test_nulliftrue_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object where (nullif(_1,_2) is null) = true ;")  ).replace("\n","")
@@ -686,7 +693,8 @@ def test_is_not_null_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_null = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(*) from s3object where nullif(_1,_2) is not null ;")  ).replace("\n","")
@@ -707,7 +715,8 @@ def test_lowerupper_expressions():
     csv_obj = create_random_csv_object(1,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select lower("AB12cd$$") from s3object ;')  ).replace("\n","")
@@ -725,7 +734,8 @@ def test_in_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where int(_1) in(1);')).replace("\n","")
@@ -794,7 +804,8 @@ def test_true_false_in_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from s3object where (int(_1) in(1)) = true;')).replace("\n","")
@@ -839,7 +850,8 @@ def test_like_expressions():
     csv_obj = create_random_csv_object_string(1000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%aeio%";')).replace("\n","")
@@ -926,7 +938,8 @@ def test_truefalselike_expressions():
     csv_obj = create_random_csv_object_string(1000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where (_1 like "%aeio%") = true;')).replace("\n","")
@@ -971,7 +984,8 @@ def test_nullif_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0) from stdin where nullif(_1,_2) is null ;")  ).replace("\n","")
@@ -998,7 +1012,8 @@ def test_lowerupper_expressions():
     csv_obj = create_random_csv_object(1,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select lower("AB12cd$$") from stdin ;')  ).replace("\n","")
@@ -1016,7 +1031,8 @@ def test_in_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select int(_1) from stdin where int(_1) in(1);')).replace("\n","")
@@ -1055,7 +1071,8 @@ def test_like_expressions():
     csv_obj = create_random_csv_object_string(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_in = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%";')).replace("\n","")
@@ -1102,7 +1119,8 @@ def test_complex_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select min(int(_1)),max(int(_2)),min(int(_3))+1 from s3object;")).replace("\n","")
@@ -1138,7 +1156,8 @@ def test_alias():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1) as a1, int(_2) as a2 , (a1+a2) as a3 from s3object where a3>100 and a3<300;")  ).replace(",","")
@@ -1157,7 +1176,8 @@ def test_alias_cyclic_refernce():
     csv_obj = create_random_csv_object(number_of_rows,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_alias = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select int(_1) as a1,int(_2) as a2, a1+a4 as a3, a5+a1 as a4, int(_3)+a3 as a5 from s3object;")  )
@@ -1175,7 +1195,7 @@ def test_datetime():
     csv_obj = create_csv_object_for_datetime(10000,1)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -1206,7 +1226,7 @@ def test_true_false_datetime():
     csv_obj = create_csv_object_for_datetime(10000,1)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -1239,7 +1259,7 @@ def test_csv_parser():
 
     csv_obj = r',first,,,second,third="c31,c32,c33",forth="1,2,3,4",fifth=my_string=\"any_value\" \, my_other_string=\"aaaa\,bbb\" ,' + "\n"
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -1280,7 +1300,7 @@ def test_csv_definition():
     csv_obj = create_random_csv_object(number_of_rows,10,"|","\t")
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
    
@@ -1310,7 +1330,7 @@ def test_schema_definition():
     csv_obj = create_random_csv_object(number_of_rows,10,csv_schema="c1,c2,c3,c4,c5,c6,c7,c8,c9,c10")
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -1341,7 +1361,8 @@ def test_when_then_else_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case when cast(_1 as int)>100 and cast(_1 as int)<200 then "(100-200)" when cast(_1 as int)>200 and cast(_1 as int)<300 then "(200-300)" else "NONE" end from s3object;')  ).replace("\n","")
@@ -1370,7 +1391,8 @@ def test_coalesce_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where char_length(_3)>2 and char_length(_4)>2 and cast(substring(_3,1,2) as int) = cast(substring(_4,1,2) as int);')  ).replace("\n","")  
@@ -1392,7 +1414,8 @@ def test_cast_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(_3 as int)>999;')  ).replace("\n","")  
@@ -1417,7 +1440,7 @@ def test_version():
     csv_obj = create_random_csv_object(number_of_rows,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
@@ -1431,7 +1454,8 @@ def test_trim_expressions():
     csv_obj = create_random_csv_object_trim(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) = "aeiou";')).replace("\n","")
@@ -1470,7 +1494,8 @@ def test_truefalse_trim_expressions():
     csv_obj = create_random_csv_object_trim(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_trim = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where trim(_1) = "aeiou" = true;')).replace("\n","")
@@ -1509,7 +1534,8 @@ def test_escape_expressions():
     csv_obj = create_random_csv_object_escape(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_escape = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where _1 like "%_ar" escape "%";')).replace("\n","")
@@ -1530,7 +1556,8 @@ def test_case_value_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_case = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select case cast(_1 as int) when cast(_2 as int) then "case_1_1" else "case_2_2" end from s3object;')).replace("\n","")
@@ -1545,7 +1572,8 @@ def test_bool_cast_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_cast = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from s3object where cast(int(_1) as bool) = true ;')).replace("\n","")
@@ -1560,7 +1588,8 @@ def test_progress_expressions():
     csv_obj = create_random_csv_object(1000000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     obj_size = len(csv_obj.encode('utf-8'))
@@ -1593,7 +1622,8 @@ def test_output_serial_expressions():
     csv_obj = create_random_csv_object(10000,10)
 
     csv_obj_name = get_random_string()
-    bucket_name = "test"
+    bucket_name = get_new_bucket_name()
+
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
     res_s3select_1 = remove_xml_tags_from_result(  run_s3select_output(bucket_name,csv_obj_name,"select _1, _2 from s3object where nullif(_1,_2) is null ;", "ALWAYS")  ).replace("\n",",").replace(",","")
