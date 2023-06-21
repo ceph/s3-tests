@@ -9367,6 +9367,7 @@ def test_encryption_sse_c_multipart_upload():
         _check_content_using_range_enc(client, bucket_name, key, data, size, partlen + i, enc_headers=enc_headers)
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_dbstore # x-rgw-object-count/bytes-used not implemented
 def test_encryption_sse_c_unaligned_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
