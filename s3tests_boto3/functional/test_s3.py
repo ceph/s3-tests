@@ -3309,6 +3309,43 @@ def test_object_raw_get_object_acl():
     assert status == 403
     assert error_code == 'AccessDenied'
 
+def test_object_put_acl_mtime():
+    key = 'foo'
+    bucket_name = get_new_bucket()
+    # Enable versioning
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    client = get_client()
+
+    content = 'foooz'
+    client.put_object(Bucket=bucket_name, Key=key, Body=content)
+    
+    obj_response = client.head_object(Bucket=bucket_name, Key=key)
+    create_mtime = obj_response['LastModified']
+
+    response  = client.list_objects(Bucket=bucket_name)
+    obj_list = response['Contents'][0]
+    _compare_dates(obj_list['LastModified'],create_mtime)
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    obj_list = response['Versions'][0]
+    _compare_dates(obj_list['LastModified'],create_mtime)
+
+    # set acl
+    time.sleep(2)
+    client.put_object_acl(ACL='private',Bucket=bucket_name, Key=key)
+    
+    # mtime should match with create mtime
+    obj_response = client.head_object(Bucket=bucket_name, Key=key)
+    _compare_dates(create_mtime,obj_response['LastModified'])
+
+    response  = client.list_objects(Bucket=bucket_name)
+    obj_list = response['Contents'][0]
+    _compare_dates(obj_list['LastModified'],create_mtime)
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    obj_list = response['Versions'][0]
+    _compare_dates(obj_list['LastModified'],create_mtime)
+
 def test_object_raw_authenticated():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
 
