@@ -3141,13 +3141,14 @@ def test_put_object_ifnonmatch_overwrite_existed_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-def _setup_bucket_object_acl(bucket_acl, object_acl):
+def _setup_bucket_object_acl(bucket_acl, object_acl, client=None):
     """
     add a foo key, and specified key and bucket acls to
     a (new or existing) bucket.
     """
+    if client is None:
+        client = get_client()
     bucket_name = get_new_bucket_name()
-    client = get_client()
     client.create_bucket(ACL=bucket_acl, Bucket=bucket_name)
     client.put_object(ACL=object_acl, Bucket=bucket_name, Key='foo')
 
@@ -3320,15 +3321,23 @@ def test_object_raw_authenticated_object_gone():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-def test_object_raw_get_x_amz_expires_not_expired():
-    bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
-    client = get_client()
+def _test_object_raw_get_x_amz_expires_not_expired(client):
+    bucket_name = _setup_bucket_object_acl('public-read', 'public-read', client=client)
     params = {'Bucket': bucket_name, 'Key': 'foo'}
 
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
 
+    res = requests.options(url, verify=get_config_ssl_verify()).__dict__
+    assert res['status_code'] == 400
+
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 200
+
+def test_object_raw_get_x_amz_expires_not_expired():
+    _test_object_raw_get_x_amz_expires_not_expired(client=get_client())
+
+def test_object_raw_get_x_amz_expires_not_expired_tenant():
+    _test_object_raw_get_x_amz_expires_not_expired(client=get_tenant_client())
 
 def test_object_raw_get_x_amz_expires_out_range_zero():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
@@ -6505,6 +6514,35 @@ def test_cors_header_option():
     obj_url = '{u}/{o}'.format(u=url, o='bar')
 
     _cors_request_and_check(requests.options, obj_url, {'Origin': 'example.origin','Access-Control-Request-Headers':'x-amz-meta-header2','Access-Control-Request-Method':'GET'}, 403, None, None)
+
+def _test_cors_options_presigned_get_object(client):
+    bucket_name = _setup_bucket_object_acl('public-read', 'public-read', client=client)
+    params = {'Bucket': bucket_name, 'Key': 'foo'}
+
+    url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
+
+    res = requests.options(url, verify=get_config_ssl_verify()).__dict__
+    assert res['status_code'] == 400
+
+    allowed_methods = ['GET']
+    allowed_origins = ['example']
+
+    cors_config ={
+        'CORSRules': [
+            {'AllowedMethods': allowed_methods,
+             'AllowedOrigins': allowed_origins,
+            },
+        ]
+    }
+
+    client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
+    _cors_request_and_check(requests.options, url, {'Origin': 'example', 'Access-Control-Request-Method': 'GET'}, 200, 'example', 'GET')
+
+def test_cors_presigned_get_object():
+    _test_cors_options_presigned_get_object(client=get_client())
+
+def test_cors_presigned_get_object_tenant():
+    _test_cors_options_presigned_get_object(client=get_tenant_client())
 
 @pytest.mark.tagging
 def test_set_bucket_tagging():
