@@ -8833,6 +8833,52 @@ def test_lifecycle_noncur_transition():
     assert len(expire1_keys[sc[1]]) == 0
     assert len(expire1_keys[sc[2]]) == 0
 
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_expiration
+@pytest.mark.lifecycle_transition
+def test_lifecycle_plain_null_version_current_transition():
+    sc = configured_storage_classes()
+    if len(sc) < 2:
+        pytest.skip('requires 2 or more storage classes')
+
+    target_sc = sc[1]
+    assert target_sc != 'STANDARD'
+
+    bucket = get_new_bucket()
+    check_versioning(bucket, None)
+
+    # create a plain object before enabling versioning;
+    # this will be transitioned as a current version
+    client = get_client()
+    key = 'testobjfoo'
+    content = 'fooz'
+    client.put_object(Bucket=bucket, Key=key, Body=content)
+
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration={
+            'Rules': [
+                {
+                    'ID': 'rule1',
+                    'Prefix': 'testobj',
+                    'Status': 'Enabled',
+                    'Transitions': [
+                        {
+                            'Days': 1,
+                            'StorageClass': target_sc
+                        },
+                    ]
+                }
+            ]
+        })
+
+    lc_interval = get_lc_debug_interval()
+    time.sleep(4*lc_interval)
+
+    keys = list_bucket_storage_class(client, bucket)
+    assert len(keys['STANDARD']) == 0
+    assert len(keys[target_sc]) == 1
+
 def verify_object(client, bucket, key, content=None, sc=None):
     response = client.get_object(Bucket=bucket, Key=key)
 
