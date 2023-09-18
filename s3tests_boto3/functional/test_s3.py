@@ -5693,7 +5693,6 @@ def test_bucket_acl_no_grants():
     check_access_denied(client.put_object, Bucket=bucket_name, Key='baz', Body='a')
 
     #TODO fix this test once a fix is in for same issues in
-@attr('sanity')
     # test_access_bucket_private_object_private
     client2 = get_client()
     # owner can read acl
