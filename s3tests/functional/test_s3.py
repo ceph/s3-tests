@@ -362,6 +362,9 @@ def configured_storage_classes():
             if item != 'STANDARD':
                 sc.append(item)
 
+    sc = [i for i in sc if i]
+    print("storage classes configured: " + str(sc))
+
     return sc
 
 def lc_transition(days=None, date=None, storage_class=None):
