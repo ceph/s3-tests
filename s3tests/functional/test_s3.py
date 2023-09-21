@@ -290,7 +290,7 @@ def verify_object(bucket, k, data=None, storage_class=None):
     if data:
         read_data = k.get_contents_as_string()
 
-        equal = data == read_data # avoid spamming log if data not equal
+        equal = data == read_data.decode() # avoid spamming log if data not equal
         assert equal == True
 
 def copy_object_storage_class(src_bucket, src_key, dest_bucket, dest_key, storage_class):
