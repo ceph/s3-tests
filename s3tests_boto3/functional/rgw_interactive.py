@@ -1,9 +1,9 @@
 #!/usr/bin/python
-import boto3
-import os
+import itertools
 import random
 import string
-import itertools
+
+import boto3
 
 host = "localhost"
 port = 8000
@@ -18,19 +18,24 @@ prefix = "YOURNAMEHERE-1234-"
 
 endpoint_url = "http://%s:%d" % (host, port)
 
-client = boto3.client(service_name='s3',
-                    aws_access_key_id=access_key,
-                    aws_secret_access_key=secret_key,
-                    endpoint_url=endpoint_url,
-                    use_ssl=False,
-                    verify=False)
+client = boto3.client(
+    service_name="s3",
+    aws_access_key_id=access_key,
+    aws_secret_access_key=secret_key,
+    endpoint_url=endpoint_url,
+    use_ssl=False,
+    verify=False,
+)
 
-s3 = boto3.resource('s3', 
-                    use_ssl=False,
-                    verify=False,
-                    endpoint_url=endpoint_url, 
-                    aws_access_key_id=access_key,
-                    aws_secret_access_key=secret_key)
+s3 = boto3.resource(
+    "s3",
+    use_ssl=False,
+    verify=False,
+    endpoint_url=endpoint_url,
+    aws_access_key_id=access_key,
+    aws_secret_access_key=secret_key,
+)
+
 
 def choose_bucket_prefix(template, max_len=30):
     """
@@ -39,10 +44,9 @@ def choose_bucket_prefix(template, max_len=30):
     Use template and feed it more and more random filler, until it's
     as long as possible but still below max_len.
     """
-    rand = ''.join(
-        random.choice(string.ascii_lowercase + string.digits)
-        for c in range(255)
-        )
+    rand = "".join(
+        random.choice(string.ascii_lowercase + string.digits) for c in range(255)
+    )
 
     while rand:
         s = template.format(random=rand)
@@ -51,12 +55,14 @@ def choose_bucket_prefix(template, max_len=30):
         rand = rand[:-1]
 
     raise RuntimeError(
-        'Bucket prefix template is impossible to fulfill: {template!r}'.format(
+        "Bucket prefix template is impossible to fulfill: {template!r}".format(
             template=template,
-            ),
-        )
+        ),
+    )
+
 
 bucket_counter = itertools.count(1)
+
 
 def get_new_bucket_name():
     """
@@ -66,11 +72,12 @@ def get_new_bucket_name():
     bucket by this name happens to exist, it's ok if tests give
     false negatives.
     """
-    name = '{prefix}{num}'.format(
+    name = "{prefix}{num}".format(
         prefix=prefix,
         num=next(bucket_counter),
-        )
+    )
     return name
+
 
 def get_new_bucket(session=boto3, name=None, headers=None):
     """
@@ -79,12 +86,14 @@ def get_new_bucket(session=boto3, name=None, headers=None):
     Always recreates a bucket from scratch. This is useful to also
     reset ACLs and such.
     """
-    s3 = session.resource('s3', 
-                        use_ssl=False,
-                        verify=False,
-                        endpoint_url=endpoint_url, 
-                        aws_access_key_id=access_key,
-                        aws_secret_access_key=secret_key)
+    s3 = session.resource(
+        "s3",
+        use_ssl=False,
+        verify=False,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
     if name is None:
         name = get_new_bucket_name()
     bucket = s3.Bucket(name)

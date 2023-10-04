@@ -1,22 +1,23 @@
-import boto.s3.connection
-import munch
 import itertools
 import os
 import random
-import string
-import yaml
 import re
-from lxml import etree
-
+import string
 from doctest import Example
+
+import boto.s3.connection
+import munch
+import yaml
+from lxml import etree
 from lxml.doctestcompare import LXMLOutputChecker
 
 s3 = munch.Munch()
 config = munch.Munch()
-prefix = ''
+prefix = ""
 
 bucket_counter = itertools.count(1)
 key_counter = itertools.count(1)
+
 
 def choose_bucket_prefix(template, max_len=30):
     """
@@ -25,10 +26,9 @@ def choose_bucket_prefix(template, max_len=30):
     Use template and feed it more and more random filler, until it's
     as long as possible but still below max_len.
     """
-    rand = ''.join(
-        random.choice(string.ascii_lowercase + string.digits)
-        for c in range(255)
-        )
+    rand = "".join(
+        random.choice(string.ascii_lowercase + string.digits) for c in range(255)
+    )
 
     while rand:
         s = template.format(random=rand)
@@ -37,50 +37,53 @@ def choose_bucket_prefix(template, max_len=30):
         rand = rand[:-1]
 
     raise RuntimeError(
-        'Bucket prefix template is impossible to fulfill: {template!r}'.format(
+        "Bucket prefix template is impossible to fulfill: {template!r}".format(
             template=template,
-            ),
-        )
+        ),
+    )
+
 
 def nuke_bucket(bucket):
     try:
-        bucket.set_canned_acl('private')
+        bucket.set_canned_acl("private")
         # TODO: deleted_cnt and the while loop is a work around for rgw
         # not sending the
         deleted_cnt = 1
         while deleted_cnt:
             deleted_cnt = 0
             for key in bucket.list():
-                print('Cleaning bucket {bucket} key {key}'.format(
-                    bucket=bucket,
-                    key=key,
-                    ))
-                key.set_canned_acl('private')
+                print(
+                    "Cleaning bucket {bucket} key {key}".format(
+                        bucket=bucket,
+                        key=key,
+                    )
+                )
+                key.set_canned_acl("private")
                 key.delete()
                 deleted_cnt += 1
         bucket.delete()
     except boto.exception.S3ResponseError as e:
         # TODO workaround for buggy rgw that fails to send
         # error_code, remove
-        if (e.status == 403
-            and e.error_code is None
-            and e.body == ''):
-            e.error_code = 'AccessDenied'
-        if e.error_code != 'AccessDenied':
-            print('GOT UNWANTED ERROR', e.error_code)
+        if e.status == 403 and e.error_code is None and e.body == "":
+            e.error_code = "AccessDenied"
+        if e.error_code != "AccessDenied":
+            print("GOT UNWANTED ERROR", e.error_code)
             raise
         # seems like we're not the owner of the bucket; ignore
         pass
 
+
 def nuke_prefixed_buckets():
     for name, conn in list(s3.items()):
-        print('Cleaning buckets from connection {name}'.format(name=name))
+        print("Cleaning buckets from connection {name}".format(name=name))
         for bucket in conn.get_all_buckets():
             if bucket.name.startswith(prefix):
-                print('Cleaning bucket {bucket}'.format(bucket=bucket))
+                print("Cleaning bucket {bucket}".format(bucket=bucket))
                 nuke_bucket(bucket)
 
-    print('Done with cleanup of test buckets.')
+    print("Done with cleanup of test buckets.")
+
 
 def read_config(fp):
     config = munch.Munch()
@@ -89,33 +92,33 @@ def read_config(fp):
         config.update(munch.Munchify(new))
     return config
 
+
 def connect(conf):
     mapping = dict(
-        port='port',
-        host='host',
-        is_secure='is_secure',
-        access_key='aws_access_key_id',
-        secret_key='aws_secret_access_key',
-        )
-    kwargs = dict((mapping[k],v) for (k,v) in conf.items() if k in mapping)
-    #process calling_format argument
+        port="port",
+        host="host",
+        is_secure="is_secure",
+        access_key="aws_access_key_id",
+        secret_key="aws_secret_access_key",
+    )
+    kwargs = dict((mapping[k], v) for (k, v) in conf.items() if k in mapping)
+    # process calling_format argument
     calling_formats = dict(
         ordinary=boto.s3.connection.OrdinaryCallingFormat(),
         subdomain=boto.s3.connection.SubdomainCallingFormat(),
         vhost=boto.s3.connection.VHostCallingFormat(),
-        )
-    kwargs['calling_format'] = calling_formats['ordinary']
-    if 'calling_format' in conf:
-        raw_calling_format = conf['calling_format']
+    )
+    kwargs["calling_format"] = calling_formats["ordinary"]
+    if "calling_format" in conf:
+        raw_calling_format = conf["calling_format"]
         try:
-            kwargs['calling_format'] = calling_formats[raw_calling_format]
+            kwargs["calling_format"] = calling_formats[raw_calling_format]
         except KeyError:
-            raise RuntimeError(
-                'calling_format unknown: %r' % raw_calling_format
-                )
+            raise RuntimeError("calling_format unknown: %r" % raw_calling_format)
     # TODO test vhost calling format
     conn = boto.s3.connection.S3Connection(**kwargs)
     return conn
+
 
 def setup():
     global s3, config, prefix
@@ -123,31 +126,31 @@ def setup():
     config.clear()
 
     try:
-        path = os.environ['S3TEST_CONF']
+        path = os.environ["S3TEST_CONF"]
     except KeyError:
         raise RuntimeError(
-            'To run tests, point environment '
-            + 'variable S3TEST_CONF to a config file.',
-            )
+            "To run tests, point environment "
+            + "variable S3TEST_CONF to a config file.",
+        )
     with file(path) as f:
         config.update(read_config(f))
 
     # These 3 should always be present.
-    if 's3' not in config:
-        raise RuntimeError('Your config file is missing the s3 section!')
-    if 'defaults' not in config.s3:
-        raise RuntimeError('Your config file is missing the s3.defaults section!')
-    if 'fixtures' not in config:
-        raise RuntimeError('Your config file is missing the fixtures section!')
+    if "s3" not in config:
+        raise RuntimeError("Your config file is missing the s3 section!")
+    if "defaults" not in config.s3:
+        raise RuntimeError("Your config file is missing the s3.defaults section!")
+    if "fixtures" not in config:
+        raise RuntimeError("Your config file is missing the fixtures section!")
 
-    template = config.fixtures.get('bucket prefix', 'test-{random}-')
+    template = config.fixtures.get("bucket prefix", "test-{random}-")
     prefix = choose_bucket_prefix(template=template)
-    if prefix == '':
+    if prefix == "":
         raise RuntimeError("Empty Prefix! Aborting!")
 
     defaults = config.s3.defaults
     for section in list(config.s3.keys()):
-        if section == 'defaults':
+        if section == "defaults":
             continue
 
         conf = {}
@@ -165,6 +168,7 @@ def setup():
     # really fail.
     nuke_prefixed_buckets()
 
+
 def get_new_bucket(connection=None):
     """
     Get a bucket that exists and is empty.
@@ -174,18 +178,20 @@ def get_new_bucket(connection=None):
     """
     if connection is None:
         connection = s3.main
-    name = '{prefix}{num}'.format(
+    name = "{prefix}{num}".format(
         prefix=prefix,
         num=next(bucket_counter),
-        )
+    )
     # the only way for this to fail with a pre-existing bucket is if
     # someone raced us between setup nuke_prefixed_buckets and here;
     # ignore that as astronomically unlikely
     bucket = connection.create_bucket(name)
     return bucket
 
+
 def teardown():
     nuke_prefixed_buckets()
+
 
 def with_setup_kwargs(setup, teardown=None):
     """Decorator to add setup and/or teardown methods to a test function::
@@ -200,13 +206,14 @@ def with_setup_kwargs(setup, teardown=None):
     Note that `with_setup_kwargs` is useful *only* for test functions, not for test
     methods or inside of TestCase subclasses.
     """
+
     def decorate(func):
         kwargs = {}
 
         def test_wrapped(*args, **kwargs2):
             k2 = kwargs.copy()
             k2.update(kwargs2)
-            k2['testname'] = func.__name__
+            k2["testname"] = func.__name__
             func(*args, **k2)
 
         test_wrapped.__name__ = func.__name__
@@ -214,22 +221,26 @@ def with_setup_kwargs(setup, teardown=None):
         def setup_wrapped():
             k = setup()
             kwargs.update(k)
-            if hasattr(func, 'setup'):
+            if hasattr(func, "setup"):
                 func.setup()
+
         test_wrapped.setup = setup_wrapped
 
         if teardown:
+
             def teardown_wrapped():
-                if hasattr(func, 'teardown'):
+                if hasattr(func, "teardown"):
                     func.teardown()
                 teardown(**kwargs)
 
             test_wrapped.teardown = teardown_wrapped
         else:
-            if hasattr(func, 'teardown'):
+            if hasattr(func, "teardown"):
                 test_wrapped.teardown = func.teardown()
         return test_wrapped
+
     return decorate
+
 
 # Demo case for the above, when you run test_gen():
 # _test_gen will run twice,
@@ -240,35 +251,37 @@ def with_setup_kwargs(setup, teardown=None):
 # setup_func {'b': 2}
 # testcase () {'b': 2, 'testname': '_test_gen'}
 # teardown_func {'b': 2}
-# 
-#def setup_func():
+#
+# def setup_func():
 #    kwargs = {'b': 2}
 #    print("setup_func", kwargs, file=sys.stderr)
 #    return kwargs
 #
-#def teardown_func(**kwargs):
+# def teardown_func(**kwargs):
 #    print("teardown_func", kwargs, file=sys.stderr)
 #
-#@with_setup_kwargs(setup=setup_func, teardown=teardown_func)
-#def _test_gen(*args, **kwargs):
+# @with_setup_kwargs(setup=setup_func, teardown=teardown_func)
+# def _test_gen(*args, **kwargs):
 #    print("testcase", args, kwargs, file=sys.stderr)
 #
-#def test_gen():
+# def test_gen():
 #    yield _test_gen, '1'
 #    yield _test_gen
+
 
 def trim_xml(xml_str):
     p = etree.XMLParser(remove_blank_text=True)
     elem = etree.XML(xml_str, parser=p)
     return etree.tostring(elem)
 
+
 def normalize_xml(xml, pretty_print=True):
     if xml is None:
         return xml
 
-    root = etree.fromstring(xml.encode(encoding='ascii'))
+    root = etree.fromstring(xml.encode(encoding="ascii"))
 
-    for element in root.iter('*'):
+    for element in root.iter("*"):
         if element.text is not None and not element.text.strip():
             element.text = None
         if element.text is not None:
@@ -279,22 +292,28 @@ def normalize_xml(xml, pretty_print=True):
             element.tail = element.tail.strip().replace("\n", "").replace("\r", "")
 
     # Sort the elements
-    for parent in root.xpath('//*[./*]'): # Search for parent elements
-          parent[:] = sorted(parent,key=lambda x: x.tag)
+    for parent in root.xpath("//*[./*]"):  # Search for parent elements
+        parent[:] = sorted(parent, key=lambda x: x.tag)
 
-    xmlstr = etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
+    xmlstr = etree.tostring(
+        root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print
+    )
     # there are two different DTD URIs
     xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="s3"', xmlstr)
-    xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="s3"', xmlstr)
-    for uri in ['http://doc.s3.amazonaws.com/doc/2006-03-01/', 'http://s3.amazonaws.com/doc/2006-03-01/']:
-        xmlstr = xmlstr.replace(uri, 'URI-DTD')
-    #xmlstr = re.sub(r'>\s+', '>', xmlstr, count=0, flags=re.MULTILINE)
+    xmlstr = re.sub(r"xmlns=\'[^\']+\'", 'xmlns="s3"', xmlstr)
+    for uri in [
+        "http://doc.s3.amazonaws.com/doc/2006-03-01/",
+        "http://s3.amazonaws.com/doc/2006-03-01/",
+    ]:
+        xmlstr = xmlstr.replace(uri, "URI-DTD")
+    # xmlstr = re.sub(r'>\s+', '>', xmlstr, count=0, flags=re.MULTILINE)
     return xmlstr
 
+
 def assert_xml_equal(got, want):
-    assert want is not None, 'Wanted XML cannot be None'
+    assert want is not None, "Wanted XML cannot be None"
     if got is None:
-        raise AssertionError('Got input to validate was None')
+        raise AssertionError("Got input to validate was None")
     checker = LXMLOutputChecker()
     if not checker.check_output(want, got, 0):
         message = checker.output_difference(Example("", want), got, 0)
