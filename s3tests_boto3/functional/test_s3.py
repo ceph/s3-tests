@@ -1619,7 +1619,6 @@ def test_bucket_list_marker_empty():
 @attr(operation='list all keys with list-objects-v2')
 @attr(assertion='no pagination, empty continuationtoken')
 @attr('list-objects-v2')
-@attr('sanity')
 def test_bucket_listv2_continuationtoken_empty():
     key_names = ['bar', 'baz', 'foo', 'quxx']
     bucket_name = _create_objects(keys=key_names)
@@ -1826,7 +1825,6 @@ def test_bucket_list_return_data():
 @attr(assertion='return same metadata')
 @attr('versioning')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_bucket_list_return_data_versioning():
     bucket_name = get_new_bucket()
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
@@ -2163,7 +2161,6 @@ def test_multi_objectv2_delete():
 @attr(operation='delete multiple objects has upper limit of 1000 keys')
 @attr(assertion='fails 400')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2186,7 +2183,6 @@ def test_multi_object_delete_key_limit():
 @attr(operation='delete multiple objects has upper limit of 1000 keys with list-objects-v2')
 @attr(assertion='fails 400')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -4040,7 +4036,6 @@ def test_bucket_head_notexist():
 @attr(operation='read bucket extended information')
 @attr(assertion='extended information is getting updated')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_bucket_head_extended():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4172,7 +4167,6 @@ def test_object_raw_authenticated_object_gone():
 @attr(method='get')
 @attr(operation='x-amz-expires check not expired')
 @attr(assertion='succeeds')
-@attr('sanity')
 def test_object_raw_get_x_amz_expires_not_expired():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -4251,7 +4245,6 @@ def test_object_anon_put():
 @attr(method='put')
 @attr(operation='unauthenticated, publically writable object')
 @attr(assertion='succeeds')
-@attr('sanity')
 def test_object_anon_put_write_access():
     bucket_name = _setup_bucket_acl('public-read-write')
     client = get_client()
@@ -5804,7 +5797,6 @@ def test_object_header_acl_grants():
 @attr('fails_on_dho')
 @attr('fails_on_aws') #  <Error><Code>InvalidArgument</Code><Message>Invalid id</Message><ArgumentName>CanonicalUser/ID</ArgumentName><ArgumentValue>${ALTUSER}</ArgumentValue>
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
     bucket_name = get_new_bucket_name()
@@ -13590,7 +13582,6 @@ def test_object_lock_put_obj_lock_invalid_bucket():
 @attr(assertion='fails')
 @attr('object-lock')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13615,7 +13606,6 @@ def test_object_lock_put_obj_lock_with_days_and_years():
 @attr(assertion='fails')
 @attr('object-lock')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13639,7 +13629,6 @@ def test_object_lock_put_obj_lock_invalid_days():
 @attr(assertion='fails')
 @attr('object-lock')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13663,7 +13652,6 @@ def test_object_lock_put_obj_lock_invalid_years():
 @attr(assertion='fails')
 @attr('object-lock')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13699,7 +13687,6 @@ attr(resource='bucket')
 @attr(assertion='fails')
 @attr('object-lock')
 @attr('fails_on_dbstore')
-@attr('sanity')
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
