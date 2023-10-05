@@ -7,7 +7,7 @@ source /etc/os-release
 
 case "$ID" in
     debian|ubuntu|devuan)
-        packages=(debianutils python3-pip python3-virtualenv python3-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
+        packages=(debianutils zip python3-pip python3-virtualenv python3-dev libevent-dev libffi-dev libxml2-dev libxslt-dev zlib1g-dev)
         for package in ${packages[@]}; do
             if [ "$(dpkg --status -- $package 2>/dev/null|sed -n 's/^Status: //p')" != "install ok installed" ]; then
                 # add a space after old values
