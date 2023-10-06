@@ -1778,7 +1778,7 @@ def test_bucket_listv2_objects_anonymous():
     unauthenticated_client.list_objects_v2(Bucket=bucket_name)
 
 
-@pytest.mark.skip(reason='Potential Bug')
+@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_list_objects_anonymous_fail():
     bucket_name = get_new_bucket()
 
