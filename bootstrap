@@ -94,3 +94,4 @@ fi
 
 # Add pythonpath
 echo "export PYTHONPATH=$PYTHONPATH:$(realpath .)" >> virtualenv/bin/activate
+

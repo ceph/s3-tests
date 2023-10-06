@@ -7,6 +7,7 @@ import itertools
 import os
 import random
 import string
+import pytest
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
@@ -370,6 +371,15 @@ def teardown():
     # remove our buckets here also, to avoid littering
     nuke_prefixed_buckets(prefix=prefix)
 
+@pytest.fixture(scope="package")
+def configfile():
+    setup()
+    yield config
+
+@pytest.fixture(autouse=True)
+def setup_teardown(configfile):
+    yield
+    teardown()
 
 bucket_counter = itertools.count(1)
 
