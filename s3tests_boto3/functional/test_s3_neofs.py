@@ -362,7 +362,6 @@ def test_cors_origin_response():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_cors_origin_response_with_credentials():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -1044,7 +1043,6 @@ def test_object_tagging_workflow():
     assert len(response["TagSet"]) == 0
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_attributes():
     bucket_name = get_new_bucket()
     object_name = "object"
