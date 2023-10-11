@@ -151,7 +151,7 @@ def test_set_cors():
     assert status == 404
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -441,7 +441,7 @@ def test_cors_origin_response_with_credentials():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -484,7 +484,7 @@ def test_cors_origin_wildcard():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/842")
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -734,7 +734,7 @@ def test_multipart_copy_invalid_range():
     client.delete_object(Bucket=src_bucket_name, Key=src_key)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_multipart_upload():
     bucket_name = get_new_bucket()
     key = "mymultipart"
