@@ -11,6 +11,7 @@ from . import (
     get_buckets_list,
     get_client,
     get_config_endpoint,
+    get_config_ssl_verify,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_new_bucket,
@@ -92,7 +93,12 @@ def _cors_request_and_check(
             request
         )
 
-    r = requests.request(method=method, url=url, headers=dict(request.headers))
+    r = requests.request(
+        method=method,
+        url=url,
+        headers=dict(request.headers),
+        verify=get_config_ssl_verify(),
+    )
     print(r.headers)
     if expected_status is not None:
         assert r.status_code == expected_status
