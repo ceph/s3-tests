@@ -11,6 +11,7 @@ from . import (
     get_buckets_list,
     get_client,
     get_config_endpoint,
+    get_config_ssl_verify,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_new_bucket,
@@ -92,7 +93,12 @@ def _cors_request_and_check(
             request
         )
 
-    r = requests.request(method=method, url=url, headers=dict(request.headers))
+    r = requests.request(
+        method=method,
+        url=url,
+        headers=dict(request.headers),
+        verify=get_config_ssl_verify(),
+    )
     print(r.headers)
     if expected_status is not None:
         assert r.status_code == expected_status
@@ -145,7 +151,7 @@ def test_set_cors():
     assert status == 404
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -356,7 +362,6 @@ def test_cors_origin_response():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_cors_origin_response_with_credentials():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -435,7 +440,7 @@ def test_cors_origin_response_with_credentials():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -478,7 +483,7 @@ def test_cors_origin_wildcard():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/842")
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -728,7 +733,7 @@ def test_multipart_copy_invalid_range():
     client.delete_object(Bucket=src_bucket_name, Key=src_key)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_multipart_upload():
     bucket_name = get_new_bucket()
     key = "mymultipart"
@@ -1038,7 +1043,6 @@ def test_object_tagging_workflow():
     assert len(response["TagSet"]) == 0
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_attributes():
     bucket_name = get_new_bucket()
     object_name = "object"
