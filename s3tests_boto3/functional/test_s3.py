@@ -2057,7 +2057,7 @@ def test_multi_objectv2_delete():
     assert "Contents" not in response
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2078,7 +2078,7 @@ def test_multi_object_delete_key_limit():
     assert status == 400
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2108,7 +2108,7 @@ def test_object_head_zero_bytes():
     assert response["ContentLength"] == 0
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/845")
 def test_object_write_check_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2192,13 +2192,13 @@ def test_object_set_get_metadata_none_to_good():
     assert got == "mymeta"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_none_to_empty():
     got = _set_get_metadata("")
     assert got == ""
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_overwrite_to_empty():
     bucket_name = get_new_bucket()
     got = _set_get_metadata("oldmeta", bucket_name)
@@ -2279,7 +2279,7 @@ def _get_post_url(bucket_name):
     return "{endpoint}/{bucket_name}".format(endpoint=endpoint, bucket_name=bucket_name)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
