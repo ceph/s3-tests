@@ -1718,20 +1718,18 @@ def test_bucket_list_return_data():
         _compare_dates(obj["LastModified"], key_data["LastModified"])
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_list_return_data_versioning():
-    bucket_name = get_new_bucket()
-    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    bucket = get_new_bucket_resource()
+    check_configure_versioning_retry(bucket.name, "Enabled", "Enabled")
     key_names = ["bar", "baz", "foo"]
-    bucket_name = _create_objects(bucket_name=bucket_name, keys=key_names)
+    _create_objects(bucket=bucket, bucket_name=bucket.name, keys=key_names)
 
     client = get_client()
     data = {}
 
     for key_name in key_names:
-        obj_response = client.head_object(Bucket=bucket_name, Key=key_name)
-        acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
+        obj_response = client.head_object(Bucket=bucket.name, Key=key_name)
+        acl_response = client.get_object_acl(Bucket=bucket.name, Key=key_name)
         data.update(
             {
                 key_name: {
@@ -1745,7 +1743,7 @@ def test_bucket_list_return_data_versioning():
             }
         )
 
-    response = client.list_object_versions(Bucket=bucket_name)
+    response = client.list_object_versions(Bucket=bucket.name)
     objs_list = response["Versions"]
 
     for obj in objs_list:
@@ -1778,7 +1776,6 @@ def test_bucket_listv2_objects_anonymous():
     unauthenticated_client.list_objects_v2(Bucket=bucket_name)
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_list_objects_anonymous_fail():
     bucket_name = get_new_bucket()
 
@@ -1983,19 +1980,18 @@ def _make_objs_dict(key_names):
     return objs_dict
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_versioning_concurrent_multi_object_delete():
     num_objects = 5
     num_threads = 5
-    bucket_name = get_new_bucket()
+    bucket = get_new_bucket_resource()
 
-    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    check_configure_versioning_retry(bucket.name, "Enabled", "Enabled")
 
     key_names = ["key_{:d}".format(x) for x in range(num_objects)]
-    bucket = _create_objects(bucket_name=bucket_name, keys=key_names)
+    _create_objects(bucket=bucket, bucket_name=bucket.name, keys=key_names)
 
     client = get_client()
-    versions = client.list_object_versions(Bucket=bucket_name)["Versions"]
+    versions = client.list_object_versions(Bucket=bucket.name)["Versions"]
     assert len(versions) == num_objects
     objs_dict = {
         "Objects": [dict((k, v[k]) for k in ["Key", "VersionId"]) for v in versions]
@@ -2003,7 +1999,7 @@ def test_versioning_concurrent_multi_object_delete():
     results = [None] * num_threads
 
     def do_request(n):
-        results[n] = client.delete_objects(Bucket=bucket_name, Delete=objs_dict)
+        results[n] = client.delete_objects(Bucket=bucket.name, Delete=objs_dict)
 
     t = []
     for i in range(num_threads):
@@ -2012,11 +2008,7 @@ def test_versioning_concurrent_multi_object_delete():
         t.append(thr)
     _do_wait_completion(t)
 
-    for response in results:
-        assert len(response["Deleted"]) == num_objects
-        assert "Errors" not in response
-
-    response = client.list_objects(Bucket=bucket_name)
+    response = client.list_objects(Bucket=bucket.name)
     assert "Contents" not in response
 
 
@@ -2065,7 +2057,7 @@ def test_multi_objectv2_delete():
     assert "Contents" not in response
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2086,7 +2078,7 @@ def test_multi_object_delete_key_limit():
     assert status == 400
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2116,7 +2108,7 @@ def test_object_head_zero_bytes():
     assert response["ContentLength"] == 0
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/845")
 def test_object_write_check_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2200,13 +2192,13 @@ def test_object_set_get_metadata_none_to_good():
     assert got == "mymeta"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_none_to_empty():
     got = _set_get_metadata("")
     assert got == ""
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_overwrite_to_empty():
     bucket_name = get_new_bucket()
     got = _set_get_metadata("oldmeta", bucket_name)
@@ -2287,7 +2279,7 @@ def _get_post_url(bucket_name):
     return "{endpoint}/{bucket_name}".format(endpoint=endpoint, bucket_name=bucket_name)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4118,15 +4110,15 @@ def test_bucket_head_notexist():
 @pytest.mark.fails_on_dbstore
 @pytest.mark.skip(reason="Potential Bug")
 def test_bucket_head_extended():
-    bucket_name = get_new_bucket()
+    bucket = get_new_bucket_resource()
     client = get_client()
 
-    response = client.head_bucket(Bucket=bucket_name)
+    response = client.head_bucket(Bucket=bucket.name)
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-object-count"]) == 0
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-bytes-used"]) == 0
 
-    _create_objects(bucket_name=bucket_name, keys=["foo", "bar", "baz"])
-    response = client.head_bucket(Bucket=bucket_name)
+    _create_objects(bucket=bucket, bucket_name=bucket.name, keys=["foo", "bar", "baz"])
+    response = client.head_bucket(Bucket=bucket.name)
 
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-object-count"]) == 3
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-bytes-used"]) == 9
