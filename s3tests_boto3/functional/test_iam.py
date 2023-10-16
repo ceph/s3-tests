@@ -862,3 +862,124 @@ def test_verify_allow_iam_actions():
     response = iam_client_alt.delete_user_policy(PolicyName='AllowAccessPolicy',
                                           UserName=get_alt_user_id())
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+@pytest.mark.oidc_provider
+@pytest.mark.test_of_iam
+def test_verify_add_new_client_id_to_oidc():
+    client = get_iam_client()
+
+    response = client.create_open_id_connect_provider(
+                        Url='http://localhost:8080/auth/realms/quickstart',
+                        ClientIDList=[
+                            'app-jee-jsp',
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 1
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    add_response = client.add_client_id_to_open_id_connect_provider(
+    OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ClientID='app-profile-jsp'
+                    )
+    assert add_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    del_response = client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+@pytest.mark.oidc_provider
+@pytest.mark.test_of_iam
+def test_verify_add_existing_client_id_to_oidc():
+    client = get_iam_client()
+
+    response = client.create_open_id_connect_provider(
+                        Url='http://localhost:8080/auth/realms/quickstart',
+                        ClientIDList=[
+                            'app-jee-jsp',
+                            'app-profile-jsp'
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    add_response = client.add_client_id_to_open_id_connect_provider(
+    OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ClientID='app-profile-jsp'
+                    )
+    assert add_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    del_response = client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+@pytest.mark.oidc_provider
+@pytest.mark.test_of_iam
+def test_verify_update_thumbprintlist_of_oidc():
+    client = get_iam_client()
+
+    response = client.create_open_id_connect_provider(
+                        Url='http://localhost:8080/auth/realms/quickstart',
+                        ClientIDList=[
+                            'app-jee-jsp',
+                            'app-profile-jsp'
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ThumbprintList']) == 1
+    assert get_response['ThumbprintList'][0] == '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+    update_response = client.update_open_id_connect_provider_thumbprint(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efSAMPLE1'
+                    ]
+                    )
+    assert update_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = client.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ThumbprintList']) == 1
+    assert get_response['ThumbprintList'][0] == '3768084dfb3d2b68b7897bf5f565da8efSAMPLE1'
+    del_response = client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
