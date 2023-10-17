@@ -2301,7 +2301,7 @@ def test_post_object_anonymous_request():
     assert body == "bar"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2351,7 +2351,7 @@ def test_post_object_authenticated_request():
     assert body == "bar"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_authenticated_no_content_type():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2399,7 +2399,7 @@ def test_post_object_authenticated_no_content_type():
     assert body == "bar"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_authenticated_request_bad_access_key():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2446,7 +2446,7 @@ def test_post_object_authenticated_request_bad_access_key():
     assert r.status_code == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_set_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2469,7 +2469,7 @@ def test_post_object_set_success_code():
     assert message.text == "foo.txt"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_set_invalid_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2492,7 +2492,7 @@ def test_post_object_set_invalid_success_code():
     assert content == ""
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_upload_larger_than_chunk():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2543,7 +2543,7 @@ def test_post_object_upload_larger_than_chunk():
     assert body == foo_string
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_set_key_from_filename():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2592,7 +2592,7 @@ def test_post_object_set_key_from_filename():
     assert body == "bar"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_ignored_header():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2639,7 +2639,7 @@ def test_post_object_ignored_header():
     assert r.status_code == 204
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_case_insensitive_condition_fields():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2687,7 +2687,7 @@ def test_post_object_case_insensitive_condition_fields():
     assert r.status_code == 204
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_escaped_field_values():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2736,7 +2736,7 @@ def test_post_object_escaped_field_values():
     assert body == "bar"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_success_redirect_action():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2795,7 +2795,7 @@ def test_post_object_success_redirect_action():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_invalid_signature():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2841,7 +2841,7 @@ def test_post_object_invalid_signature():
     assert r.status_code == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_invalid_access_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2887,6 +2887,7 @@ def test_post_object_invalid_access_key():
     assert r.status_code == 403
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_invalid_date_format():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2932,6 +2933,7 @@ def test_post_object_invalid_date_format():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_no_key_specified():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2975,6 +2977,7 @@ def test_post_object_no_key_specified():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_missing_signature():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3019,7 +3022,7 @@ def test_post_object_missing_signature():
     assert r.status_code == 400
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_missing_policy_condition():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3064,7 +3067,7 @@ def test_post_object_missing_policy_condition():
     assert r.status_code == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_user_specified_header():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3114,7 +3117,7 @@ def test_post_object_user_specified_header():
     assert response["Metadata"]["foo"] == "barclamp"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_request_missing_policy_specified_field():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3161,6 +3164,7 @@ def test_post_object_request_missing_policy_specified_field():
     assert r.status_code == 403
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_condition_is_case_sensitive():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3206,6 +3210,7 @@ def test_post_object_condition_is_case_sensitive():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_expires_is_case_sensitive():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3251,7 +3256,7 @@ def test_post_object_expires_is_case_sensitive():
     assert r.status_code == 400
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_expired_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3297,7 +3302,7 @@ def test_post_object_expired_policy():
     assert r.status_code == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_invalid_request_field_value():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3344,6 +3349,7 @@ def test_post_object_invalid_request_field_value():
     assert r.status_code == 403
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_missing_expires_condition():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3388,6 +3394,7 @@ def test_post_object_missing_expires_condition():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_missing_conditions_list():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3424,6 +3431,7 @@ def test_post_object_missing_conditions_list():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_upload_size_limit_exceeded():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3469,6 +3477,7 @@ def test_post_object_upload_size_limit_exceeded():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_missing_content_length_argument():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3514,6 +3523,7 @@ def test_post_object_missing_content_length_argument():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_invalid_content_length_argument():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3559,6 +3569,7 @@ def test_post_object_invalid_content_length_argument():
     assert r.status_code == 400
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_upload_size_below_minimum():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3604,7 +3615,7 @@ def test_post_object_upload_size_below_minimum():
     assert r.status_code == 400
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_upload_size_rgw_chunk_size_bug():
     # Test for https://tracker.ceph.com/issues/58627
     # TODO: if this value is different in Teuthology runs, this would need tuning
@@ -3666,6 +3677,7 @@ def test_post_object_upload_size_rgw_chunk_size_bug():
     assert r.status_code == 204
 
 
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_empty_conditions():
     bucket_name = get_new_bucket()
     client = get_client()
