@@ -4772,7 +4772,7 @@ def test_bucket_acl_canned_during_create():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_bucket_acl_canned():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4824,7 +4824,7 @@ def test_bucket_acl_canned():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_bucket_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4865,7 +4865,7 @@ def test_bucket_acl_canned_publicreadwrite():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/858")
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4899,7 +4899,7 @@ def test_bucket_acl_canned_authenticatedread():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/859")
 def test_object_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4926,7 +4926,7 @@ def test_object_acl_default():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4961,7 +4961,7 @@ def test_object_acl_canned_during_create():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_object_acl_canned():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5016,7 +5016,7 @@ def test_object_acl_canned():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5061,7 +5061,7 @@ def test_object_acl_canned_publicreadwrite():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/858")
 def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5098,7 +5098,7 @@ def test_object_acl_canned_authenticatedread():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5144,7 +5144,7 @@ def test_object_acl_canned_bucketownerread():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5598,7 +5598,7 @@ def test_bucket_acl_grant_userid_writeacp():
     _check_bucket_acl_grant_can_writeacp(bucket_name)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/860")
 def test_bucket_acl_grant_nonexist_user():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5624,7 +5624,7 @@ def test_bucket_acl_grant_nonexist_user():
     assert error_code == "InvalidArgument"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/861")
 def test_bucket_acl_no_grants():
     bucket_name = get_new_bucket()
     client = get_client()
