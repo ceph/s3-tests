@@ -4120,7 +4120,6 @@ def test_bucket_head_notexist():
 
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_head_extended():
     bucket = get_new_bucket_resource()
     client = get_client()
@@ -4136,7 +4135,7 @@ def test_bucket_head_extended():
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-bytes-used"]) == 9
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_bucket_acl():
     bucket_name = _setup_bucket_object_acl("private", "public-read")
 
@@ -4145,7 +4144,7 @@ def test_object_raw_get_bucket_acl():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_object_acl():
     bucket_name = _setup_bucket_object_acl("public-read", "private")
 
@@ -4279,18 +4278,18 @@ def _test_object_raw_get_x_amz_expires_not_expired(client):
     )
 
     res = requests.options(url, verify=get_config_ssl_verify()).__dict__
-    assert res["status_code"] == 400
+    assert res["status_code"] == 403
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res["status_code"] == 200
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_x_amz_expires_not_expired():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_client())
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_x_amz_expires_not_expired_tenant():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_tenant_client())
 
@@ -4308,7 +4307,7 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
     assert res["status_code"] == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/853")
 def test_object_raw_get_x_amz_expires_out_max_range():
     bucket_name = _setup_bucket_object_acl("public-read", "public-read")
     client = get_client()
@@ -4355,7 +4354,7 @@ def test_object_anon_put():
     assert error_code == "AccessDenied"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_anon_put_write_access():
     bucket_name = _setup_bucket_acl("public-read-write")
     client = get_client()
@@ -4602,7 +4601,6 @@ def test_bucket_create_naming_dns_dash_dot():
     assert error_code == "InvalidBucketName"
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_create_exists():
     # aws-s3 default region allows recreation of buckets
     # but all other regions fail with BucketAlreadyOwnedByYou.
@@ -4611,11 +4609,11 @@ def test_bucket_create_exists():
 
     client.create_bucket(Bucket=bucket_name)
     try:
-        response = client.create_bucket(Bucket=bucket_name)
+        client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
-        assert e.status == 409
-        assert e.error_code == "BucketAlreadyOwnedByYou"
+        assert status == 409
+        assert error_code == "BucketAlreadyOwnedByYou"
 
 
 @pytest.mark.fails_on_dbstore
@@ -4709,7 +4707,7 @@ def check_grants(got, want):
         assert g == {"Grantee": {}}
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/854")
 def test_bucket_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
