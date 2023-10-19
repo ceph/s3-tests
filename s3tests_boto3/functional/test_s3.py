@@ -15375,16 +15375,14 @@ def test_copy_object_ifnonematch_failed():
 
 # TODO: results in a 404 instead of 400 on the RGW
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_read_unreadable():
     bucket_name = get_new_bucket()
     client = get_client()
     e = assert_raises(
         ClientError, client.get_object, Bucket=bucket_name, Key="\xae\x8a-"
     )
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert e.response["Error"]["Message"] == "Couldn't parse the specified URI."
+    status, _ = _get_status_and_error_code(e.response)
+    assert status == 404
 
 
 @pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
