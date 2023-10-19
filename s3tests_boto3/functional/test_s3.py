@@ -14046,7 +14046,7 @@ def test_put_obj_enc_conflict_s3_kms():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_bad_enc_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14132,7 +14132,7 @@ def test_bucket_policy_put_obj_s3_noenc():
 @pytest.mark.encryption
 @pytest.mark.bucket_policy
 @pytest.mark.sse_s3
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_bucket_policy_put_obj_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14239,7 +14239,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 
 @pytest.mark.encryption
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -14284,7 +14284,7 @@ def test_bucket_policy_put_obj_kms_s3():
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_put_obj_request_obj_tag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14428,8 +14428,7 @@ def test_object_lock_put_obj_lock_invalid_bucket():
     assert error_code == "InvalidBucketState"
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14449,8 +14448,7 @@ def test_object_lock_put_obj_lock_with_days_and_years():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14470,8 +14468,7 @@ def test_object_lock_put_obj_lock_invalid_days():
     assert error_code == "InvalidRetentionPeriod"
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14491,8 +14488,7 @@ def test_object_lock_put_obj_lock_invalid_years():
     assert error_code == "InvalidRetentionPeriod"
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14526,8 +14522,7 @@ def test_object_lock_put_obj_lock_invalid_mode():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.fails_on_dbstore
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15083,7 +15078,7 @@ def test_object_lock_put_legal_hold_invalid_status():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.fails_on_dbstore
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/868")
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15218,7 +15213,6 @@ def test_object_lock_uploading_obj():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
 @pytest.mark.fails_on_dbstore
 def test_object_lock_changing_mode_from_governance_with_bypass():
     bucket_name = get_new_bucket_name()
