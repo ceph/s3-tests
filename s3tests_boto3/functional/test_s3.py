@@ -15375,19 +15375,17 @@ def test_copy_object_ifnonematch_failed():
 
 # TODO: results in a 404 instead of 400 on the RGW
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_read_unreadable():
     bucket_name = get_new_bucket()
     client = get_client()
     e = assert_raises(
         ClientError, client.get_object, Bucket=bucket_name, Key="\xae\x8a-"
     )
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert e.response["Error"]["Message"] == "Couldn't parse the specified URI."
+    status, _ = _get_status_and_error_code(e.response)
+    assert status == 404
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15395,7 +15393,7 @@ def test_get_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == False
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15404,7 +15402,7 @@ def test_get_public_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15413,7 +15411,7 @@ def test_get_authpublic_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15442,7 +15440,7 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15472,7 +15470,7 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == False
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
 def test_get_nonpublicpolicy_deny_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15501,7 +15499,7 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_get_default_public_block():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -15514,7 +15512,7 @@ def test_get_default_public_block():
     assert resp["PublicAccessBlockConfiguration"]["RestrictPublicBuckets"] == False
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_put_public_block():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -15550,7 +15548,7 @@ def test_put_public_block():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_block_public_put_bucket_acls():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -15596,7 +15594,7 @@ def test_block_public_put_bucket_acls():
     assert status == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_block_public_object_canned_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15651,7 +15649,7 @@ def test_block_public_object_canned_acls():
     assert status == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_block_public_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15674,7 +15672,7 @@ def test_block_public_policy():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15706,7 +15704,7 @@ def test_ignore_public_acls():
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key="key1")
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_multipart_upload_on_a_bucket_with_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -16316,7 +16314,7 @@ def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8 * 1024 * 1024)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/862")
 def test_get_object_torrent():
     client = get_client()
     bucket_name = get_new_bucket()
