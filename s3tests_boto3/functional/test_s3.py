@@ -14610,7 +14610,6 @@ def test_object_lock_put_obj_retention():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14629,8 +14628,8 @@ def test_object_lock_put_obj_retention_invalid_bucket():
         Retention=retention,
     )
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == "InvalidRequest"
+    assert status == 404
+    assert error_code == "ObjectLockConfigurationNotFoundError"
 
 
 @pytest.mark.fails_on_dbstore
@@ -14717,7 +14716,6 @@ def test_object_lock_get_obj_retention_iso8601():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14728,8 +14726,8 @@ def test_object_lock_get_obj_retention_invalid_bucket():
         ClientError, client.get_object_retention, Bucket=bucket_name, Key=key
     )
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == "InvalidRequest"
+    assert status == 404
+    assert error_code == "ObjectLockConfigurationNotFoundError"
 
 
 @pytest.mark.fails_on_dbstore
@@ -15038,7 +15036,6 @@ def test_object_lock_put_legal_hold():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15054,8 +15051,8 @@ def test_object_lock_put_legal_hold_invalid_bucket():
         LegalHold=legal_hold,
     )
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == "InvalidRequest"
+    assert status == 404
+    assert error_code == "ObjectLockConfigurationNotFoundError"
 
 
 @pytest.mark.fails_on_dbstore
@@ -15095,7 +15092,6 @@ def test_object_lock_get_legal_hold():
     assert response["LegalHold"] == legal_hold_off
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_object_lock_get_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15106,8 +15102,8 @@ def test_object_lock_get_legal_hold_invalid_bucket():
         ClientError, client.get_object_legal_hold, Bucket=bucket_name, Key=key
     )
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == "InvalidRequest"
+    assert status == 404
+    assert error_code == "ObjectLockConfigurationNotFoundError"
 
 
 @pytest.mark.fails_on_dbstore
