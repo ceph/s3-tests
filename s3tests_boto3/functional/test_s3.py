@@ -13078,7 +13078,7 @@ def test_put_excess_tags():
     )
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidTag"
+    assert error_code == "BadRequest"
 
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response["TagSet"]) == 0
