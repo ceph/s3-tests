@@ -12610,7 +12610,7 @@ def test_sse_kms_read_declare():
 
 
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12642,7 +12642,7 @@ def test_bucket_policy():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucketv2_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12673,7 +12673,7 @@ def test_bucketv2_policy():
 
 
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12711,7 +12711,7 @@ def test_bucket_policy_acl():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucketv2_policy_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12750,7 +12750,7 @@ def test_bucketv2_policy_acl():
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12803,7 +12803,7 @@ def test_bucket_policy_different_tenant():
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucketv2_policy_different_tenant():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12853,7 +12853,7 @@ def test_bucketv2_policy_different_tenant():
 
 
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_another_bucket():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
@@ -12893,7 +12893,7 @@ def test_bucket_policy_another_bucket():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucketv2_policy_another_bucket():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
@@ -12934,7 +12934,7 @@ def test_bucketv2_policy_another_bucket():
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_set_condition_operator_end_with_IfExists():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13063,7 +13063,6 @@ def test_put_max_tags():
 
 
 @pytest.mark.tagging
-@pytest.mark.skip(reason="Potential Bug")
 def test_put_excess_tags():
     key = "testputmaxtags"
     bucket_name = _create_key_with_random_content(key)
@@ -13260,7 +13259,7 @@ def test_post_object_tags_anonymous_request():
 
 
 @pytest.mark.tagging
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_post_object_tags_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13398,7 +13397,7 @@ def test_put_tags_acl_public():
 
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_delete_tags_obj_public():
     key = "testputtagsacl"
     bucket_name = _create_key_with_random_content(key)
@@ -13453,7 +13452,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     assert not "VersionId" in response
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type = "text/bla"
     objlen = 30 * 1024 * 1024
@@ -13861,7 +13860,7 @@ def test_bucket_policy_put_obj_copy_source_meta():
 
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_put_obj_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13904,7 +13903,7 @@ def test_bucket_policy_put_obj_acl():
 
 
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/863")
 def test_bucket_policy_put_obj_grant():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
@@ -13966,7 +13965,7 @@ def test_bucket_policy_put_obj_grant():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -13991,7 +13990,7 @@ def test_put_obj_enc_conflict_c_s3():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_c_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14020,7 +14019,7 @@ def test_put_obj_enc_conflict_c_kms():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
