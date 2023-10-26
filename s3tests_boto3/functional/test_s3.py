@@ -8588,17 +8588,17 @@ def _test_atomic_read(file_size):
     _verify_atomic_key_data(bucket_name, "testobj", file_size, "B")
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_1mb():
     _test_atomic_read(1024 * 1024)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_4mb():
     _test_atomic_read(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_8mb():
     _test_atomic_read(1024 * 1024 * 8)
 
@@ -8636,17 +8636,17 @@ def _test_atomic_write(file_size):
     _verify_atomic_key_data(bucket_name, objname, file_size, "B")
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_1mb():
     _test_atomic_write(1024 * 1024)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_4mb():
     _test_atomic_write(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_8mb():
     _test_atomic_write(1024 * 1024 * 8)
 
@@ -8676,17 +8676,17 @@ def _test_atomic_dual_write(file_size):
     _verify_atomic_key_data(bucket_name, objname, file_size, "B")
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_1mb():
     _test_atomic_dual_write(1024 * 1024)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_4mb():
     _test_atomic_dual_write(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024 * 1024 * 8)
 
@@ -9321,7 +9321,6 @@ def overwrite_suspended_versioning_obj(
     return (version_ids, contents)
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_versioning_obj_suspend_versions():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10323,7 +10322,7 @@ def test_lifecycle_expiration_noncur_tags1():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_id_too_long():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10349,7 +10348,7 @@ def test_lifecycle_id_too_long():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_same_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10381,7 +10380,7 @@ def test_lifecycle_same_id():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_invalid_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10447,7 +10446,7 @@ def test_lifecycle_invalid_status():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10468,7 +10467,7 @@ def test_lifecycle_set_date():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10533,7 +10532,7 @@ def test_lifecycle_expiration_date():
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=["days0/foo", "days0/bar"])
     client = get_client()
@@ -10600,7 +10599,7 @@ def check_lifecycle_expiration_header(response, start_time, rule_id, delta_days)
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_expiration_header_put():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10734,7 +10733,7 @@ def test_lifecycle_expiration_header_and_tags_head():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_noncurrent():
     bucket_name = _create_objects(keys=["past/foo", "future/bar"])
     client = get_client()
@@ -10799,7 +10798,7 @@ def test_lifecycle_noncur_expiration():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_deletemarker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10819,7 +10818,7 @@ def test_lifecycle_set_deletemarker():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10839,7 +10838,7 @@ def test_lifecycle_set_filter():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_empty_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10905,7 +10904,7 @@ def test_lifecycle_deletemarker_expiration():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10973,7 +10972,7 @@ def test_lifecycle_multipart_expiration():
 
 
 @pytest.mark.lifecycle
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="Not Implemented")
 def test_lifecycle_transition_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11672,7 +11671,6 @@ def test_encrypted_transfer_13b():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
 def test_encryption_sse_c_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12329,7 +12327,7 @@ def test_sse_kms_present():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/878")
 def test_sse_kms_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12348,7 +12346,7 @@ def test_sse_kms_no_key():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/878")
 def test_sse_kms_not_declared():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12589,7 +12587,7 @@ def test_sse_kms_transfer_13b():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/878")
 def test_sse_kms_read_declare():
     bucket_name = get_new_bucket()
     client = get_client()
