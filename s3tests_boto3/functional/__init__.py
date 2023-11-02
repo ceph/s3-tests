@@ -215,6 +215,8 @@ def setup():
     if not config.default_ssl_verify:
         urllib3.disable_warnings()
 
+    config.default_encryption = cfg.getboolean('DEFAULT', "default_encryption")
+
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
     config.main_secret_key = cfg.get('s3 main',"secret_key")
@@ -626,6 +628,9 @@ def get_config_endpoint():
 
 def get_config_ssl_verify():
     return config.default_ssl_verify
+
+def get_config_default_encryption():
+    return config.default_encryption
 
 def get_main_aws_access_key():
     return config.main_access_key

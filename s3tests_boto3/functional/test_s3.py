@@ -53,6 +53,7 @@ from . import (
     get_config_port,
     get_config_endpoint,
     get_config_ssl_verify,
+    get_config_default_encryption,
     get_main_aws_access_key,
     get_main_aws_secret_key,
     get_main_display_name,
@@ -13010,6 +13011,33 @@ def test_sse_s3_encrypted_upload_1mb():
 @pytest.mark.fails_on_dbstore
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
+
+@pytest.mark.encryption
+@pytest.mark.sse_s3
+@pytest.mark.fails_on_dbstore
+def test_sse_s3_default_encryption():
+    """
+    Write an object without requesting encryption, and verify that PutObject
+    and HeadObject return a 'x-amz-server-side-encryption' response header
+    when default encryption is enabled.
+    """
+    if not get_config_default_encryption():
+        pytest.skip('default_encryption not configured')
+
+    client = get_client()
+    bucket_name = get_new_bucket()
+    key = 'testobj'
+
+    file_size = 1024
+    data = 'A' * file_size
+
+    response = client.put_object(Bucket=bucket_name, Key=key, Body=data)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
+
+    response = client.get_object(Bucket=bucket_name, Key='testobj')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
+    body = _get_body(response)
+    assert body == data
 
 def test_get_object_torrent():
     client = get_client()
