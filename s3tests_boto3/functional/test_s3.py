@@ -2057,7 +2057,6 @@ def test_multi_objectv2_delete():
     assert "Contents" not in response
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
 def test_multi_object_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2078,7 +2077,7 @@ def test_multi_object_delete_key_limit():
     assert status == 400
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/844")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/891")
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2192,19 +2191,23 @@ def test_object_set_get_metadata_none_to_good():
     assert got == "mymeta"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_none_to_empty():
-    got = _set_get_metadata("")
-    assert got == ""
+    e = assert_raises(ClientError, _set_get_metadata, metadata="")
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == "InvalidArgument"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/846")
 def test_object_set_get_metadata_overwrite_to_empty():
     bucket_name = get_new_bucket()
     got = _set_get_metadata("oldmeta", bucket_name)
     assert got == "oldmeta"
-    got = _set_get_metadata("", bucket_name)
-    assert got == ""
+    e = assert_raises(
+        ClientError, _set_get_metadata, metadata="", bucket_name=bucket_name
+    )
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == "InvalidArgument"
 
 
 # TODO: the decoding of this unicode metadata is not happening properly for unknown reasons
@@ -4692,8 +4695,12 @@ def check_grants(got, want):
 
     # There are instances when got does not match due the order of item.
     if got[0]["Grantee"].get("DisplayName"):
-        got.sort(key=lambda x: x["Grantee"].get("DisplayName"))
-        want.sort(key=lambda x: x["DisplayName"])
+        got.sort(
+            key=lambda x: x["Grantee"].get("DisplayName")
+            if x["Grantee"].get("DisplayName")
+            else ""
+        )
+        want.sort(key=lambda x: x["DisplayName"] if x["DisplayName"] else "")
 
     for g, w in zip(got, want):
         w = dict(w)
@@ -4770,7 +4777,6 @@ def test_bucket_acl_canned_during_create():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_bucket_acl_canned():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4924,7 +4930,7 @@ def test_object_acl_default():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4959,7 +4965,7 @@ def test_object_acl_canned_during_create():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5014,7 +5020,7 @@ def test_object_acl_canned():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5096,7 +5102,7 @@ def test_object_acl_canned_authenticatedread():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5142,7 +5148,7 @@ def test_object_acl_canned_bucketownerread():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5596,7 +5602,6 @@ def test_bucket_acl_grant_userid_writeacp():
     _check_bucket_acl_grant_can_writeacp(bucket_name)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/860")
 def test_bucket_acl_grant_nonexist_user():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15072,7 +15077,7 @@ def test_object_lock_put_legal_hold_invalid_status():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/868")
+@pytest.mark.skip(reason="Not Implemented")
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15372,7 +15377,7 @@ def test_object_read_unreadable():
     assert status == 404
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15380,7 +15385,7 @@ def test_get_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == False
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15389,7 +15394,7 @@ def test_get_public_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15398,7 +15403,7 @@ def test_get_authpublic_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15427,7 +15432,7 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15457,7 +15462,7 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == False
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/865")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_nonpublicpolicy_deny_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15499,7 +15504,7 @@ def test_get_default_public_block():
     assert resp["PublicAccessBlockConfiguration"]["RestrictPublicBuckets"] == False
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
+@pytest.mark.skip(reason="Not Implemented")
 def test_put_public_block():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -15535,7 +15540,7 @@ def test_put_public_block():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
+@pytest.mark.skip(reason="Not Implemented")
 def test_block_public_put_bucket_acls():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -15581,7 +15586,7 @@ def test_block_public_put_bucket_acls():
     assert status == 403
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
+@pytest.mark.skip(reason="Not Implemented")
 def test_block_public_object_canned_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15636,7 +15641,7 @@ def test_block_public_object_canned_acls():
     assert status == 403
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
+@pytest.mark.skip(reason="Not Implemented")
 def test_block_public_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15659,7 +15664,7 @@ def test_block_public_policy():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
+@pytest.mark.skip(reason="Not Implemented")
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -16301,7 +16306,7 @@ def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8 * 1024 * 1024)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/862")
+@pytest.mark.skip(reason="Not Implemented")
 def test_get_object_torrent():
     client = get_client()
     bucket_name = get_new_bucket()
