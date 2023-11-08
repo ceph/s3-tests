@@ -7530,7 +7530,7 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [0, 1, 2, 3, 4, 5])
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key = "mymultipart"
@@ -7765,7 +7765,6 @@ def test_multipart_upload_contents():
     _do_test_multipart_upload_contents(bucket_name, "mymultipart", 3)
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8086,7 +8085,7 @@ def _cors_request_and_check(
     assert r.headers.get("access-control-allow-methods", None) == expect_allow_methods
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8322,7 +8321,7 @@ def test_cors_origin_response():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8352,7 +8351,7 @@ def test_cors_origin_wildcard():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/842")
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8426,18 +8425,18 @@ def _test_cors_options_presigned_get_object(client):
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/899")
 def test_cors_presigned_get_object():
     _test_cors_options_presigned_get_object(client=get_client())
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/899")
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_get_object(client=get_tenant_client())
 
 
 @pytest.mark.tagging
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/898")
 def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9627,7 +9626,7 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert key == delete_markers[0]["Key"]
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/897")
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9826,7 +9825,6 @@ def test_versioned_concurrent_object_create_concurrent_remove():
         assert not "Versions" in response
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_versioned_concurrent_object_create_and_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12118,7 +12116,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
     client = get_client()
