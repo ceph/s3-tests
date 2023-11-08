@@ -8838,74 +8838,34 @@ class ActionOnCount:
             self.result = self.action()
 
 
-@pytest.mark.skip(reason="Potential Bug")
-def test_multipart_resend_first_finishes_last():
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/901")
+def test_multipart_resend():
     bucket_name = get_new_bucket()
     client = get_client()
     key_name = "mymultipart"
 
-    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
-    upload_id = response["UploadId"]
-
-    # file_size = 8*1024*1024
     file_size = 8
-
-    counter = Counter(0)
-    # upload_part might read multiple times from the object
-    # first time when it calculates md5, second time when it writes data
-    # out. We want to interject only on the last time, but we can't be
-    # sure how many times it's going to read, so let's have a test run
-    # and count the number of reads
-
-    fp_dry_run = FakeWriteFile(file_size, "C", lambda: counter.inc())
 
     parts = []
 
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
+    upload_id = response["UploadId"]
+
+    fp_a = FakeWriteFile(file_size, "A")
+
     response = client.upload_part(
-        UploadId=upload_id,
-        Bucket=bucket_name,
-        Key=key_name,
-        PartNumber=1,
-        Body=fp_dry_run,
+        UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_a
     )
 
-    parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
-    client.complete_multipart_upload(
-        Bucket=bucket_name,
-        Key=key_name,
-        UploadId=upload_id,
-        MultipartUpload={"Parts": parts},
-    )
-
-    client.delete_object(Bucket=bucket_name, Key=key_name)
-
-    # clear parts
-    parts[:] = []
-
-    # ok, now for the actual test
     fp_b = FakeWriteFile(file_size, "B")
 
-    def upload_fp_b():
-        response = client.upload_part(
+    response = client.upload_part(
             UploadId=upload_id,
             Bucket=bucket_name,
             Key=key_name,
             Body=fp_b,
             PartNumber=1,
         )
-        parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
-
-    action = ActionOnCount(counter.val, lambda: upload_fp_b())
-
-    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
-    upload_id = response["UploadId"]
-
-    fp_a = FakeWriteFile(file_size, "A", lambda: action.trigger())
-
-    response = client.upload_part(
-        UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_a
-    )
-
     parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
     client.complete_multipart_upload(
         Bucket=bucket_name,
@@ -8914,7 +8874,7 @@ def test_multipart_resend_first_finishes_last():
         MultipartUpload={"Parts": parts},
     )
 
-    _verify_atomic_key_data(bucket_name, key_name, file_size, "A")
+    _verify_atomic_key_data(bucket_name, key_name, file_size, "B")
 
 
 @pytest.mark.fails_on_dbstore
