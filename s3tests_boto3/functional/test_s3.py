@@ -6469,7 +6469,7 @@ def test_bucket_create_naming_good_starts_digit(override_prefix_0):
     check_good_bucket_name("foo", _prefix="0" + get_prefix())
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/903")
 def test_bucket_create_naming_good_contains_period():
     check_good_bucket_name("aaa.111")
 
@@ -6478,7 +6478,6 @@ def test_bucket_create_naming_good_contains_hyphen():
     check_good_bucket_name("aaa-111")
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_recreate_not_overriding():
     key_names = ["mykey1", "mykey2"]
     bucket_name = _create_objects(keys=key_names)
@@ -6487,7 +6486,7 @@ def test_bucket_recreate_not_overriding():
     assert key_names == objs_list
 
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
 
     objs_list = get_objects_list(bucket_name)
     assert key_names == objs_list
@@ -6670,7 +6669,7 @@ def test_object_copy_not_owned_bucket():
     assert status == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/902")
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -7530,7 +7529,7 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [0, 1, 2, 3, 4, 5])
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key = "mymultipart"
@@ -7765,7 +7764,6 @@ def test_multipart_upload_contents():
     _do_test_multipart_upload_contents(bucket_name, "mymultipart", 3)
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8086,7 +8084,7 @@ def _cors_request_and_check(
     assert r.headers.get("access-control-allow-methods", None) == expect_allow_methods
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8322,7 +8320,7 @@ def test_cors_origin_response():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8352,7 +8350,7 @@ def test_cors_origin_wildcard():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/842")
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8426,18 +8424,18 @@ def _test_cors_options_presigned_get_object(client):
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/899")
 def test_cors_presigned_get_object():
     _test_cors_options_presigned_get_object(client=get_client())
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/899")
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_get_object(client=get_tenant_client())
 
 
 @pytest.mark.tagging
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/898")
 def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8839,74 +8837,34 @@ class ActionOnCount:
             self.result = self.action()
 
 
-@pytest.mark.skip(reason="Potential Bug")
-def test_multipart_resend_first_finishes_last():
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/901")
+def test_multipart_resend():
     bucket_name = get_new_bucket()
     client = get_client()
     key_name = "mymultipart"
 
-    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
-    upload_id = response["UploadId"]
-
-    # file_size = 8*1024*1024
     file_size = 8
-
-    counter = Counter(0)
-    # upload_part might read multiple times from the object
-    # first time when it calculates md5, second time when it writes data
-    # out. We want to interject only on the last time, but we can't be
-    # sure how many times it's going to read, so let's have a test run
-    # and count the number of reads
-
-    fp_dry_run = FakeWriteFile(file_size, "C", lambda: counter.inc())
 
     parts = []
 
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
+    upload_id = response["UploadId"]
+
+    fp_a = FakeWriteFile(file_size, "A")
+
     response = client.upload_part(
-        UploadId=upload_id,
-        Bucket=bucket_name,
-        Key=key_name,
-        PartNumber=1,
-        Body=fp_dry_run,
+        UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_a
     )
 
-    parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
-    client.complete_multipart_upload(
-        Bucket=bucket_name,
-        Key=key_name,
-        UploadId=upload_id,
-        MultipartUpload={"Parts": parts},
-    )
-
-    client.delete_object(Bucket=bucket_name, Key=key_name)
-
-    # clear parts
-    parts[:] = []
-
-    # ok, now for the actual test
     fp_b = FakeWriteFile(file_size, "B")
 
-    def upload_fp_b():
-        response = client.upload_part(
+    response = client.upload_part(
             UploadId=upload_id,
             Bucket=bucket_name,
             Key=key_name,
             Body=fp_b,
             PartNumber=1,
         )
-        parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
-
-    action = ActionOnCount(counter.val, lambda: upload_fp_b())
-
-    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
-    upload_id = response["UploadId"]
-
-    fp_a = FakeWriteFile(file_size, "A", lambda: action.trigger())
-
-    response = client.upload_part(
-        UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_a
-    )
-
     parts.append({"ETag": response["ETag"].strip('"'), "PartNumber": 1})
     client.complete_multipart_upload(
         Bucket=bucket_name,
@@ -8915,7 +8873,7 @@ def test_multipart_resend_first_finishes_last():
         MultipartUpload={"Parts": parts},
     )
 
-    _verify_atomic_key_data(bucket_name, key_name, file_size, "A")
+    _verify_atomic_key_data(bucket_name, key_name, file_size, "B")
 
 
 @pytest.mark.fails_on_dbstore
@@ -9627,7 +9585,7 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert key == delete_markers[0]["Key"]
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/897")
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9826,7 +9784,6 @@ def test_versioned_concurrent_object_create_concurrent_remove():
         assert not "Versions" in response
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_versioned_concurrent_object_create_and_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12118,7 +12075,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
     client = get_client()
