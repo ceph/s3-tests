@@ -6469,7 +6469,7 @@ def test_bucket_create_naming_good_starts_digit(override_prefix_0):
     check_good_bucket_name("foo", _prefix="0" + get_prefix())
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/903")
 def test_bucket_create_naming_good_contains_period():
     check_good_bucket_name("aaa.111")
 
@@ -6670,7 +6670,7 @@ def test_object_copy_not_owned_bucket():
     assert status == 403
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/902")
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
