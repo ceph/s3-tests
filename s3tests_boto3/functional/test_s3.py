@@ -6478,7 +6478,6 @@ def test_bucket_create_naming_good_contains_hyphen():
     check_good_bucket_name("aaa-111")
 
 
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_recreate_not_overriding():
     key_names = ["mykey1", "mykey2"]
     bucket_name = _create_objects(keys=key_names)
@@ -6487,7 +6486,7 @@ def test_bucket_recreate_not_overriding():
     assert key_names == objs_list
 
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
 
     objs_list = get_objects_list(bucket_name)
     assert key_names == objs_list
