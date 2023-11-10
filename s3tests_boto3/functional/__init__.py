@@ -1,3 +1,4 @@
+import allure
 import configparser
 import datetime
 import itertools
@@ -14,18 +15,22 @@ import urllib3
 from botocore import UNSIGNED
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from boto3.session import Session as OriginalSession 
+from functools import wraps
 
 config = munch.Munch
 
 # this will be assigned by setup()
 prefix = None
 
+boto3._get_default_session = lambda: WrappedSession()
 
 def get_prefix():
     assert prefix is not None
     return prefix
 
 
+@allure.step("Choose Bucket Prefix")
 def choose_bucket_prefix(template, max_len=30):
     """
     Choose a prefix for our test buckets, so they're easy to identify.
@@ -50,6 +55,7 @@ def choose_bucket_prefix(template, max_len=30):
     )
 
 
+@allure.step("Get Buckets List")
 def get_buckets_list(client=None, prefix=None):
     if client == None:
         client = get_client()
@@ -65,6 +71,7 @@ def get_buckets_list(client=None, prefix=None):
     return buckets_list
 
 
+@allure.step("Get Objects List")
 def get_objects_list(bucket, client=None, prefix=None):
     if client == None:
         client = get_client()
@@ -85,6 +92,7 @@ def get_objects_list(bucket, client=None, prefix=None):
 
 # generator function that returns object listings in batches, where each
 # batch is a list of dicts compatible with delete_objects()
+@allure.step("List Versions")
 def list_versions(client, bucket, batch_size):
     kwargs = {"Bucket": bucket, "MaxKeys": batch_size}
     truncated = True
@@ -100,6 +108,7 @@ def list_versions(client, bucket, batch_size):
             yield [{"Key": o["Key"], "VersionId": o["VersionId"]} for o in objs]
 
 
+@allure.step("Nuke Bucket")
 def nuke_bucket(client, bucket):
     batch_size = 128
     max_retain_date = None
@@ -151,6 +160,7 @@ bucket cleanup".format(
     client.delete_bucket(Bucket=bucket)
 
 
+@allure.step("Nuke Prefixed Buckets")
 def nuke_prefixed_buckets(prefix, client=None):
     if client == None:
         client = get_client()
@@ -172,6 +182,7 @@ def nuke_prefixed_buckets(prefix, client=None):
         raise err
 
 
+@allure.step("Configured Storage Classes")
 def configured_storage_classes():
     sc = ["STANDARD"]
 
@@ -334,6 +345,7 @@ def setup_teardown(configfile):
     teardown()
 
 
+@allure.step("Check Webidentity")
 def check_webidentity():
     cfg = configparser.RawConfigParser()
     try:
@@ -356,6 +368,7 @@ def check_webidentity():
     config.webidentity_user_token = cfg.get("webidentity", "user_token")
 
 
+@allure.step("Get Cloud Config")
 def get_cloud_config(cfg):
     config.cloud_host = cfg.get("s3 cloud", "host")
     config.cloud_port = int(cfg.get("s3 cloud", "port"))
@@ -393,6 +406,7 @@ def get_cloud_config(cfg):
         config.cloud_regular_storage_class = None
 
 
+@allure.step("Get Client")
 def get_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -406,9 +420,12 @@ def get_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get V2 Client")
 def get_v2_client():
     client = boto3.client(
         service_name="s3",
@@ -419,9 +436,12 @@ def get_v2_client():
         verify=config.default_ssl_verify,
         config=Config(signature_version="s3"),
     )
+    allure.attach("Client V2 created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get STS Client")
 def get_sts_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -436,9 +456,12 @@ def get_sts_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get IAM Client")
 def get_iam_client(client_config=None):
     cfg = configparser.RawConfigParser()
     try:
@@ -471,9 +494,12 @@ def get_iam_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get IAM S3 Client")
 def get_iam_s3client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -486,9 +512,12 @@ def get_iam_s3client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Alt Client")
 def get_alt_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -502,9 +531,12 @@ def get_alt_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Cloud Client")
 def get_cloud_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -517,9 +549,12 @@ def get_cloud_client(client_config=None):
         use_ssl=config.cloud_is_secure,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Tenant Client")
 def get_tenant_client(client_config=None):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -533,9 +568,12 @@ def get_tenant_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Tenant IAM Client")
 def get_tenant_iam_client():
     client = boto3.client(
         service_name="iam",
@@ -546,9 +584,12 @@ def get_tenant_iam_client():
         verify=config.default_ssl_verify,
         use_ssl=config.default_is_secure,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Alt IAM Client")
 def get_alt_iam_client():
     client = boto3.client(
         service_name="iam",
@@ -559,9 +600,12 @@ def get_alt_iam_client():
         verify=config.default_ssl_verify,
         use_ssl=config.default_is_secure,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Unauthenticated Client")
 def get_unauthenticated_client():
     client = boto3.client(
         service_name="s3",
@@ -572,9 +616,12 @@ def get_unauthenticated_client():
         verify=config.default_ssl_verify,
         config=Config(signature_version=UNSIGNED),
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get Bad Auth Client")
 def get_bad_auth_client(aws_access_key_id="badauth"):
     client = boto3.client(
         service_name="s3",
@@ -585,9 +632,12 @@ def get_bad_auth_client(aws_access_key_id="badauth"):
         verify=config.default_ssl_verify,
         config=Config(signature_version="s3v4"),
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
+@allure.step("Get SVC Client")
 def get_svc_client(client_config=None, svc="s3"):
     if client_config == None:
         client_config = Config(signature_version="s3v4")
@@ -601,12 +651,15 @@ def get_svc_client(client_config=None, svc="s3"):
         verify=config.default_ssl_verify,
         config=client_config,
     )
+    allure.attach("Client created with the following options:\n"+
+                  f"{client._client_config._user_provided_options}")
     return client
 
 
 bucket_counter = itertools.count(1)
 
 
+@allure.step("Generate Bucket Name")
 def get_new_bucket_name():
     """
     Get a bucket name that probably does not exist.
@@ -619,9 +672,11 @@ def get_new_bucket_name():
         prefix=prefix,
         num=next(bucket_counter),
     )
+    allure.attach(f"Buket name: {name}")
     return name
 
 
+@allure.step("Get New Bucket Resource")
 def get_new_bucket_resource(name=None):
     """
     Get a bucket that exists and is empty.
@@ -644,6 +699,7 @@ def get_new_bucket_resource(name=None):
     return bucket
 
 
+@allure.step("Get New Bucket")
 def get_new_bucket(client=None, name=None):
     """
     Get a bucket that exists and is empty.
@@ -660,6 +716,7 @@ def get_new_bucket(client=None, name=None):
     return name
 
 
+@allure.step("Get Random Parameter Name")
 def get_parameter_name():
     parameter_name = ""
     rand = "".join(
@@ -673,157 +730,236 @@ def get_parameter_name():
     return parameter_name
 
 
+def allure_attach_result(func):
+    @allure.step(f"{func.__name__}")
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        allure.attach(f"{func.__name__} result: {result}", name=func.__name__, attachment_type=allure.attachment_type.TEXT)
+        return result
+
+    return wrapper
+
+
+@allure_attach_result
 def get_sts_user_id():
     return config.alt_user_id
 
 
+@allure_attach_result
 def get_config_is_secure():
     return config.default_is_secure
 
 
+@allure_attach_result
 def get_config_host():
     return config.default_host
 
 
+@allure_attach_result
 def get_config_port():
     return config.default_port
 
 
+@allure_attach_result
 def get_config_endpoint():
     return config.default_endpoint
 
 
+@allure_attach_result
 def get_config_ssl_verify():
     return config.default_ssl_verify
 
 
+@allure_attach_result
 def get_main_aws_access_key():
     return config.main_access_key
 
 
+@allure_attach_result
 def get_main_aws_secret_key():
     return config.main_secret_key
 
 
+@allure_attach_result
 def get_main_display_name():
     return config.main_display_name
 
 
+@allure_attach_result
 def get_main_user_id():
     return config.main_user_id
 
 
+@allure_attach_result
 def get_main_email():
     return config.main_email
 
 
+@allure_attach_result
 def get_main_api_name():
     return config.main_api_name
 
 
+@allure_attach_result
 def get_main_kms_keyid():
     return config.main_kms_keyid
 
 
+@allure_attach_result
 def get_secondary_kms_keyid():
     return config.main_kms_keyid2
 
 
+@allure_attach_result
 def get_alt_aws_access_key():
     return config.alt_access_key
 
 
+@allure_attach_result
 def get_alt_aws_secret_key():
     return config.alt_secret_key
 
 
+@allure_attach_result
 def get_alt_display_name():
     return config.alt_display_name
 
 
+@allure_attach_result
 def get_alt_user_id():
     return config.alt_user_id
 
 
+@allure_attach_result
 def get_alt_email():
     return config.alt_email
 
 
+@allure_attach_result
 def get_tenant_aws_access_key():
     return config.tenant_access_key
 
 
+@allure_attach_result
 def get_tenant_aws_secret_key():
     return config.tenant_secret_key
 
 
+@allure_attach_result
 def get_tenant_display_name():
     return config.tenant_display_name
 
 
+@allure_attach_result
 def get_tenant_user_id():
     return config.tenant_user_id
 
 
+@allure_attach_result
 def get_tenant_email():
     return config.tenant_email
 
 
+@allure_attach_result
 def get_thumbprint():
     return config.webidentity_thumbprint
 
 
+@allure_attach_result
 def get_aud():
     return config.webidentity_aud
 
 
+@allure_attach_result
 def get_sub():
     return config.webidentity_sub
 
 
+@allure_attach_result
 def get_azp():
     return config.webidentity_azp
 
 
+@allure_attach_result
 def get_token():
     return config.webidentity_token
 
 
+@allure_attach_result
 def get_realm_name():
     return config.webidentity_realm
 
 
+@allure_attach_result
 def get_iam_access_key():
     return config.iam_access_key
 
 
+@allure_attach_result
 def get_iam_secret_key():
     return config.iam_secret_key
 
 
+@allure_attach_result
 def get_user_token():
     return config.webidentity_user_token
 
 
+@allure_attach_result
 def get_cloud_storage_class():
     return config.cloud_storage_class
 
 
+@allure_attach_result
 def get_cloud_retain_head_object():
     return config.cloud_retain_head_object
 
 
+@allure_attach_result
 def get_cloud_regular_storage_class():
     return config.cloud_regular_storage_class
 
 
+@allure_attach_result
 def get_cloud_target_path():
     return config.cloud_target_path
 
 
+@allure_attach_result
 def get_cloud_target_storage_class():
     return config.cloud_target_storage_class
 
 
+@allure_attach_result
 def get_lc_debug_interval():
     return config.lc_debug_interval
+
+
+def log_and_call(original_method):
+    @wraps(original_method)
+    def wrapper(*args, **kwargs):
+        with allure.step(f"Request {original_method.__name__}"):
+            response = original_method(*args, **kwargs)
+            allure.attach(str({'args': args, 'kwargs': kwargs}), 
+                          name=f'{original_method.__name__} executed with parameters')
+            allure.attach(str(response))
+        return response
+    return wrapper
+
+
+class WrappedClient:
+    def __init__(self, client):
+        self.client = client
+
+    def __getattr__(self, item):
+        original_method = getattr(self.client, item)
+        if item in self.client._PY_TO_OP_NAME.keys():
+            return log_and_call(original_method)  
+        return original_method
+
+class WrappedSession(OriginalSession):
+    def client(self, *args, **kwargs):
+        client = super().client(*args, **kwargs)
+        wrapped_client = WrappedClient(client)
+        return wrapped_client
+  
