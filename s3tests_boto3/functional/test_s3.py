@@ -1912,7 +1912,7 @@ def _ev_add_te_header(request, **kwargs):
     request.headers.add_header("Transfer-Encoding", "chunked")
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
 def test_object_write_with_chunked_transfer_encoding():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -2212,7 +2212,7 @@ def test_object_set_get_metadata_overwrite_to_empty():
 
 # TODO: the decoding of this unicode metadata is not happening properly for unknown reasons
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/58")
 def test_object_set_get_unicode_metadata():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5762,7 +5762,6 @@ def test_object_header_acl_grants():
 
 @pytest.mark.fails_on_dho
 @pytest.mark.fails_on_aws
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_header_acl_grants():
     headers = _get_acl_header()
     bucket_name = get_new_bucket_name()
@@ -5890,7 +5889,7 @@ def test_bucket_acl_grant_email():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/908")
 def test_bucket_acl_grant_email_not_exist():
     # behavior not documented by amazon
     bucket_name = get_new_bucket()
@@ -5919,7 +5918,7 @@ def test_bucket_acl_grant_email_not_exist():
     assert error_code == "UnresolvableGrantByEmailAddress"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/861")
 def test_bucket_acl_revoke_all():
     # revoke all access, including the owner's access
     bucket_name = get_new_bucket()
@@ -5948,7 +5947,7 @@ def test_bucket_acl_revoke_all():
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/907")
 def test_logging_toggle():
     bucket_name = get_new_bucket()
     client = get_client()
