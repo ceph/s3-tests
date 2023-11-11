@@ -6099,156 +6099,134 @@ def test_access_bucket_private_objectv2_private():
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_private_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="private", object_acl="public-read"
     )
     alt_client = get_alt_client()
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
-
-    # a should be public-read, b gets default (private)
     assert body == "foocontent"
 
     check_access_denied(
         alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
     )
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
+    check_access_denied(alt_client.list_objects, Bucket=bucket_name)
     check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
     )
 
 
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_private_objectv2_publicread():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="private", object_acl="public-read"
     )
     alt_client = get_alt_client()
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
-
-    # a should be public-read, b gets default (private)
     assert body == "foocontent"
 
     check_access_denied(
         alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
     )
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
+    check_access_denied(alt_client.list_objects_v2, Bucket=bucket_name)
     check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
     )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_private_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="private", object_acl="public-read-write"
     )
     alt_client = get_alt_client()
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
-
-    # a should be public-read-only ... because it is in a private bucket
-    # b gets default (private)
     assert body == "foocontent"
 
+    alt_client.put_object(Bucket=bucket_name, Key=key1, Body="foooverwrite")
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+    body = _get_body(response)
+    assert body == "foooverwrite"
+
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
-    )
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
-    check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
+    check_access_denied(alt_client.list_objects, Bucket=bucket_name)
     check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
     )
 
 
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_private_objectv2_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="private", object_acl="public-read-write"
     )
     alt_client = get_alt_client()
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
-
-    # a should be public-read-only ... because it is in a private bucket
-    # b gets default (private)
     assert body == "foocontent"
 
-    check_access_denied(
-        alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
-    )
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
-    check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
-    )
+    alt_client.put_object(Bucket=bucket_name, Key=key1, Body="foooverwrite")
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+    body = _get_body(response)
+    assert body == "foooverwrite"
 
-    alt_client3 = get_alt_client()
-    check_access_denied(alt_client3.list_objects_v2, Bucket=bucket_name)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
+    check_access_denied(alt_client.list_objects_v2, Bucket=bucket_name)
+    check_access_denied(
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+    )
 
-@pytest.mark.skip(reason="Potential Bug")
+
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_publicread_object_private():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read", object_acl="private"
     )
     alt_client = get_alt_client()
 
-    # a should be private, b gets default (private)
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key1)
     check_access_denied(
         alt_client.put_object, Bucket=bucket_name, Key=key1, Body="barcontent"
     )
 
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
-    alt_client3 = get_alt_client()
+    check_access_denied(
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+    )
 
-    objs = get_objects_list(bucket=bucket_name, client=alt_client3)
-
+    objs = get_objects_list(bucket=bucket_name, client=alt_client)
     assert objs == ["bar", "foo"]
-    check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
-    )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_publicread_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read", object_acl="public-read"
@@ -6256,8 +6234,6 @@ def test_access_bucket_publicread_object_publicread():
     alt_client = get_alt_client()
 
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
-    # a should be public-read, b gets default (private)
     body = _get_body(response)
     assert body == "foocontent"
 
@@ -6265,23 +6241,20 @@ def test_access_bucket_publicread_object_publicread():
         alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
     )
 
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
     )
 
-    alt_client3 = get_alt_client()
+    check_access_denied(
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
+    )
 
-    objs = get_objects_list(bucket=bucket_name, client=alt_client3)
-
+    objs = get_objects_list(bucket=bucket_name, client=alt_client)
     assert objs == ["bar", "foo"]
-    check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
-    )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_publicread_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read", object_acl="public-read-write"
@@ -6289,91 +6262,94 @@ def test_access_bucket_publicread_object_publicreadwrite():
     alt_client = get_alt_client()
 
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
-
-    # a should be public-read-only ... because it is in a r/o bucket
-    # b gets default (private)
     assert body == "foocontent"
 
+    alt_client.put_object(Bucket=bucket_name, Key=key1, Body="foooverwrite")
+
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+    body = _get_body(response)
+    assert body == "foooverwrite"
+
+    check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
     check_access_denied(
-        alt_client.put_object, Bucket=bucket_name, Key=key1, Body="foooverwrite"
+        alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
+    )
+    check_access_denied(
+        alt_client.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
     )
 
-    alt_client2 = get_alt_client()
-    check_access_denied(alt_client2.get_object, Bucket=bucket_name, Key=key2)
-    check_access_denied(
-        alt_client2.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite"
-    )
-
-    alt_client3 = get_alt_client()
-
-    objs = get_objects_list(bucket=bucket_name, client=alt_client3)
-
+    objs = get_objects_list(bucket=bucket_name, client=alt_client)
     assert objs == ["bar", "foo"]
-    check_access_denied(
-        alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body="newcontent"
-    )
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_publicreadwrite_object_private():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read-write", object_acl="private"
     )
     alt_client = get_alt_client()
 
-    # a should be private, b gets default (private)
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key1)
-    alt_client.put_object(Bucket=bucket_name, Key=key1, Body="barcontent")
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body="barcontent")
 
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
-    alt_client.put_object(Bucket=bucket_name, Key=key2, Body="baroverwrite")
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite")
 
-    objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    assert objs == ["bar", "foo"]
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body="newcontent")
+    response = alt_client.get_object(Bucket=bucket_name, Key=newkey)
+    body = _get_body(response)
+    assert body == "newcontent"
 
 
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/904")
 def test_access_bucket_publicreadwrite_object_publicread():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read-write", object_acl="public-read"
     )
     alt_client = get_alt_client()
 
-    # a should be public-read, b gets default (private)
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
-
     body = _get_body(response)
     assert body == "foocontent"
-    alt_client.put_object(Bucket=bucket_name, Key=key1, Body="barcontent")
+
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key1, Body="barcontent")
+
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+    body = _get_body(response)
+    assert body == "foocontent"
 
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
-    alt_client.put_object(Bucket=bucket_name, Key=key2, Body="baroverwrite")
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite")
 
-    objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    assert objs == ["bar", "foo"]
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body="newcontent")
+    response = alt_client.get_object(Bucket=bucket_name, Key=newkey)
+    body = _get_body(response)
+    assert body == "newcontent"
 
-
-@pytest.mark.skip(reason="Potential Bug")
+@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/906")
 def test_access_bucket_publicreadwrite_object_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(
         bucket_acl="public-read-write", object_acl="public-read-write"
     )
     alt_client = get_alt_client()
+
     response = alt_client.get_object(Bucket=bucket_name, Key=key1)
     body = _get_body(response)
-
-    # a should be public-read-write, b gets default (private)
     assert body == "foocontent"
+
     alt_client.put_object(Bucket=bucket_name, Key=key1, Body="foooverwrite")
+
+    response = alt_client.get_object(Bucket=bucket_name, Key=key1)
+    body = _get_body(response)
+    assert body == "foooverwrite"
+
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key=key2)
-    alt_client.put_object(Bucket=bucket_name, Key=key2, Body="baroverwrite")
-    objs = get_objects_list(bucket=bucket_name, client=alt_client)
-    assert objs == ["bar", "foo"]
+    check_access_denied(alt_client.put_object, Bucket=bucket_name, Key=key2, Body="baroverwrite")
+
     alt_client.put_object(Bucket=bucket_name, Key=newkey, Body="newcontent")
+    body = _get_body(response)
+    assert body == "newcontent"
 
 
 def test_buckets_create_then_list():
