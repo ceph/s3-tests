@@ -1548,17 +1548,15 @@ def test_bucket_list_marker_empty():
 
 
 @pytest.mark.list_objects_v2
-@pytest.mark.skip(reason="Potential Bug")
 def test_bucket_listv2_continuationtoken_empty():
     key_names = ["bar", "baz", "foo", "quxx"]
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
 
-    response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken="")
-    assert response["ContinuationToken"] == ""
-    assert response["IsTruncated"] == False
-    keys = _get_keys(response)
-    assert keys == key_names
+    e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name, ContinuationToken="")
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == "InvalidArgument"
 
 
 @pytest.mark.list_objects_v2
