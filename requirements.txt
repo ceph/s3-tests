@@ -13,3 +13,4 @@ httplib2
 lxml
 pytest
 tox
+pytest-select >=0.1.2
