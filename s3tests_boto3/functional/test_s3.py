@@ -11839,9 +11839,11 @@ def test_object_lock_put_obj_retention():
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
-    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
+    retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2140,1,1,tzinfo=pytz.UTC)}
     response = client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_object_retention(Bucket=bucket_name, Key=key)
+    assert response['Retention'] == retention
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
