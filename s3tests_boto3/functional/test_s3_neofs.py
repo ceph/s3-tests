@@ -1,3 +1,4 @@
+import allure
 import time
 
 import pytest
@@ -27,6 +28,7 @@ from .test_s3 import (
 from .utils import _get_status, _get_status_and_error_code, assert_raises
 
 
+@allure.step("Create Bucket with ACL")
 def _setup_bucket_acl(bucket_acl=None):
     """
     set up a new bucket with specified acl
@@ -60,6 +62,7 @@ def _get_prefixes(response):
     return prefixes
 
 
+@allure.step("Create objects")
 def _create_objects(bucket=None, bucket_name=None, keys=[]):
     """
     Populate a (specified or new) bucket with objects with
@@ -81,6 +84,7 @@ def _get_post_url(bucket_name):
     return "{endpoint}/{bucket_name}".format(endpoint=endpoint, bucket_name=bucket_name)
 
 
+@allure.step("CORS Request and Check")
 def _cors_request_and_check(
     method, url, headers, expected_status, expected_headers, with_creds=False
 ):
@@ -918,6 +922,7 @@ def test_multipart_workflow():
     assert body == part_content
 
 
+@allure.step("Check Empty List Multipart")
 def _check_empty_list_multipart(bucket_name):
     client = get_client()
     response = client.list_multipart_uploads(Bucket=bucket_name)

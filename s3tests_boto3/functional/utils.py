@@ -1,7 +1,9 @@
+import allure
 import random
 import string
 
 
+@allure.step("Assert Raises")
 def assert_raises(excClass, callableObj, *args, **kwargs):
     """
     Like unittest.TestCase.assertRaises, but returns the exception.
@@ -18,6 +20,7 @@ def assert_raises(excClass, callableObj, *args, **kwargs):
         raise AssertionError("%s not raised" % excName)
 
 
+@allure.step("Generate Random Data")
 def generate_random(size, part_size=5 * 1024 * 1024):
     """
     Generate the specified number random data.
@@ -40,11 +43,13 @@ def generate_random(size, part_size=5 * 1024 * 1024):
             return
 
 
+@allure.step("Get Status")
 def _get_status(response):
     status = response["ResponseMetadata"]["HTTPStatusCode"]
     return status
 
 
+@allure.step("Get Status and Error Code")
 def _get_status_and_error_code(response):
     status = response["ResponseMetadata"]["HTTPStatusCode"]
     error_code = response["Error"]["Code"]

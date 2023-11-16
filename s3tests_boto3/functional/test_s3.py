@@ -1,3 +1,4 @@
+import allure
 import base64
 import datetime
 import hashlib
@@ -69,6 +70,7 @@ from .utils import (
 )
 
 
+@allure.step("Check Bucket is Empty")
 def _bucket_is_empty(bucket):
     is_empty = True
     for obj in bucket.objects.all():
@@ -92,6 +94,7 @@ def test_bucket_list_distinct():
     assert is_empty == True
 
 
+@allure.step("Create Objects")
 def _create_objects(bucket=None, bucket_name=None, keys=[]):
     """
     Populate a (specified or new) bucket with objects with
@@ -108,6 +111,7 @@ def _create_objects(bucket=None, bucket_name=None, keys=[]):
     return bucket_name
 
 
+@allure.step("Get Keys")
 def _get_keys(response):
     """
     return lists of strings that are the keys from a client.list_objects() response
@@ -119,6 +123,7 @@ def _get_keys(response):
     return keys
 
 
+@allure.step("Get Prefixes")
 def _get_prefixes(response):
     """
     return lists of strings that are prefixes from a client.list_objects() response
@@ -250,6 +255,7 @@ def test_bucket_list_encoding_basic():
     assert prefixes == ["foo%2B1/", "foo/", "quux%20ab/"]
 
 
+@allure.step("Validate Bucket List Attributes")
 def validate_bucket_list(
     bucket_name,
     prefix,
@@ -286,6 +292,7 @@ def validate_bucket_list(
     return response["NextMarker"]
 
 
+@allure.step("Validate Bucket List Attributes V2")
 def validate_bucket_listv2(
     bucket_name,
     prefix,
@@ -1292,6 +1299,7 @@ def test_bucket_listv2_maxkeys_none():
     assert response["MaxKeys"] == 1000
 
 
+@allure.step("Get HTTP Response Body")
 def get_http_response_body(**kwargs):
     global http_response_body
     http_response_body = kwargs["http_response"].__dict__["_content"]
@@ -1672,6 +1680,7 @@ def test_bucket_listv2_startafter_after_list():
     assert keys == []
 
 
+@allure.step("Compare Dates")
 def _compare_dates(datetime1, datetime2):
     """
     changes ms from datetime1 to 0, compares it to datetime2
@@ -1847,6 +1856,7 @@ def test_bucket_delete_nonempty():
     assert error_code == "BucketNotEmpty"
 
 
+@allure.step("Set Bucket ACL with Canned ACL")
 def _do_set_bucket_canned_acl(client, bucket_name, canned_acl, i, results):
     try:
         client.put_bucket_acl(ACL=canned_acl, Bucket=bucket_name)
@@ -1855,6 +1865,7 @@ def _do_set_bucket_canned_acl(client, bucket_name, canned_acl, i, results):
         results[i] = False
 
 
+@allure.step("Set Bucket ACL Concurrently")
 def _do_set_bucket_canned_acl_concurrent(client, bucket_name, canned_acl, num, results):
     t = []
     for i in range(num):
@@ -1867,6 +1878,7 @@ def _do_set_bucket_canned_acl_concurrent(client, bucket_name, canned_acl, num, r
     return t
 
 
+@allure.step("Wait for Thread Completion")
 def _do_wait_completion(t):
     for thr in t:
         thr.join()
@@ -1906,6 +1918,7 @@ def test_object_write_to_nonexist_bucket():
     assert error_code == "NoSuchBucket"
 
 
+@allure.step("Add Transfer-Encoding Header")
 def _ev_add_te_header(request, **kwargs):
     request.headers.add_header("Transfer-Encoding", "chunked")
 
@@ -1947,6 +1960,7 @@ def test_object_read_not_exist():
 http_response = None
 
 
+@allure.step("Get HTTP Response")
 def get_http_response(**kwargs):
     global http_response
     http_response = kwargs["http_response"].__dict__
@@ -1969,6 +1983,7 @@ def test_object_requestid_matches_header_on_error():
     assert request_id == e.response["ResponseMetadata"]["RequestId"]
 
 
+@allure.step("Objects Dict")
 def _make_objs_dict(key_names):
     objs_list = []
     for key in key_names:
@@ -2138,6 +2153,7 @@ def test_object_write_expires():
     _compare_dates(expires, response["Expires"])
 
 
+@allure.step("Response Body")
 def _get_body(response):
     body = response["Body"]
     got = body.read()
@@ -2166,6 +2182,7 @@ def test_object_write_read_update_read_delete():
     client.delete_object(Bucket=bucket_name, Key="foo")
 
 
+@allure.step("Set and Get Metadata Property")
 def _set_get_metadata(metadata, bucket_name=None):
     """
     create a new bucket new or use an existing
@@ -2228,6 +2245,7 @@ def test_object_set_get_unicode_metadata():
     assert got == "Hello World\xe9"
 
 
+@allure.step("Set and Get Unreadable Metadata")
 def _set_get_metadata_unreadable(metadata, bucket_name=None):
     """
     set and then read back a meta-data value (which presumably
@@ -2275,6 +2293,7 @@ def test_object_write_file():
     assert body == "bar"
 
 
+@allure.step("Get POST URL")
 def _get_post_url(bucket_name):
     endpoint = get_config_endpoint()
     return "{endpoint}/{bucket_name}".format(endpoint=endpoint, bucket_name=bucket_name)
@@ -4014,6 +4033,7 @@ def test_put_object_ifnonmatch_overwrite_existed_failed():
     assert body == "bar"
 
 
+@allure.step("Setup Bucket and Object ACL")
 def _setup_bucket_object_acl(bucket_acl, object_acl, client=None):
     """
     add a foo key, and specified key and bucket acls to
@@ -4028,6 +4048,7 @@ def _setup_bucket_object_acl(bucket_acl, object_acl, client=None):
     return bucket_name
 
 
+@allure.step("Setup Bucket with ACL")
 def _setup_bucket_acl(bucket_acl=None):
     """
     set up a new bucket with specified acl
@@ -4444,6 +4465,7 @@ def test_bucket_create_naming_bad_short_two():
     check_bad_bucket_name("aa")
 
 
+@allure.step("Check Good Bucket Name")
 def check_good_bucket_name(name, _prefix=None):
     """
     Attempt to create a bucket with a specified name
@@ -4467,6 +4489,7 @@ def check_good_bucket_name(name, _prefix=None):
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
+@allure.step("Create Bucket with Long Name")
 def _test_bucket_create_naming_good_long(length):
     """
     Attempt to create a bucket whose name (including the
@@ -4678,12 +4701,14 @@ def test_bucket_recreate_new_acl():
     assert error_code == "BucketAlreadyExists"
 
 
+@allure.step("Check Access Denied")
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(ClientError, fn, *args, **kwargs)
     status = _get_status(e.response)
     assert status == 403
 
 
+@allure.step("Check Grants Match")
 def check_grants(got, want):
     """
     Check that grants list in got matches the dictionaries in want,
@@ -5238,6 +5263,7 @@ def test_object_acl_full_control_verify_owner():
     assert response["Owner"]["ID"] == main_user_id
 
 
+@allure.step("Add Object User Grant")
 def add_obj_user_grant(bucket_name, key, grant):
     """
     Adds a grant to the existing grants meant to be passed into
@@ -5308,6 +5334,7 @@ def test_bucket_acl_canned_private_to_private():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
+@allure.step("Add Bucket User Grant")
 def add_bucket_user_grant(bucket_name, grant):
     """
     Adds a grant to the existing grants meant to be passed into
@@ -5333,6 +5360,7 @@ def add_bucket_user_grant(bucket_name, grant):
     return grant
 
 
+@allure.step("Check Object ACL Permission")
 def _check_object_acl(permission):
     """
     Sets the permission on an object then checks to see
@@ -5398,6 +5426,7 @@ def test_object_acl_readacp():
     _check_object_acl("READ_ACP")
 
 
+@allure.step("Bucket ACL Grant UserID")
 def _bucket_acl_grant_userid(permission):
     """
     create a new bucket, grant a specific user the specified
@@ -5449,6 +5478,7 @@ def _bucket_acl_grant_userid(permission):
     return bucket_name
 
 
+@allure.step("Check Bucket ACL Grant Can Read")
 def _check_bucket_acl_grant_can_read(bucket_name):
     """
     verify ability to read the specified bucket
@@ -5457,6 +5487,7 @@ def _check_bucket_acl_grant_can_read(bucket_name):
     response = alt_client.head_bucket(Bucket=bucket_name)
 
 
+@allure.step("Check Bucket ACL Grant Can't Read")
 def _check_bucket_acl_grant_cant_read(bucket_name):
     """
     verify inability to read the specified bucket
@@ -5465,6 +5496,7 @@ def _check_bucket_acl_grant_cant_read(bucket_name):
     check_access_denied(alt_client.head_bucket, Bucket=bucket_name)
 
 
+@allure.step("Check Bucket ACL Grant Can Read ACP")
 def _check_bucket_acl_grant_can_readacp(bucket_name):
     """
     verify ability to read acls on specified bucket
@@ -5473,6 +5505,7 @@ def _check_bucket_acl_grant_can_readacp(bucket_name):
     alt_client.get_bucket_acl(Bucket=bucket_name)
 
 
+@allure.step("Check Bucket ACL Grant Can't Read ACP")
 def _check_bucket_acl_grant_cant_readacp(bucket_name):
     """
     verify inability to read acls on specified bucket
@@ -5481,6 +5514,7 @@ def _check_bucket_acl_grant_cant_readacp(bucket_name):
     check_access_denied(alt_client.get_bucket_acl, Bucket=bucket_name)
 
 
+@allure.step("Check Bucket ACL Grant Can Write")
 def _check_bucket_acl_grant_can_write(bucket_name):
     """
     verify ability to write the specified bucket
@@ -5489,6 +5523,7 @@ def _check_bucket_acl_grant_can_write(bucket_name):
     alt_client.put_object(Bucket=bucket_name, Key="foo-write", Body="bar")
 
 
+@allure.step("Check Bucket ACL Grant Can't Write")
 def _check_bucket_acl_grant_cant_write(bucket_name):
     """
     verify inability to write the specified bucket
@@ -5499,6 +5534,7 @@ def _check_bucket_acl_grant_cant_write(bucket_name):
     )
 
 
+@allure.step("Check Bucket ACL Grant Can Write ACP")
 def _check_bucket_acl_grant_can_writeacp(bucket_name):
     """
     verify ability to set acls on the specified bucket
@@ -5507,6 +5543,7 @@ def _check_bucket_acl_grant_can_writeacp(bucket_name):
     alt_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
 
 
+@allure.step("Check Bucket ACL Grant Can't Write ACP")
 def _check_bucket_acl_grant_cant_writeacp(bucket_name):
     """
     verify inability to set acls on the specified bucket
@@ -5661,6 +5698,7 @@ def test_bucket_acl_no_grants():
     client2.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
 
 
+@allure.step("Get ACL Header")
 def _get_acl_header(user_id=None, perms=None):
     all_headers = ["read", "write", "read-acp", "write-acp", "full-control"]
     headers = []
@@ -5977,6 +6015,7 @@ def test_logging_toggle():
     # NOTE: this does not actually test whether or not logging works
 
 
+@allure.step("Setup Access")
 def _setup_access(bucket_acl, object_acl):
     """
     Simple test fixture: create a bucket with given ACL, with objects:
@@ -6000,11 +6039,13 @@ def _setup_access(bucket_acl, object_acl):
     return bucket_name, key1, key2, newkey
 
 
+@allure.step("Get Bucket Key Names")
 def get_bucket_key_names(bucket_name):
     objs_list = get_objects_list(bucket_name)
     return frozenset(obj for obj in objs_list)
 
 
+@allure.step("List Bucket Storage Class")
 def list_bucket_storage_class(client, bucket_name):
     result = defaultdict(list)
     response = client.list_object_versions(Bucket=bucket_name)
@@ -6014,6 +6055,7 @@ def list_bucket_storage_class(client, bucket_name):
     return result
 
 
+@allure.step("List Bucket Versions")
 def list_bucket_versions(client, bucket_name):
     result = defaultdict(list)
     response = client.list_object_versions(Bucket=bucket_name)
@@ -6865,6 +6907,7 @@ def test_object_copy_versioned_url_encoding():
     dst.load()  # HEAD request tests that the key exists
 
 
+@allure.step("Generate Random Data")
 def generate_random(size, part_size=5 * 1024 * 1024):
     """
     Generate the specified number random data.
@@ -6888,6 +6931,7 @@ def generate_random(size, part_size=5 * 1024 * 1024):
             return
 
 
+@allure.step("Multipart Upload Random File")
 def _multipart_upload(
     bucket_name,
     key,
@@ -7077,6 +7121,7 @@ def test_multipart_upload_small():
     )
 
 
+@allure.step("Create Object with Random Content")
 def _create_key_with_random_content(
     keyname, size=7 * 1024 * 1024, bucket_name=None, client=None
 ):
@@ -7093,6 +7138,7 @@ def _create_key_with_random_content(
     return bucket_name
 
 
+@allure.step("Multipart Copy")
 def _multipart_copy(
     src_bucket_name,
     src_key,
@@ -7143,6 +7189,7 @@ def _multipart_copy(
     return (upload_id, parts)
 
 
+@allure.step("Check Object Content Equality")
 def _check_key_content(
     src_key, src_bucket_name, dest_key, dest_bucket_name, version_id=None
 ):
@@ -7324,6 +7371,7 @@ def test_multipart_copy_special_names():
         _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 
+@allure.step("Check Content Using Range")
 def _check_content_using_range(key, bucket_name, data, step):
     client = get_client()
     response = client.get_object(Bucket=bucket_name, Key=key)
@@ -7397,6 +7445,7 @@ def check_versioning(bucket_name, status):
 
 
 # amazon is eventual consistent, retry a bit if failed
+@allure.step("Check Versioning Configuration Retry")
 def check_configure_versioning_retry(bucket_name, status, expected_string):
     client = get_client()
     client.put_bucket_versioning(
@@ -7459,6 +7508,7 @@ def test_multipart_copy_versioned():
         )
 
 
+@allure.step("Check Upload Multipart Resend")
 def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
     content_type = "text/bla"
     metadata = {"foo": "bar"}
@@ -7679,10 +7729,12 @@ def test_multipart_upload_size_too_small():
     assert error_code == "EntityTooSmall"
 
 
+@allure.step("Generate Random String")
 def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for _ in range(size))
 
 
+@allure.step("Multipart Upload Content")
 def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
     payload = gen_rand_string(5) * 1024 * 1024
     client = get_client()
@@ -7961,6 +8013,7 @@ def test_multipart_upload_incorrect_etag():
     assert error_code == "InvalidPart"
 
 
+@allure.step("Simple HTTP Request 100 Continue")
 def _simple_http_req_100_cont(host, port, is_secure, method, resource):
     """
     Send the specified request w/expect 100-continue
@@ -8047,6 +8100,7 @@ def test_set_cors():
     assert status == 404
 
 
+@allure.step("CORS Request and Check")
 def _cors_request_and_check(
     func, url, headers, expect_status, expect_allow_origin, expect_allow_methods
 ):
@@ -8363,6 +8417,7 @@ def test_cors_header_option():
     )
 
 
+@allure.step("CORS Options Presigned and GET Object")
 def _test_cors_options_presigned_get_object(client):
     bucket_name = _setup_bucket_object_acl("public-read", "public-read", client=client)
     params = {"Bucket": bucket_name, "Key": "foo"}
@@ -8526,6 +8581,7 @@ class FakeFileVerifier(object):
         assert data.decode() == self.char * size
 
 
+@allure.step("Verify Atomic Key Data")
 def _verify_atomic_key_data(bucket_name, key, size=-1, char=None):
     """
     Make sure file is of the expected size and (simulated) content
@@ -8537,6 +8593,7 @@ def _verify_atomic_key_data(bucket_name, key, size=-1, char=None):
         assert fp_verify.size == size
 
 
+@allure.step("Test Atomic Read")
 def _test_atomic_read(file_size):
     """
     Create a file of A's, use it to set_contents_from_file.
@@ -8579,6 +8636,7 @@ def test_atomic_read_8mb():
     _test_atomic_read(1024 * 1024 * 8)
 
 
+@allure.step("Test Atomic Write")
 def _test_atomic_write(file_size):
     """
     Create a file of A's, use it to set_contents_from_file.
@@ -8627,6 +8685,7 @@ def test_atomic_write_8mb():
     _test_atomic_write(1024 * 1024 * 8)
 
 
+@allure.step("Test Atomic Dual Write")
 def _test_atomic_dual_write(file_size):
     """
     create an object, two sessions writing different contents
@@ -8667,6 +8726,7 @@ def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024 * 1024 * 8)
 
 
+@allure.step("Test Atomic Conditional Write")
 def _test_atomic_conditional_write(file_size):
     """
     Create a file of A's, use it to set_contents_from_file.
@@ -8704,6 +8764,7 @@ def test_atomic_conditional_write_1mb():
     _test_atomic_conditional_write(1024 * 1024)
 
 
+@allure.step("Test Atomic Dual Conditional Write")
 def _test_atomic_dual_conditional_write(file_size):
     """
     create an object, two sessions writing different contents
@@ -8867,6 +8928,7 @@ def test_ranged_request_response_code():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 206
 
 
+@allure.step("Generate Random String")
 def _generate_random_string(size):
     return "".join(
         random.choice(string.ascii_letters + string.digits) for _ in range(size)
@@ -8982,6 +9044,7 @@ def test_versioning_bucket_create_suspend():
     check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
 
 
+@allure.step("Check Object Content")
 def check_obj_content(client, bucket_name, key, version_id, content):
     response = client.get_object(Bucket=bucket_name, Key=key, VersionId=version_id)
     if content is not None:
@@ -8991,6 +9054,7 @@ def check_obj_content(client, bucket_name, key, version_id, content):
         assert response["DeleteMarker"] == True
 
 
+@allure.step("Check Object Versions")
 def check_obj_versions(client, bucket_name, key, version_ids, contents):
     # check to see if objects is pointing at correct version
 
@@ -9008,6 +9072,7 @@ def check_obj_versions(client, bucket_name, key, version_ids, contents):
         i += 1
 
 
+@allure.step("Create Multiple Versions")
 def create_multiple_versions(
     client,
     bucket_name,
@@ -9034,6 +9099,7 @@ def create_multiple_versions(
     return (version_ids, contents)
 
 
+@allure.step("Remove Object Version")
 def remove_obj_version(client, bucket_name, key, version_ids, contents, index):
     assert len(version_ids) == len(contents)
     index = index % len(version_ids)
@@ -9048,6 +9114,7 @@ def remove_obj_version(client, bucket_name, key, version_ids, contents, index):
         check_obj_versions(client, bucket_name, key, version_ids, contents)
 
 
+@allure.step("Clean Up Bucket")
 def clean_up_bucket(client, bucket_name, key, version_ids):
     for version_id in version_ids:
         client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id)
@@ -9055,6 +9122,7 @@ def clean_up_bucket(client, bucket_name, key, version_ids):
     client.delete_bucket(Bucket=bucket_name)
 
 
+@allure.step("Test Create and Remove Versions")
 def _do_test_create_remove_versions(
     client, bucket_name, key, num_versions, remove_start_idx, idx_inc
 ):
@@ -9221,6 +9289,7 @@ def test_versioning_obj_plain_null_version_overwrite_suspended():
     assert not "Versions" in response
 
 
+@allure.step("Delete Suspended Versioning Object")
 def delete_suspended_versioning_obj(client, bucket_name, key, version_ids, contents):
     client.delete_object(Bucket=bucket_name, Key=key)
 
@@ -9236,6 +9305,7 @@ def delete_suspended_versioning_obj(client, bucket_name, key, version_ids, conte
     return (version_ids, contents)
 
 
+@allure.step("Overwrite Suspended Versioning Object")
 def overwrite_suspended_versioning_obj(
     client, bucket_name, key, version_ids, contents, content
 ):
@@ -9697,15 +9767,18 @@ def test_versioned_object_acl_no_version_specified():
     )
 
 
+@allure.step("Create Object")
 def _do_create_object(client, bucket_name, key, i):
     body = "data {i}".format(i=i)
     client.put_object(Bucket=bucket_name, Key=key, Body=body)
 
 
+@allure.step("Remove Version")
 def _do_remove_ver(client, bucket_name, key, version_id):
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id)
 
 
+@allure.step("Create Versioned Objects Concurrently")
 def _do_create_versioned_obj_concurrent(client, bucket_name, key, num):
     t = []
     for i in range(num):
@@ -9717,6 +9790,7 @@ def _do_create_versioned_obj_concurrent(client, bucket_name, key, num):
     return t
 
 
+@allure.step("Clear Versioned Bucket Concurrently")
 def _do_clear_versioned_bucket_concurrent(client, bucket_name):
     t = []
     response = client.list_object_versions(Bucket=bucket_name)
@@ -10081,6 +10155,7 @@ def test_lifecycle_expiration_tags1():
 
 
 # factor out common setup code
+@allure.step("Setup Lifecycle Tags")
 def setup_lifecycle_tags2(client, bucket_name):
     tom_key = "days1/tom"
     tom_tagset = {"TagSet": [{"Key": "tom", "Value": "sawyer"}]}
@@ -10177,6 +10252,7 @@ def test_lifecycle_expiration_versioned_tags2():
 
 
 # setup for scenario based on vidushi mishra's in rhbz#1877737
+@allure.step("Setup Lifecycle Noncurrent Tags")
 def setup_lifecycle_noncur_tags(client, bucket_name, days):
     # first create and tag the objects (10 versions of 1)
     key = "myobject_"
@@ -10214,6 +10290,7 @@ def setup_lifecycle_noncur_tags(client, bucket_name, days):
     return response
 
 
+@allure.step("Verify Lifecycle Expiration Noncurrent Tags")
 def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
     time.sleep(secs)
     try:
@@ -10495,6 +10572,7 @@ def test_lifecycle_expiration_days0():
     assert response_code == "InvalidArgument"
 
 
+@allure.step("Setup Lifecycle Expiration")
 def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days, rule_prefix):
     rules = [
         {
@@ -10517,6 +10595,7 @@ def setup_lifecycle_expiration(client, bucket_name, rule_id, delta_days, rule_pr
     return response
 
 
+@allure.step("Check Lifecycle Expiration Header")
 def check_lifecycle_expiration_header(response, start_time, rule_id, delta_days):
     expr_exists = "x-amz-expiration" in response["ResponseMetadata"]["HTTPHeaders"]
     if not expr_exists:
@@ -10931,6 +11010,7 @@ def test_lifecycle_transition_set_invalid_date():
     assert status == 400
 
 
+@allure.step("Test Encryption SSE Customer Write")
 def _test_encryption_sse_customer_write(file_size):
     """
     Tests Create a file of A's, use it to set_contents_from_file.
@@ -11756,6 +11836,7 @@ def test_encryption_key_no_sse_c():
     assert status == 400
 
 
+@allure.step("Multipart Upload Encryption")
 def _multipart_upload_enc(
     client,
     bucket_name,
@@ -11815,6 +11896,7 @@ def _multipart_upload_enc(
     return (upload_id, s, parts)
 
 
+@allure.step("Check Content Range Encryption")
 def _check_content_using_range_enc(
     client, bucket_name, key, data, size, step, enc_headers=None
 ):
@@ -12929,6 +13011,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     print(response)
 
 
+@allure.step("Create Simple Tagset")
 def _create_simple_tagset(count):
     tagset = []
     for i in range(count):
@@ -12937,6 +13020,7 @@ def _create_simple_tagset(count):
     return {"TagSet": tagset}
 
 
+@allure.step("Generate Random String")
 def _make_random_string(size):
     return "".join(random.choice(string.ascii_letters) for _ in range(size))
 
@@ -15660,6 +15744,7 @@ def test_multipart_upload_on_a_bucket_with_policy():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
+@allure.step("Put Bucket Encryption S3")
 def _put_bucket_encryption_s3(client, bucket_name):
     """
     enable a default encryption policy on the given bucket
@@ -15676,6 +15761,7 @@ def _put_bucket_encryption_s3(client, bucket_name):
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
+@allure.step("Put Bucket Encryption KMS")
 def _put_bucket_encryption_kms(client, bucket_name):
     """
     enable a default encryption policy on the given bucket
@@ -15823,6 +15909,7 @@ def test_delete_bucket_encryption_kms():
     assert response_code == "ServerSideEncryptionConfigurationNotFoundError"
 
 
+@allure.step("Test SSE S3 Default Upload")
 def _test_sse_s3_default_upload(file_size):
     """
     Test enables bucket encryption.
@@ -15885,6 +15972,7 @@ def test_sse_s3_default_upload_8mb():
     _test_sse_s3_default_upload(8 * 1024 * 1024)
 
 
+@allure.step("Test SSE KMS Default Upload")
 def _test_sse_kms_default_upload(file_size):
     """
     Test enables bucket encryption.
@@ -16183,6 +16271,7 @@ def test_sse_kms_default_post_object_authenticated_request():
     assert body == "bar"
 
 
+@allure.step("Test SSE S3 Encrypted Upload")
 def _test_sse_s3_encrypted_upload(file_size):
     """
     Test upload of the given size, specifically requesting sse-s3 encryption.
