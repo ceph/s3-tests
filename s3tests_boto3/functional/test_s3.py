@@ -120,6 +120,30 @@ def _create_objects(bucket=None, bucket_name=None, keys=[]):
 
     return bucket_name
 
+def upload_object_storage_class(bucket=None, bucket_name=None, key=None, storage_class=None):
+    """
+    Upload an object with a specified storage class
+    """
+    if bucket_name is None:
+        bucket_name = get_new_bucket_name()
+    if bucket is None:
+        bucket = get_new_bucket_resource(name=bucket_name)
+    if key is None:
+        key = 'foo'
+    if storage_class is None:
+        storage_class = 'STANDARD'
+    obj = bucket.put_object(Body=key, Key=key, StorageClass=storage_class)
+    return bucket_name
+
+def get_object_storage_class(bucket_name, key, bucket=None):
+    """
+    Get the storage class of an object
+    """
+    if bucket is None:
+        bucket = get_new_bucket_resource(name=bucket_name)
+    obj = bucket.Object(key)
+    return obj.storage_class
+
 def _get_keys(response):
     """
     return lists of strings that are the keys from a client.list_objects() response
