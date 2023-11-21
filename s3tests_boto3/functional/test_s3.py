@@ -3006,6 +3006,7 @@ def test_get_object_ifnonematch_good():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 304
     assert e.response['Error']['Message'] == 'Not Modified'
+    assert e.response['ResponseMetadata']['HTTPHeaders']['etag'] == etag
 
 def test_get_object_ifnonematch_failed():
     bucket_name = get_new_bucket()
@@ -3031,6 +3032,7 @@ def test_get_object_ifmodifiedsince_failed():
     client = get_client()
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
     response = client.get_object(Bucket=bucket_name, Key='foo')
+    etag = response['ETag']
     last_modified = str(response['LastModified'])
 
     last_modified = last_modified.split('+')[0]
@@ -3045,6 +3047,7 @@ def test_get_object_ifmodifiedsince_failed():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 304
     assert e.response['Error']['Message'] == 'Not Modified'
+    assert e.response['ResponseMetadata']['HTTPHeaders']['etag'] == etag
 
 @pytest.mark.fails_on_dbstore
 def test_get_object_ifunmodifiedsince_good():
