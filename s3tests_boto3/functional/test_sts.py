@@ -35,6 +35,9 @@ from . import(
     get_sts_client,
     get_client,
     get_alt_user_id,
+    get_main_user_id,
+    get_alt_iam_client,
+    get_iam_s3client,
     get_config_endpoint,
     get_new_bucket_name,
     get_parameter_name,
@@ -77,6 +80,15 @@ def put_role_policy(iam_client,rolename,policyname,role_policy):
     except ClientError as e:
     	role_err = e.response['Code']
     return (role_err,role_response)
+
+def delete_role_policy(iam_client, rolename, policyname):
+    err = None
+    response = None
+    try:
+        response = iam_client.delete_role_policy(RoleName=rolename, PolicyName=policyname)
+    except ClientError as e:
+        err = e.response['Code']
+    return (err, response)
 
 def put_user_policy(iam_client,username,policyname,policy_document):
     role_err=None
@@ -150,6 +162,249 @@ def get_s3_resource_using_iam_creds():
                           )
 
     return s3_res_iam_creds
+
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_role_ownership__delete_role_without_permission():
+    trust_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": [f"arn:aws:iam:::user/{get_main_user_id()}"]},
+            "Action": ["sts:AssumeRole"]
+        }]
+    }
+
+    # iam user creates a role to be assumed by the main user
+    iam_client = get_iam_client()
+    err, resp, role_name = create_role(
+        iam_client, "/", None, json.dumps(trust_policy_doc, separators=(',', ':')), None, None, None
+    )
+    assert err is None, "creating role failed"
+    assert resp['Role']['Arn'] == f"arn:aws:iam:::role/{role_name}", "unexpected role ARN"
+
+    # any user other than the role owner (iam user) cannot delete the role
+    # without any permission granted
+    try:
+        iam_alt_client = get_alt_iam_client()
+        resp = iam_alt_client.delete_role(RoleName=role_name)
+    except ClientError as e:
+        status = e.response['ResponseMetadata']['HTTPStatusCode']
+        assert status == 403
+    else:
+        assert False, "without acquiring DeleteRole permission, cannot delete other user's role"
+
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_role_ownership__put_or_delete_policy_without_permission():
+    trust_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": [f"arn:aws:iam:::user/{get_alt_user_id()}"]},
+            "Action": ["sts:AssumeRole"]
+        }]
+    }
+
+    perm_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": [
+                "iam:DeleteRolePolicy",
+                "iam:PutRolePolicy"
+            ],
+            "Resource":"arn:aws:iam:::*"
+        }]
+    }
+
+    #
+    # iam user creates a role to be assumed by the alt user
+    #
+    iam_client = get_iam_client()
+    (err, role_resp, role_name) = create_role(
+        iam_client, "/", None, json.dumps(trust_policy_doc, separators=(',', ':')), None, None, None
+    )
+    assert err is None, "creating role failed"
+    assert role_resp['Role']['Arn'] == f"arn:aws:iam:::role/{role_name}", "unexpected role ARN"
+
+    # role owner should be able to put a policy without explicit permissioning
+    policy_name = get_parameter_name()
+    (err, put_policy_resp) = put_role_policy(
+        iam_client, role_name, policy_name, json.dumps(perm_policy_doc, separators=(',', ':'))
+    )
+    assert err is None, "iam user failed to put the policy"
+    assert put_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # However, without acquiring the PutPolicy permission,
+    # another user cannot do it.
+    iam_alt_client = get_alt_iam_client()
+    second_policy_name = f"Second{policy_name}"
+    (err, put_policy_resp) = put_role_policy(
+        iam_alt_client, role_name, second_policy_name, json.dumps(perm_policy_doc, separators=(',', ':'))
+    )
+    assert err is not None, "alt user put a policy although permission is not granted yet"
+    assert put_policy_resp is None
+
+    # likewise delete policy cannot be possible
+    (err, delete_policy_resp) = delete_role_policy(iam_alt_client, role_name, policy_name)
+    assert err is not None, "alt user delete a policy although permission is not granted yet"
+    assert delete_policy_resp is None
+
+    #
+    # alt user can put/delete policy only after acquiring the perms
+    #
+    alt_sts_client = get_sts_client()
+    session_name = get_parameter_name()
+    assume_resp = alt_sts_client.assume_role(RoleArn=role_resp['Role']['Arn'],RoleSessionName=session_name)
+    assert assume_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    iam_alt_client = boto3.client(
+        'iam',
+        aws_access_key_id = assume_resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = assume_resp['Credentials']['SecretAccessKey'],
+        aws_session_token = assume_resp['Credentials']['SessionToken'],
+		endpoint_url=get_config_endpoint(),
+		region_name='',
+	)
+
+    (err, put_policy_resp) = put_role_policy(
+        iam_alt_client, role_name, second_policy_name, json.dumps(perm_policy_doc, separators=(',', ':'))
+    )
+    assert err is None, "alt user must have the PutPolicy permission"
+    assert put_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    (err, delete_policy_resp) = delete_role_policy(iam_alt_client, role_name, policy_name)
+    assert err is None, "alt user must have the DeletePolicy permission"
+    assert delete_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    (err, delete_policy_resp) = delete_role_policy(iam_alt_client, role_name, second_policy_name)
+    assert err is None, "alt user must have the DeletePolicy permission"
+    assert delete_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_s3_ops():
+    trust_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": [f"arn:aws:iam:::user/{get_alt_user_id()}"]},
+            "Action": ["sts:AssumeRole"]
+        }]
+    }
+
+    role_mgmt_perm_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": [
+                "iam:PutRolePolicy"
+            ],
+            "Resource":"arn:aws:iam:::*"
+        }]
+    }
+
+    bucket1_name = get_parameter_name()
+    b1obj1 = get_parameter_name()
+    bucket2_name = get_parameter_name()
+    b2obj1 = get_parameter_name()
+
+    s3_ops_perm_policy_doc = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+            ],
+            "Resource":f"arn:aws:s3:::{bucket1_name}/{b1obj1}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+            ],
+            "Resource":f"arn:aws:s3:::{bucket2_name}/{b2obj1}"
+        }]
+    }
+
+    # iam user creates the role for alt user
+    iam_client = get_iam_client()
+    (err, role_resp, role_name) = create_role(
+        iam_client, "/", None, json.dumps(trust_policy_doc, separators=(',', ':')), None, None, None
+    )
+    assert err is None, "creating role failed"
+    assert role_resp['Role']['Arn'] == f"arn:aws:iam:::role/{role_name}", "unexpected role ARN"
+
+    # iam user creates buckets
+    s3_client = get_iam_s3client()
+    s3_client.create_bucket(Bucket=bucket1_name)
+    s3_client.create_bucket(Bucket=bucket2_name)
+    s3_client.put_object(Bucket=bucket1_name, Body="data", Key=b1obj1)
+
+    # alt user assumes the role & creates its client objects using temp creds
+    alt_sts_client = get_sts_client()
+    session_name = get_parameter_name()
+    assume_resp = alt_sts_client.assume_role(RoleArn=role_resp['Role']['Arn'],RoleSessionName=session_name)
+    assert assume_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    iam_alt_client = boto3.client(
+        'iam',
+        aws_access_key_id = assume_resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = assume_resp['Credentials']['SecretAccessKey'],
+        aws_session_token = assume_resp['Credentials']['SessionToken'],
+		endpoint_url=get_config_endpoint(),
+		region_name='',
+	)
+    s3_alt_client = boto3.client(
+        's3',
+        aws_access_key_id = assume_resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = assume_resp['Credentials']['SecretAccessKey'],
+        aws_session_token = assume_resp['Credentials']['SessionToken'],
+		endpoint_url=get_config_endpoint(),
+		region_name='',
+	)
+
+    # add first perm policy for alt user so that it can add more policies
+    (err, put_policy_resp) = put_role_policy(
+        iam_client, role_name, get_parameter_name(), json.dumps(role_mgmt_perm_policy_doc, separators=(',', ':'))
+    )
+    assert err is None, "iam user failed to put the policy"
+    assert put_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # without putting s3 perm policies, alt user cannot access iam user's buckets yet
+    try:
+        s3_alt_client.get_object(Bucket=bucket1_name, Key=b1obj1)
+    except ClientError as e:
+        status = e.response['ResponseMetadata']['HTTPStatusCode']
+        assert status == 403
+    try:
+        s3_alt_client.put_object(Bucket=bucket2_name, Body="data", Key=b2obj1)
+    except ClientError as e:
+        status = e.response['ResponseMetadata']['HTTPStatusCode']
+        assert status == 403
+
+    # now alt user puts a policy itself as it's given this powerful permission
+    (err, put_policy_resp) = put_role_policy(
+        iam_alt_client, role_name, get_parameter_name(), json.dumps(s3_ops_perm_policy_doc, separators=(',', ':'))
+    )
+    assert err is None, "alt user must have the PutPolicy permission"
+    assert put_policy_resp['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # now with the policy in place, alt user can access 2 buckets owned by the iam user
+    s3_alt_client.get_object(Bucket=bucket1_name, Key=b1obj1)
+    s3_alt_client.put_object(Bucket=bucket2_name, Body="data", Key=b2obj1)
+
+    # however access is given only to particular object/key per-bucket
+    try:
+        s3_alt_client.put_object(Bucket=bucket2_name, Body="data", Key=get_parameter_name())
+    except ClientError as e:
+        status = e.response['ResponseMetadata']['HTTPStatusCode']
+        assert status == 403
+
 
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
