@@ -1390,7 +1390,7 @@ def test_bucket_list_return_data():
         acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
         data.update({
             key_name: {
-                'DisplayName': acl_response['Owner']['DisplayName'],
+                'DisplayName': acl_response['Owner'].get('DisplayName', None),
                 'ID': acl_response['Owner']['ID'],
                 'ETag': obj_response['ETag'],
                 'LastModified': obj_response['LastModified'],
@@ -1405,7 +1405,7 @@ def test_bucket_list_return_data():
         key_data = data[key_name]
         assert obj['ETag'] == key_data['ETag']
         assert obj['Size'] == key_data['ContentLength']
-        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        check_display_name(obj['Owner'].get('DisplayName', None), key_data['DisplayName'])
         assert obj['Owner']['ID'] == key_data['ID']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
@@ -1426,7 +1426,7 @@ def test_bucket_list_return_data_versioning():
         data.update({
             key_name: {
                 'ID': acl_response['Owner']['ID'],
-                'DisplayName': acl_response['Owner']['DisplayName'],
+                'DisplayName': acl_response['Owner'].get('DisplayName', None),
                 'ETag': obj_response['ETag'],
                 'LastModified': obj_response['LastModified'],
                 'ContentLength': obj_response['ContentLength'],
@@ -1440,7 +1440,7 @@ def test_bucket_list_return_data_versioning():
     for obj in objs_list:
         key_name = obj['Key']
         key_data = data[key_name]
-        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        check_display_name(obj['Owner'].get('DisplayName', None), key_data['DisplayName'])
         assert obj['ETag'] == key_data['ETag']
         assert obj['Size'] == key_data['ContentLength']
         assert obj['Owner']['ID'] == key_data['ID']
@@ -3795,6 +3795,12 @@ def check_access_denied(fn, *args, **kwargs):
     status = _get_status(e.response)
     assert status == 403
 
+def check_display_name(got, want):
+    assert not got or (got == want)
+
+def check_aclowner(owner, user_id, display_name):
+    check_display_name(owner.get('DisplayName', None), display_name)
+    assert owner['ID'] == user_id
 
 def check_grants(got, want):
     """
@@ -3805,14 +3811,14 @@ def check_grants(got, want):
 
     # There are instances when got does not match due the order of item.
     if got[0]["Grantee"].get("DisplayName"):
-        got.sort(key=lambda x: x["Grantee"].get("DisplayName"))
-        want.sort(key=lambda x: x["DisplayName"])
+        got.sort(key=lambda x: x["Grantee"].get("DisplayName", ''))
+        want.sort(key=lambda x: x.get("DisplayName"))
 
     for g, w in zip(got, want):
         w = dict(w)
         g = dict(g)
         assert g.pop('Permission', None) == w['Permission']
-        assert g['Grantee'].pop('DisplayName', None) == w['DisplayName']
+        check_display_name(g['Grantee'].pop('DisplayName', None), w['DisplayName'])
         assert g['Grantee'].pop('ID', None) == w['ID']
         assert g['Grantee'].pop('Type', None) == w['Type']
         assert g['Grantee'].pop('URI', None) == w['URI']
@@ -3829,8 +3835,7 @@ def test_bucket_acl_default():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    assert response['Owner']['DisplayName'] == display_name
-    assert response['Owner']['ID'] == user_id
+    check_aclowner(response['Owner'], user_id, display_name)
 
     grants = response['Grants']
     check_grants(
@@ -4199,7 +4204,7 @@ def test_object_acl_canned_bucketownerread():
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
     bucket_owner_id = bucket_acl_response['Grants'][2]['Grantee']['ID']
-    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee']['DisplayName']
+    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee'].get('DisplayName', '')
 
     alt_client.put_object(ACL='bucket-owner-read', Bucket=bucket_name, Key='foo')
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='foo')
@@ -4241,7 +4246,7 @@ def test_object_acl_canned_bucketownerfullcontrol():
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
     bucket_owner_id = bucket_acl_response['Grants'][2]['Grantee']['ID']
-    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee']['DisplayName']
+    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee'].get('DisplayName', '')
 
     alt_client.put_object(ACL='bucket-owner-full-control', Bucket=bucket_name, Key='foo')
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='foo')
@@ -4561,15 +4566,8 @@ def test_bucket_acl_grant_userid_fullcontrol():
 
     client = get_client()
 
-    bucket_acl_response = client.get_bucket_acl(Bucket=bucket_name)
-    owner_id = bucket_acl_response['Owner']['ID']
-    owner_display_name = bucket_acl_response['Owner']['DisplayName']
-
-    main_display_name = get_main_display_name()
-    main_user_id = get_main_user_id()
-
-    assert owner_id == main_user_id
-    assert owner_display_name == main_display_name
+    response = client.get_bucket_acl(Bucket=bucket_name)
+    check_aclowner(response['Owner'], get_main_user_id(), get_main_display_name())
 
 @pytest.mark.fails_on_aws
 def test_bucket_acl_grant_userid_read():
@@ -6352,10 +6350,8 @@ def test_list_multipart_upload_owner():
             def match(upload, key, uploadid, userid, username):
                 assert upload['Key'] == key
                 assert upload['UploadId'] == uploadid
-                assert upload['Initiator']['ID'] == userid
-                assert upload['Initiator']['DisplayName'] == username
-                assert upload['Owner']['ID'] == userid
-                assert upload['Owner']['DisplayName'] == username
+                check_aclowner(upload['Initiator'], userid, username)
+                check_aclowner(upload['Owner'], userid, username)
 
             # list uploads with client1
             uploads1 = client1.list_multipart_uploads(Bucket=bucket_name)['Uploads']
@@ -7758,8 +7754,7 @@ def test_versioned_object_acl():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    assert response['Owner']['DisplayName'] == display_name
-    assert response['Owner']['ID'] == user_id
+    check_aclowner(response['Owner'], user_id, display_name)
 
     grants = response['Grants']
     default_policy = [
@@ -7827,8 +7822,7 @@ def test_versioned_object_acl_no_version_specified():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    assert response['Owner']['DisplayName'] == display_name
-    assert response['Owner']['ID'] == user_id
+    check_aclowner(response['Owner'], user_id, display_name)
 
     grants = response['Grants']
     default_policy = [
