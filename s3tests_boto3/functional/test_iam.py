@@ -1,4 +1,5 @@
 import json
+import datetime
 
 from botocore.exceptions import ClientError
 import pytest
@@ -10,6 +11,9 @@ from . import (
     setup_teardown,
     get_alt_client,
     get_iam_client,
+    get_iam_root_client,
+    make_iam_name,
+    get_iam_path_prefix,
     get_new_bucket,
     get_iam_s3client,
     get_alt_iam_client,
@@ -862,3 +866,219 @@ def test_verify_allow_iam_actions():
     response = iam_client_alt.delete_user_policy(PolicyName='AllowAccessPolicy',
                                           UserName=get_alt_user_id())
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+def nuke_user(client, name):
+    # delete access keys, user policies, etc
+    client.delete_user(UserName=name)
+
+def nuke_users(client, **kwargs):
+    p = client.get_paginator('list_users')
+    for response in p.paginate(**kwargs):
+        for user in response['Users']:
+            try:
+                nuke_user(client, user['UserName'])
+            except:
+                pass
+
+# fixture for iam account root user
+@pytest.fixture
+def iam_root(configfile):
+    client = get_iam_root_client()
+    try:
+        arn = client.get_user()['User']['Arn']
+        if not arn.endswith(':root'):
+            pytest.skip('[iam root] user does not have :root arn')
+    except ClientError as e:
+        pytest.skip('[iam root] user does not belong to an account')
+
+    yield client
+    nuke_users(client, PathPrefix=get_iam_path_prefix())
+
+
+# IAM User apis
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_create(iam_root):
+    path = get_iam_path_prefix()
+    name1 = make_iam_name('U1')
+    response = iam_root.create_user(UserName=name1, Path=path)
+    user = response['User']
+    assert user['Path'] == path
+    assert user['UserName'] == name1
+    assert len(user['UserId'])
+    assert user['Arn'].startswith('arn:aws:iam:')
+    assert user['Arn'].endswith(f':user{path}{name1}')
+    assert user['CreateDate'] > datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
+    path2 = get_iam_path_prefix() + 'foo/'
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_user(UserName=name1, Path=path2)
+
+    name2 = make_iam_name('U2')
+    response = iam_root.create_user(UserName=name2, Path=path2)
+    user = response['User']
+    assert user['Path'] == path2
+    assert user['UserName'] == name2
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_case_insensitive_name(iam_root):
+    path = get_iam_path_prefix()
+    name_upper = make_iam_name('U1')
+    name_lower = make_iam_name('u1')
+    response = iam_root.create_user(UserName=name_upper, Path=path)
+    user = response['User']
+
+    # name is case-insensitive, so 'u1' should also conflict
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_user(UserName=name_lower)
+
+    # search for 'u1' should return the same 'U1' user
+    response = iam_root.get_user(UserName=name_lower)
+    assert user == response['User']
+
+    # delete for 'u1' should delete the same 'U1' user
+    iam_root.delete_user(UserName=name_lower)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_user(UserName=name_lower)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_delete(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('U1')
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_user(UserName=name)
+
+    response = iam_root.create_user(UserName=name, Path=path)
+    uid = response['User']['UserId']
+    create_date = response['User']['CreateDate']
+
+    iam_root.delete_user(UserName=name)
+
+    response = iam_root.create_user(UserName=name, Path=path)
+    assert uid != response['User']['UserId']
+    assert create_date <= response['User']['CreateDate']
+
+def user_list_names(client, **kwargs):
+    p = client.get_paginator('list_users')
+    usernames = []
+    for response in p.paginate(**kwargs):
+        usernames += [u['UserName'] for u in response['Users']]
+    return usernames
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_list(iam_root):
+    path = get_iam_path_prefix()
+    response = iam_root.list_users(PathPrefix=path)
+    assert len(response['Users']) == 0
+    assert response['IsTruncated'] == False
+
+    name1 = make_iam_name('aa')
+    name2 = make_iam_name('Ab')
+    name3 = make_iam_name('ac')
+    name4 = make_iam_name('Ad')
+
+    # sort order is independent of CreateDate, Path, and UserName capitalization
+    iam_root.create_user(UserName=name4, Path=path+'w/')
+    iam_root.create_user(UserName=name3, Path=path+'x/')
+    iam_root.create_user(UserName=name2, Path=path+'y/')
+    iam_root.create_user(UserName=name1, Path=path+'z/')
+
+    assert [name1, name2, name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path)
+    assert [name1, name2, name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path, PaginationConfig={'PageSize': 1})
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_list_path_prefix(iam_root):
+    path = get_iam_path_prefix()
+    response = iam_root.list_users(PathPrefix=path)
+    assert len(response['Users']) == 0
+    assert response['IsTruncated'] == False
+
+    name1 = make_iam_name('a')
+    name2 = make_iam_name('b')
+    name3 = make_iam_name('c')
+    name4 = make_iam_name('d')
+
+    iam_root.create_user(UserName=name1, Path=path)
+    iam_root.create_user(UserName=name2, Path=path)
+    iam_root.create_user(UserName=name3, Path=path+'a/')
+    iam_root.create_user(UserName=name4, Path=path+'a/x/')
+
+    assert [name1, name2, name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path)
+    assert [name1, name2, name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path,
+                            PaginationConfig={'PageSize': 1})
+    assert [name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path+'a')
+    assert [name3, name4] == \
+            user_list_names(iam_root, PathPrefix=path+'a',
+                            PaginationConfig={'PageSize': 1})
+    assert [name4] == \
+            user_list_names(iam_root, PathPrefix=path+'a/x')
+    assert [name4] == \
+            user_list_names(iam_root, PathPrefix=path+'a/x',
+                            PaginationConfig={'PageSize': 1})
+    assert [] == user_list_names(iam_root, PathPrefix=path+'a/x/d')
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_update_name(iam_root):
+    path = get_iam_path_prefix()
+    name1 = make_iam_name('a')
+    new_name1 = make_iam_name('z')
+    name2 = make_iam_name('b')
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.update_user(UserName=name1, NewUserName=new_name1)
+
+    iam_root.create_user(UserName=name1, Path=path)
+    iam_root.create_user(UserName=name2, Path=path+'m/')
+    assert [name1, name2] == user_list_names(iam_root, PathPrefix=path)
+
+    response = iam_root.get_user(UserName=name1)
+    assert name1 == response['User']['UserName']
+    uid = response['User']['UserId']
+
+    iam_root.update_user(UserName=name1, NewUserName=new_name1)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_user(UserName=name1)
+
+    response = iam_root.get_user(UserName=new_name1)
+    assert new_name1 == response['User']['UserName']
+    assert uid == response['User']['UserId']
+    assert response['User']['Arn'].endswith(f':user{path}{new_name1}')
+
+    assert [name2, new_name1] == user_list_names(iam_root, PathPrefix=path)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_update_path(iam_root):
+    path = get_iam_path_prefix()
+    name1 = make_iam_name('a')
+    name2 = make_iam_name('b')
+    iam_root.create_user(UserName=name1, Path=path)
+    iam_root.create_user(UserName=name2, Path=path+'m/')
+    assert [name1, name2] == user_list_names(iam_root, PathPrefix=path)
+
+    response = iam_root.get_user(UserName=name1)
+    assert name1 == response['User']['UserName']
+    assert path == response['User']['Path']
+    uid = response['User']['UserId']
+
+    iam_root.update_user(UserName=name1, NewPath=path+'z/')
+
+    response = iam_root.get_user(UserName=name1)
+    assert name1 == response['User']['UserName']
+    assert f'{path}z/' == response['User']['Path']
+    assert uid == response['User']['UserId']
+    assert response['User']['Arn'].endswith(f':user{path}z/{name1}')
+
+    assert [name1, name2] == user_list_names(iam_root, PathPrefix=path)
