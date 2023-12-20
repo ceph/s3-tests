@@ -868,8 +868,21 @@ def test_verify_allow_iam_actions():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
+def nuke_user_keys(client, name):
+    p = client.get_paginator('list_access_keys')
+    for response in p.paginate(UserName=name):
+        for key in response['AccessKeyMetadata']:
+            try:
+                client.delete_access_key(UserName=name, AccessKeyId=key['AccessKeyId'])
+            except:
+                pass
+
 def nuke_user(client, name):
     # delete access keys, user policies, etc
+    try:
+        nuke_user_keys(client, name)
+    except:
+        pass
     client.delete_user(UserName=name)
 
 def nuke_users(client, **kwargs):
@@ -1082,3 +1095,184 @@ def test_account_user_update_path(iam_root):
     assert response['User']['Arn'].endswith(f':user{path}z/{name1}')
 
     assert [name1, name2] == user_list_names(iam_root, PathPrefix=path)
+
+
+# IAM AccessKey apis
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_access_key_create(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('a')
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.create_access_key(UserName=name)
+
+    iam_root.create_user(UserName=name, Path=path)
+
+    response = iam_root.create_access_key(UserName=name)
+    key = response['AccessKey']
+    assert name == key['UserName']
+    assert len(key['AccessKeyId'])
+    assert len(key['SecretAccessKey'])
+    assert 'Active' == key['Status']
+    assert key['CreateDate'] > datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_current_user_access_key_create(iam_root):
+    # omit the UserName argument to operate on the current authenticated
+    # user (assumed to be an account root user)
+
+    response = iam_root.create_access_key()
+    key = response['AccessKey']
+    keyid = key['AccessKeyId']
+    assert len(keyid)
+    try:
+        assert len(key['SecretAccessKey'])
+        assert 'Active' == key['Status']
+        assert key['CreateDate'] > datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+    finally:
+        # iam_root doesn't see the account root user, so clean up
+        # this key manually
+        iam_root.delete_access_key(AccessKeyId=keyid)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_access_key_update(iam_root):
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.update_access_key(UserName='nosuchuser', AccessKeyId='abcdefghijklmnopqrstu', Status='Active')
+
+    path = get_iam_path_prefix()
+    name = make_iam_name('a')
+    iam_root.create_user(UserName=name, Path=path)
+
+    response = iam_root.create_access_key(UserName=name)
+    key = response['AccessKey']
+    keyid = key['AccessKeyId']
+    create_date = key['CreateDate']
+    assert create_date > datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.update_access_key(UserName=name, AccessKeyId='abcdefghijklmnopqrstu', Status='Active')
+
+    iam_root.update_access_key(UserName=name, AccessKeyId=keyid, Status='Active')
+    iam_root.update_access_key(UserName=name, AccessKeyId=keyid, Status='Inactive')
+
+    response = iam_root.list_access_keys(UserName=name)
+    keys = response['AccessKeyMetadata']
+    assert 1 == len(keys)
+    key = keys[0]
+    assert name == key['UserName']
+    assert keyid == key['AccessKeyId']
+    assert 'Inactive' == key['Status']
+    assert create_date == key['CreateDate'] # CreateDate unchanged by update_access_key()
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_current_user_access_key_update(iam_root):
+    # omit the UserName argument to operate on the current authenticated
+    # user (assumed to be an account root user)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.update_access_key(AccessKeyId='abcdefghijklmnopqrstu', Status='Active')
+
+    response = iam_root.create_access_key()
+    key = response['AccessKey']
+    keyid = key['AccessKeyId']
+    assert len(keyid)
+    try:
+        iam_root.update_access_key(AccessKeyId=keyid, Status='Active')
+        iam_root.update_access_key(AccessKeyId=keyid, Status='Inactive')
+
+        # find the access key id we created
+        p = iam_root.get_paginator('list_access_keys')
+        for response in p.paginate():
+            for key in response['AccessKeyMetadata']:
+                if keyid == key['AccessKeyId']:
+                    assert 'Inactive' == key['Status']
+                    return
+        assert False, f'AccessKeyId={keyid} not found in list_access_keys()'
+
+    finally:
+        # iam_root doesn't see the account root user, so clean up
+        # this key manually
+        iam_root.delete_access_key(AccessKeyId=keyid)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_access_key_delete(iam_root):
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_access_key(UserName='nosuchuser', AccessKeyId='abcdefghijklmnopqrstu')
+
+    path = get_iam_path_prefix()
+    name = make_iam_name('a')
+    iam_root.create_user(UserName=name, Path=path)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_access_key(UserName=name, AccessKeyId='abcdefghijklmnopqrstu')
+
+    response = iam_root.create_access_key(UserName=name)
+    keyid = response['AccessKey']['AccessKeyId']
+
+    iam_root.delete_access_key(UserName=name, AccessKeyId=keyid)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_access_key(UserName=name, AccessKeyId=keyid)
+
+    response = iam_root.list_access_keys(UserName=name)
+    keys = response['AccessKeyMetadata']
+    assert 0 == len(keys)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_current_user_access_key_delete(iam_root):
+    # omit the UserName argument to operate on the current authenticated
+    # user (assumed to be an account root user)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_access_key(AccessKeyId='abcdefghijklmnopqrstu')
+
+    response = iam_root.create_access_key()
+    keyid = response['AccessKey']['AccessKeyId']
+
+    iam_root.delete_access_key(AccessKeyId=keyid)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_access_key(AccessKeyId=keyid)
+
+    # make sure list_access_keys() doesn't return the access key id we deleted
+    p = iam_root.get_paginator('list_access_keys')
+    for response in p.paginate():
+        for key in response['AccessKeyMetadata']:
+            assert keyid != key['AccessKeyId']
+
+def user_list_key_ids(client, **kwargs):
+    p = client.get_paginator('list_access_keys')
+    ids = []
+    for response in p.paginate(**kwargs):
+        ids += [k['AccessKeyId'] for k in response['AccessKeyMetadata']]
+    return ids
+
+@pytest.mark.iam_account
+@pytest.mark.iam_user
+def test_account_user_access_key_list(iam_root):
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.list_access_keys(UserName='nosuchuser')
+
+    path = get_iam_path_prefix()
+    name = make_iam_name('a')
+    iam_root.create_user(UserName=name, Path=path)
+
+    assert [] == user_list_key_ids(iam_root, UserName=name)
+    assert [] == user_list_key_ids(iam_root, UserName=name, PaginationConfig={'PageSize': 1})
+
+    id1 = iam_root.create_access_key(UserName=name)['AccessKey']['AccessKeyId']
+
+    assert [id1] == user_list_key_ids(iam_root, UserName=name)
+    assert [id1] == user_list_key_ids(iam_root, UserName=name, PaginationConfig={'PageSize': 1})
+
+    id2 = iam_root.create_access_key(UserName=name)['AccessKey']['AccessKeyId']
+    # AccessKeysPerUser=2 is the default quota in aws
+
+    keys = sorted([id1, id2])
+    assert keys == sorted(user_list_key_ids(iam_root, UserName=name))
+    assert keys == sorted(user_list_key_ids(iam_root, UserName=name, PaginationConfig={'PageSize': 1}))
