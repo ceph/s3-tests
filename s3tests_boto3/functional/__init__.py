@@ -260,6 +260,12 @@ def setup():
     config.tenant_user_id = cfg.get('s3 tenant',"user_id")
     config.tenant_email = cfg.get('s3 tenant',"email")
 
+    config.iam_access_key = cfg.get('iam',"access_key")
+    config.iam_secret_key = cfg.get('iam',"secret_key")
+    config.iam_display_name = cfg.get('iam',"display_name")
+    config.iam_user_id = cfg.get('iam',"user_id")
+    config.iam_email = cfg.get('iam',"email")
+
     # vars from the fixtures section
     template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')
     prefix = choose_bucket_prefix(template=template)
@@ -396,62 +402,41 @@ def get_v2_client():
                         config=Config(signature_version='s3'))
     return client
 
-def get_sts_client(client_config=None):
-    if client_config == None:
-        client_config = Config(signature_version='s3v4')
+def get_sts_client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.alt_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.alt_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
 
     client = boto3.client(service_name='sts',
-                        aws_access_key_id=config.alt_access_key,
-                        aws_secret_access_key=config.alt_secret_key,
-                        endpoint_url=config.default_endpoint,
-                        region_name='',
-                        use_ssl=config.default_is_secure,
-                        verify=config.default_ssl_verify,
-                        config=client_config)
+                          endpoint_url=config.default_endpoint,
+                          region_name='',
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
     return client
 
-def get_iam_client(client_config=None):
-    cfg = configparser.RawConfigParser()
-    try:
-        path = os.environ['S3TEST_CONF']
-    except KeyError:
-        raise RuntimeError(
-            'To run tests, point environment '
-            + 'variable S3TEST_CONF to a config file.',
-            )
-    cfg.read(path)
-    if not cfg.has_section("iam"):
-        raise RuntimeError('Your config file is missing the "iam" section!')
+def get_iam_client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.iam_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_secret_key)
 
-    config.iam_access_key = cfg.get('iam',"access_key")
-    config.iam_secret_key = cfg.get('iam',"secret_key")
-    config.iam_display_name = cfg.get('iam',"display_name")
-    config.iam_user_id = cfg.get('iam',"user_id")
-    config.iam_email = cfg.get('iam',"email")    
-
-    if client_config == None:
-        client_config = Config(signature_version='s3v4')
-    
     client = boto3.client(service_name='iam',
-                        aws_access_key_id=config.iam_access_key,
-                        aws_secret_access_key=config.iam_secret_key,
                         endpoint_url=config.default_endpoint,
                         region_name='',
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
-                        config=client_config)
+                        **kwargs)
     return client
 
-def get_iam_s3client(client_config=None):
-    if client_config == None:
-        client_config = Config(signature_version='s3v4')
+def get_iam_s3client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.iam_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
     client = boto3.client(service_name='s3',
-                          aws_access_key_id=get_iam_access_key(),
-                          aws_secret_access_key=get_iam_secret_key(),
                           endpoint_url=config.default_endpoint,
                           use_ssl=config.default_is_secure,
                           verify=config.default_ssl_verify,
-                          config=client_config)
+                          **kwargs)
     return client
 
 def get_alt_client(client_config=None):
