@@ -174,7 +174,7 @@ def configured_storage_classes():
 
     return sc
 
-def setup():
+def configure():
     cfg = configparser.RawConfigParser()
     try:
         path = os.environ['S3TEST_CONF']
@@ -267,17 +267,17 @@ def setup():
         template = 'test-{random}-'
     prefix = choose_bucket_prefix(template=template)
 
-    alt_client = get_alt_client()
-    tenant_client = get_tenant_client()
-    nuke_prefixed_buckets(prefix=prefix)
-    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
-    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
-
     if cfg.has_section("s3 cloud"):
         get_cloud_config(cfg)
     else:
         config.cloud_storage_class = None
 
+def setup():
+    alt_client = get_alt_client()
+    tenant_client = get_tenant_client()
+    nuke_prefixed_buckets(prefix=prefix)
+    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
+    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
 
 def teardown():
     alt_client = get_alt_client()
@@ -306,11 +306,12 @@ def teardown():
 
 @pytest.fixture(scope="package")
 def configfile():
-    setup()
+    configure()
     return config
 
 @pytest.fixture(autouse=True)
 def setup_teardown(configfile):
+    setup()
     yield
     teardown()
 
