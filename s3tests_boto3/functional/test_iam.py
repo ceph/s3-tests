@@ -19,7 +19,7 @@ from .utils import _get_status, _get_status_and_error_code
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_put_user_policy():
     client = get_iam_client()
 
@@ -39,7 +39,7 @@ def test_put_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_put_user_policy_invalid_user():
     client = get_iam_client()
 
@@ -57,7 +57,7 @@ def test_put_user_policy_invalid_user():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_put_user_policy_parameter_limit():
     client = get_iam_client()
 
@@ -76,7 +76,7 @@ def test_put_user_policy_parameter_limit():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_rgw
 def test_put_user_policy_invalid_element():
     client = get_iam_client()
@@ -142,7 +142,7 @@ def test_put_user_policy_invalid_element():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_put_existing_user_policy():
     client = get_iam_client()
 
@@ -163,7 +163,7 @@ def test_put_existing_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_list_user_policy():
     client = get_iam_client()
 
@@ -184,7 +184,7 @@ def test_list_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_list_user_policy_invalid_user():
     client = get_iam_client()
     e = assert_raises(ClientError, client.list_user_policies, UserName="some-non-existing-user-id")
@@ -193,7 +193,7 @@ def test_list_user_policy_invalid_user():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_get_user_policy():
     client = get_iam_client()
 
@@ -216,7 +216,7 @@ def test_get_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_get_user_policy_invalid_user():
     client = get_iam_client()
 
@@ -238,7 +238,7 @@ def test_get_user_policy_invalid_user():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_rgw
 def test_get_user_policy_invalid_policy_name():
     client = get_iam_client()
@@ -260,7 +260,7 @@ def test_get_user_policy_invalid_policy_name():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_rgw
 def test_get_deleted_user_policy():
     client = get_iam_client()
@@ -282,7 +282,7 @@ def test_get_deleted_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_get_user_policy_from_multiple_policies():
     client = get_iam_client()
 
@@ -315,7 +315,7 @@ def test_get_user_policy_from_multiple_policies():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_delete_user_policy():
     client = get_iam_client()
 
@@ -337,7 +337,7 @@ def test_delete_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_delete_user_policy_invalid_user():
     client = get_iam_client()
 
@@ -363,7 +363,7 @@ def test_delete_user_policy_invalid_user():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_delete_user_policy_invalid_policy_name():
     client = get_iam_client()
 
@@ -389,7 +389,7 @@ def test_delete_user_policy_invalid_policy_name():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_delete_user_policy_from_multiple_policies():
     client = get_iam_client()
 
@@ -429,7 +429,7 @@ def test_delete_user_policy_from_multiple_policies():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_allow_bucket_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -476,7 +476,7 @@ def test_allow_bucket_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_deny_bucket_actions_in_user_policy():
     client = get_iam_client()
@@ -512,7 +512,7 @@ def test_deny_bucket_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_allow_object_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -551,7 +551,7 @@ def test_allow_object_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_deny_object_actions_in_user_policy():
     client = get_iam_client()
@@ -591,7 +591,7 @@ def test_deny_object_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_allow_multipart_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -626,7 +626,7 @@ def test_allow_multipart_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_deny_multipart_actions_in_user_policy():
     client = get_iam_client()
@@ -669,7 +669,7 @@ def test_deny_multipart_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_allow_tagging_actions_in_user_policy():
     client = get_iam_client()
@@ -715,7 +715,7 @@ def test_allow_tagging_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_deny_tagging_actions_in_user_policy():
     client = get_iam_client()
@@ -767,7 +767,7 @@ def test_deny_tagging_actions_in_user_policy():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_verify_conflicting_user_policy_statements():
     s3client = get_alt_client()
@@ -799,7 +799,7 @@ def test_verify_conflicting_user_policy_statements():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
 def test_verify_conflicting_user_policies():
     s3client = get_alt_client()
@@ -838,7 +838,7 @@ def test_verify_conflicting_user_policies():
 
 
 @pytest.mark.user_policy
-@pytest.mark.test_of_iam
+@pytest.mark.iam_tenant
 def test_verify_allow_iam_actions():
     policy1 = json.dumps(
         {"Version": "2012-10-17",
