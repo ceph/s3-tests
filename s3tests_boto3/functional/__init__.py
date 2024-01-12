@@ -261,11 +261,12 @@ def setup():
     config.tenant_email = cfg.get('s3 tenant',"email")
 
     # vars from the fixtures section
-    try:
-        template = cfg.get('fixtures', "bucket prefix")
-    except (configparser.NoOptionError):
-        template = 'test-{random}-'
+    template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')
     prefix = choose_bucket_prefix(template=template)
+    template = cfg.get('fixtures', "iam name prefix", fallback="s3-tests-")
+    config.iam_name_prefix = choose_bucket_prefix(template=template)
+    template = cfg.get('fixtures', "iam path prefix", fallback="/s3-tests/")
+    config.iam_path_prefix = choose_bucket_prefix(template=template)
 
     alt_client = get_alt_client()
     tenant_client = get_tenant_client()
@@ -698,6 +699,15 @@ def get_token():
 
 def get_realm_name():
     return config.webidentity_realm
+
+def get_iam_name_prefix():
+    return config.iam_name_prefix
+
+def make_iam_name(name):
+    return config.iam_name_prefix + name
+
+def get_iam_path_prefix():
+    return config.iam_path_prefix
 
 def get_iam_access_key():
     return config.iam_access_key
