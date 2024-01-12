@@ -19,6 +19,14 @@ ssl_verify = False
 ## the prefix to 30 characters long, and avoid collisions
 bucket prefix = yournamehere-{random}-
 
+# all the iam account resources (users, roles, etc) created
+# will start with this name prefix
+iam name prefix = s3-tests-
+
+# all the iam account resources (users, roles, etc) created
+# will start with this path prefix
+iam path prefix = /s3-tests/
+
 [s3 main]
 # main display_name set in vstart.sh
 display_name = M. Tester
