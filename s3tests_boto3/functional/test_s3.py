@@ -9049,7 +9049,8 @@ def test_lifecycle_cloud_transition():
     target_path = get_cloud_target_path()
     target_sc = get_cloud_target_storage_class()
 
-    keys=['expire1/foo', 'expire1/bar', 'keep2/foo', 'keep2/bar']
+    # We'll ensure that subfolders are properly handled as well.
+    keys=['expire1/foo', 'expire1/subdir/bar', 'keep2/foo', 'keep2/subdir/bar']
     bucket_name = _create_objects(keys=keys)
     client = get_client()
     rules=[{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}], 'Prefix': 'expire1/', 'Status': 'Enabled'}]
