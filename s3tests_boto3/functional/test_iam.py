@@ -922,6 +922,32 @@ def nuke_users(client, **kwargs):
             except:
                 pass
 
+def nuke_role_policies(client, name):
+    p = client.get_paginator('list_role_policies')
+    for response in p.paginate(RoleName=name):
+        for policy in response['PolicyNames']:
+            try:
+                client.delete_role_policy(RoleName=name, PolicyName=policy)
+            except:
+                pass
+
+def nuke_role(client, name):
+    # delete role policies, etc
+    try:
+        nuke_role_policies(client, name)
+    except:
+        pass
+    client.delete_role(RoleName=name)
+
+def nuke_roles(client, **kwargs):
+    p = client.get_paginator('list_roles')
+    for response in p.paginate(**kwargs):
+        for role in response['Roles']:
+            try:
+                nuke_role(client, role['RoleName'])
+            except:
+                pass
+
 # fixture for iam account root user
 @pytest.fixture
 def iam_root(configfile):
@@ -935,6 +961,7 @@ def iam_root(configfile):
 
     yield client
     nuke_users(client, PathPrefix=get_iam_path_prefix())
+    nuke_roles(client, PathPrefix=get_iam_path_prefix())
 
 
 # IAM User apis
@@ -1512,3 +1539,182 @@ def test_account_user_policy_allow(iam_root):
     # the policy may take a bit to start working. retry until it returns
     # something other than AccessDenied
     retry_on('AccessDenied', 10, client.list_buckets)
+
+
+assume_role_policy = json.dumps({
+    'Version': '2012-10-17',
+    'Statement': [{
+        'Effect': 'Allow',
+        'Action': 'sts:AssumeRole',
+        'Principal': {'AWS': '*'}
+        }]
+    })
+
+# IAM Role apis
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_create(iam_root):
+    path = get_iam_path_prefix()
+    name1 = make_iam_name('R1')
+    desc = 'my role description'
+    max_duration = 43200
+    response = iam_root.create_role(RoleName=name1, Path=path, AssumeRolePolicyDocument=assume_role_policy, Description=desc, MaxSessionDuration=max_duration)
+    role = response['Role']
+    assert role['Path'] == path
+    assert role['RoleName'] == name1
+    assert assume_role_policy == json.dumps(role['AssumeRolePolicyDocument'])
+    assert len(role['RoleId'])
+    arn = role['Arn']
+    assert arn.startswith('arn:aws:iam:')
+    assert arn.endswith(f':role{path}{name1}')
+    assert role['CreateDate'] > datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+    # AWS doesn't include these for CreateRole, only GetRole
+    #assert desc == role['Description']
+    #assert max_duration == role['MaxSessionDuration']
+
+    response = iam_root.get_role(RoleName=name1)
+    role = response['Role']
+    assert arn == role['Arn']
+    assert desc == role['Description']
+    assert max_duration == role['MaxSessionDuration']
+
+    path2 = get_iam_path_prefix() + 'foo/'
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_role(RoleName=name1, Path=path2, AssumeRolePolicyDocument=assume_role_policy)
+
+    name2 = make_iam_name('R2')
+    response = iam_root.create_role(RoleName=name2, Path=path2, AssumeRolePolicyDocument=assume_role_policy)
+    role = response['Role']
+    assert role['Path'] == path2
+    assert role['RoleName'] == name2
+
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_case_insensitive_name(iam_root):
+    path = get_iam_path_prefix()
+    name_upper = make_iam_name('R1')
+    name_lower = make_iam_name('r1')
+    response = iam_root.create_role(RoleName=name_upper, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+    rid = response['Role']['RoleId']
+
+    # name is case-insensitive, so 'r1' should also conflict
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_role(RoleName=name_lower, AssumeRolePolicyDocument=assume_role_policy)
+
+    # search for 'r1' should return the same 'R1' role
+    response = iam_root.get_role(RoleName=name_lower)
+    assert rid == response['Role']['RoleId']
+
+    # delete for 'r1' should delete the same 'R1' role
+    iam_root.delete_role(RoleName=name_lower)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_role(RoleName=name_lower)
+
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_delete(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('U1')
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_role(RoleName=name)
+
+    response = iam_root.create_role(RoleName=name, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+    uid = response['Role']['RoleId']
+    create_date = response['Role']['CreateDate']
+
+    iam_root.delete_role(RoleName=name)
+
+    response = iam_root.create_role(RoleName=name, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+    assert uid != response['Role']['RoleId']
+    assert create_date <= response['Role']['CreateDate']
+
+def role_list_names(client, **kwargs):
+    p = client.get_paginator('list_roles')
+    rolenames = []
+    for response in p.paginate(**kwargs):
+        rolenames += [u['RoleName'] for u in response['Roles']]
+    return rolenames
+
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_list(iam_root):
+    path = get_iam_path_prefix()
+    response = iam_root.list_roles(PathPrefix=path)
+    assert len(response['Roles']) == 0
+    assert response['IsTruncated'] == False
+
+    name1 = make_iam_name('aa')
+    name2 = make_iam_name('Ab')
+    name3 = make_iam_name('ac')
+    name4 = make_iam_name('Ad')
+
+    # sort order is independent of CreateDate, Path, and RoleName capitalization
+    iam_root.create_role(RoleName=name4, Path=path+'w/', AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name3, Path=path+'x/', AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name2, Path=path+'y/', AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name1, Path=path+'z/', AssumeRolePolicyDocument=assume_role_policy)
+
+    assert [name1, name2, name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path)
+    assert [name1, name2, name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path, PaginationConfig={'PageSize': 1})
+
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_list_path_prefix(iam_root):
+    path = get_iam_path_prefix()
+    response = iam_root.list_roles(PathPrefix=path)
+    assert len(response['Roles']) == 0
+    assert response['IsTruncated'] == False
+
+    name1 = make_iam_name('a')
+    name2 = make_iam_name('b')
+    name3 = make_iam_name('c')
+    name4 = make_iam_name('d')
+
+    iam_root.create_role(RoleName=name1, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name2, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name3, Path=path+'a/', AssumeRolePolicyDocument=assume_role_policy)
+    iam_root.create_role(RoleName=name4, Path=path+'a/x/', AssumeRolePolicyDocument=assume_role_policy)
+
+    assert [name1, name2, name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path)
+    assert [name1, name2, name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path,
+                            PaginationConfig={'PageSize': 1})
+    assert [name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path+'a')
+    assert [name3, name4] == \
+            role_list_names(iam_root, PathPrefix=path+'a',
+                            PaginationConfig={'PageSize': 1})
+    assert [name4] == \
+            role_list_names(iam_root, PathPrefix=path+'a/x')
+    assert [name4] == \
+            role_list_names(iam_root, PathPrefix=path+'a/x',
+                            PaginationConfig={'PageSize': 1})
+    assert [] == role_list_names(iam_root, PathPrefix=path+'a/x/d')
+
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_update(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('a')
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.update_role(RoleName=name)
+
+    iam_root.create_role(RoleName=name, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+
+    response = iam_root.get_role(RoleName=name)
+    assert name == response['Role']['RoleName']
+    arn = response['Role']['Arn']
+    rid = response['Role']['RoleId']
+
+    desc = 'my role description'
+    iam_root.update_role(RoleName=name, Description=desc, MaxSessionDuration=43200)
+
+    response = iam_root.get_role(RoleName=name)
+    assert rid == response['Role']['RoleId']
+    assert arn == response['Role']['Arn']
+    assert desc == response['Role']['Description']
+    assert 43200 == response['Role']['MaxSessionDuration']
