@@ -142,6 +142,13 @@ secret_key = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 user_id = RGW11111111111111111
 email = account1@ceph.com
 
+# iam account root user in a different account than [iam root]
+[iam alt root]
+access_key = BBBBBBBBBBBBBBBBBBbb
+secret_key = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+user_id = RGW22222222222222222
+email = account2@ceph.com
+
 #following section needs to be added when you want to run Assume Role With Webidentity test
 [webidentity]
 #used for assume role with web identity test in sts-tests
