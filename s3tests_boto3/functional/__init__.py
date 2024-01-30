@@ -268,7 +268,13 @@ def configure():
 
     config.iam_root_access_key = cfg.get('iam root',"access_key")
     config.iam_root_secret_key = cfg.get('iam root',"secret_key")
+    config.iam_root_user_id = cfg.get('iam root',"user_id")
     config.iam_root_email = cfg.get('iam root',"email")
+
+    config.iam_alt_root_access_key = cfg.get('iam alt root',"access_key")
+    config.iam_alt_root_secret_key = cfg.get('iam alt root',"secret_key")
+    config.iam_alt_root_user_id = cfg.get('iam alt root',"user_id")
+    config.iam_alt_root_email = cfg.get('iam alt root',"email")
 
     # vars from the fixtures section
     template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')
@@ -448,6 +454,17 @@ def get_iam_root_client(**kwargs):
     kwargs.setdefault('service_name', 'iam')
     kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
     kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+
+    return boto3.client(endpoint_url=config.default_endpoint,
+                        region_name='',
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        **kwargs)
+
+def get_iam_alt_root_client(**kwargs):
+    kwargs.setdefault('service_name', 'iam')
+    kwargs.setdefault('aws_access_key_id', config.iam_alt_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_alt_root_secret_key)
 
     return boto3.client(endpoint_url=config.default_endpoint,
                         region_name='',
@@ -716,8 +733,17 @@ def get_iam_access_key():
 def get_iam_secret_key():
     return config.iam_secret_key
 
+def get_iam_root_user_id():
+    return config.iam_root_user_id
+
 def get_iam_root_email():
     return config.iam_root_email
+
+def get_iam_alt_root_user_id():
+    return config.iam_alt_root_user_id
+
+def get_iam_alt_root_email():
+    return config.iam_alt_root_email
 
 def get_user_token():
     return config.webidentity_user_token
