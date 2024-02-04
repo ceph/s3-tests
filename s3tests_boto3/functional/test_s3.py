@@ -3491,6 +3491,50 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
+def _test_presigned_post(client, fields=None):
+    if client is None:
+        client = get_client()
+
+    bucket_name = get_new_bucket_name()
+    client.create_bucket(Bucket=bucket_name)
+    key = 'foo'
+
+    if fields:
+        # If fields is {'acl': private'} conditions should be [{'acl': 'private'}]
+        conditions = [fields]
+    else:
+        conditions = None
+
+    r = client.generate_presigned_post(Bucket=bucket_name, Key=key,
+                                       Fields=fields, Conditions=conditions)
+
+    files = {'file': (key, b'hello world')}
+    res = requests.post(r['url'], data=r['fields'], files=files, verify=get_config_ssl_verify())
+    assert res.status_code == 204
+
+    params = {'Bucket': bucket_name, 'Key': key}
+    url = client.generate_presigned_url(ClientMethod='get_object', Params=params, HttpMethod='GET')
+
+    res = requests.get(url, verify=get_config_ssl_verify())
+    assert res.status_code == 200
+    assert res.text == 'hello world'
+
+# TODO(tobias-urdin): Keystone auth does not work with this, using a tenanted user
+# does not work either even when using LocalEngine.
+@pytest.mark.fails_on_rgw_keystone
+def test_presigned_post():
+    _test_presigned_post(
+        client=get_client(),
+    )
+
+# TODO(tobias-urdin): Keystone auth does not work with this, using a tenanted user
+# does not work either even when using LocalEngine.
+@pytest.mark.fails_on_rgw_keystone
+def test_presigned_post_with_acl():
+    _test_presigned_post(
+        client=get_client(),
+        fields={'acl': 'private'},
+    )
 
 def test_object_anon_put():
     bucket_name = get_new_bucket()
