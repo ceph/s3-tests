@@ -932,10 +932,23 @@ def nuke_role_policies(client, name):
             except:
                 pass
 
+def nuke_attached_role_policies(client, name):
+    p = client.get_paginator('list_attached_role_policies')
+    for response in p.paginate(RoleName=name):
+        for policy in response['AttachedPolicies']:
+            try:
+                client.detach_role_policy(RoleName=name, PolicyArn=policy['PolicyArn'])
+            except:
+                pass
+
 def nuke_role(client, name):
     # delete role policies, etc
     try:
         nuke_role_policies(client, name)
+    except:
+        pass
+    try:
+        nuke_attached_role_policies(client, name)
     except:
         pass
     client.delete_role(RoleName=name)
@@ -1779,6 +1792,63 @@ def test_account_role_policy(iam_root):
         iam_root.get_role_policy(RoleName=role_name, PolicyName=policy_name)
     with pytest.raises(iam_root.exceptions.NoSuchEntityException):
         iam_root.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+
+@pytest.mark.role_policy
+@pytest.mark.iam_account
+def test_account_role_policy_managed(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('name')
+    policy1 = 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+    policy2 = 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+
+    # Attach/Detach/List fail on nonexistent RoleName
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.attach_role_policy(RoleName=name, PolicyArn=policy1)
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_role_policy(RoleName=name, PolicyArn=policy1)
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.list_attached_role_policies(RoleName=name)
+
+    iam_root.create_role(RoleName=name, Path=path, AssumeRolePolicyDocument=assume_role_policy)
+
+    # Detach fails on unattached PolicyArn
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_role_policy(RoleName=name, PolicyArn=policy1)
+
+    iam_root.attach_role_policy(RoleName=name, PolicyArn=policy1)
+    iam_root.attach_role_policy(RoleName=name, PolicyArn=policy1)
+
+    response = iam_root.list_attached_role_policies(RoleName=name)
+    assert len(response['AttachedPolicies']) == 1
+    assert 'AmazonS3FullAccess' == response['AttachedPolicies'][0]['PolicyName']
+    assert policy1 == response['AttachedPolicies'][0]['PolicyArn']
+
+    iam_root.attach_role_policy(RoleName=name, PolicyArn=policy2)
+
+    response = iam_root.list_attached_role_policies(RoleName=name)
+    policies = response['AttachedPolicies']
+    assert len(policies) == 2
+    names = [p['PolicyName'] for p in policies]
+    arns = [p['PolicyArn'] for p in policies]
+    assert 'AmazonS3FullAccess' in names
+    assert policy1 in arns
+    assert 'AmazonS3ReadOnlyAccess' in names
+    assert policy2 in arns
+
+    iam_root.detach_role_policy(RoleName=name, PolicyArn=policy2)
+
+    # Detach fails after Detach
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_role_policy(RoleName=name, PolicyArn=policy2)
+
+    response = iam_root.list_attached_role_policies(RoleName=name)
+    assert len(response['AttachedPolicies']) == 1
+    assert 'AmazonS3FullAccess' == response['AttachedPolicies'][0]['PolicyName']
+    assert policy1 == response['AttachedPolicies'][0]['PolicyArn']
+
+    # DeleteRole fails while policies are still attached
+    with pytest.raises(iam_root.exceptions.DeleteConflictException):
+        iam_root.delete_role(RoleName=name)
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
