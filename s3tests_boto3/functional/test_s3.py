@@ -4046,6 +4046,36 @@ def test_object_put_authenticated():
     response = client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
     eq(response['ResponseMetadata']['HTTPStatusCode'], 200)
 
+def _test_object_presigned_put_object_with_acl(client=None):
+    if client is None:
+        client = get_client()
+
+    bucket_name = get_new_bucket(client)
+    key = 'foo'
+
+    params = {'Bucket': bucket_name, 'Key': key, 'ACL': 'private'}
+    url = client.generate_presigned_url(ClientMethod='put_object', Params=params, HttpMethod='PUT')
+
+    data = b'hello world'
+    headers = {'x-amz-acl': 'private'}
+    res = requests.put(url, data=data, headers=headers, verify=get_config_ssl_verify())
+    eq(res.status_code, 200)
+
+    params = {'Bucket': bucket_name, 'Key': key}
+    url = client.generate_presigned_url(ClientMethod='get_object', Params=params, HttpMethod='GET')
+
+    res = requests.get(url, verify=get_config_ssl_verify())
+    eq(res.status_code, 200)
+    eq(res.text, 'hello world')
+
+def test_object_presigned_put_object_with_acl():
+    _test_object_presigned_put_object_with_acl(
+        client=get_client())
+
+def test_object_presigned_put_object_with_acl_tenant():
+    _test_object_presigned_put_object_with_acl(
+        client=get_tenant_client())
+
 @attr(resource='object')
 @attr(method='put')
 @attr(operation='authenticated, no object acls')
@@ -7563,16 +7593,26 @@ def test_cors_header_option():
 
     _cors_request_and_check(requests.options, obj_url, {'Origin': 'example.origin','Access-Control-Request-Headers':'x-amz-meta-header2','Access-Control-Request-Method':'GET'}, 403, None, None)
 
-def _test_cors_options_presigned_get_object(client):
+def _test_cors_options_presigned_method(client, method, cannedACL=None):
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read', client=client)
     params = {'Bucket': bucket_name, 'Key': 'foo'}
 
-    url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
+    if cannedACL is not None:
+        params['ACL'] = cannedACL
+
+    if method == 'get_object':
+        httpMethod = 'GET'
+    elif method == 'put_object':
+        httpMethod = 'PUT'
+    else:
+        raise ValueError('invalid method')
+
+    url = client.generate_presigned_url(ClientMethod=method, Params=params, ExpiresIn=100000, HttpMethod=httpMethod)
 
     res = requests.options(url, verify=get_config_ssl_verify()).__dict__
     eq(res['status_code'], 400)
 
-    allowed_methods = ['GET']
+    allowed_methods = [httpMethod]
     allowed_origins = ['example']
 
     cors_config ={
@@ -7584,13 +7624,51 @@ def _test_cors_options_presigned_get_object(client):
     }
 
     client.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_config)
-    _cors_request_and_check(requests.options, url, {'Origin': 'example', 'Access-Control-Request-Method': 'GET'}, 200, 'example', 'GET')
+
+    headers = {
+        'Origin': 'example',
+        'Access-Control-Request-Method': httpMethod,
+    }
+    _cors_request_and_check(requests.options, url, headers,
+                            200, 'example', httpMethod)
 
 def test_cors_presigned_get_object():
-    _test_cors_options_presigned_get_object(client=get_client())
+    _test_cors_options_presigned_method(
+        client=get_client(),
+        method='get_object',
+    )
 
 def test_cors_presigned_get_object_tenant():
-    _test_cors_options_presigned_get_object(client=get_tenant_client())
+    _test_cors_options_presigned_method(
+        client=get_tenant_client(),
+        method='get_object',
+    )
+
+def test_cors_presigned_put_object():
+    _test_cors_options_presigned_method(
+        client=get_client(),
+        method='put_object',
+    )
+
+def test_cors_presigned_put_object_with_acl():
+    _test_cors_options_presigned_method(
+        client=get_client(),
+        method='put_object',
+        cannedACL='private',
+    )
+
+def test_cors_presigned_put_object_tenant():
+    _test_cors_options_presigned_method(
+        client=get_tenant_client(),
+        method='put_object',
+    )
+
+def test_cors_presigned_put_object_tenant_with_acl():
+    _test_cors_options_presigned_method(
+        client=get_tenant_client(),
+        method='put_object',
+        cannedACL='private',
+    )
 
 @attr(resource='bucket')
 @attr(method='put')
