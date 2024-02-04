@@ -888,6 +888,15 @@ def nuke_user_policies(client, name):
             except:
                 pass
 
+def nuke_attached_user_policies(client, name):
+    p = client.get_paginator('list_attached_user_policies')
+    for response in p.paginate(UserName=name):
+        for policy in response['AttachedPolicies']:
+            try:
+                client.detach_user_policy(UserName=name, PolicyArn=policy['PolicyArn'])
+            except:
+                pass
+
 def nuke_user(client, name):
     # delete access keys, user policies, etc
     try:
@@ -896,6 +905,10 @@ def nuke_user(client, name):
         pass
     try:
         nuke_user_policies(client, name)
+    except:
+        pass
+    try:
+        nuke_attached_user_policies(client, name)
     except:
         pass
     client.delete_user(UserName=name)
@@ -1406,6 +1419,63 @@ def test_account_user_policy(iam_root):
 
     response = iam_root.list_user_policies(UserName=name)
     assert [] == response['PolicyNames']
+
+@pytest.mark.user_policy
+@pytest.mark.iam_account
+def test_account_user_policy_managed(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('name')
+    policy1 = 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+    policy2 = 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+
+    # Attach/Detach/List fail on nonexistent UserName
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.attach_user_policy(UserName=name, PolicyArn=policy1)
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_user_policy(UserName=name, PolicyArn=policy1)
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.list_attached_user_policies(UserName=name)
+
+    iam_root.create_user(UserName=name, Path=path)
+
+    # Detach fails on unattached PolicyArn
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_user_policy(UserName=name, PolicyArn=policy1)
+
+    iam_root.attach_user_policy(UserName=name, PolicyArn=policy1)
+    iam_root.attach_user_policy(UserName=name, PolicyArn=policy1)
+
+    response = iam_root.list_attached_user_policies(UserName=name)
+    assert len(response['AttachedPolicies']) == 1
+    assert 'AmazonS3FullAccess' == response['AttachedPolicies'][0]['PolicyName']
+    assert policy1 == response['AttachedPolicies'][0]['PolicyArn']
+
+    iam_root.attach_user_policy(UserName=name, PolicyArn=policy2)
+
+    response = iam_root.list_attached_user_policies(UserName=name)
+    policies = response['AttachedPolicies']
+    assert len(policies) == 2
+    names = [p['PolicyName'] for p in policies]
+    arns = [p['PolicyArn'] for p in policies]
+    assert 'AmazonS3FullAccess' in names
+    assert policy1 in arns
+    assert 'AmazonS3ReadOnlyAccess' in names
+    assert policy2 in arns
+
+    iam_root.detach_user_policy(UserName=name, PolicyArn=policy2)
+
+    # Detach fails after Detach
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.detach_user_policy(UserName=name, PolicyArn=policy2)
+
+    response = iam_root.list_attached_user_policies(UserName=name)
+    assert len(response['AttachedPolicies']) == 1
+    assert 'AmazonS3FullAccess' == response['AttachedPolicies'][0]['PolicyName']
+    assert policy1 == response['AttachedPolicies'][0]['PolicyArn']
+
+    # DeleteUser fails while policies are still attached
+    with pytest.raises(iam_root.exceptions.DeleteConflictException):
+        iam_root.delete_user(UserName=name)
 
 @pytest.mark.user_policy
 @pytest.mark.iam_account
