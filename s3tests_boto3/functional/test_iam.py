@@ -967,6 +967,17 @@ def nuke_roles(client, **kwargs):
             except:
                 pass
 
+def nuke_oidc_providers(client, prefix):
+    result = client.list_open_id_connect_providers()
+    for provider in result['OpenIDConnectProviderList']:
+        arn = provider['Arn']
+        if f':oidc-provider{prefix}' in arn:
+            try:
+                client.delete_open_id_connect_provider(OpenIDConnectProviderArn=arn)
+            except:
+                pass
+
+
 # fixture for iam account root user
 @pytest.fixture
 def iam_root(configfile):
@@ -981,6 +992,7 @@ def iam_root(configfile):
     yield client
     nuke_users(client, PathPrefix=get_iam_path_prefix())
     nuke_roles(client, PathPrefix=get_iam_path_prefix())
+    nuke_oidc_providers(client, get_iam_path_prefix())
 
 
 # IAM User apis
@@ -1913,6 +1925,40 @@ def test_account_role_policy_allow(iam_root):
     # the policy may take a bit to start working. retry until it returns
     # something other than AccessDenied
     retry_on('AccessDenied', 10, s3.list_buckets)
+
+
+# IAM OpenIDConnectProvider apis
+@pytest.mark.iam_account
+def test_account_oidc_provider(iam_root):
+    url_host = get_iam_path_prefix()[1:] + 'example.com'
+    url = 'http://' + url_host
+
+    response = iam_root.create_open_id_connect_provider(
+            ClientIDList=['my-application-id'],
+            ThumbprintList=['3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'],
+            Url=url)
+    arn = response['OpenIDConnectProviderArn']
+    assert arn.endswith(f':oidc-provider/{url_host}')
+
+    response = iam_root.list_open_id_connect_providers()
+    arns = [p['Arn'] for p in response['OpenIDConnectProviderList']]
+    assert arn in arns
+
+    response = iam_root.get_open_id_connect_provider(OpenIDConnectProviderArn=arn)
+    assert url == response['Url']
+    assert ['my-application-id'] == response['ClientIDList']
+    assert ['3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'] == response['ThumbprintList']
+
+    iam_root.delete_open_id_connect_provider(OpenIDConnectProviderArn=arn)
+
+    response = iam_root.list_open_id_connect_providers()
+    arns = [p['Arn'] for p in response['OpenIDConnectProviderList']]
+    assert arn not in arns
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_open_id_connect_provider(OpenIDConnectProviderArn=arn)
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_open_id_connect_provider(OpenIDConnectProviderArn=arn)
 
 
 # fixture for iam alt account root user
