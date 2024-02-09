@@ -7509,6 +7509,40 @@ def test_versioning_obj_suspend_versions():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
+def test_versioning_obj_suspended_copy():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    key1 = 'testobj1'
+    num_versions = 1
+    (version_ids, contents) = create_multiple_versions(client, bucket_name, key1, num_versions)
+
+    check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
+
+    content = 'null content'
+    overwrite_suspended_versioning_obj(client, bucket_name, key1, version_ids, contents, content)
+
+    # copy to another object
+    key2 = 'testobj2'
+    copy_source = {'Bucket': bucket_name, 'Key': key1}
+    client.copy_object(Bucket=bucket_name, Key=key2, CopySource=copy_source)
+
+    # delete the source object. keep the 'null' entry in version_ids
+    client.delete_object(Bucket=bucket_name, Key=key1)
+
+    # get the target object
+    response = client.get_object(Bucket=bucket_name, Key=key2)
+    body = _get_body(response)
+    assert body == content
+
+    # cleaning up
+    client.delete_object(Bucket=bucket_name, Key=key2)
+    client.delete_object(Bucket=bucket_name, Key=key2, VersionId='null')
+
+    clean_up_bucket(client, bucket_name, key1, version_ids)
+
 def test_versioning_obj_create_versions_remove_all():
     bucket_name = get_new_bucket()
     client = get_client()
