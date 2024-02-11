@@ -928,6 +928,32 @@ def nuke_users(client, **kwargs):
             except:
                 pass
 
+def nuke_group_users(client, name):
+    p = client.get_paginator('get_group')
+    for response in p.paginate(GroupName=name):
+        for user in response['Users']:
+            try:
+                client.remove_user_from_group(GroupName=name, UserName=user['UserName'])
+            except:
+                pass
+
+def nuke_group(client, name):
+    # delete group policies and remove all users
+    try:
+        nuke_group_users(client, name)
+    except:
+        pass
+    client.delete_group(GroupName=name)
+
+def nuke_groups(client, **kwargs):
+    p = client.get_paginator('list_groups')
+    for response in p.paginate(**kwargs):
+        for user in response['Groups']:
+            try:
+                nuke_group(client, user['GroupName'])
+            except:
+                pass
+
 def nuke_role_policies(client, name):
     p = client.get_paginator('list_role_policies')
     for response in p.paginate(RoleName=name):
@@ -991,6 +1017,7 @@ def iam_root(configfile):
 
     yield client
     nuke_users(client, PathPrefix=get_iam_path_prefix())
+    nuke_groups(client, PathPrefix=get_iam_path_prefix())
     nuke_roles(client, PathPrefix=get_iam_path_prefix())
     nuke_oidc_providers(client, get_iam_path_prefix())
 
@@ -1570,6 +1597,134 @@ def test_account_user_policy_allow(iam_root):
     # the policy may take a bit to start working. retry until it returns
     # something other than AccessDenied
     retry_on('AccessDenied', 10, client.list_buckets)
+
+
+def group_list_names(client, **kwargs):
+    p = client.get_paginator('list_groups')
+    names = []
+    for response in p.paginate(**kwargs):
+        names += [u['GroupName'] for u in response['Groups']]
+    return names
+
+# IAM Group apis
+@pytest.mark.group
+@pytest.mark.iam_account
+def test_account_group_create(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('G1')
+
+    assert [] == group_list_names(iam_root, PathPrefix=path)
+
+    response = iam_root.create_group(GroupName=name, Path=path)
+    group = response['Group']
+    assert path == group['Path']
+    assert name == group['GroupName']
+    assert len(group['GroupId'])
+    arn = group['Arn']
+    assert arn.startswith('arn:aws:iam:')
+    assert arn.endswith(f':group{path}{name}')
+
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_group(GroupName=name)
+
+    response = iam_root.get_group(GroupName=name)
+    assert group == response['Group']
+
+    assert [name] == group_list_names(iam_root, PathPrefix=path)
+
+    iam_root.delete_group(GroupName=name)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_group(GroupName=name)
+
+    assert [] == group_list_names(iam_root, PathPrefix=path)
+
+@pytest.mark.iam_account
+@pytest.mark.group
+def test_account_group_case_insensitive_name(iam_root):
+    path = get_iam_path_prefix()
+    name_upper = make_iam_name('G1')
+    name_lower = make_iam_name('g1')
+    response = iam_root.create_group(GroupName=name_upper, Path=path)
+    group = response['Group']
+
+    with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+        iam_root.create_group(GroupName=name_lower)
+
+    response = iam_root.get_group(GroupName=name_lower)
+    assert group == response['Group']
+
+    iam_root.delete_group(GroupName=name_lower)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_group(GroupName=name_upper)
+
+@pytest.mark.iam_account
+@pytest.mark.group
+def test_account_group_list(iam_root):
+    path = get_iam_path_prefix()
+    response = iam_root.list_groups(PathPrefix=path)
+    assert len(response['Groups']) == 0
+    assert response['IsTruncated'] == False
+
+    name1 = make_iam_name('aa')
+    name2 = make_iam_name('Ab')
+    name3 = make_iam_name('ac')
+    name4 = make_iam_name('Ad')
+
+    # sort order is independent of Path and GroupName capitalization
+    iam_root.create_group(GroupName=name4, Path=path+'w/')
+    iam_root.create_group(GroupName=name3, Path=path+'x/')
+    iam_root.create_group(GroupName=name2, Path=path+'y/')
+    iam_root.create_group(GroupName=name1, Path=path+'z/')
+
+    assert [name1, name2, name3, name4] == \
+            group_list_names(iam_root, PathPrefix=path)
+    assert [name1, name2, name3, name4] == \
+            group_list_names(iam_root, PathPrefix=path, PaginationConfig={'PageSize': 1})
+
+@pytest.mark.group
+@pytest.mark.iam_account
+def test_account_group_update(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('G1')
+    response = iam_root.create_group(GroupName=name, Path=path)
+    group_id = response['Group']['GroupId']
+
+    username = make_iam_name('U1')
+    iam_root.create_user(UserName=username, Path=path)
+
+    iam_root.add_user_to_group(GroupName=name, UserName=username)
+
+    response = iam_root.list_groups_for_user(UserName=username)
+    groups = response['Groups']
+    assert len(groups) == 1
+    assert path == groups[0]['Path']
+    assert name == groups[0]['GroupName']
+    assert group_id == groups[0]['GroupId']
+
+    new_path = path + 'new/'
+    new_name = make_iam_name('NG1')
+    iam_root.update_group(GroupName=name, NewPath=new_path, NewGroupName=new_name)
+
+    response = iam_root.get_group(GroupName=new_name)
+    group = response['Group']
+    assert new_path == group['Path']
+    assert new_name == group['GroupName']
+    assert group_id == group['GroupId']
+    arn = group['Arn']
+    assert arn.startswith('arn:aws:iam:')
+    assert arn.endswith(f':group{new_path}{new_name}')
+    users = response['Users']
+    assert len(users) == 1
+    assert username == users[0]['UserName']
+
+    response = iam_root.list_groups_for_user(UserName=username)
+    groups = response['Groups']
+    assert len(groups) == 1
+    assert new_path == groups[0]['Path']
+    assert new_name == groups[0]['GroupName']
+    assert group_id == groups[0]['GroupId']
 
 
 assume_role_policy = json.dumps({
