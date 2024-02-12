@@ -8702,6 +8702,40 @@ def test_lifecycle_deletemarker_expiration():
     assert len(total_expire_versions) == 2
 
 @pytest.mark.lifecycle
+@pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_lifecycle_deletemarker_expiration_with_days_tag():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    create_multiple_versions(client, bucket_name, "test1/a", 1)
+    client.delete_object(Bucket=bucket_name, Key="test1/a")
+
+    rules=[{'ID': 'rule1', 'NoncurrentVersionExpiration': {'NoncurrentDays': 1}, 'Expiration': {'Days': 5}, 'Prefix': 'test1/', 'Status':'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+
+    # Wait for first expiration (plus fudge to handle the timer window)
+    time.sleep(2*lc_interval)
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    versions = response['Versions'] if ('Versions' in response) else []
+    delete_markers = response['DeleteMarkers'] if ('DeleteMarkers' in response) else []
+
+    assert len(versions) == 0
+    assert len(delete_markers) == 1
+
+    time.sleep(4*lc_interval)
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    delete_markers = response['DeleteMarkers'] if ('DeleteMarkers' in response) else []
+
+    assert len(delete_markers) == 0
+
+@pytest.mark.lifecycle
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
