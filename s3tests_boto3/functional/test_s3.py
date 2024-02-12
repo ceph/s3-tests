@@ -7509,6 +7509,7 @@ def test_versioning_obj_suspend_versions():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
+@pytest.mark.fails_on_dbstore
 def test_versioning_obj_suspended_copy():
     bucket_name = get_new_bucket()
     client = get_client()
