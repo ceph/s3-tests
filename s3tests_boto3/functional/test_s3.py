@@ -9659,7 +9659,7 @@ def test_lifecycle_expiration_header_put():
     bucket_name = get_new_bucket()
     client = get_client()
 
-    now = datetime.datetime.now(None)
+    now = datetime.datetime.utcnow()
     response = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
@@ -9673,7 +9673,7 @@ def test_lifecycle_expiration_header_head():
     bucket_name = get_new_bucket()
     client = get_client()
 
-    now = datetime.datetime.now(None)
+    now = datetime.datetime.utcnow()
     response = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
 
