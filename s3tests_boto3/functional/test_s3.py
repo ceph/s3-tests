@@ -12590,16 +12590,22 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
-def test_get_default_public_block():
-    #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
+def test_get_undefined_public_block():
     bucket_name = get_new_bucket()
     client = get_client()
 
-    resp = client.get_public_access_block(Bucket=bucket_name)
-    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == False
-    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == False
-    assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == False
-    assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == False
+    # delete the existing public access block configuration
+    # as AWS creates a default public access block configuration
+    resp = client.delete_public_access_block(Bucket=bucket_name)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 204
+
+    response_code = ""
+    try:
+        resp = client.get_public_access_block(Bucket=bucket_name)
+    except ClientError as e:
+        response_code = e.response['Error']['Code']
+
+    assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
 def test_put_public_block():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
