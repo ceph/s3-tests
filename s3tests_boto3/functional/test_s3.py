@@ -12607,6 +12607,34 @@ def test_get_undefined_public_block():
 
     assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
+def test_get_public_block_deny_bucket_policy():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    access_conf = {'BlockPublicAcls': True,
+                   'IgnorePublicAcls': True,
+                   'BlockPublicPolicy': True,
+                   'RestrictPublicBuckets': False}
+    client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
+
+    # make sure we can get the public access block
+    resp = client.get_public_access_block(Bucket=bucket_name)
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == access_conf['BlockPublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == access_conf['BlockPublicPolicy']
+    assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == access_conf['IgnorePublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == access_conf['RestrictPublicBuckets']
+
+    # make bucket policy to deny access
+    resource = _make_arn_resource(bucket_name)
+    policy_document = make_json_policy("s3:GetBucketPublicAccessBlock",
+                                       resource, effect="Deny")
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+    # check if the access is denied
+    e = assert_raises(ClientError, client.get_public_access_block, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+
 def test_put_public_block():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
