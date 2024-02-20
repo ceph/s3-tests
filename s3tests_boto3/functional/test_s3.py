@@ -9836,7 +9836,7 @@ def test_lifecycle_expiration_header_put():
     bucket_name = get_new_bucket()
     client = get_client()
 
-    now = datetime.datetime.now(None)
+    now = datetime.datetime.utcnow()
     response = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
     eq(check_lifecycle_expiration_header(response, now, 'rule1', 1), True)
@@ -9851,7 +9851,7 @@ def test_lifecycle_expiration_header_head():
     bucket_name = get_new_bucket()
     client = get_client()
 
-    now = datetime.datetime.now(None)
+    now = datetime.datetime.utcnow()
     response = setup_lifecycle_expiration(
         client, bucket_name, 'rule1', 1, 'days1/')
 
@@ -9928,7 +9928,7 @@ def test_lifecycle_expiration_header_tags_head():
 @attr('lifecycle_expiration')
 @attr('fails_on_dbstore')
 def test_lifecycle_expiration_header_and_tags_head():
-    now = datetime.datetime.now(None)
+    now = datetime.datetime.utcnow()
     bucket_name = get_new_bucket()
     client = get_client()
     lifecycle={
