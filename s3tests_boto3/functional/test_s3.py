@@ -5171,7 +5171,7 @@ def test_list_buckets_invalid_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
-    assert error_code == 'InvalidAccessKeyId'
+    assert error_code == 'AccessDenied'
 
 def test_list_buckets_bad_auth():
     main_access_key = get_main_aws_access_key()
@@ -5179,7 +5179,7 @@ def test_list_buckets_bad_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
-    assert error_code == 'SignatureDoesNotMatch'
+    assert error_code == 'AccessDenied'
 
 @pytest.fixture
 def override_prefix_a():
@@ -8607,6 +8607,8 @@ def _test_encryption_sse_customer_write(file_size):
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -9134,6 +9136,7 @@ def test_encrypted_transfer_13b():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9144,6 +9147,8 @@ def test_encryption_sse_c_method_head():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -9159,6 +9164,7 @@ def test_encryption_sse_c_method_head():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_present():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9169,6 +9175,8 @@ def test_encryption_sse_c_present():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -9179,6 +9187,7 @@ def test_encryption_sse_c_present():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_other_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9189,11 +9198,16 @@ def test_encryption_sse_c_other_key():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers_A['X-Forwarded-Proto'] = 'https'
+
     sse_client_headers_B = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
         'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers_B['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers_A))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -9206,6 +9220,7 @@ def test_encryption_sse_c_other_key():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_invalid_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9216,6 +9231,8 @@ def test_encryption_sse_c_invalid_md5():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'AAAAAAAAAAAAAAAAAAAAAA=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -9224,6 +9241,7 @@ def test_encryption_sse_c_invalid_md5():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_no_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9233,12 +9251,15 @@ def test_encryption_sse_c_no_md5():
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_sse_c_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9247,12 +9268,15 @@ def test_encryption_sse_c_no_key():
     sse_client_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 def test_encryption_key_no_sse_c():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9321,6 +9345,7 @@ def _check_content_using_range_enc(client, bucket_name, key, data, step, enc_hea
         assert body == data[ofs:end+1]
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_upload():
@@ -9336,6 +9361,9 @@ def test_encryption_sse_c_multipart_upload():
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        enc_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
@@ -9382,11 +9410,17 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        init_headers['X-Forwarded-Proto'] = 'https'
+
     part_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
         'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
     }
+    if get_config_is_secure() == False:
+        part_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
@@ -9410,11 +9444,17 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        init_headers['X-Forwarded-Proto'] = 'https'
+
     part_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'AAAAAAAAAAAAAAAAAAAAAA=='
     }
+    if get_config_is_secure() == False:
+        part_headers['X-Forwarded-Proto'] = 'https'
+        
     resend_parts = []
 
     e = assert_raises(ClientError, _multipart_upload_enc, client=client,  bucket_name=bucket_name,
@@ -9423,6 +9463,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
@@ -9437,11 +9478,17 @@ def test_encryption_sse_c_multipart_bad_download():
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw==',
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        put_headers['X-Forwarded-Proto'] = 'https'
+
     get_headers = {
         'x-amz-server-side-encryption-customer-algorithm': 'AES256',
         'x-amz-server-side-encryption-customer-key': '6b+WOZ1T3cqZMxgThRcXAQBrS5mXKdDUphvpxptl9/4=',
         'x-amz-server-side-encryption-customer-key-md5': 'arxBvwY2V4SiOne6yppVPQ=='
     }
+    if get_config_is_secure() == False:
+        get_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
@@ -9472,6 +9519,7 @@ def test_encryption_sse_c_multipart_bad_download():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_c
 @pytest.mark.fails_on_dbstore
 def test_encryption_sse_c_post_object_authenticated_request():
     bucket_name = get_new_bucket()
@@ -9526,6 +9574,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
     assert body == 'bar'
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
     """
@@ -9555,6 +9604,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_method_head():
     kms_keyid = get_main_kms_keyid()
@@ -9564,6 +9614,9 @@ def test_sse_kms_method_head():
         'x-amz-server-side-encryption': 'aws:kms',
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
+    if get_config_is_secure() == False:
+        sse_kms_client_headers['X-Forwarded-Proto'] = 'https'
+
     data = 'A'*1000
     key = 'testobj'
 
@@ -9582,6 +9635,7 @@ def test_sse_kms_method_head():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_present():
     kms_keyid = get_main_kms_keyid()
@@ -9591,6 +9645,9 @@ def test_sse_kms_present():
         'x-amz-server-side-encryption': 'aws:kms',
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
+    if get_config_is_secure() == False:
+        sse_kms_client_headers['X-Forwarded-Proto'] = 'https'
+
     data = 'A'*100
     key = 'testobj'
 
@@ -9603,12 +9660,16 @@ def test_sse_kms_present():
     assert body == data
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 def test_sse_kms_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
     sse_kms_client_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
     }
+    if get_config_is_secure() == False:
+        sse_kms_client_headers['X-Forwarded-Proto'] = 'https'
+
     data = 'A'*100
     key = 'testobj'
 
@@ -9619,12 +9680,16 @@ def test_sse_kms_no_key():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 def test_sse_kms_not_declared():
     bucket_name = get_new_bucket()
     client = get_client()
     sse_kms_client_headers = {
         'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-2'
     }
+    if get_config_is_secure() == False:
+        sse_kms_client_headers['X-Forwarded-Proto'] = 'https'
+
     data = 'A'*100
     key = 'testobj'
 
@@ -9636,6 +9701,7 @@ def test_sse_kms_not_declared():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_upload():
     kms_keyid = get_main_kms_keyid()
@@ -9650,6 +9716,9 @@ def test_sse_kms_multipart_upload():
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        enc_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     (upload_id, data, parts) = _multipart_upload_enc(client, bucket_name, key, objlen,
@@ -9683,6 +9752,7 @@ def test_sse_kms_multipart_upload():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_invalid_chunks_1():
     kms_keyid = get_main_kms_keyid()
@@ -9698,10 +9768,16 @@ def test_sse_kms_multipart_invalid_chunks_1():
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        init_headers['X-Forwarded-Proto'] = 'https'
+
     part_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid2
     }
+    if get_config_is_secure() == False:
+        part_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024,
@@ -9710,6 +9786,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_multipart_invalid_chunks_2():
     kms_keyid = get_main_kms_keyid()
@@ -9724,10 +9801,16 @@ def test_sse_kms_multipart_invalid_chunks_2():
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid,
         'Content-Type': content_type
     }
+    if get_config_is_secure() == False:
+        init_headers['X-Forwarded-Proto'] = 'https'
+
     part_headers = {
         'x-amz-server-side-encryption': 'aws:kms',
         'x-amz-server-side-encryption-aws-kms-key-id': 'testkey-not-present'
     }
+    if get_config_is_secure() == False:
+        part_headers['X-Forwarded-Proto'] = 'https'
+
     resend_parts = []
 
     _multipart_upload_enc(client, bucket_name, key, objlen, part_size=5*1024*1024,
@@ -9736,6 +9819,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
@@ -9782,6 +9866,7 @@ def test_sse_kms_post_object_authenticated_request():
     assert body == 'bar'
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1b():
     kms_keyid = get_main_kms_keyid()
@@ -9791,6 +9876,7 @@ def test_sse_kms_transfer_1b():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1kb():
     kms_keyid = get_main_kms_keyid()
@@ -9800,6 +9886,7 @@ def test_sse_kms_transfer_1kb():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_1MB():
     kms_keyid = get_main_kms_keyid()
@@ -9809,6 +9896,7 @@ def test_sse_kms_transfer_1MB():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_transfer_13b():
     kms_keyid = get_main_kms_keyid()
@@ -9818,6 +9906,7 @@ def test_sse_kms_transfer_13b():
 
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 def test_sse_kms_read_declare():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11027,6 +11116,8 @@ def test_put_obj_enc_conflict_c_s3():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -11054,6 +11145,8 @@ def test_put_obj_enc_conflict_c_kms():
         'x-amz-server-side-encryption-customer-key': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
         'x-amz-server-side-encryption-customer-key-md5': 'DWygnHRtgiJ77HCm+1rvHw=='
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -11078,6 +11171,8 @@ def test_put_obj_enc_conflict_s3_kms():
         'x-amz-server-side-encryption' : 'AES256',
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -11087,6 +11182,7 @@ def test_put_obj_enc_conflict_s3_kms():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 def test_put_obj_enc_conflict_bad_enc_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -11101,6 +11197,8 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     sse_client_headers = {
         'x-amz-server-side-encryption' : 'aes:kms',	# aes != aws
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -11204,12 +11302,15 @@ def test_bucket_policy_put_obj_s3_kms():
         'x-amz-server-side-encryption': 'aws:kms',
         'x-amz-server-side-encryption-aws-kms-key-id': kms_keyid
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
     check_access_denied(client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.fails_on_dbstore
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_noenc():
@@ -11292,6 +11393,8 @@ def test_bucket_policy_put_obj_kms_s3():
     sse_client_headers = {
         'x-amz-server-side-encryption' : 'AES256',
     }
+    if get_config_is_secure() == False:
+        sse_client_headers['X-Forwarded-Proto'] = 'https'
 
     lf = (lambda **kwargs: kwargs['params']['headers'].update(sse_client_headers))
     client.meta.events.register('before-call.s3.PutObject', lf)
@@ -12588,6 +12691,7 @@ def _test_sse_kms_default_upload(file_size):
     assert body == data
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.bucket_encryption
 @pytest.mark.sse_s3
 @pytest.mark.fails_on_dbstore
@@ -12595,6 +12699,7 @@ def test_sse_kms_default_upload_1b():
     _test_sse_kms_default_upload(1)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.bucket_encryption
 @pytest.mark.sse_s3
 @pytest.mark.fails_on_dbstore
@@ -12602,6 +12707,7 @@ def test_sse_kms_default_upload_1kb():
     _test_sse_kms_default_upload(1024)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.bucket_encryption
 @pytest.mark.sse_s3
 @pytest.mark.fails_on_dbstore
@@ -12609,6 +12715,7 @@ def test_sse_kms_default_upload_1mb():
     _test_sse_kms_default_upload(1024*1024)
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.bucket_encryption
 @pytest.mark.sse_s3
 @pytest.mark.fails_on_dbstore
@@ -12736,6 +12843,7 @@ def test_sse_s3_default_post_object_authenticated_request():
     assert body == 'bar'
 
 @pytest.mark.encryption
+@pytest.mark.encryption_sse_kms
 @pytest.mark.bucket_encryption
 @pytest.mark.fails_on_dbstore
 def test_sse_kms_default_post_object_authenticated_request():
