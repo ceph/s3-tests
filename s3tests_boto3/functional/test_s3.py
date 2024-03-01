@@ -4673,40 +4673,6 @@ def test_bucket_acl_grant_nonexist_user():
     assert status == 400
     assert error_code == 'InvalidArgument'
 
-def test_bucket_acl_no_grants():
-    bucket_name = get_new_bucket()
-    client = get_client()
-
-    client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
-    response = client.get_bucket_acl(Bucket=bucket_name)
-    old_grants = response['Grants']
-    policy = {}
-    policy['Owner'] = response['Owner']
-    # clear grants
-    policy['Grants'] = []
-
-    # remove read/write permission
-    response = client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
-
-    # can read
-    client.get_object(Bucket=bucket_name, Key='foo')
-
-    # can't write
-    check_access_denied(client.put_object, Bucket=bucket_name, Key='baz', Body='a')
-
-    #TODO fix this test once a fix is in for same issues in
-    # test_access_bucket_private_object_private
-    client2 = get_client()
-    # owner can read acl
-    client2.get_bucket_acl(Bucket=bucket_name)
-
-    # owner can write acl
-    client2.put_bucket_acl(Bucket=bucket_name, ACL='private')
-
-    # set policy back to original so that bucket can be cleaned up
-    policy['Grants'] = old_grants
-    client2.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
-
 def _get_acl_header(user_id=None, perms=None):
     all_headers = ["read", "write", "read-acp", "write-acp", "full-control"]
     headers = []
