@@ -12154,6 +12154,31 @@ def test_object_lock_delete_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+def test_object_lock_delete_multipart_object_with_retention():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+
+    key = 'file1'
+    body = 'abc'
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=key, ObjectLockMode='GOVERNANCE',
+                                              ObjectLockRetainUntilDate=datetime.datetime(2030,1,1,tzinfo=pytz.UTC))
+    upload_id = response['UploadId']
+
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=1, Body=body)
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+    assert error_code == 'AccessDenied'
+
+    response = client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
+
+@pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_retention_and_marker():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12329,6 +12354,27 @@ def test_object_lock_delete_object_with_legal_hold_on():
     assert error_code == 'AccessDenied'
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
+@pytest.mark.fails_on_dbstore
+def test_object_lock_delete_multipart_object_with_legal_hold_on():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+
+    key = 'file1'
+    body = 'abc'
+    response = client.create_multipart_upload(Bucket=bucket_name, Key=key, ObjectLockLegalHoldStatus='ON')
+    upload_id = response['UploadId']
+
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=1, Body=body)
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+
+    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket_name, Key=key, VersionId=response['VersionId'])
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+    assert error_code == 'AccessDenied'
+    client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
 def test_object_lock_delete_object_with_legal_hold_off():
