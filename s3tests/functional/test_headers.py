@@ -36,11 +36,9 @@ from . import (
     )
 
 
-_orig_conn = {}
 _orig_authorize = None
 _custom_headers = {}
 _remove_headers = []
-boto_type = None
 
 
 # HeaderS3Connection and _our_authorize are necessary to be able to arbitrarily
@@ -84,15 +82,15 @@ def _our_authorize(self, connection, **kwargs):
     _update_headers(self.headers)
 
 
-def setup():
-    global boto_type
+@pytest.fixture
+def hook_headers(setup_teardown):
+    boto_type = None
+    _orig_conn = {}
 
     # we determine what we need to replace by the existence of particular
     # attributes. boto 2.0rc1 as fill_in_auth for S3Connection, while boto 2.0
     # has authorize for HTTPRequest.
     if hasattr(S3Connection, 'fill_in_auth'):
-        global _orig_conn
-
         boto_type = 'S3Connection'
         for conn in s3:
             _orig_conn[conn] = s3[conn]
@@ -116,19 +114,14 @@ def setup():
     else:
         raise RuntimeError
 
-
-def teardown():
-    global boto_type
+    yield
 
     # replace original functionality depending on the boto version
     if boto_type is 'S3Connection':
-        global _orig_conn
         for conn in s3:
             s3[conn] = _orig_conn[conn]
         _orig_conn = {}
     elif boto_type is 'HTTPRequest':
-        global _orig_authorize
-
         boto.connection.HTTPRequest.authorize = _orig_authorize
         _orig_authorize = None
     else:
@@ -143,7 +136,7 @@ def _clear_custom_headers():
     _remove_headers = []
 
 @pytest.fixture(autouse=True)
-def clear_custom_headers(setup_teardown):
+def clear_custom_headers(setup_teardown, hook_headers):
     yield
     _clear_custom_headers() # clear headers before teardown()
 
