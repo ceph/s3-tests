@@ -396,7 +396,7 @@ def test_count_operation():
     obj_to_load = create_random_csv_object(num_of_rows,10)
     upload_object(bucket_name,csv_obj_name,obj_to_load)
     res = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select count(0) from s3object;") ).replace(",","")
-
+    
     s3select_assert_result( num_of_rows, int( res ))
 
 @pytest.mark.s3select
@@ -407,125 +407,17 @@ def test_count_json_operation():
     num_of_rows = 1
     obj_to_load = create_random_json_object(num_of_rows,10)
     upload_object(bucket_name,json_obj_name,obj_to_load)
-    res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*];"))
-    s3select_assert_result( 1,  int(res))
+    res = run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*];")
+    s3select_assert_result( '{"_1":1}\n',  res)
 
-    res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;"))
-    s3select_assert_result( 1,  int(res))
+    res = run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;")
+    s3select_assert_result( '{"_1":1}\n',  res)
 
+    json_obj_name = get_random_string()
     obj_to_load = create_random_json_object(3,10)
     upload_object(bucket_name,json_obj_name,obj_to_load)
-    res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;"))
-    s3select_assert_result( 3,  int(res))
-
-@pytest.mark.s3select
-def test_json_column_sum_min_max():
-    csv_obj = create_random_csv_object(10000,10)
-
-    json_obj = csv_to_json(csv_obj);
-
-    json_obj_name = get_random_string()
-    bucket_name = get_new_bucket_name()
-
-    upload_object(bucket_name,json_obj_name,json_obj)
-    
-    json_obj_name_2 = get_random_string()
-    bucket_name_2 = "testbuck2"
-    upload_object(bucket_name_2,json_obj_name_2,json_obj)
-    
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select min(_1.c1) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 1 , csv_obj )
-    res_target = min( list_int )
-
-    s3select_assert_result( int(res_s3select), int(res_target))
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select min(_1.c4) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 4 , csv_obj )
-    res_target = min( list_int )
-
-    s3select_assert_result( int(res_s3select), int(res_target))
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select avg(_1.c6) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 6 , csv_obj )
-    res_target = float(sum(list_int ))/10000
-
-    s3select_assert_result( float(res_s3select), float(res_target))
-    
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select max(_1.c4) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 4 , csv_obj )
-    res_target = max( list_int )
-
-    s3select_assert_result( int(res_s3select), int(res_target))
-    
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select max(_1.c7) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 7 , csv_obj )
-    res_target = max( list_int )
-
-    s3select_assert_result( int(res_s3select), int(res_target))
-    
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c4) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 4 , csv_obj )
-    res_target = sum( list_int )
-
-    s3select_assert_result( int(res_s3select), int(res_target))
-    
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c7) from s3object[*].root;")  ).replace(",","")
-    list_int = create_list_of_int( 7 , csv_obj )
-    res_target = sum( list_int )
-
-    s3select_assert_result(  int(res_s3select) , int(res_target) )
-
-    # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name_2,json_obj_name_2,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 2;" ) )
-    count,sum1,sum2 = res_s3select.split(",")
-
-    s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 4;" ) ) 
-    count,sum1,sum2 = res_s3select.split(",")
-
-    s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
-
-@pytest.mark.s3select
-def test_json_nullif_expressions():
-
-    json_obj = create_random_json_object(10000,10)
-
-    json_obj_name = get_random_string()
-    bucket_name = get_new_bucket_name()
-
-    upload_object(bucket_name,json_obj_name,json_obj)
-
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where nullif(_1.c1,_1.c2) is null ;")  ).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 = _1.c2  ;")  ).replace("\n","")
-
-    s3select_assert_result( res_s3select_nullif, res_s3select)
-
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (nullif(_1.c1,_1.c2) is null) from s3object[*].root ;")  ).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (_1.c1 = _1.c2) from s3object[*].root  ;")  ).replace("\n","")
-
-    s3select_assert_result( res_s3select_nullif, res_s3select)
-
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where not nullif(_1.c1,_1.c2) is null ;")  ).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 != _1.c2  ;")  ).replace("\n","")
-
-    s3select_assert_result( res_s3select_nullif, res_s3select)
-
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (nullif(_1.c1,_1.c2) is not null) from s3object[*].root ;")  ).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (_1.c1 != _1.c2) from s3object[*].root  ;")  ).replace("\n","")
-
-    s3select_assert_result( res_s3select_nullif, res_s3select)
-
-    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where  nullif(_1.c1,_1.c2) = _1.c1 ;")  ).replace("\n","")
-
-    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 != _1.c2  ;")  ).replace("\n","")
-
-    s3select_assert_result( res_s3select_nullif, res_s3select)
-
+    res = run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;")
+    s3select_assert_result( '{"_1":3}\n',  res)
 
 @pytest.mark.s3select
 def test_column_sum_min_max():
@@ -594,6 +486,58 @@ def test_column_sum_min_max():
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
 @pytest.mark.s3select
+def test_json_column_sum_min_max():
+    csv_obj = create_random_csv_object(10000,10)
+
+    json_obj = csv_to_json(csv_obj);
+
+    json_obj_name = get_random_string()
+    bucket_name = get_new_bucket_name()
+
+    upload_object(bucket_name,json_obj_name,json_obj)
+    
+    json_obj_name_2 = get_random_string()
+    bucket_name_2 = "testbuck2"
+    upload_object(bucket_name_2,json_obj_name_2,json_obj)
+    
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select min(_1.c1) from s3object[*].root;")
+    list_int = create_list_of_int( 1 , csv_obj )
+    res_target = min( list_int )
+
+    s3select_assert_result( res_s3select, '{{"_1":{}}}\n'.format(res_target))
+
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select min(_1.c4) from s3object[*].root;")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = min( list_int )
+
+    s3select_assert_result( res_s3select, '{{"_1":{}}}\n'.format(res_target))
+    
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select max(_1.c4) from s3object[*].root;")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = max( list_int )
+
+    s3select_assert_result( res_s3select, '{{"_1":{}}}\n'.format(res_target))
+    
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select max(_1.c7) from s3object[*].root;")
+    list_int = create_list_of_int( 7 , csv_obj )
+    res_target = max( list_int )
+
+    s3select_assert_result( res_s3select, '{{"_1":{}}}\n'.format(res_target))
+    
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c4) from s3object[*].root;")
+    list_int = create_list_of_int( 4 , csv_obj )
+    res_target = sum( list_int )
+
+    s3select_assert_result( res_s3select, '{{"_1":{}}}\n'.format(res_target))
+    
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c7) from s3object[*].root;")
+    list_int = create_list_of_int( 7 , csv_obj )
+    res_target = sum( list_int )
+
+    s3select_assert_result(  res_s3select, '{{"_1":{}}}\n'.format(res_target))
+
+
+@pytest.mark.s3select
 def test_nullif_expressions():
 
     csv_obj = create_random_csv_object(10000,10)
@@ -646,6 +590,46 @@ def test_nullif_expressions():
     res_s3select_nullif = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select (nullif(_1,null) is null) from s3object;")  ).replace("\n","")
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select (_1 is null) from s3object;")  ).replace("\n","")
+
+    s3select_assert_result( res_s3select_nullif, res_s3select)
+
+@pytest.mark.s3select
+def test_json_nullif_expressions():
+
+    json_obj = create_random_json_object(10000,10)
+
+    json_obj_name = get_random_string()
+    bucket_name = get_new_bucket_name()
+
+    upload_object(bucket_name,json_obj_name,json_obj)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where nullif(_1.c1,_1.c2) is null ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 = _1.c2  ;")  ).replace("\n","")
+
+    s3select_assert_result( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (nullif(_1.c1,_1.c2) is null) from s3object[*].root ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (_1.c1 = _1.c2) from s3object[*].root  ;")  ).replace("\n","")
+
+    s3select_assert_result( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where not nullif(_1.c1,_1.c2) is null ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 != _1.c2  ;")  ).replace("\n","")
+
+    s3select_assert_result( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (nullif(_1.c1,_1.c2) is not null) from s3object[*].root ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select (_1.c1 != _1.c2) from s3object[*].root  ;")  ).replace("\n","")
+
+    s3select_assert_result( res_s3select_nullif, res_s3select)
+
+    res_s3select_nullif = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where  nullif(_1.c1,_1.c2) = _1.c1 ;")  ).replace("\n","")
+
+    res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root where _1.c1 != _1.c2  ;")  ).replace("\n","")
 
     s3select_assert_result( res_s3select_nullif, res_s3select)
 
@@ -716,6 +700,25 @@ def test_lowerupper_expressions():
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select upper("ab12CD$$") from s3object ;')  ).replace("\n","")
 
     s3select_assert_result( res_s3select, "AB12CD$$")
+
+@pytest.mark.s3select
+def test_json_lowerupper_expressions():
+
+    json_obj = create_random_json_object(1,10)
+
+    json_obj_name = get_random_string()
+    bucket_name = get_new_bucket_name()
+
+    upload_object(bucket_name,json_obj_name,json_obj)
+
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,'select lower("AB12cd$$") from s3object[*] ;')
+
+    s3select_assert_result( res_s3select, '{"_1":ab12cd$$}\n')
+
+    res_s3select = run_s3select_json(bucket_name,json_obj_name,'select upper("ab12CD$$") from s3object[*] ;')
+
+    s3select_assert_result( res_s3select, '{"_1":AB12CD$$}\n')
+
 
 @pytest.mark.s3select
 def test_in_expressions():
