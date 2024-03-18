@@ -6855,6 +6855,9 @@ class FakeFile(object):
     def tell(self):
         return self.offset
 
+    def close(self):
+        pass
+
 class FakeWriteFile(FakeFile):
     """
     file that simulates interruptable reads of constant data
@@ -13463,3 +13466,123 @@ def test_get_object_torrent():
         status, error_code = _get_status_and_error_code(e.response)
         assert status == 404
         assert error_code == 'NoSuchKey'
+
+
+@pytest.mark.checksum
+def test_object_checksum_sha256():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "myobj"
+    size = 1024
+    body = FakeWriteFile(size, 'A')
+    sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
+    response = client.put_object(Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=sha256sum)
+    assert sha256sum == response['ChecksumSHA256']
+
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumSHA256' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert sha256sum == response['ChecksumSHA256']
+
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256='bad')
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidRequest'
+
+@pytest.mark.checksum
+def test_multipart_checksum_sha256():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "mymultipart"
+    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
+    assert 'SHA256' == response['ChecksumAlgorithm']
+    upload_id = response['UploadId']
+
+    size = 1024
+    body = FakeWriteFile(size, 'A')
+    part_sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part_sha256sum)
+
+    # should reject the bad request checksum
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='bad', MultipartUpload={'Parts': [
+        {'ETag': response['ETag'].strip('"'), 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 1}]})
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidRequest'
+
+    # should reject the missing part checksum
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='bad', MultipartUpload={'Parts': [
+        {'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]})
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidRequest'
+
+    composite_sha256sum = 'Ok6Cs5b96ux6+MWQkJO7UBT5sKPBeXBLwvj/hK89smg=-1'
+    response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
+        {'ETag': response['ETag'].strip('"'), 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 1}]})
+    assert composite_sha256sum == response['ChecksumSHA256']
+
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumSHA256' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert composite_sha256sum == response['ChecksumSHA256']
+
+# test streaming uploads with sizes below and above the 8MB multipart threshold
+upload_sizes = [1024,
+                7 * 1024 * 1024,
+                9 * 1024 * 1024]
+
+@pytest.mark.checksum
+@pytest.mark.parametrize("size", upload_sizes)
+def test_streaming_upload_checksum_crc32(size):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'Avatar.mpg'
+    body = FakeWriteFile(size, 'A')
+    # uses STREAMING-UNSIGNED-PAYLOAD-TRAILER for https requests
+    client.upload_fileobj(body, bucket, key, ExtraArgs={'ChecksumAlgorithm': 'CRC32'})
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumCRC32' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert 'ChecksumCRC32' in response
+
+@pytest.mark.checksum
+@pytest.mark.parametrize("size", upload_sizes)
+def test_streaming_upload_checksum_crc32c(size):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'Avatar.mpg'
+    body = FakeWriteFile(size, 'A')
+    client.upload_fileobj(body, bucket, key, ExtraArgs={'ChecksumAlgorithm': 'CRC32C'})
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumCRC32C' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert 'ChecksumCRC32C' in response
+
+@pytest.mark.checksum
+@pytest.mark.parametrize("size", upload_sizes)
+def test_streaming_upload_checksum_sha1(size):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'Avatar.mpg'
+    body = FakeWriteFile(size, 'A')
+    client.upload_fileobj(body, bucket, key, ExtraArgs={'ChecksumAlgorithm': 'SHA1'})
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumSHA1' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert 'ChecksumSHA1' in response
+
+@pytest.mark.checksum
+@pytest.mark.parametrize("size", upload_sizes)
+def test_streaming_upload_checksum_sha256(size):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'Avatar.mpg'
+    body = FakeWriteFile(size, 'A')
+    client.upload_fileobj(body, bucket, key, ExtraArgs={'ChecksumAlgorithm': 'SHA256'})
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumSHA256' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert 'ChecksumSHA256' in response
