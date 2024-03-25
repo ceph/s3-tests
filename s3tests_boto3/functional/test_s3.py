@@ -6265,7 +6265,8 @@ def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
     response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=num_parts+1, Body=last_part)
     parts.append({'ETag': response['ETag'].strip('"'), 'PartNumber': num_parts+1})
 
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    res = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    assert res['ETag'] != ''
 
     response = client.get_object(Bucket=bucket_name, Key=key)
     test_string = _get_body(response)
