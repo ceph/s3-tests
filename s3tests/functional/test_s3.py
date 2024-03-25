@@ -582,7 +582,6 @@ def _test_atomic_dual_conditional_write(file_size):
 def test_atomic_dual_conditional_write_1mb():
     _test_atomic_dual_conditional_write(1024*1024)
 
-@pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()

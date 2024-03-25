@@ -100,11 +100,9 @@ def nuke_bucket(client, bucket):
     max_retain_date = None
 
     # list and delete objects in batches
-    for objects in list_versions(client, bucket, batch_size):
-        delete = client.delete_objects(Bucket=bucket,
-                Delete={'Objects': objects, 'Quiet': True},
-                BypassGovernanceRetention=True)
 
+    for object in get_objects_list(bucket, client):
+        delete = client.delete_object(Bucket=bucket, Key=object)
         # check for object locks on 403 AccessDenied errors
         for err in delete.get('Errors', []):
             if err.get('Code') != 'AccessDenied':
@@ -191,8 +189,6 @@ def setup():
         raise RuntimeError('Your config file is missing the "s3 main" section!')
     if not cfg.has_section("s3 alt"):
         raise RuntimeError('Your config file is missing the "s3 alt" section!')
-    if not cfg.has_section("s3 tenant"):
-        raise RuntimeError('Your config file is missing the "s3 tenant" section!')
 
     global prefix
 
@@ -254,12 +250,6 @@ def setup():
     config.alt_user_id = cfg.get('s3 alt',"user_id")
     config.alt_email = cfg.get('s3 alt',"email")
 
-    config.tenant_access_key = cfg.get('s3 tenant',"access_key")
-    config.tenant_secret_key = cfg.get('s3 tenant',"secret_key")
-    config.tenant_display_name = cfg.get('s3 tenant',"display_name")
-    config.tenant_user_id = cfg.get('s3 tenant',"user_id")
-    config.tenant_email = cfg.get('s3 tenant',"email")
-
     # vars from the fixtures section
     try:
         template = cfg.get('fixtures', "bucket prefix")
@@ -268,10 +258,8 @@ def setup():
     prefix = choose_bucket_prefix(template=template)
 
     alt_client = get_alt_client()
-    tenant_client = get_tenant_client()
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
-    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
 
     if cfg.has_section("s3 cloud"):
         get_cloud_config(cfg)
@@ -281,10 +269,8 @@ def setup():
 
 def teardown():
     alt_client = get_alt_client()
-    tenant_client = get_tenant_client()
     nuke_prefixed_buckets(prefix=prefix)
     nuke_prefixed_buckets(prefix=prefix, client=alt_client)
-    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
     try:
         iam_client = get_iam_client()
         list_roles_resp = iam_client.list_roles()
@@ -478,30 +464,6 @@ def get_cloud_client(client_config=None):
                         config=client_config)
     return client
 
-def get_tenant_client(client_config=None):
-    if client_config == None:
-        client_config = Config(signature_version='s3v4')
-
-    client = boto3.client(service_name='s3',
-                        aws_access_key_id=config.tenant_access_key,
-                        aws_secret_access_key=config.tenant_secret_key,
-                        endpoint_url=config.default_endpoint,
-                        use_ssl=config.default_is_secure,
-                        verify=config.default_ssl_verify,
-                        config=client_config)
-    return client
-
-def get_tenant_iam_client():
-
-    client = boto3.client(service_name='iam',
-                          region_name='us-east-1',
-                          aws_access_key_id=config.tenant_access_key,
-                          aws_secret_access_key=config.tenant_secret_key,
-                          endpoint_url=config.default_endpoint,
-                          verify=config.default_ssl_verify,
-                          use_ssl=config.default_is_secure)
-    return client
-
 def get_alt_iam_client():
 
     client = boto3.client(service_name='iam',
@@ -665,21 +627,6 @@ def get_alt_user_id():
 
 def get_alt_email():
     return config.alt_email
-
-def get_tenant_aws_access_key():
-    return config.tenant_access_key
-
-def get_tenant_aws_secret_key():
-    return config.tenant_secret_key
-
-def get_tenant_display_name():
-    return config.tenant_display_name
-
-def get_tenant_user_id():
-    return config.tenant_user_id
-
-def get_tenant_email():
-    return config.tenant_email
 
 def get_thumbprint():
     return config.webidentity_thumbprint
