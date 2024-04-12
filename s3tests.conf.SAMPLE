@@ -19,6 +19,14 @@ ssl_verify = False
 ## the prefix to 30 characters long, and avoid collisions
 bucket prefix = yournamehere-{random}-
 
+# all the iam account resources (users, roles, etc) created
+# will start with this name prefix
+iam name prefix = s3-tests-
+
+# all the iam account resources (users, roles, etc) created
+# will start with this path prefix
+iam path prefix = /s3-tests/
+
 [s3 main]
 # main display_name set in vstart.sh
 display_name = M. Tester
@@ -126,6 +134,20 @@ secret_key = abcdefghijklmnopqrstuvwxyzabcdefghijklmn
 
 #display_name from vstart.sh
 display_name = youruseridhere
+
+# iam account root user for iam_account tests
+[iam root]
+access_key = AAAAAAAAAAAAAAAAAAaa
+secret_key = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+user_id = RGW11111111111111111
+email = account1@ceph.com
+
+# iam account root user in a different account than [iam root]
+[iam alt root]
+access_key = BBBBBBBBBBBBBBBBBBbb
+secret_key = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+user_id = RGW22222222222222222
+email = account2@ceph.com
 
 #following section needs to be added when you want to run Assume Role With Webidentity test
 [webidentity]
