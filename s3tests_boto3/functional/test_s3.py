@@ -5264,15 +5264,19 @@ def test_buckets_create_then_list():
 def test_buckets_list_ctime():
     # check that creation times are within a day
     before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
-
+    buckets_list = []
     client = get_client()
+
     for i in range(5):
-        client.create_bucket(Bucket=get_new_bucket_name())
+        bucket_name = get_new_bucket_name()
+        client.create_bucket(Bucket=bucket_name)
+        buckets_list.append(bucket_name)
 
     response = client.list_buckets()
     for bucket in response['Buckets']:
-        ctime = bucket['CreationDate']
-        assert before <= ctime, '%r > %r' % (before, ctime)
+        if bucket['Name'] in buckets_list:
+            ctime = bucket['CreationDate']
+            assert before <= ctime, '%r > %r' % (before, ctime)
 
 @pytest.mark.fails_on_aws
 def test_list_buckets_anonymous():
