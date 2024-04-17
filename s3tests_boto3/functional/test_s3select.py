@@ -4,6 +4,7 @@ import string
 import re
 import json
 from botocore.exceptions import ClientError
+from botocore.exceptions import EventStreamError
 
 import uuid
 
@@ -276,6 +277,7 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
     s3 = get_client()
     result = ""
     result_status = {}
+
     try:
         r = s3.select_object_content(
         Bucket=bucket,
@@ -291,26 +293,34 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
         return result
 
     if progress == False:
-        for event in r['Payload']:
-            if 'Records' in event:
-                records = event['Records']['Payload'].decode('utf-8')
-                result += records
-    else:
-        result = []
-        max_progress_scanned = 0
-        for event in r['Payload']:
-            if 'Records' in event:
-                records = event['Records']
-                result.append(records.copy())
-            if 'Progress' in event:
-                if(event['Progress']['Details']['BytesScanned'] > max_progress_scanned):
-                    max_progress_scanned = event['Progress']['Details']['BytesScanned']
-                    result_status['Progress'] = event['Progress']
 
-            if 'Stats' in event:
-                result_status['Stats'] = event['Stats']
-            if 'End' in event:
-                result_status['End'] = event['End']
+        try:
+            for event in r['Payload']:
+                if 'Records' in event:
+                    records = event['Records']['Payload'].decode('utf-8')
+                    result += records
+
+        except EventStreamError as c:
+            result = str(c)
+            return result
+        
+    else:
+            result = []
+            max_progress_scanned = 0
+            for event in r['Payload']:
+                if 'Records' in event:
+                    records = event['Records']
+                    result.append(records.copy())
+                if 'Progress' in event:
+                    if(event['Progress']['Details']['BytesScanned'] > max_progress_scanned):
+                        max_progress_scanned = event['Progress']['Details']['BytesScanned']
+                        result_status['Progress'] = event['Progress']
+
+                if 'Stats' in event:
+                    result_status['Stats'] = event['Stats']
+                if 'End' in event:
+                    result_status['End'] = event['End']
+
 
     if progress == False:
         return result
@@ -1309,7 +1319,6 @@ def test_schema_definition():
 
     # using the scheme on first line, query is using the attach schema
     res_use = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c3 from s3object;",csv_header_info="USE") ).replace("\n","")
-    
     # result of both queries should be the same
     s3select_assert_result( res_ignore, res_use)
 
