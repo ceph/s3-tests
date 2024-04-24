@@ -11,6 +11,7 @@ import socket
 from urllib.parse import urlparse
 
 from .. import common
+from .utils import assert_raises
 
 from . import (
     configfile,
@@ -1082,3 +1083,37 @@ def test_routing_generator():
         if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
             t['xml']['RoutingRules'] = common.trim_xml(t['xml']['RoutingRules'])
         yield routing_check, t
+
+
+@attr(resource='bucket')
+@attr(method='put')
+@attr(operation='put website')
+@attr('s3website')
+@nose.with_setup(setup=check_can_test_website, teardown=common.teardown)
+@timed(10)
+def test_website_routing_rule_num_max():
+    bucket = get_new_bucket()
+    xml_fragment = '''<IndexDocument>
+<Suffix>index.html</Suffix>
+</IndexDocument>
+<ErrorDocument>
+<Key>error.html</Key>
+</ErrorDocument>
+<RoutingRules>'''
+    for i in xrange(0, 51):
+      xml_fragment += '''<RoutingRule>
+  <Condition>
+	<KeyPrefixEquals>v1/%s/</KeyPrefixEquals>
+  </Condition>
+  <Redirect>
+	<Protocol>https</Protocol>
+	<HttpRedirectCode>302</HttpRedirectCode>
+	<ReplaceKeyPrefixWith>v2/%s/</ReplaceKeyPrefixWith>
+  </Redirect>
+</RoutingRule>''' % (i, i)
+
+    xml_fragment += "</RoutingRules>"
+    config_xmlnew = make_website_config(xml_fragment)
+    e = assert_raises(boto.exception.S3ResponseError, bucket.set_website_configuration_xml, common.trim_xml(config_xmlnew))
+    eq(e.status, 400)
+    eq(e.error_code, 'InvalidRequest')
