@@ -13522,3 +13522,41 @@ def test_multipart_checksum_sha256():
     assert 'ChecksumSHA256' not in response
     response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
     assert composite_sha256sum == response['ChecksumSHA256']
+
+@pytest.mark.checksum
+def test_multipart_checksum_3parts():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "mymultipart3"
+    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
+    assert 'SHA256' == response['ChecksumAlgorithm']
+    upload_id = response['UploadId']
+
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+    body = FakeWriteFile(size, 'A')
+    part1_sha256sum = '275VF5loJr1YYawit0XSHREhkFXYkkPKGuoK0x9VKxI='
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part1_sha256sum)
+    etag1 = response['ETag'].strip('"')
+
+    body = FakeWriteFile(size, 'B')
+    part2_sha256sum = 'mrHwOfjTL5Zwfj74F05HOQGLdUb7E5szdCbxgUSq6NM='
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=2, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part2_sha256sum)
+    etag2 = response['ETag'].strip('"')
+
+    body = FakeWriteFile(size, 'C')
+    part3_sha256sum = 'Vw7oB/nKQ5xWb3hNgbyfkvDiivl+U+/Dft48nfJfDow='
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=3, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part3_sha256sum)
+    etag3 = response['ETag'].strip('"')
+
+    composite_sha256sum = 'uWBwpe1dxI4Vw8Gf0X9ynOdw/SS6VBzfWm9giiv1sf4=-3'
+    response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
+        {'ETag': etag1, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 1},
+        {'ETag': etag2, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 2},
+        {'ETag': etag3, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 3}]})
+    assert composite_sha256sum == response['ChecksumSHA256']
+
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumSHA256' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert composite_sha256sum == response['ChecksumSHA256']
