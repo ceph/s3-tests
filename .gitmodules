@@ -1,0 +1,3 @@
+[submodule "neofs-testcases"]
+	path = neofs-testcases
+	url = https://github.com/nspcc-dev/neofs-testcases.git
