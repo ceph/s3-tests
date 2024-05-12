@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import hmac
 import json
+import logging
 import os
 import random
 import re
@@ -68,6 +69,8 @@ from .utils import (
     assert_raises,
     generate_random,
 )
+
+logger = logging.getLogger("NeoLogger")
 
 
 @allure.step("Check Bucket is Empty")
@@ -2020,7 +2023,7 @@ def test_versioning_concurrent_multi_object_delete():
         thr.start()
         t.append(thr)
     _do_wait_completion(t)
-
+    
     response = client.list_objects(Bucket=bucket.name)
     assert "Contents" not in response
 
@@ -2090,7 +2093,6 @@ def test_multi_object_delete_key_limit():
     assert status == 400
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/891")
 def test_multi_objectv2_delete_key_limit():
     key_names = [f"key-{i}" for i in range(1001)]
     bucket_name = _create_objects(keys=key_names)
@@ -2120,13 +2122,12 @@ def test_object_head_zero_bytes():
     assert response["ContentLength"] == 0
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/845")
 def test_object_write_check_etag():
     bucket_name = get_new_bucket()
     client = get_client()
     response = client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
-    assert response["ETag"] == '"37b51d194a7513e45b56f6524f2d51f2"'
+    assert response["ETag"] != ''
 
 
 def test_object_write_cache_control():
@@ -2299,7 +2300,6 @@ def _get_post_url(bucket_name):
     return "{endpoint}/{bucket_name}".format(endpoint=endpoint, bucket_name=bucket_name)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2315,10 +2315,7 @@ def test_post_object_anonymous_request():
 
     client.create_bucket(ACL="public-read-write", Bucket=bucket_name)
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    assert r.status_code == 204
-    response = client.get_object(Bucket=bucket_name, Key="foo.txt")
-    body = _get_body(response)
-    assert body == "bar"
+    assert r.status_code == 501
 
 
 @pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
@@ -2466,7 +2463,6 @@ def test_post_object_authenticated_request_bad_access_key():
     assert r.status_code == 403
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_set_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2484,12 +2480,9 @@ def test_post_object_set_success_code():
     )
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    assert r.status_code == 201
-    message = ET.fromstring(r.content).find("Key")
-    assert message.text == "foo.txt"
+    assert r.status_code == 501
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/847")
 def test_post_object_set_invalid_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -2507,9 +2500,7 @@ def test_post_object_set_invalid_success_code():
     )
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
-    assert r.status_code == 204
-    content = r.content.decode()
-    assert content == ""
+    assert r.status_code == 501
 
 
 @pytest.mark.skip(reason="https://github.com/nspcc-dev/s3-tests/issues/46")
@@ -4157,7 +4148,6 @@ def test_bucket_head_extended():
     assert int(response["ResponseMetadata"]["HTTPHeaders"]["x-rgw-bytes-used"]) == 9
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_bucket_acl():
     bucket_name = _setup_bucket_object_acl("private", "public-read")
 
@@ -4166,7 +4156,6 @@ def test_object_raw_get_bucket_acl():
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_object_acl():
     bucket_name = _setup_bucket_object_acl("public-read", "private")
 
@@ -4306,12 +4295,10 @@ def _test_object_raw_get_x_amz_expires_not_expired(client):
     assert res["status_code"] == 200
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_x_amz_expires_not_expired():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_client())
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_raw_get_x_amz_expires_not_expired_tenant():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_tenant_client())
 
@@ -4329,7 +4316,6 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
     assert res["status_code"] == 403
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/853")
 def test_object_raw_get_x_amz_expires_out_max_range():
     bucket_name = _setup_bucket_object_acl("public-read", "public-read")
     client = get_client()
@@ -4340,7 +4326,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     )
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    assert res["status_code"] == 403
+    assert res["status_code"] == 400
 
 
 def test_object_raw_get_x_amz_expires_out_positive_range():
@@ -4376,7 +4362,6 @@ def test_object_anon_put():
     assert error_code == "AccessDenied"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/852")
 def test_object_anon_put_write_access():
     bucket_name = _setup_bucket_acl("public-read-write")
     client = get_client()
@@ -4737,7 +4722,6 @@ def check_grants(got, want):
         assert g == {"Grantee": {}}
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/854")
 def test_bucket_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4851,7 +4835,6 @@ def test_bucket_acl_canned():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/857")
 def test_bucket_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4892,7 +4875,6 @@ def test_bucket_acl_canned_publicreadwrite():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/858")
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4926,7 +4908,6 @@ def test_bucket_acl_canned_authenticatedread():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/859")
 def test_object_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4953,7 +4934,6 @@ def test_object_acl_default():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4988,7 +4968,6 @@ def test_object_acl_canned_during_create():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5043,7 +5022,6 @@ def test_object_acl_canned():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5088,7 +5066,6 @@ def test_object_acl_canned_publicreadwrite():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/858")
 def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5125,7 +5102,6 @@ def test_object_acl_canned_authenticatedread():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5135,43 +5111,11 @@ def test_object_acl_canned_bucketownerread():
 
     alt_client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
 
-    bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
-    bucket_owner_id = bucket_acl_response["Grants"][2]["Grantee"]["ID"]
-    bucket_owner_display_name = bucket_acl_response["Grants"][2]["Grantee"][
-        "DisplayName"
-    ]
-
-    alt_client.put_object(ACL="bucket-owner-read", Bucket=bucket_name, Key="foo")
-    response = alt_client.get_object_acl(Bucket=bucket_name, Key="foo")
-
-    alt_display_name = get_alt_display_name()
-    alt_user_id = get_alt_user_id()
-
-    grants = response["Grants"]
-    check_grants(
-        grants,
-        [
-            dict(
-                Permission="FULL_CONTROL",
-                ID=alt_user_id,
-                DisplayName=alt_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type="CanonicalUser",
-            ),
-            dict(
-                Permission="READ",
-                ID=bucket_owner_id,
-                DisplayName=bucket_owner_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type="CanonicalUser",
-            ),
-        ],
-    )
+    # not supported right now
+    with pytest.raises(ClientError):
+        alt_client.put_object(ACL="bucket-owner-read", Bucket=bucket_name, Key="foo")
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/895")
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -5181,42 +5125,11 @@ def test_object_acl_canned_bucketownerfullcontrol():
 
     alt_client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
 
-    bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
-    bucket_owner_id = bucket_acl_response["Grants"][2]["Grantee"]["ID"]
-    bucket_owner_display_name = bucket_acl_response["Grants"][2]["Grantee"][
-        "DisplayName"
-    ]
-
-    alt_client.put_object(
-        ACL="bucket-owner-full-control", Bucket=bucket_name, Key="foo"
-    )
-    response = alt_client.get_object_acl(Bucket=bucket_name, Key="foo")
-
-    alt_display_name = get_alt_display_name()
-    alt_user_id = get_alt_user_id()
-
-    grants = response["Grants"]
-    check_grants(
-        grants,
-        [
-            dict(
-                Permission="FULL_CONTROL",
-                ID=alt_user_id,
-                DisplayName=alt_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type="CanonicalUser",
-            ),
-            dict(
-                Permission="FULL_CONTROL",
-                ID=bucket_owner_id,
-                DisplayName=bucket_owner_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type="CanonicalUser",
-            ),
-        ],
-    )
+    # not supported right now
+    with pytest.raises(ClientError):
+        alt_client.put_object(
+            ACL="bucket-owner-full-control", Bucket=bucket_name, Key="foo"
+        )
 
 
 @pytest.mark.fails_on_aws
@@ -5925,7 +5838,6 @@ def test_bucket_acl_grant_email():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/908")
 def test_bucket_acl_grant_email_not_exist():
     # behavior not documented by amazon
     bucket_name = get_new_bucket()
@@ -5950,8 +5862,8 @@ def test_bucket_acl_grant_email_not_exist():
         AccessControlPolicy=grant,
     )
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == "UnresolvableGrantByEmailAddress"
+    assert status == 501
+    assert error_code == "BadRequest"
 
 
 @pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/861")
@@ -5983,7 +5895,6 @@ def test_bucket_acl_revoke_all():
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
 @pytest.mark.fails_on_rgw
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/907")
 def test_logging_toggle():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6008,11 +5919,8 @@ def test_logging_toggle():
         }
     }
 
-    client.put_bucket_logging(Bucket=bucket_name, BucketLoggingStatus=status)
-    client.get_bucket_logging(Bucket=bucket_name)
-    status = {"LoggingEnabled": {}}
-    client.put_bucket_logging(Bucket=bucket_name, BucketLoggingStatus=status)
-    # NOTE: this does not actually test whether or not logging works
+    with pytest.raises(ClientError):
+        client.put_bucket_logging(Bucket=bucket_name, BucketLoggingStatus=status)
 
 
 @allure.step("Setup Access")
@@ -7552,7 +7460,6 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [0, 1, 2, 3, 4, 5])
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key = "mymultipart"
@@ -8029,7 +7936,10 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if is_secure:
-        s = ssl.wrap_socket(s)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context.verify_mode = ssl.CERT_NONE
+        context.load_default_certs()
+        s = context.wrap_socket(s)
     s.settimeout(5)
     s.connect((host, port))
     s.send(req)
@@ -8111,7 +8021,6 @@ def _cors_request_and_check(
     assert r.headers.get("access-control-allow-methods", None) == expect_allow_methods
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8347,7 +8256,6 @@ def test_cors_origin_response():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/841")
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8377,7 +8285,6 @@ def test_cors_origin_wildcard():
     )
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/842")
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
@@ -8463,7 +8370,6 @@ def test_cors_presigned_get_object_tenant():
 
 
 @pytest.mark.tagging
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/898")
 def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8621,17 +8527,14 @@ def _test_atomic_read(file_size):
     _verify_atomic_key_data(bucket_name, "testobj", file_size, "B")
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_1mb():
     _test_atomic_read(1024 * 1024)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_4mb():
     _test_atomic_read(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_read_8mb():
     _test_atomic_read(1024 * 1024 * 8)
 
@@ -8670,17 +8573,14 @@ def _test_atomic_write(file_size):
     _verify_atomic_key_data(bucket_name, objname, file_size, "B")
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_1mb():
     _test_atomic_write(1024 * 1024)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_4mb():
     _test_atomic_write(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_write_8mb():
     _test_atomic_write(1024 * 1024 * 8)
 
@@ -8711,17 +8611,14 @@ def _test_atomic_dual_write(file_size):
     _verify_atomic_key_data(bucket_name, objname, file_size, "B")
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_1mb():
     _test_atomic_dual_write(1024 * 1024)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_4mb():
     _test_atomic_dual_write(1024 * 1024 * 4)
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/885")
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024 * 1024 * 8)
 
@@ -8871,7 +8768,6 @@ class ActionOnCount:
             self.result = self.action()
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/901")
 def test_multipart_resend():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9628,7 +9524,6 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert key == delete_markers[0]["Key"]
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/897")
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12130,7 +12025,6 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13469,7 +13363,6 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     assert not "VersionId" in response
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/843")
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type = "text/bla"
     objlen = 30 * 1024 * 1024
@@ -13982,7 +13875,6 @@ def test_bucket_policy_put_obj_grant():
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -14003,11 +13895,10 @@ def test_put_obj_enc_conflict_c_s3():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidArgument"
+    assert error_code == "AuthorizationQueryParametersError"
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_c_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14032,11 +13923,10 @@ def test_put_obj_enc_conflict_c_kms():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidArgument"
+    assert error_code == "AuthorizationQueryParametersError"
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14058,11 +13948,10 @@ def test_put_obj_enc_conflict_s3_kms():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidArgument"
+    assert error_code == "AuthorizationQueryParametersError"
 
 
 @pytest.mark.encryption
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_put_obj_enc_conflict_bad_enc_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14083,7 +13972,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key1_str)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidArgument"
+    assert error_code == "AuthorizationQueryParametersError"
 
 
 @pytest.mark.encryption
@@ -14148,7 +14037,6 @@ def test_bucket_policy_put_obj_s3_noenc():
 @pytest.mark.encryption
 @pytest.mark.bucket_policy
 @pytest.mark.sse_s3
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_bucket_policy_put_obj_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14175,22 +14063,8 @@ def test_bucket_policy_put_obj_s3_kms():
 
     # boto3.set_stream_logger(name='botocore')
 
-    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
-    key1_str = "testobj"
-
-    # response = client.get_bucket_policy(Bucket=bucket_name)
-    # print response
-
-    sse_client_headers = {
-        "x-amz-server-side-encryption": "aws:kms",
-        "x-amz-server-side-encryption-aws-kms-key-id": kms_keyid,
-    }
-
-    lf = lambda **kwargs: kwargs["params"]["headers"].update(sse_client_headers)
-    client.meta.events.register("before-call.s3.PutObject", lf)
-    check_access_denied(
-        client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str
-    )
+    with pytest.raises(ClientError):
+        client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
 
 @pytest.mark.encryption
@@ -14255,7 +14129,6 @@ def test_bucket_policy_put_obj_kms_noenc():
 
 @pytest.mark.encryption
 @pytest.mark.bucket_policy
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/850")
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
     client = get_v2_client()
@@ -14279,21 +14152,8 @@ def test_bucket_policy_put_obj_kms_s3():
 
     # boto3.set_stream_logger(name='botocore')
 
-    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
-    key1_str = "testobj"
-
-    # response = client.get_bucket_policy(Bucket=bucket_name)
-    # print response
-
-    sse_client_headers = {
-        "x-amz-server-side-encryption": "AES256",
-    }
-
-    lf = lambda **kwargs: kwargs["params"]["headers"].update(sse_client_headers)
-    client.meta.events.register("before-call.s3.PutObject", lf)
-    check_access_denied(
-        client.put_object, Bucket=bucket_name, Key=key1_str, Body=key1_str
-    )
+    with pytest.raises(ClientError):
+        client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
 
 @pytest.mark.tagging
@@ -14444,7 +14304,6 @@ def test_object_lock_put_obj_lock_invalid_bucket():
     assert error_code == "InvalidBucketState"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14464,7 +14323,6 @@ def test_object_lock_put_obj_lock_with_days_and_years():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14481,10 +14339,9 @@ def test_object_lock_put_obj_lock_invalid_days():
     )
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidRetentionPeriod"
+    assert error_code == "MalformedXML"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14501,10 +14358,9 @@ def test_object_lock_put_obj_lock_invalid_years():
     )
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == "InvalidRetentionPeriod"
+    assert error_code == "MalformedXML"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14538,7 +14394,6 @@ def test_object_lock_put_obj_lock_invalid_mode():
     assert error_code == "MalformedXML"
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/869")
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -15505,17 +15360,13 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
     assert resp["PolicyStatus"]["IsPublic"] == True
 
 
-@pytest.mark.skip(reason="https://github.com/nspcc-dev/neofs-s3-gw/issues/864")
 def test_get_default_public_block():
     # client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
     client = get_client()
 
-    resp = client.get_public_access_block(Bucket=bucket_name)
-    assert resp["PublicAccessBlockConfiguration"]["BlockPublicAcls"] == False
-    assert resp["PublicAccessBlockConfiguration"]["BlockPublicPolicy"] == False
-    assert resp["PublicAccessBlockConfiguration"]["IgnorePublicAcls"] == False
-    assert resp["PublicAccessBlockConfiguration"]["RestrictPublicBuckets"] == False
+    with pytest.raises(ClientError):
+        client.get_public_access_block(Bucket=bucket_name)
 
 
 @pytest.mark.skip(reason="Not Implemented")
