@@ -1,18 +1,32 @@
 PyYAML
 boto >=2.6.0
-boto3 >=1.0.0
-botocore
 munch >=2.0.0
 # 0.14 switches to libev, that means bootstrap needs to change too
 gevent >=1.0
 isodate >=0.4.4
-requests >=2.23.0
 pytz >=2011k
 httplib2
 lxml
 tox
-pytest ==7.3.1
-allure-pytest ==2.9.45
 pytest-nose-attrib ==0.1.1
 pytest-timeout ==2.1.0
-allure-combine ==1.0.8
+allure-combine==1.0.11
+allure-pytest==2.13.4
+base58==2.1.1
+black==24.3.0
+botocore==1.34.72
+boto3==1.34.72
+docker==7.0.0
+isort==5.13.2
+jinja2==3.1.4
+neo-mamba==2.6.0
+paramiko==3.4.0
+pexpect==4.9.0
+pytest==7.3.1
+PyYAML==6.0.1
+python-dotenv==1.0.1
+python-dateutil==2.9.0
+pytest-lazy-fixture==0.6.3
+requests==2.31.0
+tenacity==8.2.3
+urllib3==2.2.1
