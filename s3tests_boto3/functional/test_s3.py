@@ -5266,13 +5266,17 @@ def test_buckets_list_ctime():
     before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
 
     client = get_client()
+    buckets = []
     for i in range(5):
-        client.create_bucket(Bucket=get_new_bucket_name())
+        name = get_new_bucket_name()
+        client.create_bucket(Bucket=name)
+        buckets.append(name)
 
     response = client.list_buckets()
     for bucket in response['Buckets']:
-        ctime = bucket['CreationDate']
-        assert before <= ctime, '%r > %r' % (before, ctime)
+        if bucket['Name'] in buckets:
+            ctime = bucket['CreationDate']
+            assert before <= ctime, '%r > %r' % (before, ctime)
 
 @pytest.mark.fails_on_aws
 def test_list_buckets_anonymous():
