@@ -4875,6 +4875,7 @@ def test_bucket_acl_canned_publicreadwrite():
     )
 
 
+@pytest.mark.skip(reason="Not Implemented")
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -5066,6 +5067,7 @@ def test_object_acl_canned_publicreadwrite():
     )
 
 
+@pytest.mark.skip(reason="Not Implemented")
 def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8021,6 +8023,7 @@ def _cors_request_and_check(
     assert r.headers.get("access-control-allow-methods", None) == expect_allow_methods
 
 
+@pytest.mark.skip(reason="Reimplemented in test_s3_neofs")
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl="public-read")
     client = get_client()
