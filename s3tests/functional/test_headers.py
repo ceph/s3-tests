@@ -1,3 +1,4 @@
+import datetime
 from io import StringIO
 import boto.connection
 import boto.exception
@@ -117,11 +118,11 @@ def hook_headers(setup_teardown):
     yield
 
     # replace original functionality depending on the boto version
-    if boto_type is 'S3Connection':
+    if boto_type == 'S3Connection':
         for conn in s3:
             s3[conn] = _orig_conn[conn]
         _orig_conn = {}
-    elif boto_type is 'HTTPRequest':
+    elif boto_type == 'HTTPRequest':
         boto.connection.HTTPRequest.authorize = _orig_authorize
         _orig_authorize = None
     else:
@@ -207,15 +208,23 @@ def test_object_create_bad_authorization_empty():
 
 @pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
-def test_object_create_date_and_amz_date():
-    date = formatdate(usegmt=True)
+def test_object_create_date_and_amz_date(freezer):
+    now = datetime.datetime.utcnow()
+    date = now.strftime('%Y%m%dT%H%M%SZ')
+    # boto library set X-Amz-Date header directly in auth for in `HmacAuthV4Handler.add_auth`, so we need to mock time
+    # to get same result header
+    freezer.move_to(date)
     key = _setup_bad_object({'Date': date, 'X-Amz-Date': date})
     key.set_contents_from_string('bar')
 
 @pytest.mark.auth_common
 @pytest.mark.fails_on_dbstore
-def test_object_create_amz_date_and_no_date():
-    date = formatdate(usegmt=True)
+def test_object_create_amz_date_and_no_date(freezer):
+    now = datetime.datetime.utcnow()
+    date = now.strftime('%Y%m%dT%H%M%SZ')
+    # boto library set X-Amz-Date header directly in auth for in `HmacAuthV4Handler.add_auth`, so we need to mock time
+    # to get same result header
+    freezer.move_to(date)
     key = _setup_bad_object({'X-Amz-Date': date}, ('Date',))
     key.set_contents_from_string('bar')
 
@@ -411,9 +420,10 @@ def test_object_create_bad_authorization_incorrect_aws4():
     key = _setup_bad_object({'Authorization': 'AWS4-HMAC-SHA256 Credential=AKIAIGR7ZNNBHC5BKSUB/20150930/us-east-1/s3/aws4_request,SignedHeaders=host;user-agent,Signature=FWeDfwojDSdS2Ztmpfeubhd9isU='})
 
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
-    assert e.status == 403
-    assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch', 'InvalidAccessKeyId')
+    assert e.status == 400
+    assert e.reason == 'Bad Request'
+    assert e.error_code == 'AuthorizationHeaderMalformed'
+    assert e.message == 'The authorization header is malformed; Invalid credential date. Date is not the same as X-Amz-Date.'
 
 
 @pytest.mark.auth_aws4
@@ -424,7 +434,7 @@ def test_object_create_bad_authorization_invalid_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 400
     assert e.reason.lower() == 'bad request' # some proxies vary the case
-    assert e.error_code in ('AuthorizationHeaderMalformed', 'InvalidArgument')
+    assert e.error_code == 'AuthorizationHeaderMalformed'
 
 
 @pytest.mark.auth_aws4
@@ -464,7 +474,7 @@ def test_object_create_bad_amz_date_invalid_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 
 @pytest.mark.auth_aws4
@@ -482,7 +492,7 @@ def test_object_create_bad_amz_date_empty_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 
 @pytest.mark.auth_aws4
@@ -500,7 +510,7 @@ def test_object_create_bad_amz_date_none_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 
 @pytest.mark.auth_aws4
@@ -518,7 +528,7 @@ def test_object_create_bad_amz_date_before_today_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+    assert e.error_code == 'RequestTimeTooSkewed'
 
 
 @pytest.mark.auth_aws4
@@ -536,7 +546,7 @@ def test_object_create_bad_amz_date_after_today_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+    assert e.error_code == 'RequestTimeTooSkewed'
 
 
 @pytest.mark.auth_aws4
@@ -554,7 +564,8 @@ def test_object_create_bad_amz_date_before_epoch_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
+    assert e.message == 'AWS authentication requires a valid Date or x-amz-date header'
 
 
 @pytest.mark.auth_aws4
@@ -572,7 +583,7 @@ def test_object_create_bad_amz_date_after_end_aws4():
     e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_string, 'bar')
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+    assert e.error_code == 'RequestTimeTooSkewed'
 
 
 @pytest.mark.auth_aws4
@@ -624,8 +635,8 @@ def test_object_create_missing_signed_header_aws4():
     res =_make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path,
                            body=body, request_headers=request_headers, secure=s3.main.is_secure)
 
-    assert res.status == 403
-    assert res.reason == 'Forbidden'
+    assert res.status == 400
+    assert res.reason == 'Bad Request'
 
 
 @pytest.mark.auth_aws4
@@ -675,7 +686,7 @@ def test_bucket_create_bad_amz_date_invalid_aws4():
 
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 
 @pytest.mark.auth_aws4
@@ -693,7 +704,7 @@ def test_bucket_create_bad_amz_date_empty_aws4():
 
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 @pytest.mark.auth_aws4
 def test_bucket_create_bad_date_none_aws4():
@@ -710,7 +721,7 @@ def test_bucket_create_bad_amz_date_none_aws4():
 
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
 
 
 @pytest.mark.auth_aws4
@@ -728,7 +739,7 @@ def test_bucket_create_bad_amz_date_before_today_aws4():
 
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+    assert e.error_code == 'RequestTimeTooSkewed'
 
 
 @pytest.mark.auth_aws4
@@ -746,7 +757,7 @@ def test_bucket_create_bad_amz_date_after_today_aws4():
 
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('RequestTimeTooSkewed', 'SignatureDoesNotMatch')
+    assert e.error_code == 'RequestTimeTooSkewed'
 
 
 @pytest.mark.auth_aws4
@@ -761,7 +772,8 @@ def test_bucket_create_bad_amz_date_before_epoch_aws4():
     check_aws4_support()
     _add_custom_headers({'X-Amz-Date': '19500707T215304Z'})
     e = assert_raises(boto.exception.S3ResponseError, get_new_bucket)
-
     assert e.status == 403
     assert e.reason == 'Forbidden'
-    assert e.error_code in ('AccessDenied', 'SignatureDoesNotMatch')
+    assert e.error_code == 'AccessDenied'
+    assert e.message == 'AWS authentication requires a valid Date or x-amz-date header'
+

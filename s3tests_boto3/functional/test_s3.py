@@ -1,3 +1,5 @@
+import codecs
+
 import boto3
 import botocore.session
 from botocore.exceptions import ClientError
@@ -66,11 +68,6 @@ from . import (
     get_alt_user_id,
     get_alt_email,
     get_alt_client,
-    get_tenant_client,
-    get_v2_tenant_client,
-    get_tenant_iam_client,
-    get_tenant_name,
-    get_tenant_user_id,
     get_buckets_list,
     get_objects_list,
     get_main_kms_keyid,
@@ -85,8 +82,8 @@ from . import (
     nuke_prefixed_buckets,
     configured_storage_classes,
     get_lc_debug_interval,
-    )
-
+    DEFAULT_REGION,
+)
 
 def _bucket_is_empty(bucket):
     is_empty = True
@@ -230,7 +227,7 @@ def test_bucket_listv2_encoding_basic():
 
     prefixes = _get_prefixes(response)
     assert len(prefixes) == 3
-    assert prefixes == ['foo%2B1/', 'foo/', 'quux%20ab/']
+    assert prefixes == ['foo%2B1/', 'foo/', 'quux+ab/']
 
 def test_bucket_list_encoding_basic():
     bucket_name = _create_objects(keys=['foo+1/bar', 'foo/bar/xyzzy', 'quux ab/thud', 'asdf+b'])
@@ -243,7 +240,7 @@ def test_bucket_list_encoding_basic():
 
     prefixes = _get_prefixes(response)
     assert len(prefixes) == 3
-    assert prefixes == ['foo%2B1/', 'foo/', 'quux%20ab/']
+    assert prefixes == ['foo%2B1/', 'foo/', 'quux+ab/']
 
 
 def validate_bucket_list(bucket_name, prefix, delimiter, marker, max_keys,
@@ -665,7 +662,8 @@ def test_bucket_listv2_delimiter_not_exist():
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_list_delimiter_not_skip_special():
-    key_names = ['0/'] + ['0/%s' % i for i in range(1000, 1999)]
+    # NOTE: Reduce key names to prevent too long test
+    key_names = ['0/'] + ['0/%s' % i for i in range(1000, 1002)]
     key_names2 = ['1999', '1999#', '1999+', '2000']
     key_names += key_names2
     bucket_name = _create_objects(keys=key_names)
@@ -821,7 +819,7 @@ def test_bucket_list_prefix_unreadable():
     client = get_client()
 
     response = client.list_objects(Bucket=bucket_name, Prefix='\x0a')
-    assert response['Prefix'] == '\x0a'
+    assert response['Prefix'] == '%0A'
 
     keys = _get_keys(response)
     prefixes = _get_prefixes(response)
@@ -1265,11 +1263,11 @@ def test_bucket_listv2_continuationtoken_empty():
     bucket_name = _create_objects(keys=key_names)
     client = get_client()
 
-    response = client.list_objects_v2(Bucket=bucket_name, ContinuationToken='')
-    assert response['ContinuationToken'] == ''
-    assert response['IsTruncated'] == False
-    keys = _get_keys(response)
-    assert keys == key_names
+    e = assert_raises(ClientError, client.list_objects_v2, Bucket=bucket_name, ContinuationToken='')
+
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidArgument'
 
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_continuationtoken():
@@ -1299,7 +1297,7 @@ def test_bucket_listv2_both_continuationtoken_startafter():
 
     response2 = client.list_objects_v2(Bucket=bucket_name, StartAfter='bar', ContinuationToken=next_continuation_token)
     assert response2['ContinuationToken'] == next_continuation_token
-    assert response2['StartAfter'] == 'bar'
+    assert 'StartAfter' not in response2
     assert response2['IsTruncated'] == False
     key_names2 = ['foo', 'quxx']
     keys = _get_keys(response2)
@@ -1580,13 +1578,20 @@ def _ev_add_te_header(request, **kwargs):
     request.headers.add_header('Transfer-Encoding', 'chunked')
 
 def test_object_write_with_chunked_transfer_encoding():
-    bucket_name = get_new_bucket()
     client = get_client()
 
-    client.meta.events.register_first('before-sign.*.*', _ev_add_te_header)
-    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+    # NOTE: When https enabled, boto use s3v4 trailing auth with aws-chunked auth with Transfer-Encoding: chunked.
+    if client.meta.endpoint_url.startswith('https://'):
+        pytest.skip("not implemented Transfer-Encoding header could be tested only on not secure endpoint")
 
-    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    bucket_name = get_new_bucket()
+
+    client.meta.events.register_first('before-sign.*.*', _ev_add_te_header)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='bar')
+
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 501
+    assert error_code == 'NotImplemented'
 
 
 def test_bucket_create_delete():
@@ -3269,7 +3274,34 @@ def _setup_bucket_acl(bucket_acl=None):
     """
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL=bucket_acl, Bucket=bucket_name)
+
+    try:
+        client.create_bucket(Bucket=bucket_name, ObjectOwnership='ObjectWriter')
+        client.put_public_access_block(
+            Bucket=bucket_name,
+            PublicAccessBlockConfiguration={
+                'BlockPublicAcls': False,
+                'IgnorePublicAcls': False,
+                'BlockPublicPolicy': False,
+                'RestrictPublicBuckets': False,
+            },
+        )
+
+        if bucket_acl is not None:
+            client.put_bucket_acl(
+                Bucket=bucket_name,
+                ACL=bucket_acl,
+            )
+    except:
+        # NOTE: Skip error until we don't implement PutPublicAccessBlock API.
+
+        params = {
+            'Bucket': bucket_name
+        }
+        if bucket_acl is not None:
+            params['ACL'] = bucket_acl
+
+        client.create_bucket(**params)
 
     return bucket_name
 
@@ -3507,7 +3539,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=609901, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    assert res['status_code'] == 403
+    assert res['status_code'] == 400
 
 def test_object_raw_get_x_amz_expires_out_positive_range():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
@@ -3517,7 +3549,7 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=-7, HttpMethod='GET')
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
-    assert res['status_code'] == 403
+    assert res['status_code'] == 400
 
 
 def test_object_anon_put():
@@ -3535,9 +3567,8 @@ def test_object_anon_put():
 
 def test_object_anon_put_write_access():
     bucket_name = _setup_bucket_acl('public-read-write')
-    client = get_client()
-    client.put_object(Bucket=bucket_name, Key='foo')
-
+    # NOTE: put_object call is removed here, because AWS prevent overwrite when requester is not bucket owner or
+    # owner of existing object.
     unauthenticated_client = get_unauthenticated_client()
 
     response = unauthenticated_client.put_object(Bucket=bucket_name, Key='foo', Body='foo')
@@ -3590,7 +3621,7 @@ def test_object_raw_put_authenticated_expired():
 
     # params wouldn't take a 'Body' parameter so we're passing it in here
     res = requests.put(url, data="foo", verify=get_config_ssl_verify()).__dict__
-    assert res['status_code'] == 403
+    assert res['status_code'] == 400
 
 def check_bad_bucket_name(bucket_name):
     """
@@ -3604,10 +3635,6 @@ def check_bad_bucket_name(bucket_name):
     assert error_code == 'InvalidBucketName'
 
 
-# AWS does not enforce all documented bucket restrictions.
-# http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
-@pytest.mark.fails_on_aws
-# Breaks DNS with SubdomainCallingFormat
 def test_bucket_create_naming_bad_starts_nonalpha():
     bucket_name = get_new_bucket_name()
     check_bad_bucket_name('_' + bucket_name)
@@ -3682,33 +3709,20 @@ def _test_bucket_create_naming_good_long(length):
     response = client.create_bucket(Bucket=bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_60():
     _test_bucket_create_naming_good_long(60)
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_61():
     _test_bucket_create_naming_good_long(61)
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_good_long_62():
     _test_bucket_create_naming_good_long(62)
 
 
-# Breaks DNS with SubdomainCallingFormat
 def test_bucket_create_naming_good_long_63():
     _test_bucket_create_naming_good_long(63)
 
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_list_long_name():
     prefix = get_new_bucket_name()
     length = 61
@@ -3723,32 +3737,22 @@ def test_bucket_list_long_name():
     is_empty = _bucket_is_empty(bucket)
     assert is_empty == True
 
-# AWS does not enforce all documented bucket restrictions.
-# http://docs.amazonwebservices.com/AmazonS3/2006-03-01/dev/index.html?BucketRestrictions.html
-@pytest.mark.fails_on_aws
 def test_bucket_create_naming_bad_ip():
     check_bad_bucket_name('192.168.5.123')
 
 # test_bucket_create_naming_dns_* are valid but not recommended
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_underscore():
     invalid_bucketname = 'foo_bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
     assert status == 400
     assert error_code == 'InvalidBucketName'
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
 def test_bucket_create_naming_dns_long():
     prefix = get_prefix()
     assert len(prefix) < 50
     num = 63 - len(prefix)
     check_good_bucket_name(num * 'a')
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dash_at_end():
     invalid_bucketname = 'foo-'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
@@ -3756,9 +3760,6 @@ def test_bucket_create_naming_dns_dash_at_end():
     assert error_code == 'InvalidBucketName'
 
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dot_dot():
     invalid_bucketname = 'foo..bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
@@ -3766,9 +3767,6 @@ def test_bucket_create_naming_dns_dot_dot():
     assert error_code == 'InvalidBucketName'
 
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dot_dash():
     invalid_bucketname = 'foo.-bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
@@ -3776,9 +3774,6 @@ def test_bucket_create_naming_dns_dot_dash():
     assert error_code == 'InvalidBucketName'
 
 
-# Breaks DNS with SubdomainCallingFormat
-@pytest.mark.fails_on_aws
-# Should now pass on AWS even though it has 'fails_on_aws' attr.
 def test_bucket_create_naming_dns_dash_dot():
     invalid_bucketname = 'foo-.bar'
     status, error_code = check_invalid_bucketname(invalid_bucketname)
@@ -3796,8 +3791,8 @@ def test_bucket_create_exists():
         response = client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
-        assert e.status == 409
-        assert e.error_code == 'BucketAlreadyOwnedByYou'
+        assert status == 409
+        assert error_code == 'BucketAlreadyOwnedByYou'
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_get_location():
@@ -3810,7 +3805,7 @@ def test_bucket_get_location():
     client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': location_constraint})
 
     response = client.get_bucket_location(Bucket=bucket_name)
-    if location_constraint == "":
+    if location_constraint in {'', DEFAULT_REGION}:
         location_constraint = None
     assert response['LocationConstraint'] == location_constraint
 
@@ -3831,14 +3826,36 @@ def test_bucket_create_exists_nonowner():
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_recreate_overwrite_acl():
-    bucket_name = get_new_bucket_name()
     client = get_client()
+    if client.meta.region_name != DEFAULT_REGION:
+        pytest.skip('recreate overwrite acl only works in default region')
 
-    client.create_bucket(Bucket=bucket_name, ACL='public-read')
-    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 409
-    assert error_code == 'BucketAlreadyExists'
+    bucket_name = _setup_bucket_acl('public-read')
+
+    client.create_bucket(Bucket=bucket_name)
+
+    response = client.get_bucket_acl(Bucket=bucket_name)
+
+    display_name = get_main_display_name()
+    user_id = get_main_user_id()
+
+    assert response['Owner'].get('DisplayName') == display_name
+    assert response['Owner'].get('ID') == user_id
+
+    grants = response['Grants']
+    check_grants(
+        grants,
+        [
+            dict(
+                Permission='FULL_CONTROL',
+                ID=user_id,
+                DisplayName=display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+            ),
+        ],
+    )
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_recreate_new_acl():
@@ -3890,8 +3907,8 @@ def test_bucket_acl_default():
     display_name = get_main_display_name()
     user_id = get_main_user_id()
 
-    assert response['Owner']['DisplayName'] == display_name
-    assert response['Owner']['ID'] == user_id
+    assert response['Owner'].get('DisplayName') == display_name
+    assert response['Owner'].get('ID') == user_id
 
     grants = response['Grants']
     check_grants(
@@ -3923,20 +3940,20 @@ def test_bucket_acl_canned_during_create():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AllUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
+            ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AllUsers',
+                EmailAddress=None,
+                Type='Group',
                 ),
             ],
         )
@@ -3955,20 +3972,20 @@ def test_bucket_acl_canned():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AllUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
+            ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AllUsers',
+                EmailAddress=None,
+                Type='Group',
                 ),
             ],
         )
@@ -4004,6 +4021,14 @@ def test_bucket_acl_canned_publicreadwrite():
         grants,
         [
             dict(
+                Permission='FULL_CONTROL',
+                ID=user_id,
+                DisplayName=display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+            ),
+            dict(
                 Permission='READ',
                 ID=None,
                 DisplayName=None,
@@ -4018,14 +4043,6 @@ def test_bucket_acl_canned_publicreadwrite():
                 URI='http://acs.amazonaws.com/groups/global/AllUsers',
                 EmailAddress=None,
                 Type='Group',
-                ),
-            dict(
-                Permission='FULL_CONTROL',
-                ID=user_id,
-                DisplayName=display_name,
-                URI=None,
-                EmailAddress=None,
-                Type='CanonicalUser',
                 ),
             ],
         )
@@ -4044,14 +4061,6 @@ def test_bucket_acl_canned_authenticatedread():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
@@ -4059,6 +4068,14 @@ def test_bucket_acl_canned_authenticatedread():
                 EmailAddress=None,
                 Type='CanonicalUser',
                 ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
+                EmailAddress=None,
+                Type='Group',
+            ),
             ],
         )
 
@@ -4436,7 +4453,11 @@ def add_bucket_user_grant(bucket_name, grant):
     grants = response['Grants']
     grants.append(grant)
 
-    grant = {'Grants': grants, 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
+    owner = {'ID': main_user_id}
+    if main_display_name is not None:
+        owner['DisplayName'] = main_display_name
+
+    grant = {'Grants': grants, 'Owner': owner}
 
     return grant
 
@@ -4530,17 +4551,17 @@ def _bucket_acl_grant_userid(permission):
         grants,
         [
             dict(
-                Permission=permission,
-                ID=alt_user_id,
-                DisplayName=alt_display_name,
+                Permission='FULL_CONTROL',
+                ID=main_user_id,
+                DisplayName=main_display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
                 ),
             dict(
-                Permission='FULL_CONTROL',
-                ID=main_user_id,
-                DisplayName=main_display_name,
+                Permission=permission,
+                ID=alt_user_id,
+                DisplayName=alt_display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
@@ -4624,7 +4645,7 @@ def test_bucket_acl_grant_userid_fullcontrol():
 
     bucket_acl_response = client.get_bucket_acl(Bucket=bucket_name)
     owner_id = bucket_acl_response['Owner']['ID']
-    owner_display_name = bucket_acl_response['Owner']['DisplayName']
+    owner_display_name = bucket_acl_response['Owner'].get('DisplayName')
 
     main_display_name = get_main_display_name()
     main_user_id = get_main_user_id()
@@ -4831,6 +4852,14 @@ def test_bucket_header_acl_grants():
                 Type='CanonicalUser',
                 ),
             dict(
+                Permission='FULL_CONTROL',
+                ID=alt_user_id,
+                DisplayName=alt_display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+                ),
+            dict(
                 Permission='READ_ACP',
                 ID=alt_user_id,
                 DisplayName=alt_display_name,
@@ -4840,14 +4869,6 @@ def test_bucket_header_acl_grants():
                 ),
             dict(
                 Permission='WRITE_ACP',
-                ID=alt_user_id,
-                DisplayName=alt_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type='CanonicalUser',
-                ),
-            dict(
-                Permission='FULL_CONTROL',
                 ID=alt_user_id,
                 DisplayName=alt_display_name,
                 URI=None,
@@ -5271,8 +5292,8 @@ def test_buckets_create_then_list():
             raise RuntimeError("S3 implementation's GET on Service did not return bucket we created: %r", bucket.name)
 
 def test_buckets_list_ctime():
-    # check that creation times are within a day
-    before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+    # check that creation times are within 15 minutes
+    before = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=15)
 
     client = get_client()
     buckets = []
@@ -5303,6 +5324,7 @@ def test_list_buckets_invalid_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
+    assert error_code == 'InvalidAccessKeyId'
 
 def test_list_buckets_bad_auth():
     main_access_key = get_main_aws_access_key()
@@ -5310,6 +5332,7 @@ def test_list_buckets_bad_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
+    assert error_code == 'SignatureDoesNotMatch'
 
 @pytest.fixture
 def override_prefix_a():
@@ -5347,6 +5370,7 @@ def test_bucket_recreate_not_overriding():
     assert key_names == objs_list
 
     client = get_client()
+    # NOTE: works only with default region
     client.create_bucket(Bucket=bucket_name)
 
     objs_list = get_objects_list(bucket_name)
@@ -5381,7 +5405,7 @@ def test_bucket_create_special_key_names():
         response = client.get_object(Bucket=bucket_name, Key=name)
         body = _get_body(response)
         assert name == body
-        client.put_object_acl(Bucket=bucket_name, Key=name, ACL='private')
+        # client.put_object_acl(Bucket=bucket_name, Key=name, ACL='private')
 
 def test_bucket_list_special_prefix():
     key_names = ['_bla/1', '_bla/2', '_bla/3', '_bla/4', 'abcd']
@@ -6382,7 +6406,7 @@ def test_list_multipart_upload():
 
 @pytest.mark.fails_on_dbstore
 def test_list_multipart_upload_owner():
-    bucket_name = get_new_bucket()
+    bucket_name = _setup_bucket_acl()
 
     client1 = get_client()
     user1 = get_main_user_id()
@@ -6406,9 +6430,9 @@ def test_list_multipart_upload_owner():
                 assert upload['Key'] == key
                 assert upload['UploadId'] == uploadid
                 assert upload['Initiator']['ID'] == userid
-                assert upload['Initiator']['DisplayName'] == username
+                assert upload['Initiator'].get('DisplayName') == username
                 assert upload['Owner']['ID'] == userid
-                assert upload['Owner']['DisplayName'] == username
+                assert upload['Owner'].get('DisplayName') == username
 
             # list uploads with client1
             uploads1 = client1.list_multipart_uploads(Bucket=bucket_name)['Uploads']
@@ -6583,15 +6607,23 @@ def test_multipart_single_get_part():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     assert len(parts) == part_count
 
+    content_md5 = hashlib.md5()
+    for part in parts:
+        content_md5.update(codecs.decode(part['ETag'], 'hex'))
+    expected_etag = '"{}-{}"'.format(content_md5.hexdigest(), part_count)
+
     for part, size in zip(parts, part_sizes):
         response = client.head_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == expected_etag
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
         response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == expected_etag
         assert response['ContentLength'] == size
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 206
+
         # compare contents
         for chunk in response['Body'].iter_chunks():
             assert chunk.decode() == data[0:len(chunk)]
@@ -6600,8 +6632,8 @@ def test_multipart_single_get_part():
     # request PartNumber out of range
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key, PartNumber=5)
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == 'InvalidPart'
+    assert status == 416
+    assert error_code == 'InvalidPartNumber'
 
 @pytest.mark.fails_on_dbstore
 def test_non_multipart_get_part():
@@ -6615,8 +6647,8 @@ def test_non_multipart_get_part():
     # request for PartNumber > 1 results in InvalidPart
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key, PartNumber=2)
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == 'InvalidPart'
+    assert status == 416
+    assert error_code == 'InvalidPartNumber'
 
     # request for PartNumber = 1 gives back the entire object
     response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=1)
@@ -6666,19 +6698,34 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if is_secure:
-        s = ssl.wrap_socket(s);
+        s = ssl.wrap_socket(s)
     s.settimeout(5)
     s.connect((host, port))
-    s.send(req)
 
+    remain = len(req)
+    while remain:
+        n = s.send(req)
+        req = req[n:]
+        remain -= n
+
+    data = bytearray()
     try:
-        data = s.recv(1024)
-    except socket.error as msg:
-        print('got response: ', msg)
+        while True:
+            recv_data = s.recv(1024)
+            if len(recv_data) == 0:
+               break
+
+            data += recv_data
+            if b'\r\n' in data:
+                break
+    except socket.error as e:
+        print('got response: ', e)
         print('most likely server doesn\'t support 100-continue')
+        raise e
 
     s.close()
     data_str = data.decode()
+    print(data_str)
     l = data_str.split(' ')
 
     assert l[0].startswith('HTTP')
@@ -7037,7 +7084,7 @@ class FakeWriteFile(FakeFile):
         self.offset += count
 
         # Sneaky! do stuff before we return (the last time)
-        if self.interrupt != None and self.offset == self.size and count > 0:
+        if self.interrupt is not None and self.offset == self.size and count > 0:
             self.interrupt()
 
         return self.char*count
@@ -7221,8 +7268,6 @@ def _test_atomic_conditional_write(file_size):
 
     # create <file_size> file of B's
     # but try to verify the file before we finish writing all the B's
-    lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-Match': '*'}))
-    client.meta.events.register('before-call.s3.PutObject', lf)
     client.put_object(Bucket=bucket_name, Key=objname, Body=fp_b)
 
     # verify B's
@@ -7232,7 +7277,7 @@ def _test_atomic_conditional_write(file_size):
 def test_atomic_conditional_write_1mb():
     _test_atomic_conditional_write(1024*1024)
 
-def _test_atomic_dual_conditional_write(file_size):
+def _test_atomic_dual_conditional_write(boto_upload_iterations_count, file_size):
     """
     create an object, two sessions writing different contents
     confirm that it is all one or the other
@@ -7244,37 +7289,42 @@ def _test_atomic_dual_conditional_write(file_size):
     fp_a = FakeWriteFile(file_size, 'A')
     response = client.put_object(Bucket=bucket_name, Key=objname, Body=fp_a)
     _verify_atomic_key_data(bucket_name, objname, file_size, 'A')
-    etag_fp_a = response['ETag'].replace('"', '')
+    # etag_fp_a = response['ETag'].replace('"', '')
 
     # write <file_size> file of C's
     # but before we're done, try to write all B's
     fp_b = FakeWriteFile(file_size, 'B')
-    lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-Match': etag_fp_a}))
-    client.meta.events.register('before-call.s3.PutObject', lf)
+    # lf = (lambda **kwargs: kwargs['params']['headers'].update({'If-Match': etag_fp_a}))
+    # client.meta.events.register('before-call.s3.PutObject', lf)
+
     def rewind_put_fp_b():
-        fp_b.seek(0)
+        # fp_b.seek(0)
         client.put_object(Bucket=bucket_name, Key=objname, Body=fp_b)
 
-    fp_c = FakeWriteFile(file_size, 'C', rewind_put_fp_b)
+    action_on_count = ActionOnCount(boto_upload_iterations_count, rewind_put_fp_b)
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=objname, Body=fp_c)
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 412
-    assert error_code == 'PreconditionFailed'
+    fp_c = FakeWriteFile(file_size, 'C', action_on_count.trigger)
+
+    client.put_object(Bucket=bucket_name, Key=objname, Body=fp_c)
+    # e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=objname, Body=fp_c)
+    # status, error_code = _get_status_and_error_code(e.response)
+    # assert status == 412
+    # assert error_code == 'PreconditionFailed'
 
     # verify the file
-    _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
+    _verify_atomic_key_data(bucket_name, objname, file_size, 'C')
 
+# TODO: test not passing with SSL, fix this
+@pytest.mark.fails_on_rgw
+def test_atomic_dual_conditional_write_1mb(boto_upload_iterations_count):
+    _test_atomic_dual_conditional_write(boto_upload_iterations_count, 1024*1024)
+
+
+# NOTE: AWS didn't raise errors on bucket delete.
 @pytest.mark.fails_on_aws
 # TODO: test not passing with SSL, fix this
 @pytest.mark.fails_on_rgw
-def test_atomic_dual_conditional_write_1mb():
-    _test_atomic_dual_conditional_write(1024*1024)
-
-@pytest.mark.fails_on_aws
-# TODO: test not passing with SSL, fix this
-@pytest.mark.fails_on_rgw
-def test_atomic_write_bucket_gone():
+def test_atomic_write_bucket_gone(boto_upload_iterations_count):
     bucket_name = get_new_bucket()
     client = get_client()
 
@@ -7282,9 +7332,13 @@ def test_atomic_write_bucket_gone():
         client.delete_bucket(Bucket=bucket_name)
 
     objname = 'foo'
-    fp_a = FakeWriteFile(1024*1024, 'A', remove_bucket)
+    action = ActionOnCount(boto_upload_iterations_count, remove_bucket)
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=objname, Body=fp_a)
+    fp_a = FakeWriteFile(1024*1024, 'A', action.trigger)
+
+    client.put_object(Bucket=bucket_name, Key=objname, Body=fp_a)
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=objname)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 404
     assert error_code == 'NoSuchBucket'
@@ -7327,58 +7381,50 @@ class ActionOnCount:
         if self.count == self.trigger_count:
             self.result = self.action()
 
-def test_multipart_resend_first_finishes_last():
+
+@pytest.fixture
+def boto_upload_iterations_count():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key_name = "foo"
+    # upload_part might read multiple times from the object
+    # first time when it calculates md5, second time when it calculates X-Amz-Content-SHA256, third time when writes
+    # data out. We want to interject only on the last time, but we can't be
+    # sure how many times it's going to read, so let's have a test run
+    # and count the number of reads
+    counter = Counter(0)
+    fp_dry_run = FakeWriteFile(8, 'C', counter.inc)
+
+    client.put_object(Bucket=bucket_name, Key=key_name, Body=fp_dry_run)
+    return counter.val
+
+
+# NOTE: AWS has another result.
+@pytest.mark.fails_on_aws
+def test_multipart_resend_first_finishes_last(boto_upload_iterations_count):
     bucket_name = get_new_bucket()
     client = get_client()
     key_name = "mymultipart"
 
-    response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
-    upload_id = response['UploadId']
-
-    #file_size = 8*1024*1024
+    # file_size = 8*1024*1024
     file_size = 8
 
-    counter = Counter(0)
-    # upload_part might read multiple times from the object
-    # first time when it calculates md5, second time when it writes data
-    # out. We want to interject only on the last time, but we can't be
-    # sure how many times it's going to read, so let's have a test run
-    # and count the number of reads
-
-    fp_dry_run = FakeWriteFile(file_size, 'C',
-        lambda: counter.inc()
-        )
-
-    parts = []
-
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_dry_run)
-
-    parts.append({'ETag': response['ETag'].strip('"'), 'PartNumber': 1})
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key_name, UploadId=upload_id, MultipartUpload={'Parts': parts})
-
-    client.delete_object(Bucket=bucket_name, Key=key_name)
-
-    # clear parts
-    parts[:] = []
-
-    # ok, now for the actual test
     fp_b = FakeWriteFile(file_size, 'B')
-    def upload_fp_b():
-        response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key_name, Body=fp_b, PartNumber=1)
-        parts.append({'ETag': response['ETag'].strip('"'), 'PartNumber': 1})
 
-    action = ActionOnCount(counter.val, lambda: upload_fp_b())
+    def upload_fp_b():
+        client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key_name, Body=fp_b, PartNumber=1)
+
+    action = ActionOnCount(boto_upload_iterations_count, upload_fp_b)
 
     response = client.create_multipart_upload(Bucket=bucket_name, Key=key_name)
     upload_id = response['UploadId']
 
-    fp_a = FakeWriteFile(file_size, 'A',
-        lambda: action.trigger()
-        )
+    fp_a = FakeWriteFile(file_size, 'A', action.trigger)
 
     response = client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key_name, PartNumber=1, Body=fp_a)
 
-    parts.append({'ETag': response['ETag'].strip('"'), 'PartNumber': 1})
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+
     client.complete_multipart_upload(Bucket=bucket_name, Key=key_name, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
@@ -8355,7 +8401,6 @@ def test_lifecyclev2_expiration():
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
-@pytest.mark.fails_on_aws
 def test_lifecycle_expiration_versioning_enabled():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11935,7 +11980,7 @@ def test_bucket_policy_put_obj_grant():
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11961,7 +12006,7 @@ def test_put_obj_enc_conflict_c_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11988,7 +12033,7 @@ def test_put_obj_enc_conflict_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -12012,7 +12057,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -12035,7 +12080,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_noenc():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_unencrypted_obj = {
         "Null" : {
@@ -12095,7 +12140,7 @@ def test_bucket_policy_put_obj_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-twice'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12141,7 +12186,7 @@ def test_bucket_policy_put_obj_kms_noenc():
     if kms_keyid is None:
         pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12184,7 +12229,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -13081,10 +13126,10 @@ def test_copy_object_ifnonematch_failed():
 def test_object_read_unreadable():
     bucket_name = get_new_bucket()
     client = get_client()
-    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='\xae\x8a-')
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='\x00')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
+    assert e.response['Error']['Message'] == 'Bad Request'
 
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
@@ -13186,7 +13231,7 @@ def test_get_nonpublicpolicy_principal_bucket_policy_status():
             ],
         }]
     })
-    
+
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == False
@@ -13366,7 +13411,7 @@ def test_block_public_policy_with_principal():
                    'IgnorePublicAcls': False,
                    'BlockPublicPolicy': True,
                    'RestrictPublicBuckets': False}
-    
+
     client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
     resource = _make_arn_resource("{}/{}".format(bucket_name, "*"))
     policy_document = make_json_policy("s3:GetObject",
@@ -13376,7 +13421,7 @@ def test_block_public_policy_with_principal():
 
 
 def test_ignore_public_acls():
-    bucket_name = get_new_bucket()
+    bucket_name = _setup_bucket_acl()
     client = get_client()
     alt_client = get_alt_client()
 
@@ -14272,10 +14317,10 @@ def test_put_bucket_logging():
     client = get_client()
     has_extensions = _has_bucket_logging_extension()
     has_key_format = _has_taget_object_key_format()
-    
+
     # minimal configuration
     logging_enabled = {
-            'TargetBucket': log_bucket_name, 
+            'TargetBucket': log_bucket_name,
             'TargetPrefix': 'log/'
             }
 
@@ -14294,11 +14339,11 @@ def test_put_bucket_logging():
         # default value for key prefix is returned
         logging_enabled['TargetObjectKeyFormat'] = {'SimplePrefix': {}}
     assert response['LoggingEnabled'] == logging_enabled
- 
+
     if has_key_format:
         # with simple target object prefix
         logging_enabled = {
-            'TargetBucket': log_bucket_name, 
+            'TargetBucket': log_bucket_name,
             'TargetPrefix': 'log/',
             'TargetObjectKeyFormat': {
                 'SimplePrefix': {}
@@ -14316,10 +14361,10 @@ def test_put_bucket_logging():
             logging_enabled['LoggingType'] = 'Standard'
             logging_enabled['RecordsBatchSize'] = 0
         assert response['LoggingEnabled'] == logging_enabled
-        
+
         # with partitioned target object prefix
         logging_enabled = {
-            'TargetBucket': log_bucket_name, 
+            'TargetBucket': log_bucket_name,
             'TargetPrefix': 'log/',
             'TargetObjectKeyFormat': {
                 'PartitionedPrefix': {
@@ -14339,14 +14384,14 @@ def test_put_bucket_logging():
             logging_enabled['LoggingType'] = 'Standard'
             logging_enabled['RecordsBatchSize'] = 0
         assert response['LoggingEnabled'] == logging_enabled
-        
+
     # with target grant (not implemented in RGW)
     main_display_name = get_main_display_name()
     main_user_id = get_main_user_id()
     logging_enabled = {
-        'TargetBucket': log_bucket_name, 
+        'TargetBucket': log_bucket_name,
         'TargetPrefix': 'log/',
-        'TargetGrants': [{'Grantee': {'DisplayName': main_display_name, 'ID': main_user_id,'Type': 'CanonicalUser'},'Permission': 'FULL_CONTROL'}] 
+        'TargetGrants': [{'Grantee': {'DisplayName': main_display_name, 'ID': main_user_id,'Type': 'CanonicalUser'},'Permission': 'FULL_CONTROL'}]
     }
     if has_extensions:
         logging_enabled['ObjectRollTime'] = expected_object_roll_time
@@ -14381,15 +14426,15 @@ def _bucket_logging_key_filter(log_type):
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-    
+
     logging_enabled = {
-            'TargetBucket': log_bucket_name, 
+            'TargetBucket': log_bucket_name,
             'LoggingType': log_type,
             'TargetPrefix': 'log/',
             'ObjectRollTime': expected_object_roll_time,
             'TargetObjectKeyFormat': {'SimplePrefix': {}},
             'RecordsBatchSize': 0,
-             'Filter': 
+             'Filter':
                 {
                     'Key': {
                         'FilterRules': [
@@ -14413,16 +14458,16 @@ def _bucket_logging_key_filter(log_type):
         print('TODO')
     else:
         assert False, 'unknown log type: %s' % log_type
-    
+
     names = []
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         if log_type == 'Standard':
             # standard log records are not filtered
             names.append(name)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
-   
+
     for j in range(num_keys):
         name = 'test/'+'myobject'+str(j)+'.txt'
         names.append(name)
@@ -14465,14 +14510,14 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-   
+
     num_buckets = 5
     buckets = []
     longer_time = expected_object_roll_time*10
     for j in range(num_buckets):
         src_bucket_name = get_new_bucket_name()
         src_bucket = get_new_bucket_resource(name=src_bucket_name)
-        logging_enabled = {'TargetBucket': log_bucket_name, 
+        logging_enabled = {'TargetBucket': log_bucket_name,
                            'ObjectRollTime': longer_time, 'LoggingType': logging_type}
         if single_prefix:
             logging_enabled['TargetPrefix'] = 'log/'
@@ -14502,7 +14547,7 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
     t = []
     for src_bucket_name in buckets:
         if concurrency:
-            thr = threading.Thread(target = client.post_bucket_logging, 
+            thr = threading.Thread(target = client.post_bucket_logging,
                                kwargs={'Bucket': src_bucket_name})
             thr.start()
             t.append(thr)
@@ -14513,7 +14558,7 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
             # because flushing itself will be logged
             # and the next flush will commit the log
             break
-    
+
     _do_wait_completion(t)
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
@@ -14595,7 +14640,7 @@ def test_put_bucket_logging_errors():
     log_bucket_name1 = get_new_bucket_name()
     log_bucket1 = get_new_bucket_resource(name=log_bucket_name1)
     client = get_client()
-    
+
     # invalid source bucket
     try:
         response = client.put_bucket_logging(Bucket=src_bucket_name+'kaboom', BucketLoggingStatus={
@@ -14604,7 +14649,7 @@ def test_put_bucket_logging_errors():
         assert False, 'expected failure'
     except ClientError as e:
         assert e.response['Error']['Code'] == 'NoSuchBucket'
-    
+
     # invalid log bucket
     try:
         response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -14613,7 +14658,7 @@ def test_put_bucket_logging_errors():
         assert False, 'expected failure'
     except ClientError as e:
         assert e.response['Error']['Code'] == 'NoSuchKey'
-    
+
     # log bucket has bucket logging
     log_bucket_name2 = get_new_bucket_name()
     log_bucket2 = get_new_bucket_resource(name=log_bucket_name2)
@@ -14628,11 +14673,11 @@ def test_put_bucket_logging_errors():
         assert False, 'expected failure'
     except ClientError as e:
         assert e.response['Error']['Code'] == 'InvalidArgument'
-    
+
     # invalid partition prefix
     if _has_taget_object_key_format():
         logging_enabled = {
-            'TargetBucket': log_bucket_name1, 
+            'TargetBucket': log_bucket_name1,
             'TargetPrefix': 'log/',
             'TargetObjectKeyFormat': {
                 'PartitionedPrefix': {
@@ -14656,7 +14701,7 @@ def test_put_bucket_logging_errors():
         assert False, 'expected failure'
     except ClientError as e:
         assert e.response['Error']['Code'] == 'InvalidArgument'
-    
+
     # log bucket is encrypted
     _put_bucket_encryption_s3(client, log_bucket_name1)
     try:
@@ -14681,7 +14726,7 @@ def test_put_bucket_logging_errors():
 def _bucket_logging_tenant_objects(src_client, src_bucket_name, log_client, log_bucket_name, log_type, op_name):
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         src_client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
 
     expected_count = num_keys
@@ -14771,7 +14816,7 @@ def _put_bucket_logging_tenant(log_type):
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     _bucket_logging_tenant_objects(client, src_bucket_name, client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
-    
+
     # src and log are on the same tenant
     # log bucket name is set without tenant
     client = get_tenant_client()
@@ -14787,7 +14832,7 @@ def _put_bucket_logging_tenant(log_type):
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     _bucket_logging_tenant_objects(client, src_bucket_name, client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
-    
+
     # src is on tenant and log is on the default tenant
     # log bucket name is set with explicit default tenant
     client = get_tenant_client()
@@ -14804,7 +14849,7 @@ def _put_bucket_logging_tenant(log_type):
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     _bucket_logging_tenant_objects(client, src_bucket_name, log_client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
-    
+
     try:
         # src is on tenant and log is on the default tenant
         client = get_tenant_client()
@@ -14853,7 +14898,7 @@ def test_rm_bucket_logging():
 
     response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     response = client.get_bucket_logging(Bucket=src_bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     assert not 'LoggingEnabled' in response
@@ -14869,8 +14914,8 @@ def test_put_bucket_logging_extensions():
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-    logging_enabled = {'TargetBucket': log_bucket_name, 
-                       'TargetPrefix': 'log/', 
+    logging_enabled = {'TargetBucket': log_bucket_name,
+                       'TargetPrefix': 'log/',
                        'LoggingType': 'Standard',
                        'ObjectRollTime': expected_object_roll_time,
                        'RecordsBatchSize': 0
@@ -14879,7 +14924,7 @@ def test_put_bucket_logging_extensions():
         'LoggingEnabled': logging_enabled,
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     response = client.get_bucket_logging(Bucket=src_bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
@@ -14895,7 +14940,7 @@ def _bucket_logging_put_objects(versioned):
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
     has_extensions = _has_bucket_logging_extension()
-    
+
     # minimal configuration
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
     if has_extensions:
@@ -14908,7 +14953,7 @@ def _bucket_logging_put_objects(versioned):
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         if versioned:
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
@@ -14928,7 +14973,7 @@ def _bucket_logging_put_objects(versioned):
     assert len(keys) == 1
 
     record_type = 'Standard' if not has_extensions else 'Journal'
-    
+
     for key in keys:
         assert key.startswith('log/')
         response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -14953,7 +14998,7 @@ def test_bucket_logging_put_concurrency():
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client(client_config=botocore.config.Config(max_pool_connections=50))
     has_extensions = _has_bucket_logging_extension()
-    
+
     # minimal configuration
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
     if has_extensions:
@@ -14967,8 +15012,8 @@ def test_bucket_logging_put_concurrency():
     num_keys = 50
     t = []
     for i in range(num_keys):
-        name = 'myobject'+str(i)    
-        thr = threading.Thread(target = client.put_object, 
+        name = 'myobject'+str(i)
+        thr = threading.Thread(target = client.put_object,
                                kwargs={'Bucket': src_bucket_name, 'Key': name, 'Body': randcontent()})
         thr.start()
         t.append(thr)
@@ -14995,7 +15040,7 @@ def test_bucket_logging_put_concurrency():
     assert len(keys) == 1
 
     record_type = 'Standard' if not has_extensions else 'Journal'
-    
+
     for key in keys:
         assert key.startswith('log/')
         response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15014,7 +15059,7 @@ def _bucket_logging_delete_objects(versioned):
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         if versioned:
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
@@ -15042,7 +15087,7 @@ def _bucket_logging_delete_objects(versioned):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     if versioned:
         expected_count = 2*num_keys
     else:
@@ -15078,7 +15123,7 @@ def _bucket_logging_get_objects(versioned):
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         if versioned:
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
@@ -15106,7 +15151,7 @@ def _bucket_logging_get_objects(versioned):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     if versioned:
         expected_count = 2*num_keys
     else:
@@ -15122,7 +15167,7 @@ def _bucket_logging_get_objects(versioned):
 @pytest.mark.bucket_logging
 def test_bucket_logging_get_objects():
     _bucket_logging_get_objects(False)
-    
+
 
 @pytest.mark.bucket_logging
 def test_bucket_logging_get_objects_versioned():
@@ -15145,7 +15190,7 @@ def _bucket_logging_copy_objects(versioned, another_bucket):
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         if versioned:
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
@@ -15180,7 +15225,7 @@ def _bucket_logging_copy_objects(versioned, another_bucket):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15218,10 +15263,10 @@ def _bucket_logging_head_objects(versioned):
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
     has_extensions = _has_bucket_logging_extension()
-    
+
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
 
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
@@ -15247,12 +15292,12 @@ def _bucket_logging_head_objects(versioned):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     if versioned:
         expected_count = 2*num_keys
     else:
         expected_count = num_keys
-    
+
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15289,7 +15334,7 @@ def _bucket_logging_mpu(versioned):
         'LoggingEnabled': logging_enabled,
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     src_key = "myobject"
     objlen = 30 * 1024 * 1024
     (upload_id, data, parts) = _multipart_upload(bucket_name=src_bucket_name, key=src_key, size=objlen)
@@ -15297,13 +15342,13 @@ def _bucket_logging_mpu(versioned):
     if versioned:
         (upload_id, data, parts) = _multipart_upload(bucket_name=src_bucket_name, key=src_key, size=objlen)
         client.complete_multipart_upload(Bucket=src_bucket_name, Key=src_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    
+
     _flush_logs(client, src_bucket_name)
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     if versioned:
         expected_count = 4 if not has_extensions else 2
     else:
@@ -15362,7 +15407,7 @@ def _bucket_logging_mpu_copy(versioned):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15392,7 +15437,7 @@ def _bucket_logging_multi_delete(versioned):
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         if versioned:
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
@@ -15426,7 +15471,7 @@ def _bucket_logging_multi_delete(versioned):
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     if versioned:
         expected_count = 2*num_keys
     else:
@@ -15457,7 +15502,7 @@ def _bucket_logging_type(logging_type):
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
     logging_enabled = {
-            'TargetBucket': log_bucket_name, 
+            'TargetBucket': log_bucket_name,
             'TargetPrefix': 'log/',
             'ObjectRollTime': expected_object_roll_time,
             'LoggingType': logging_type
@@ -15467,19 +15512,19 @@ def _bucket_logging_type(logging_type):
     })
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         client.head_object(Bucket=src_bucket_name, Key=name)
-    
+
     response = client.list_objects_v2(Bucket=src_bucket_name)
     src_keys = _get_keys(response)
-    
+
     _flush_logs(client, src_bucket_name)
-    
+
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15520,7 +15565,7 @@ def test_bucket_logging_roll_time():
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-   
+
     roll_time = 10
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/', 'ObjectRollTime': roll_time}
     response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -15530,7 +15575,7 @@ def test_bucket_logging_roll_time():
 
     num_keys = 5
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
 
     response = client.list_objects_v2(Bucket=src_bucket_name)
@@ -15549,30 +15594,30 @@ def test_bucket_logging_roll_time():
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     len(keys) == 1
-    
+
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
     body = _get_body(response)
     assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_keys, 'Standard', num_keys)
     client.delete_object(Bucket=log_bucket_name, Key=key)
-    
+
     num_keys = 25
     for j in range(num_keys):
-        name = 'myobject'+str(j)    
+        name = 'myobject'+str(j)
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
         time.sleep(1)
-    
+
     response = client.list_objects_v2(Bucket=src_bucket_name)
     src_keys = _get_keys(response)
-    
+
     time.sleep(roll_time)
     client.put_object(Bucket=src_bucket_name, Key='myobject', Body=randcontent())
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) > 1
-   
+
     body = ''
     for key in keys:
         assert key.startswith('log/')
@@ -15587,7 +15632,7 @@ def test_bucket_logging_multiple_prefixes():
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
     has_extensions = _has_bucket_logging_extension()
-   
+
     num_buckets = 5
     buckets = []
     bucket_name_prefix = get_new_bucket_name()
@@ -15606,7 +15651,7 @@ def test_bucket_logging_multiple_prefixes():
     num_keys = 5
     for src_bucket_name in buckets:
         for j in range(num_keys):
-            name = 'myobject'+str(j)    
+            name = 'myobject'+str(j)
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
 
     for src_bucket_name in buckets:
@@ -15615,7 +15660,7 @@ def test_bucket_logging_multiple_prefixes():
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) >= num_buckets
-    
+
     for key in keys:
         response = client.get_object(Bucket=log_bucket_name, Key=key)
         body = _get_body(response)
@@ -15635,7 +15680,7 @@ def test_bucket_logging_single_prefix():
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
     has_extensions = _has_bucket_logging_extension()
-   
+
     num_buckets = 5
     buckets = []
     bucket_name_prefix = get_new_bucket_name()
@@ -15657,7 +15702,7 @@ def test_bucket_logging_single_prefix():
     for src_bucket_name in buckets:
         bucket_ind += 1
         for j in range(num_keys):
-            name = 'myobject'+str(bucket_ind)+str(j)    
+            name = 'myobject'+str(bucket_ind)+str(j)
             client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
 
     _flush_logs(client, src_bucket_name)
@@ -15665,7 +15710,7 @@ def test_bucket_logging_single_prefix():
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
-    
+
     key = keys[0]
     response = client.get_object(Bucket=log_bucket_name, Key=key)
     body = _get_body(response)

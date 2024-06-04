@@ -65,7 +65,6 @@ def nuke_prefixed_buckets_on_conn(prefix, name, conn):
         ))
 
     for bucket in conn.get_all_buckets():
-        print('prefix=',prefix)
         if bucket.name.startswith(prefix):
             print('Cleaning bucket {bucket}'.format(bucket=bucket))
             success = False
