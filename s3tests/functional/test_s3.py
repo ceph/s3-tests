@@ -1,4 +1,5 @@
 from io import StringIO
+from unittest import mock
 import boto.exception
 import boto.s3.connection
 import boto.s3.acl
@@ -93,7 +94,9 @@ def _get_alt_connection():
 
 # Breaks DNS with SubdomainCallingFormat
 @pytest.mark.fails_with_subdomain
-def test_bucket_create_naming_bad_punctuation():
+def test_bucket_create_naming_bad_punctuation(mocker):
+    mocker.patch.object(targets.main.default.connection, 'calling_format', new_callable=boto.s3.connection.OrdinaryCallingFormat)
+
     # characters other than [a-zA-Z0-9._-]
     check_bad_bucket_name('alpha!soup')
 
@@ -543,7 +546,47 @@ def _verify_atomic_key_data(key, size=-1, char=None):
     if size >= 0:
         assert fp_verify.size == size
 
-def _test_atomic_dual_conditional_write(file_size):
+
+class Counter:
+    def __init__(self, default_val):
+        self.val = default_val
+
+    def inc(self):
+        self.val = self.val + 1
+
+
+class ActionOnCount:
+    def __init__(self, trigger_count, action):
+        self.count = 0
+        self.trigger_count = trigger_count
+        self.action = action
+        self.result = 0
+
+    def trigger(self):
+        self.count = self.count + 1
+
+        if self.count == self.trigger_count:
+            self.result = self.action()
+
+
+@pytest.fixture
+def boto_upload_iterations_count():
+    bucket = get_new_bucket()
+    key = bucket.new_key('foo')
+
+    # put_object might read multiple times from the object
+    # first time when it calculates md5, second time when it calculates X-Amz-Content-SHA256, third time when writes
+    # data out. We want to interject only on the last time, but we can't be
+    # sure how many times it's going to read, so let's have a test run
+    # and count the number of reads
+    counter = Counter(0)
+    fp_dry_run = FakeWriteFile(8, 'C', counter.inc)
+    key.set_contents_from_file(fp_dry_run)
+
+    return counter.val
+
+
+def _test_atomic_dual_conditional_write(boto_upload_iterations_count, file_size):
     """
     create an object, two sessions writing different contents
     confirm that it is all one or the other
@@ -555,7 +598,6 @@ def _test_atomic_dual_conditional_write(file_size):
     fp_a = FakeWriteFile(file_size, 'A')
     key.set_contents_from_file(fp_a)
     _verify_atomic_key_data(key, file_size, 'A')
-    etag_fp_a = key.etag.replace('"', '').strip()
 
     # get a second key object (for the same key)
     # so both can be writing without interfering
@@ -564,25 +606,21 @@ def _test_atomic_dual_conditional_write(file_size):
     # write <file_size> file of C's
     # but before we're done, try to write all B's
     fp_b = FakeWriteFile(file_size, 'B')
-    fp_c = FakeWriteFile(file_size, 'C',
-        lambda: key2.set_contents_from_file(fp_b, rewind=True, headers={'If-Match': etag_fp_a})
-        )
-    # key.set_contents_from_file(fp_c, headers={'If-Match': etag_fp_a})
-    e = assert_raises(boto.exception.S3ResponseError, key.set_contents_from_file, fp_c,
-                      headers={'If-Match': etag_fp_a})
-    assert e.status == 412
-    assert e.reason == 'Precondition Failed'
-    assert e.error_code == 'PreconditionFailed'
+
+    action_on_count = ActionOnCount(boto_upload_iterations_count, lambda: key2.set_contents_from_file(fp_b))
+
+    fp_c = FakeWriteFile(file_size, 'C', action_on_count.trigger)
+
+    key.set_contents_from_file(fp_c)
 
     # verify the file
-    _verify_atomic_key_data(key, file_size, 'B')
+    _verify_atomic_key_data(key, file_size, 'C')
 
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
-def test_atomic_dual_conditional_write_1mb():
-    _test_atomic_dual_conditional_write(1024*1024)
+def test_atomic_dual_conditional_write_1mb(boto_upload_iterations_count):
+    _test_atomic_dual_conditional_write(boto_upload_iterations_count, 1024*1024)
 
-@pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
 def test_atomic_write_bucket_gone():
     bucket = get_new_bucket()
