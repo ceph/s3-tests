@@ -1,4 +1,3 @@
-import boto3
 import pytest
 import botocore.config
 from botocore.exceptions import ClientError
@@ -33,7 +32,7 @@ def _add_header_create_object(headers, client=None):
     return bucket_name, key_name
 
 
-def _add_header_create_bad_object(headers, client=None):
+def _add_header_create_bad_object(before_call_headers=None, before_send_headers=None, client=None):
     """ Create a new bucket, add an object with a header. This should cause a failure 
     """
     bucket_name = get_new_bucket()
@@ -42,8 +41,14 @@ def _add_header_create_bad_object(headers, client=None):
     key_name = 'foo'
 
     # pass in custom headers before PutObject call
-    add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
-    client.meta.events.register('before-call.s3.PutObject', add_headers)
+    if before_call_headers is not None:
+        add_headers = (lambda **kwargs: kwargs['params']['headers'].update(before_call_headers))
+        client.meta.events.register('before-call.s3.PutObject', add_headers)
+
+    if before_send_headers is not None:
+        add_headers = (lambda **kwargs: kwargs['request'].headers.update(before_send_headers))
+        client.meta.events.register('before-send.s3.PutObject', add_headers)
+
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body='bar')
 
     return e
@@ -58,11 +63,15 @@ def _remove_header_create_object(remove, client=None):
     key_name = 'foo'
 
     # remove custom headers before PutObject call
-    def remove_header(**kwargs):
-        if (remove in kwargs['params']['headers']):
-            del kwargs['params']['headers'][remove]
+    def remove_header_before_call(model, params, request_signer, **kwargs):
+        params['headers'].pop(remove, None)
 
-    client.meta.events.register('before-call.s3.PutObject', remove_header)
+    # remove custom headers before PutObject send
+    def remove_header_before_send(request, **kwargs):
+        request.headers.pop(remove, None)
+
+    client.meta.events.register('before-call.s3.PutObject', remove_header_before_call)
+    client.meta.events.register('before-send.s3.PutObject', remove_header_before_send)
     client.put_object(Bucket=bucket_name, Key=key_name)
 
     return bucket_name, key_name
@@ -77,10 +86,10 @@ def _remove_header_create_bad_object(remove, client=None):
 
     # remove custom headers before PutObject call
     def remove_header(**kwargs):
-        if (remove in kwargs['params']['headers']):
-            del kwargs['params']['headers'][remove]
+        if remove in kwargs['request'].headers:
+            del kwargs['request'].headers[remove]
 
-    client.meta.events.register('before-call.s3.PutObject', remove_header)
+    client.meta.events.register('before-send.s3.PutObject', remove_header)
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, Body='bar')
 
     return e
@@ -108,9 +117,9 @@ def _add_header_create_bad_bucket(headers=None, client=None):
     if client == None:
         client = get_client()
 
-    # pass in custom headers before PutObject call
-    add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
-    client.meta.events.register('before-call.s3.CreateBucket', add_headers)
+    add_headers = (lambda **kwargs: kwargs['request'].headers.update(headers))
+    client.meta.events.register('before-send.s3.CreateBucket', add_headers)
+
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
 
     return e
@@ -125,10 +134,10 @@ def _remove_header_create_bucket(remove, client=None):
 
     # remove custom headers before PutObject call
     def remove_header(**kwargs):
-        if (remove in kwargs['params']['headers']):
-            del kwargs['params']['headers'][remove]
+        if remove in kwargs['request'].headers:
+            del kwargs['request'].headers[remove]
 
-    client.meta.events.register('before-call.s3.CreateBucket', remove_header)
+    client.meta.events.register('before-send.s3.CreateBucket', remove_header)
     client.create_bucket(Bucket=bucket_name)
 
     return bucket_name
@@ -142,10 +151,10 @@ def _remove_header_create_bad_bucket(remove, client=None):
 
     # remove custom headers before PutObject call
     def remove_header(**kwargs):
-        if (remove in kwargs['params']['headers']):
-            del kwargs['params']['headers'][remove]
+        if remove in kwargs['request'].headers:
+            del kwargs['request'].headers[remove]
 
-    client.meta.events.register('before-call.s3.CreateBucket', remove_header)
+    client.meta.events.register('before-send.s3.CreateBucket', remove_header)
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
 
     return e
@@ -156,30 +165,28 @@ def _remove_header_create_bad_bucket(remove, client=None):
 
 @pytest.mark.auth_common
 def test_object_create_bad_md5_invalid_short():
-    e = _add_header_create_bad_object({'Content-MD5':'YWJyYWNhZGFicmE='})
+    e = _add_header_create_bad_object(before_call_headers={'Content-MD5':'YWJyYWNhZGFicmE='})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'InvalidDigest'
 
 @pytest.mark.auth_common
 def test_object_create_bad_md5_bad():
-    e = _add_header_create_bad_object({'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
+    e = _add_header_create_bad_object(before_call_headers={'Content-MD5':'rL0Y20xC+Fzt72VPzMSk2A=='})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'BadDigest'
 
 @pytest.mark.auth_common
 def test_object_create_bad_md5_empty():
-    e = _add_header_create_bad_object({'Content-MD5':''})
+    e = _add_header_create_bad_object(before_call_headers={'Content-MD5':''})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'InvalidDigest'
 
 @pytest.mark.auth_common
 def test_object_create_bad_md5_none():
-    bucket_name, key_name = _remove_header_create_object('Content-MD5')
-    client = get_client()
-    client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
+    _remove_header_create_object('Content-MD5')
 
 @pytest.mark.auth_common
 def test_object_create_bad_expect_mismatch():
@@ -195,15 +202,13 @@ def test_object_create_bad_expect_empty():
 
 @pytest.mark.auth_common
 def test_object_create_bad_expect_none():
-    bucket_name, key_name = _remove_header_create_object('Expect')
-    client = get_client()
-    client.put_object(Bucket=bucket_name, Key=key_name, Body='bar')
+    _remove_header_create_object('Expect')
 
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_empty():
-    e = _add_header_create_bad_object({'Content-Length':''})
+    e = _add_header_create_bad_object(before_send_headers={'Content-Length':''})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
 
@@ -214,6 +219,9 @@ def test_object_create_bad_contentlength_negative():
     # from switching to STREAMING-UNSIGNED-PAYLOAD-TRAILER
     config = botocore.config.Config(request_checksum_calculation = 'when_required')
     client = get_client(config)
+    # NOTE: When https enabled, boto use s3v4 trailing auth with aws-chunked auth with Transfer-Encoding: chunked.
+    if client.meta.endpoint_url.startswith('https://'):
+        pytest.skip("negative Content-Length header could be tested only on not secure endpoint")
     bucket_name = get_new_bucket()
     key_name = 'foo'
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key_name, ContentLength=-1)
@@ -223,9 +231,27 @@ def test_object_create_bad_contentlength_negative():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
-def test_object_create_bad_contentlength_none():
-    remove = 'Content-Length'
-    e = _remove_header_create_bad_object('Content-Length')
+def test_object_create_bad_contentlength_none(mocker):
+    client = get_client()
+
+    # NOTE: When https enabled, boto use s3v4 trailing auth with aws-chunked auth with Transfer-Encoding: chunked.
+    if client.meta.endpoint_url.startswith('https://'):
+        pytest.skip("disabled Content-Length header could be tested only on not secure endpoint")
+
+    # NOTE: Urllib set Transfer-Encoding header if Content-Length header not set, prevent such behaviour.
+    from urllib3.util import SKIPPABLE_HEADERS, SKIP_HEADER
+    new_skippable_headers = {*SKIPPABLE_HEADERS, 'content-length'}
+    mocker.patch('urllib3.connection.SKIPPABLE_HEADERS', new_skippable_headers)
+
+    bucket_name = get_new_bucket()
+
+    # remove custom headers before PutObject call
+    def remove_header(request, **kwargs):
+        request.headers['Content-Length'] = SKIP_HEADER
+
+    client.meta.events.register('before-send.s3.PutObject', remove_header)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo', Body='bar')
+
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 411
     assert error_code == 'MissingContentLength'
@@ -256,7 +282,7 @@ def test_object_create_bad_contenttype_none():
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_authorization_empty():
-    e = _add_header_create_bad_object({'Authorization': ''})
+    e = _add_header_create_bad_object(before_send_headers={'Authorization': ''})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
@@ -294,11 +320,37 @@ def test_bucket_create_contentlength_none():
     remove = 'Content-Length'
     _remove_header_create_bucket(remove)
 
+
+def _setup_bucket_acl():
+    """
+    set up a new bucket to allow set ACL
+    """
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+
+    try:
+        client.create_bucket(Bucket=bucket_name, ObjectOwnership='BucketOwnerPreferred')
+        client.put_public_access_block(
+            Bucket=bucket_name,
+            PublicAccessBlockConfiguration={
+                'BlockPublicAcls': False,
+                'IgnorePublicAcls': False,
+                'BlockPublicPolicy': False,
+                'RestrictPublicBuckets': False,
+            },
+        )
+    except:
+        # NOTE: Skip error until we don't implement PutPublicAccessBlock API.
+        client.create_bucket(Bucket=bucket_name)
+
+    return bucket_name
+
+
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_acl_create_contentlength_none():
-    bucket_name = get_new_bucket()
+    bucket_name = _setup_bucket_acl()
     client = get_client()
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 

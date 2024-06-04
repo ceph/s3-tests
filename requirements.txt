@@ -1,14 +1,17 @@
 PyYAML
-boto >=2.6.0
-boto3 >=1.0.0
-botocore
-munch >=2.0.0
+boto>=2.6.0
+boto3>=1.0.0
+botocore>=1.34.74
+munch>=2.0.0
 # 0.14 switches to libev, that means bootstrap needs to change too
-gevent >=1.0
-isodate >=0.4.4
-requests >=2.23.0
-pytz
-httplib2
+isodate>=0.4.4
+requests>=2.23.0
+pytz>=2024.1
 lxml
+
 pytest
+pytest-select>=0.1.2
+pytest-xdist>=3.5.0
+pytest-mock>=3.14.0
+pytest-freezegun>=0.4.2
 tox
