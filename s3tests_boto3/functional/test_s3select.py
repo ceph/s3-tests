@@ -4,7 +4,9 @@ import string
 import re
 import json
 from botocore.exceptions import ClientError
-
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import uuid
 
 from . import (
@@ -106,6 +108,48 @@ def test_generate_projection():
        
     for _ in range(100): 
         generate_s3select_expression_projection(bucket_name,obj_name)
+
+def create_parquet_object(parquet_size):
+    # Initialize lists with random integers
+    a = [random.randint(1, 10000) for _ in range(parquet_size)]
+    b = [random.randint(1, 10000) for _ in range(parquet_size)]
+    c = [random.randint(1, 10000) for _ in range(parquet_size)]
+    d = [random.randint(1, 10000) for _ in range(parquet_size)]
+
+    # Create DataFrame
+    df3 = pd.DataFrame({'a': a, 'b': b, 'c': c, 'd': d})
+
+    # Create Parquet object
+    table = pa.Table.from_pandas(df3, preserve_index=False)
+    obj = pa.BufferOutputStream()
+    pq.write_table(table, obj)
+
+    return obj.getvalue().to_pybytes()
+
+def upload_parquet_object(bucket_name,parquet_obj_name,obj):
+
+        client = get_client()
+        client.create_bucket(Bucket=bucket_name)
+        client.put_object(Bucket=bucket_name, Key=parquet_obj_name, Body=obj)
+
+@pytest.mark.s3select
+def test_parquet_lowerupper_expressions():
+
+    parquet_obj = create_parquet_object(1)
+
+    parquet_obj_name = "4col.parquet"
+    bucket_name = get_new_bucket_name()
+
+    upload_parquet_object(bucket_name,parquet_obj_name,parquet_obj)
+
+    res_s3select = run_s3select_parquet(bucket_name,parquet_obj_name,'select lower("AB12cd$$") from s3object ;')
+
+    s3select_assert_result( res_s3select, 'ab12cd$$\n')
+
+    res_s3select = run_s3select_parquet(bucket_name,parquet_obj_name,'select upper("ab12CD$$") from s3object ;')
+
+    s3select_assert_result( res_s3select, 'AB12CD$$\n')
+
 
 def s3select_assert_result(a,b):
     if type(a) == str:
@@ -336,6 +380,27 @@ def run_s3select_output(bucket,key,query, quot_field, op_column_delim = ",", op_
             records = event['Records']['Payload'].decode('utf-8')
             result += records
     
+    return result
+
+def run_s3select_parquet(bucket,key,query, op_row_delim = "\n"):
+
+    s3 = get_client()
+
+    r = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType='SQL',
+        InputSerialization = {'Parquet': {}},
+        OutputSerialization = {"CSV": {}},
+        Expression=query,)
+    #Record delimiter optional in output serialization
+
+    result = ""
+    for event in r['Payload']:
+        if 'Records' in event:
+            records = event['Records']['Payload'].decode('utf-8')
+            result += records
+
     return result
 
 def run_s3select_json(bucket,key,query, op_row_delim = "\n"):
