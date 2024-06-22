@@ -13491,7 +13491,6 @@ def test_multipart_checksum_sha256():
     assert 'SHA256' == response['ChecksumAlgorithm']
     upload_id = response['UploadId']
 
-    size = 1024
     body = FakeWriteFile(size, 'A')
     part_sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
     response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part_sha256sum)
@@ -13508,7 +13507,6 @@ def test_multipart_checksum_sha256():
     assert 'SHA256' == response['ChecksumAlgorithm']
     upload_id = response['UploadId']
 
-    size = 1024
     body = FakeWriteFile(size, 'A')
     part_sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
     response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part_sha256sum)
