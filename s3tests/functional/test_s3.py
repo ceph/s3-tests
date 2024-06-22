@@ -18,7 +18,6 @@ import base64
 import hmac
 import pytz
 import json
-import httplib2
 import threading
 import itertools
 import string
