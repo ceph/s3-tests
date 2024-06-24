@@ -9,6 +9,6 @@ munch >=2.0.0
 gevent >=1.0
 isodate >=0.4.4
 requests >=2.23.0
-pytz >=2011k
+pytz
 httplib2
 lxml
