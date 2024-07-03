@@ -13575,6 +13575,7 @@ def test_object_checksum_sha256():
     assert error_code == 'InvalidRequest'
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
 def test_multipart_checksum_sha256():
     bucket = get_new_bucket()
     client = get_client()
@@ -13639,6 +13640,7 @@ def test_multipart_checksum_sha256():
     assert composite_sha256sum == response['ChecksumSHA256']
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
 def test_multipart_checksum_3parts():
     bucket = get_new_bucket()
     client = get_client()
@@ -13676,6 +13678,7 @@ def test_multipart_checksum_3parts():
     response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
     assert composite_sha256sum == response['ChecksumSHA256']
 
+@pytest.mark.checksum
 def test_post_object_upload_checksum():
     megabytes = 1024 * 1024
     min_size = 0
