@@ -12984,6 +12984,23 @@ def test_block_public_policy():
     check_access_denied(client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
 
 
+def test_block_public_policy_with_principal():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    access_conf = {'BlockPublicAcls': False,
+                   'IgnorePublicAcls': False,
+                   'BlockPublicPolicy': True,
+                   'RestrictPublicBuckets': False}
+    
+    client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
+    resource = _make_arn_resource("{}/{}".format(bucket_name, "*"))
+    policy_document = make_json_policy("s3:GetObject",
+                                        resource, principal={"AWS": "arn:aws:iam::s3tenant1:root"})
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
