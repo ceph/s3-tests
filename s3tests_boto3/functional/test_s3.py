@@ -12793,6 +12793,31 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
+def test_get_nonpublicpolicy_principal_bucket_policy_status():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "arn:aws:iam::s3tenant1:root"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+            ],
+        }]
+    })
+    
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    resp = client.get_bucket_policy_status(Bucket=bucket_name)
+    assert resp['PolicyStatus']['IsPublic'] == False
+
+
 def test_bucket_policy_allow_notprincipal():
     bucket_name = get_new_bucket()
     client = get_client()
