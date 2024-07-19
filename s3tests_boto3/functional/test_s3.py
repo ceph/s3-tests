@@ -12793,12 +12793,9 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
-def test_get_nonpublicpolicy_deny_bucket_policy_status():
+def test_bucket_policy_allow_notprincipal():
     bucket_name = get_new_bucket()
     client = get_client()
-
-    resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    assert resp['PolicyStatus']['IsPublic'] == False
 
     resource1 = "arn:aws:s3:::" + bucket_name
     resource2 = "arn:aws:s3:::" + bucket_name + "/*"
@@ -12816,9 +12813,12 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
         }]
      })
 
-    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
-    resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    assert resp['PolicyStatus']['IsPublic'] == True
+    e = assert_raises(ClientError,
+                      client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidArgument' or error_code == 'MalformedPolicy'
+
 
 def test_get_undefined_public_block():
     bucket_name = get_new_bucket()
