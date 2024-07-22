@@ -271,6 +271,11 @@ def configure():
     config.iam_root_user_id = cfg.get('iam root',"user_id")
     config.iam_root_email = cfg.get('iam root',"email")
 
+    config.iam_root_alt_access_key = cfg.get('iam root alt',"access_key")
+    config.iam_root_alt_secret_key = cfg.get('iam root alt',"secret_key")
+    config.iam_root_alt_user_id = cfg.get('iam root alt',"user_id")
+    config.iam_root_alt_email = cfg.get('iam root alt',"email")
+
     config.iam_alt_root_access_key = cfg.get('iam alt root',"access_key")
     config.iam_alt_root_secret_key = cfg.get('iam alt root',"secret_key")
     config.iam_alt_root_user_id = cfg.get('iam alt root',"user_id")
@@ -454,6 +459,17 @@ def get_iam_root_client(**kwargs):
     kwargs.setdefault('service_name', 'iam')
     kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
     kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+
+    return boto3.client(endpoint_url=config.default_endpoint,
+                        region_name='',
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        **kwargs)
+
+def get_iam_root_alt_client(**kwargs):
+    kwargs.setdefault('service_name', 's3')
+    kwargs.setdefault('aws_access_key_id', config.iam_root_alt_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_root_alt_secret_key)
 
     return boto3.client(endpoint_url=config.default_endpoint,
                         region_name='',
