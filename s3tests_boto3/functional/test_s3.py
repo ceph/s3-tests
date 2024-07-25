@@ -12793,12 +12793,34 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
-def test_get_nonpublicpolicy_deny_bucket_policy_status():
+def test_get_nonpublicpolicy_principal_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
 
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "arn:aws:iam::s3tenant1:root"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+            ],
+        }]
+    })
+    
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == False
+
+
+def test_bucket_policy_allow_notprincipal():
+    bucket_name = get_new_bucket()
+    client = get_client()
 
     resource1 = "arn:aws:s3:::" + bucket_name
     resource2 = "arn:aws:s3:::" + bucket_name + "/*"
@@ -12816,9 +12838,12 @@ def test_get_nonpublicpolicy_deny_bucket_policy_status():
         }]
      })
 
-    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
-    resp = client.get_bucket_policy_status(Bucket=bucket_name)
-    assert resp['PolicyStatus']['IsPublic'] == True
+    e = assert_raises(ClientError,
+                      client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidArgument' or error_code == 'MalformedPolicy'
+
 
 def test_get_undefined_public_block():
     bucket_name = get_new_bucket()
@@ -12957,6 +12982,23 @@ def test_block_public_policy():
                                        resource)
 
     check_access_denied(client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
+
+
+def test_block_public_policy_with_principal():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    access_conf = {'BlockPublicAcls': False,
+                   'IgnorePublicAcls': False,
+                   'BlockPublicPolicy': True,
+                   'RestrictPublicBuckets': False}
+    
+    client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
+    resource = _make_arn_resource("{}/{}".format(bucket_name, "*"))
+    policy_document = make_json_policy("s3:GetObject",
+                                        resource, principal={"AWS": "arn:aws:iam::s3tenant1:root"})
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
 
 def test_ignore_public_acls():
