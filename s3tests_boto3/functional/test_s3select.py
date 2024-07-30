@@ -874,7 +874,7 @@ def test_like_expressions():
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
 
-    find_like = res_s3select_like.find("s3select-Syntax-Error")
+    find_like = res_s3select_like.find("UnsupportedSyntax")
 
     assert int(find_like) >= 0
 
@@ -1347,8 +1347,8 @@ def test_schema_definition():
 
     assert ((res_multiple_defintion.find("alias {c11} or column not exist in schema")) >= 0)
 
-    #find_processing_error = res_multiple_defintion.find("s3select-ProcessingTime-Error")
-    assert ((res_multiple_defintion.find("s3select-ProcessingTime-Error")) >= 0)
+    #find_processing_error = res_multiple_defintion.find("ProcessingTimeError")
+    assert ((res_multiple_defintion.find("ProcessingTimeError")) >= 0)
 
     # alias-name is identical to column-name
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from s3object;",csv_header_info="USE") ).replace("\n","")
