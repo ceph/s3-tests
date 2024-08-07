@@ -320,7 +320,6 @@ def run_s3select(bucket,key,query,input="CSV",output="CSV",quot_field="", op_col
             output_serialization = {"JSON": {}}
 
     
->>>>>>> 2e53973 (rgw/s3select: json output format for csv, json & parquet)
     try:
         r = s3.select_object_content(
             Bucket=bucket,
@@ -526,8 +525,6 @@ def test_csv_json_format_column_sum_min_max():
 @pytest.mark.s3select
 def test_parquet_json_format_column_sum_min_max():
 
-    return
-
     a = [random.randint(1, 10000) for _ in range(100)]
 
     df3 = pd.DataFrame({'a': a})
@@ -695,8 +692,6 @@ def test_json_nullif_expressions():
 @pytest.mark.s3select
 def test_parquet_nullif_expressions():
 
-    return
-
     a = [random.randint(1, 10000) for _ in range(100)]
     b = [random.randint(1, 10000) for _ in range(100)]
 
@@ -849,8 +844,6 @@ def test_json_lowerupper_expressions():
 @pytest.mark.s3select
 def test_parquet_lowerupper_expressions():
 
-    return
-
     parquet_obj = create_parquet_object(1)
 
     parquet_obj_name = "4col.parquet"
@@ -863,6 +856,7 @@ def test_parquet_lowerupper_expressions():
     s3select_assert_result( res_s3select, '{"_1":ab12cd$$}\n')
 
     res_s3select = run_s3select(bucket_name,parquet_obj_name,'select upper("ab12CD$$") from s3object ;',"PARQUET","JSON")
+
     s3select_assert_result( res_s3select, '{"_1":AB12CD$$}\n')
 
 
@@ -1096,8 +1090,6 @@ def test_json_like_expressions():
 
 @pytest.mark.s3select
 def test_parquet_like_expressions():
-
-    return
 
     rows = 1000
     columns = 3
