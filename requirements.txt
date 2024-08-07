@@ -4,7 +4,7 @@ munch >=2.0.0
 # 0.14 switches to libev, that means bootstrap needs to change too
 gevent >=1.0
 isodate >=0.4.4
-pytz >=2011k
+pytz ==2024.1
 httplib2
 lxml
 tox
