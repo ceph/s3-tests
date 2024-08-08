@@ -13759,3 +13759,241 @@ def test_post_object_upload_checksum():
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
+
+
+def _has_bucket_logging_extension():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/', "RecordType": "Standard"}
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+        })
+    except ParamValidationError as e:
+        return False
+    return True
+
+
+@pytest.mark.bucket_logging
+def test_put_bucket_logging():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    
+    # minimal configuration
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    # default value for key prefix is returned
+    logging_enabled['TargetObjectKeyFormat'] = {'SimplePrefix': {}}
+    has_extensions = _has_bucket_logging_extension()
+    if has_extensions:
+        logging_enabled['RecordType'] = 'Standard'
+        logging_enabled['EventType'] = 'Write'
+    assert response['LoggingEnabled'] == logging_enabled
+    
+    # with simple target object prefix
+    logging_enabled = {
+        'TargetBucket': log_bucket_name, 
+        'TargetPrefix': 'log/',
+        'TargetObjectKeyFormat': {
+            'SimplePrefix': {}
+        }
+    }
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    if has_extensions:
+        logging_enabled['RecordType'] = 'Standard'
+        logging_enabled['EventType'] = 'Write'
+    assert response['LoggingEnabled'] == logging_enabled
+    
+    # with partitioned target object prefix
+    logging_enabled = {
+        'TargetBucket': log_bucket_name, 
+        'TargetPrefix': 'log/',
+        'TargetObjectKeyFormat': {
+            'PartitionedPrefix': {
+                'PartitionDateSource': 'DeliveryTime'
+            }
+        }
+    }
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    if has_extensions:
+        logging_enabled['RecordType'] = 'Standard'
+        logging_enabled['EventType'] = 'Write'
+    assert response['LoggingEnabled'] == logging_enabled
+
+
+@pytest.mark.bucket_logging
+def test_put_bucket_logging_errors():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name1 = get_new_bucket_name()
+    log_bucket1 = get_new_bucket_resource(name=log_bucket_name1)
+    client = get_client()
+    
+    # invalid source bucket
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name+'kaboom', BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name1, 'TargetPrefix': 'log/'},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'NoSuchBucket'
+    
+    # invalid log bucket
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name1+'kaboom', 'TargetPrefix': 'log/'},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'NoSuchKey'
+    
+    # log bucket has bucket logging
+    log_bucket_name2 = get_new_bucket_name()
+    log_bucket2 = get_new_bucket_resource(name=log_bucket_name2)
+    response = client.put_bucket_logging(Bucket=log_bucket_name2, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name1, 'TargetPrefix': 'log/'},
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name2, 'TargetPrefix': 'log/'},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'InvalidArgument'
+    
+    # invalid partition prefix
+    logging_enabled = {
+        'TargetBucket': log_bucket_name1, 
+        'TargetPrefix': 'log/',
+        'TargetObjectKeyFormat': {
+            'PartitionedPrefix': {
+                'PartitionDateSource': 'kaboom'
+            }
+        }
+    }
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'MalformedXML'
+
+    # TODO: log bucket is encrypted
+    #_put_bucket_encryption_s3(client, log_bucket_name)
+    #try:
+    #    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+    #        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'},
+    #    })
+    #    assert False, 'expected failure'
+    #except ClientError as e:
+    #    assert e.response['Error']['Code'] == 'InvalidArgument'
+
+
+@pytest.mark.bucket_logging
+def test_rm_bucket_logging():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert not 'LoggingEnabled' in response
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_put_bucket_logging_extensions():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    logging_enabled = {'TargetBucket': log_bucket_name, 
+                       'TargetPrefix': 'log/', 
+                       'EventType': 'ReadWrite', 
+                       'RecordType': 'Standard'
+                       }
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert response['LoggingEnabled'] == logging_enabled
+
+
+@pytest.mark.bucket_logging
+def test_bucket_logging_put_object():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    
+    # minimal configuration
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 5
+    for j in range(num_keys):
+        name = 'myobject'+str(j)    
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=name)
+
+    response = client.list_objects_v2(Bucket=src_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == num_keys
+
+    time.sleep(5)
+    client.put_object(Bucket=src_bucket_name, Key='myobject6', Body='myobject6')
+
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) > 0
+    
+    for key in keys:
+        assert key.startswith('log/')
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body = _get_body(response)
+        assert src_bucket_name in body
+        assert 'REST.PUT.put_obj' in body
+        assert 'myobject' in body
+
