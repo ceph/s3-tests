@@ -117,6 +117,9 @@ secret_key = opqrstuvwxyzabcdefghijklmnopqrstuvwxyzab
 # tenant email set in vstart.sh
 email = tenanteduser@example.com
 
+# tenant name
+tenant = testx
+
 #following section needs to be added for all sts-tests
 [iam]
 #used for iam operations in sts-tests

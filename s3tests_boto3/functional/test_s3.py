@@ -68,6 +68,7 @@ from . import (
     get_alt_client,
     get_tenant_client,
     get_tenant_iam_client,
+    get_tenant_name,
     get_tenant_user_id,
     get_buckets_list,
     get_objects_list,
@@ -10573,17 +10574,29 @@ def test_bucketv2_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
+def tenanted_bucket_name(tenant):
+    def change_bucket_name(params, **kwargs):
+        old_name = params['context']['signing']['bucket']
+        new_name = "{}:{}".format(tenant, old_name)
+        params['Bucket'] = new_name
+        params['context']['signing']['bucket'] = new_name
+
+        # the : needs to be url-encoded for urls
+        new_name_url = "{}%3A{}".format(tenant, old_name)
+        params['url'] = params['url'].replace(old_name, new_name_url)
+        params['url_path'] = params['url_path'].replace(old_name, new_name_url)
+
+    return change_bucket_name
+
 @pytest.mark.bucket_policy
-# TODO: remove this fails_on_rgw when I fix it
-@pytest.mark.fails_on_rgw
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
     client = get_client()
     key = 'asdf'
     client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
 
-    resource1 = "arn:aws:s3::*:" + bucket_name
-    resource2 = "arn:aws:s3::*:" + bucket_name + "/*"
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
     policy_document = json.dumps(
     {
         "Version": "2012-10-17",
@@ -10600,35 +10613,22 @@ def test_bucket_policy_different_tenant():
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
-    # TODO: figure out how to change the bucketname
-    def change_bucket_name(**kwargs):
-        kwargs['params']['url'] = "http://localhost:8000/:{bucket_name}?encoding-type=url".format(bucket_name=bucket_name)
-        kwargs['params']['url_path'] = "/:{bucket_name}".format(bucket_name=bucket_name)
-        kwargs['params']['context']['signing']['bucket'] = ":{bucket_name}".format(bucket_name=bucket_name)
-        print(kwargs['request_signer'])
-        print(kwargs)
-
-    #bucket_name = ":" + bucket_name
+    # use the tenanted client to list the global tenant's bucket
     tenant_client = get_tenant_client()
-    tenant_client.meta.events.register('before-call.s3.ListObjects', change_bucket_name)
+    tenant_client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(''))
     response = tenant_client.list_objects(Bucket=bucket_name)
-    #alt_client = get_alt_client()
-    #response = alt_client.list_objects(Bucket=bucket_name)
 
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
-# TODO: remove this fails_on_rgw when I fix it
-@pytest.mark.fails_on_rgw
-@pytest.mark.list_objects_v2
-def test_bucketv2_policy_different_tenant():
-    bucket_name = get_new_bucket()
-    client = get_client()
+def test_bucket_policy_tenanted_bucket():
+    tenant_client = get_tenant_client()
+    bucket_name = get_new_bucket(tenant_client)
     key = 'asdf'
-    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+    tenant_client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
 
-    resource1 = "arn:aws:s3::*:" + bucket_name
-    resource2 = "arn:aws:s3::*:" + bucket_name + "/*"
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
     policy_document = json.dumps(
     {
         "Version": "2012-10-17",
@@ -10643,23 +10643,15 @@ def test_bucketv2_policy_different_tenant():
         }]
      })
 
-    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+    tenant_client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
-    # TODO: figure out how to change the bucketname
-    def change_bucket_name(**kwargs):
-        kwargs['params']['url'] = "http://localhost:8000/:{bucket_name}?encoding-type=url".format(bucket_name=bucket_name)
-        kwargs['params']['url_path'] = "/:{bucket_name}".format(bucket_name=bucket_name)
-        kwargs['params']['context']['signing']['bucket'] = ":{bucket_name}".format(bucket_name=bucket_name)
-        print(kwargs['request_signer'])
-        print(kwargs)
+    tenant = get_tenant_name()
 
-    #bucket_name = ":" + bucket_name
-    tenant_client = get_tenant_client()
-    tenant_client.meta.events.register('before-call.s3.ListObjects', change_bucket_name)
-    response = tenant_client.list_objects_v2(Bucket=bucket_name)
-    #alt_client = get_alt_client()
-    #response = alt_client.list_objects_v2(Bucket=bucket_name)
+    # use the global tenant's client to list the tenanted bucket
+    client = get_client()
+    client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(tenant))
 
+    response = client.list_objects(Bucket=bucket_name)
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
