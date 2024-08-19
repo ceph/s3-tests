@@ -4289,7 +4289,7 @@ def _test_object_raw_get_x_amz_expires_not_expired(client):
     )
 
     res = requests.options(url, verify=get_config_ssl_verify()).__dict__
-    assert res["status_code"] == 403
+    assert res["status_code"] == 400
 
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res["status_code"] == 200
