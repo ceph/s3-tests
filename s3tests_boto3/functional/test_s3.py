@@ -4732,7 +4732,7 @@ def test_bucket_acl_default():
     user_id = get_main_user_id()
 
     assert response["Owner"]["DisplayName"] == display_name
-    assert response["Owner"]["ID"] == user_id
+    assert response["Owner"]["ID"] == display_name
 
     grants = response["Grants"]
     check_grants(
@@ -4740,7 +4740,7 @@ def test_bucket_acl_default():
         [
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4774,7 +4774,7 @@ def test_bucket_acl_canned_during_create():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4807,7 +4807,7 @@ def test_bucket_acl_canned():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4825,7 +4825,7 @@ def test_bucket_acl_canned():
         [
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4865,7 +4865,7 @@ def test_bucket_acl_canned_publicreadwrite():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4899,7 +4899,7 @@ def test_bucket_acl_canned_authenticatedread():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4925,7 +4925,7 @@ def test_object_acl_default():
         [
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4959,7 +4959,7 @@ def test_object_acl_canned_during_create():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -4994,7 +4994,7 @@ def test_object_acl_canned():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -5013,7 +5013,7 @@ def test_object_acl_canned():
         [
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -5057,7 +5057,7 @@ def test_object_acl_canned_publicreadwrite():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -5094,7 +5094,7 @@ def test_object_acl_canned_authenticatedread():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -9548,13 +9548,13 @@ def test_versioned_object_acl():
     user_id = get_main_user_id()
 
     assert response["Owner"]["DisplayName"] == display_name
-    assert response["Owner"]["ID"] == user_id
+    assert response["Owner"]["ID"] == display_name
 
     grants = response["Grants"]
     default_policy = [
         dict(
             Permission="FULL_CONTROL",
-            ID=user_id,
+            ID=display_name,
             DisplayName=display_name,
             URI=None,
             EmailAddress=None,
@@ -9583,7 +9583,7 @@ def test_versioned_object_acl():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
@@ -9622,13 +9622,13 @@ def test_versioned_object_acl_no_version_specified():
     user_id = get_main_user_id()
 
     assert response["Owner"]["DisplayName"] == display_name
-    assert response["Owner"]["ID"] == user_id
+    assert response["Owner"]["ID"] == display_name
 
     grants = response["Grants"]
     default_policy = [
         dict(
             Permission="FULL_CONTROL",
-            ID=user_id,
+            ID=display_name,
             DisplayName=display_name,
             URI=None,
             EmailAddress=None,
@@ -9655,7 +9655,7 @@ def test_versioned_object_acl_no_version_specified():
             ),
             dict(
                 Permission="FULL_CONTROL",
-                ID=user_id,
+                ID=display_name,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
