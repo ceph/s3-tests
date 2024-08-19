@@ -420,8 +420,7 @@ def get_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -436,8 +435,7 @@ def get_v2_client():
         verify=config.default_ssl_verify,
         config=Config(signature_version="s3"),
     )
-    allure.attach("Client V2 created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client V2 Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -456,8 +454,7 @@ def get_sts_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -494,8 +491,7 @@ def get_iam_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -512,8 +508,7 @@ def get_iam_s3client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -531,8 +526,7 @@ def get_alt_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -549,8 +543,7 @@ def get_cloud_client(client_config=None):
         use_ssl=config.cloud_is_secure,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -568,8 +561,7 @@ def get_tenant_client(client_config=None):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -584,8 +576,7 @@ def get_tenant_iam_client():
         verify=config.default_ssl_verify,
         use_ssl=config.default_is_secure,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -600,8 +591,7 @@ def get_alt_iam_client():
         verify=config.default_ssl_verify,
         use_ssl=config.default_is_secure,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -616,8 +606,7 @@ def get_unauthenticated_client():
         verify=config.default_ssl_verify,
         config=Config(signature_version=UNSIGNED),
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -632,8 +621,7 @@ def get_bad_auth_client(aws_access_key_id="badauth"):
         verify=config.default_ssl_verify,
         config=Config(signature_version="s3v4"),
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -651,8 +639,7 @@ def get_svc_client(client_config=None, svc="s3"):
         verify=config.default_ssl_verify,
         config=client_config,
     )
-    allure.attach("Client created with the following options:\n"+
-                  f"{client._client_config._user_provided_options}")
+    allure.attach(str(client._client_config._user_provided_options), "Client Options", allure.attachment_type.TEXT)
     return client
 
 
@@ -672,7 +659,7 @@ def get_new_bucket_name():
         prefix=prefix,
         num=next(bucket_counter),
     )
-    allure.attach(f"Buket name: {name}")
+    allure.attach(name, "Bucket name", allure.attachment_type.TEXT)
     return name
 
 
@@ -941,8 +928,9 @@ def log_and_call(original_method):
         with allure.step(f"Request {original_method.__name__}"):
             response = original_method(*args, **kwargs)
             allure.attach(str({'args': args, 'kwargs': kwargs}), 
-                          name=f'{original_method.__name__} executed with parameters')
-            allure.attach(str(response))
+                          f'{original_method.__name__} executed with parameters',
+                          allure.attachment_type.TEXT)
+            allure.attach(str(response), "Response", allure.attachment_type.TEXT)
         return response
     return wrapper
 
