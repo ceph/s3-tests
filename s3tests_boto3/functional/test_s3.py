@@ -5199,7 +5199,7 @@ def add_obj_user_grant(bucket_name, key, grant):
 
     grant = {
         "Grants": grants,
-        "Owner": {"DisplayName": main_display_name, "ID": main_user_id},
+        "Owner": {"DisplayName": main_display_name, "ID": main_display_name},
     }
 
     return grant
@@ -5223,7 +5223,7 @@ def test_object_acl_full_control_verify_attributes():
     content_type = response["ContentType"]
     etag = response["ETag"]
 
-    alt_user_id = get_alt_user_id()
+    alt_user_id = get_alt_display_name()
 
     grant = {
         "Grantee": {"ID": alt_user_id, "Type": "CanonicalUser"},
@@ -5269,7 +5269,7 @@ def add_bucket_user_grant(bucket_name, grant):
 
     grant = {
         "Grants": grants,
-        "Owner": {"DisplayName": main_display_name, "ID": main_user_id},
+        "Owner": {"DisplayName": main_display_name, "ID": main_display_name},
     }
 
     return grant

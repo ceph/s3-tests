@@ -150,7 +150,7 @@ def neofs_setup(request, temp_directory):
 
     alt_wallet = create_wallet()
 
-    (alt_access_key_id, alt_secret_access_key, alt_wallet_public_key, _) = (
+    (alt_access_key_id, alt_secret_access_key, alt_wallet_public_key, alt_wallet_address) = (
         init_s3_credentials(alt_wallet, neofs_env)
     )
 
@@ -165,6 +165,7 @@ def neofs_setup(request, temp_directory):
         S3_MAIN_USER_ID=main_wallet_public_key,
         S3_MAIN_ACCESS_KEY=main_access_key_id,
         S3_MAIN_SECRET_KEY=main_secret_access_key,
+        S3_ALT_DISPLAY_NAME=alt_wallet_address,
         S3_ALT_USER_ID=alt_wallet_public_key,
         S3_ALT_ACCESS_KEY=alt_access_key_id,
         S3_ALT_SECRET_KEY=alt_secret_access_key,
