@@ -17,3 +17,30 @@ config.yaml
 # IDE
 .idea
 .vscode
+
+# ignore work directories and setup files
+s3tests.conf
+.setup
+.env
+TemporaryDir/*
+artifacts/*
+docs/*
+venv.*/*
+/*wallet_config.yml
+env_files/*
+neofs_logs.zip
+env_details
+blobovnicza-to-peapod
+neo-go
+neofs-adm
+neofs-cli
+neofs-ir
+neofs-lens
+neofs-node
+neofs-rest-gw
+neofs-s3-authmate
+neofs-s3-gw
+neofs-contract
+neofs_env_*.zip
+temp_files.zip
+
