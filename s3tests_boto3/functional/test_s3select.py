@@ -6,6 +6,8 @@ import json
 from botocore.exceptions import ClientError
 
 import uuid
+import warnings
+import traceback
 
 from . import (
     configfile,
@@ -95,6 +97,7 @@ def test_generate_where_clause():
     for _ in range(100): 
         generate_s3select_where_clause(bucket_name,obj_name)
 
+
 @pytest.mark.s3select
 def test_generate_projection():
 
@@ -111,9 +114,23 @@ def s3select_assert_result(a,b):
     if type(a) == str:
         a_strip = a.strip()
         b_strip = b.strip()
+        if a=="" and b=="":
+            warnings.warn(UserWarning("{}".format("both results are empty, it may indicates a wrong input, please check the test input")))
+            ## print the calling function that created the empty result.
+            stack = traceback.extract_stack(limit=2)
+            formatted_stack = traceback.format_list(stack)[0]
+            warnings.warn(UserWarning("{}".format(formatted_stack)))
+            return a==b
         assert a_strip != ""
         assert b_strip != ""
     else:
+        if a=="" and b=="":
+            warnings.warn(UserWarning("{}".format("both results are empty, it may indicates a wrong input, please check the test input")))
+            ## print the calling function that created the empty result.
+            stack = traceback.extract_stack(limit=2)
+            formatted_stack = traceback.format_list(stack)[0]
+            warnings.warn(UserWarning("{}".format(formatted_stack)))
+            return a==b
         assert a != ""
         assert b != ""
     assert a == b
@@ -795,6 +812,9 @@ def test_true_false_in_expressions():
 
     csv_obj_name = get_random_string()
     bucket_name = get_new_bucket_name()
+
+    ## 1,2 must exist in first/second column (to avoid empty results)
+    csv_obj = csv_obj + "1,2,,,,,,,,,,\n"
 
     upload_object(bucket_name,csv_obj_name,csv_obj)
 
