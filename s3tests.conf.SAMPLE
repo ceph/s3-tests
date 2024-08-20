@@ -43,7 +43,7 @@ secret_key = {{ S3_MAIN_SECRET_KEY }}
 
 [s3 alt]
 # alt display_name set in vstart.sh
-display_name = john.doe
+display_name = {{ S3_ALT_DISPLAY_NAME }}
 ## alt email set in vstart.sh
 email = john.doe@example.com
 
