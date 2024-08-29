@@ -2445,6 +2445,124 @@ def test_account_oidc_provider(iam_root):
         iam_root.delete_open_id_connect_provider(OpenIDConnectProviderArn=arn)
 
 
+@pytest.mark.iam_account
+def test_verify_add_new_client_id_to_oidc(iam_root):
+    url_host = get_iam_path_prefix()[1:] + 'example.com'
+    url = 'http://' + url_host
+
+    response = iam_root.create_open_id_connect_provider(
+                        Url=url,
+                        ClientIDList=[
+                            'app-jee-jsp',
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 1
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert url == get_response['Url']
+
+    add_response = iam_root.add_client_id_to_open_id_connect_provider(
+    OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ClientID='app-profile-jsp'
+                    )
+    assert add_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    del_response = iam_root.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+def test_verify_add_existing_client_id_to_oidc(iam_root):
+    url_host = get_iam_path_prefix()[1:] + 'example.com'
+    url = 'http://' + url_host
+
+    response = iam_root.create_open_id_connect_provider(
+                        Url=url,
+                        ClientIDList=[
+                            'app-jee-jsp',
+                            'app-profile-jsp'
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    add_response = iam_root.add_client_id_to_open_id_connect_provider(
+    OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ClientID='app-profile-jsp'
+                    )
+    assert add_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert len(get_response['ClientIDList']) == 2
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert get_response['ClientIDList'][1] == 'app-profile-jsp'
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    del_response = iam_root.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+def test_verify_update_thumbprintlist_of_oidc(iam_root):
+    url_host = get_iam_path_prefix()[1:] + 'example.com'
+    url = 'http://' + url_host
+
+    response = iam_root.create_open_id_connect_provider(
+                        Url=url,
+                        ClientIDList=[
+                            'app-jee-jsp',
+                            'app-profile-jsp'
+                        ],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+                    ]
+                    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ThumbprintList']) == 1
+    assert get_response['ThumbprintList'][0] == '3768084dfb3d2b68b7897bf5f565da8efEXAMPLE'
+    update_response = iam_root.update_open_id_connect_provider_thumbprint(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn'],
+                        ThumbprintList=[
+                            '3768084dfb3d2b68b7897bf5f565da8efSAMPLE1'
+                    ]
+                    )
+    assert update_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    get_response = iam_root.get_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ThumbprintList']) == 1
+    assert get_response['ThumbprintList'][0] == '3768084dfb3d2b68b7897bf5f565da8efSAMPLE1'
+    del_response = iam_root.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=response['OpenIDConnectProviderArn']
+                    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
 # test cross-account access, adding user policy before the bucket policy
 def _test_cross_account_user_bucket_policy(roots3, alt_root, alt_name, alt_arn):
     # add a user policy that allows s3 actions
@@ -2801,3 +2919,4 @@ def test_cross_account_root_bucket_acl_grant_account_email(iam_root, iam_alt_roo
     alts3 = get_iam_alt_root_client(service_name='s3')
     grantee = 'emailAddress=' + get_iam_alt_root_email()
     _test_cross_account_root_bucket_acl(roots3, alts3, grantee)
+
