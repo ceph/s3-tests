@@ -131,12 +131,12 @@ def neofs_setup(request, temp_directory):
         neofs_env = NeoFSEnv.load(request.config.getoption("--load-env"))
     else:
         neofs_env = NeoFSEnv.simple()
+        neofs_env.neofs_adm().morph.set_config(
+            rpc_endpoint=f"http://{neofs_env.morph_rpc}",
+            alphabet_wallets=neofs_env.alphabet_wallets_dir,
+            post_data="ContainerFee=0 ContainerAliasFee=0 MaxObjectSize=524288",
+        )
 
-    neofs_env.neofs_adm().morph.set_config(
-        rpc_endpoint=f"http://{neofs_env.morph_rpc}",
-        alphabet_wallets=neofs_env.alphabet_wallets_dir,
-        post_data="ContainerFee=0 ContainerAliasFee=0 MaxObjectSize=524288",
-    )
     time.sleep(30)
 
     main_wallet = create_wallet()
