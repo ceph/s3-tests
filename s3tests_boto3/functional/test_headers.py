@@ -219,6 +219,7 @@ def test_object_create_bad_contentlength_negative():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_contentlength_none():
     remove = 'Content-Length'
     e = _remove_header_create_bad_object('Content-Length')
@@ -251,6 +252,7 @@ def test_object_create_bad_contenttype_none():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_authorization_empty():
     e = _add_header_create_bad_object({'Authorization': ''})
     status, error_code = _get_status_and_error_code(e.response)
@@ -259,6 +261,7 @@ def test_object_create_bad_authorization_empty():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_date_and_amz_date():
     date = formatdate(usegmt=True)
     bucket_name, key_name = _add_header_create_object({'Date': date, 'X-Amz-Date': date})
@@ -268,6 +271,7 @@ def test_object_create_date_and_amz_date():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to pass both the 'Date' and 'X-Amz-Date' header during signing and not 'X-Amz-Date' before
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_amz_date_and_no_date():
     date = formatdate(usegmt=True)
     bucket_name, key_name = _add_header_create_object({'Date': '', 'X-Amz-Date': date})
@@ -278,6 +282,7 @@ def test_object_create_amz_date_and_no_date():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_authorization_none():
     e = _remove_header_create_bad_object('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
@@ -362,6 +367,7 @@ def test_bucket_create_bad_contentlength_none():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_bucket_create_bad_authorization_empty():
     headers = {'Authorization': ''}
     e = _add_header_create_bad_bucket(headers)
@@ -372,6 +378,7 @@ def test_bucket_create_bad_authorization_empty():
 @pytest.mark.auth_common
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_bucket_create_bad_authorization_none():
     e = _remove_header_create_bad_bucket('Authorization')
     status, error_code = _get_status_and_error_code(e.response)
@@ -403,6 +410,7 @@ def test_object_create_bad_contentlength_mismatch_below_aws2():
 @pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_authorization_incorrect_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS AKIAIGR7ZNNBHC5BKSUB:FWeDfwojDSdS2Ztmpfeubhd9isU='}
@@ -414,6 +422,7 @@ def test_object_create_bad_authorization_incorrect_aws2():
 @pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to manipulate the authorization header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_authorization_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS HAHAHA'}
@@ -457,6 +466,7 @@ def test_object_create_bad_date_empty_aws2():
 @pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_create_bad_date_none_aws2():
     v2_client = get_v2_client()
     remove = 'x-amz-date'
@@ -495,6 +505,7 @@ def test_object_create_bad_date_after_end_aws2():
 @pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_bucket_create_bad_authorization_invalid_aws2():
     v2_client = get_v2_client()
     headers = {'Authorization': 'AWS HAHAHA'}
@@ -536,6 +547,7 @@ def test_bucket_create_bad_date_empty_aws2():
 @pytest.mark.auth_aws2
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the date header
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_bucket_create_bad_date_none_aws2():
     v2_client = get_v2_client()
     remove = 'x-amz-date'
