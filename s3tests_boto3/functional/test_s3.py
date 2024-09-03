@@ -12049,6 +12049,7 @@ def test_bucket_policy_get_obj_acl_existing_tag():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12081,6 +12082,7 @@ def test_object_lock_put_obj_lock():
     assert response['Status'] == 'Enabled'
 
 
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12099,6 +12101,7 @@ def test_object_lock_put_obj_lock_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12118,6 +12121,7 @@ def test_object_lock_put_obj_lock_with_days_and_years():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12136,6 +12140,7 @@ def test_object_lock_put_obj_lock_invalid_days():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12154,6 +12159,7 @@ def test_object_lock_put_obj_lock_invalid_years():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12184,6 +12190,7 @@ def test_object_lock_put_obj_lock_invalid_mode():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12202,6 +12209,7 @@ def test_object_lock_put_obj_lock_invalid_status():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_suspend_versioning():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12213,6 +12221,7 @@ def test_object_lock_suspend_versioning():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_get_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12231,6 +12240,7 @@ def test_object_lock_get_obj_lock():
     assert response['ObjectLockConfiguration'] == conf
 
 
+@pytest.mark.object_lock
 def test_object_lock_get_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12242,6 +12252,7 @@ def test_object_lock_get_obj_lock_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12258,6 +12269,7 @@ def test_object_lock_put_obj_retention():
 
 
 
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12272,6 +12284,7 @@ def test_object_lock_put_obj_retention_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12292,6 +12305,7 @@ def test_object_lock_put_obj_retention_invalid_mode():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_get_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12307,6 +12321,7 @@ def test_object_lock_get_obj_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_get_obj_retention_iso8601():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12324,6 +12339,7 @@ def test_object_lock_get_obj_retention_iso8601():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
+@pytest.mark.object_lock
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12337,6 +12353,7 @@ def test_object_lock_get_obj_retention_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_versionid():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12353,6 +12370,7 @@ def test_object_lock_put_obj_retention_versionid():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_override_default_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12378,6 +12396,7 @@ def test_object_lock_put_obj_retention_override_default_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_increase_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12395,6 +12414,7 @@ def test_object_lock_put_obj_retention_increase_period():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_shorten_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12413,6 +12433,7 @@ def test_object_lock_put_obj_retention_shorten_period():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_obj_retention_shorten_period_bypass():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12430,6 +12451,7 @@ def test_object_lock_put_obj_retention_shorten_period_bypass():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12448,6 +12470,7 @@ def test_object_lock_delete_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_multipart_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12473,6 +12496,7 @@ def test_object_lock_delete_multipart_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_object_with_retention_and_marker():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12498,6 +12522,7 @@ def test_object_lock_delete_object_with_retention_and_marker():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_multi_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12565,6 +12590,7 @@ def test_object_lock_multi_delete_object_with_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12578,6 +12604,7 @@ def test_object_lock_put_legal_hold():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
+@pytest.mark.object_lock
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12592,6 +12619,7 @@ def test_object_lock_put_legal_hold_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_put_legal_hold_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12606,6 +12634,7 @@ def test_object_lock_put_legal_hold_invalid_status():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12622,6 +12651,7 @@ def test_object_lock_get_legal_hold():
     assert response['LegalHold'] == legal_hold_off
 
 
+@pytest.mark.object_lock
 def test_object_lock_get_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12635,6 +12665,7 @@ def test_object_lock_get_legal_hold_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12649,6 +12680,7 @@ def test_object_lock_delete_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_multipart_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12671,6 +12703,7 @@ def test_object_lock_delete_multipart_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_delete_object_with_legal_hold_off():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12683,6 +12716,7 @@ def test_object_lock_delete_object_with_legal_hold_off():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_get_obj_metadata():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12703,6 +12737,7 @@ def test_object_lock_get_obj_metadata():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_uploading_obj():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12719,6 +12754,7 @@ def test_object_lock_uploading_obj():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_changing_mode_from_governance_with_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
@@ -12733,6 +12769,7 @@ def test_object_lock_changing_mode_from_governance_with_bypass():
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_changing_mode_from_governance_without_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
@@ -12750,6 +12787,7 @@ def test_object_lock_changing_mode_from_governance_without_bypass():
     assert error_code == 'AccessDenied'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.object_lock
 def test_object_lock_changing_mode_from_compliance():
     bucket_name = get_new_bucket_name()
     key = 'file1'
