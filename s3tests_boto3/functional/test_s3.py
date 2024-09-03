@@ -6852,6 +6852,7 @@ def test_100_continue_error_retry():
     # send another request on the same connection
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
+@pytest.mark.cors
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6887,6 +6888,7 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
     assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
 
+@pytest.mark.cors
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6962,6 +6964,7 @@ def test_cors_origin_response():
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'GET'}, 403, None, None)
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'PUT'}, 200, 'foo.put', 'PUT')
 
+@pytest.mark.cors
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6987,6 +6990,7 @@ def test_cors_origin_wildcard():
     _cors_request_and_check(requests.get, url, None, 200, None, None)
     _cors_request_and_check(requests.get, url, {'Origin': 'example.origin'}, 200, '*', 'GET')
 
+@pytest.mark.cors
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -7052,18 +7056,21 @@ def _test_cors_options_presigned_method(client, method, cannedACL=None):
     _cors_request_and_check(requests.options, url, headers,
                             200, 'example', httpMethod)
 
+@pytest.mark.cors
 def test_cors_presigned_get_object():
     _test_cors_options_presigned_method(
         client=get_client(),
         method='get_object',
     )
 
+@pytest.mark.cors
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
         method='get_object',
     )
 
+@pytest.mark.cors
 @pytest.mark.fails_on_rgw
 def test_cors_presigned_get_object_v2():
     _test_cors_options_presigned_method(
@@ -7071,6 +7078,7 @@ def test_cors_presigned_get_object_v2():
         method='get_object',
     )
 
+@pytest.mark.cors
 @pytest.mark.fails_on_rgw
 def test_cors_presigned_get_object_tenant_v2():
     _test_cors_options_presigned_method(
@@ -7078,12 +7086,14 @@ def test_cors_presigned_get_object_tenant_v2():
         method='get_object',
     )
 
+@pytest.mark.cors
 def test_cors_presigned_put_object():
     _test_cors_options_presigned_method(
         client=get_client(),
         method='put_object',
     )
 
+@pytest.mark.cors
 def test_cors_presigned_put_object_with_acl():
     _test_cors_options_presigned_method(
         client=get_client(),
@@ -7091,6 +7101,7 @@ def test_cors_presigned_put_object_with_acl():
         cannedACL='private',
     )
 
+@pytest.mark.cors
 @pytest.mark.fails_on_rgw
 def test_cors_presigned_put_object_v2():
     _test_cors_options_presigned_method(
@@ -7098,6 +7109,7 @@ def test_cors_presigned_put_object_v2():
         method='put_object',
     )
 
+@pytest.mark.cors
 @pytest.mark.fails_on_rgw
 def test_cors_presigned_put_object_tenant_v2():
     _test_cors_options_presigned_method(
@@ -7105,12 +7117,14 @@ def test_cors_presigned_put_object_tenant_v2():
         method='put_object',
     )
 
+@pytest.mark.cors
 def test_cors_presigned_put_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
         method='put_object',
     )
 
+@pytest.mark.cors
 def test_cors_presigned_put_object_tenant_with_acl():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
