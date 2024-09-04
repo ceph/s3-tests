@@ -12152,7 +12152,8 @@ def test_object_lock_put_obj_lock_with_days_and_years():
     assert status == 400
     assert error_code == 'MalformedXML'
 
-
+@pytest.mark.fails_on_aws
+# AssertionError: assert 'InvalidArgument' == 'InvalidRetentionPeriod'
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
@@ -12171,6 +12172,8 @@ def test_object_lock_put_obj_lock_invalid_days():
     assert error_code == 'InvalidRetentionPeriod'
 
 
+@pytest.mark.fails_on_aws
+# AssertionError: assert 'InvalidArgument' == 'InvalidRetentionPeriod'
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
