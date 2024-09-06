@@ -100,8 +100,8 @@ def get_s3_client_using_iam_creds() -> boto3:
     )
     return s3_client_iam_creds
 
+
 def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
-    oidc_arn = None
     oidc_error = None
     clientids = []
     if clientidlist is None:
@@ -129,10 +129,10 @@ def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
             oidc_arn = 'arn:aws:iam:::oidc-provider/{}'.format(url)
             print (url)
             print (oidc_arn)
-            oidc_response = iam_client.get_open_id_connect_provider(OpenIDConnectProviderArn=oidc_arn)
-        except ClientError as e:
+            iam_client.get_open_id_connect_provider(OpenIDConnectProviderArn=oidc_arn)
+        except ClientError:
             oidc_arn = None
-    return (oidc_arn, oidc_error)
+    return oidc_arn, oidc_error
 
 def get_s3_resource_using_iam_creds():
     iam_access_key = get_iam_access_key()
