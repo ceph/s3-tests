@@ -71,19 +71,24 @@ def put_role_policy(iam_client, rolename, policyname, role_policy):
         )
     except ClientError as e:
         role_err = e.response['Code']
-    return role_err,role_response
+    return role_err, role_response
 
 
-def put_user_policy(iam_client,username,policyname,policy_document):
+def put_user_policy(iam_client, username, policyname, policy_document):
     role_err=None
     role_response = None
     if policyname is None:
-        policyname=get_parameter_name()
+        policyname = get_parameter_name()
     try:
-        role_response = iam_client.put_user_policy(UserName=username,PolicyName=policyname,PolicyDocument=policy_document)
+        role_response = iam_client.put_user_policy(
+            UserName=username,
+            PolicyName=policyname,
+            PolicyDocument=policy_document,
+        )
     except ClientError as e:
         role_err = e.response['Code']
-    return (role_err,role_response,policyname)
+    return role_err, role_response, policyname
+
 
 def get_s3_client_using_iam_creds():
     iam_access_key = get_iam_access_key()
