@@ -58,16 +58,21 @@ def create_role(
     return role_err, role_response, rolename
 
 
-def put_role_policy(iam_client,rolename,policyname,role_policy):
+def put_role_policy(iam_client, rolename, policyname, role_policy):
     role_err=None
     role_response = None
     if policyname is None:
         policyname=get_parameter_name() 
     try:
-        role_response = iam_client.put_role_policy(RoleName=rolename,PolicyName=policyname,PolicyDocument=role_policy)
+        role_response = iam_client.put_role_policy(
+            RoleName=rolename,
+            PolicyName=policyname,
+            PolicyDocument=role_policy,
+        )
     except ClientError as e:
-    	role_err = e.response['Code']
-    return (role_err,role_response)
+        role_err = e.response['Code']
+    return role_err,role_response
+
 
 def put_user_policy(iam_client,username,policyname,policy_document):
     role_err=None
