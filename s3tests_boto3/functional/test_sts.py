@@ -168,9 +168,9 @@ def test_get_session_token():
 
     s3_client=boto3.client(
         's3',
-        aws_access_key_id=response['Credentials']['AccessKeyId'],
-        aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-        aws_session_token=rresponse['Credentials']['SessionToken'],
+        aws_access_key_id = response['Credentials']['AccessKeyId'],
+        aws_secret_access_key = response['Credentials']['SecretAccessKey'],
+        aws_session_token = response['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -187,36 +187,30 @@ def test_get_session_token():
 @pytest.mark.fails_on_dbstore
 def test_get_session_token_permanent_creds_denied():
     s3bucket_error=None
-    iam_client = get_iam_client()
-    sts_client = get_sts_client()
-    sts_user_id = get_alt_user_id()
-    default_endpoint = get_config_endpoint()
-    s3_main_access_key = get_main_aws_access_key()
-    s3_main_secret_key = get_main_aws_secret_key()
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    sts_user_id=get_alt_user_id()
+    default_endpoint=get_config_endpoint()
+    s3_main_access_key=get_main_aws_access_key()
+    s3_main_secret_key=get_main_aws_secret_key()
 
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    resp_err,resp, policy_name = put_user_policy(
-        iam_client,
-        sts_user_id,
-        None,
-        user_policy,
-    )
+    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
     response=sts_client.get_session_token()
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client=boto3.client(
-        's3',
-        aws_access_key_id=s3_main_access_key,
-        aws_secret_access_key=s3_main_secret_key,
-        aws_session_token=response['Credentials']['SessionToken'],
-        endpoint_url=default_endpoint,
-        region_name='',
-    )
+    s3_client=boto3.client('s3',
+                aws_access_key_id = s3_main_access_key,
+		aws_secret_access_key = s3_main_secret_key,
+                aws_session_token = response['Credentials']['SessionToken'],
+		endpoint_url=default_endpoint,
+		region_name='',
+		)
     bucket_name = get_new_bucket_name()
     try:
-        s3_client.create_bucket(Bucket=bucket_name)
+        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
@@ -226,41 +220,59 @@ def test_get_session_token_permanent_creds_denied():
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
 def test_assume_role_allow():
-    iam_client=get_iam_client()
-    sts_client=get_sts_client()
-    sts_user_id=get_alt_user_id()
-    default_endpoint=get_config_endpoint()
-    role_session_name=get_parameter_name()
+    iam_client = get_iam_client()
+    sts_client = get_sts_client()
+    sts_user_id = get_alt_user_id()
+    default_endpoint = get_config_endpoint()
+    role_session_name = get_parameter_name()
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
-    (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
+    role_error, role_response, general_role_name = create_role(
+        iam_client,
+        '/',
+        None,
+        policy_document,
+        None,
+        None,
+        None,
+    )
     if role_response:
         assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     else:
         assert False, role_error
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
-    (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
+    role_err, response = put_role_policy(
+        iam_client,
+        general_role_name,
+        None,
+        role_policy,
+    )
     if response:
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     else:
         assert False, role_err
 
-    resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
+    resp = sts_client.assume_role(
+        RoleArn=role_response['Role']['Arn'],
+        RoleSessionName=role_session_name,
+    )
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client = boto3.client('s3',
-		aws_access_key_id = resp['Credentials']['AccessKeyId'],
-		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-		aws_session_token = resp['Credentials']['SessionToken'],
-		endpoint_url=default_endpoint,
-		region_name='',
-		)
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
+        endpoint_url=default_endpoint,
+        region_name='',
+    )
     bucket_name = get_new_bucket_name()
     s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
+
 
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
