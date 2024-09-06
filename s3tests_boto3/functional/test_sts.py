@@ -29,18 +29,34 @@ from . import(
 
 log = logging.getLogger(__name__)
 
-def create_role(iam_client,path,rolename,policy_document,description,sessionduration,permissionboundary,tag_list=None):
-    role_err=None
+
+def create_role(
+    iam_client,
+    path,
+    rolename,
+    policy_document,
+    description,
+    sessionduration,
+    permissionboundary,
+    tag_list=None,
+):
+    role_err = None
     role_response = None
     if rolename is None:
-        rolename=get_parameter_name()
+        rolename = get_parameter_name()
     if tag_list is None:
         tag_list = []
     try:
-        role_response = iam_client.create_role(Path=path,RoleName=rolename,AssumeRolePolicyDocument=policy_document,Tags=tag_list)
+        role_response = iam_client.create_role(
+            Path=path,
+            RoleName=rolename,
+            AssumeRolePolicyDocument=policy_document,
+            Tags=tag_list,
+        )
     except ClientError as e:
-    	role_err = e.response['Code']
-    return (role_err,role_response,rolename)
+        role_err = e.response['Code']
+    return role_err, role_response, rolename
+
 
 def put_role_policy(iam_client,rolename,policyname,role_policy):
     role_err=None
