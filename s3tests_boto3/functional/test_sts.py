@@ -90,18 +90,14 @@ def put_user_policy(iam_client, username, policyname, policy_document):
     return role_err, role_response, policyname
 
 
-def get_s3_client_using_iam_creds():
-    iam_access_key = get_iam_access_key()
-    iam_secret_key = get_iam_secret_key()
-    default_endpoint = get_config_endpoint()
-
-    s3_client_iam_creds = boto3.client('s3',
-                              aws_access_key_id = iam_access_key,
-                              aws_secret_access_key = iam_secret_key,
-                              endpoint_url=default_endpoint,
-                              region_name='',
-                          )
-
+def get_s3_client_using_iam_creds() -> boto3:
+    s3_client_iam_creds = boto3.client(
+        's3',
+        aws_access_key_id=get_iam_access_key(),
+        aws_secret_access_key=get_iam_secret_key(),
+        endpoint_url=get_config_endpoint(),
+        region_name='',
+    )
     return s3_client_iam_creds
 
 def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
