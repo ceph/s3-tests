@@ -62,7 +62,7 @@ def put_role_policy(iam_client, rolename, policyname, role_policy):
     role_err=None
     role_response = None
     if policyname is None:
-        policyname=get_parameter_name() 
+        policyname=get_parameter_name()
     try:
         role_response = iam_client.put_role_policy(
             RoleName=rolename,
@@ -134,18 +134,15 @@ def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
             oidc_arn = None
     return oidc_arn, oidc_error
 
+
 def get_s3_resource_using_iam_creds():
-    iam_access_key = get_iam_access_key()
-    iam_secret_key = get_iam_secret_key()
-    default_endpoint = get_config_endpoint()
-
-    s3_res_iam_creds = boto3.resource('s3',
-                              aws_access_key_id = iam_access_key,
-                              aws_secret_access_key = iam_secret_key,
-                              endpoint_url=default_endpoint,
-                              region_name='',
-                          )
-
+    s3_res_iam_creds = boto3.resource(
+        's3',
+        aws_access_key_id=get_iam_access_key(),
+        aws_secret_access_key=get_iam_secret_key(),
+        endpoint_url=get_config_endpoint(),
+        region_name='',
+    )
     return s3_res_iam_creds
 
 @pytest.mark.test_of_sts
@@ -155,14 +152,14 @@ def test_get_session_token():
     sts_client=get_sts_client()
     sts_user_id=get_alt_user_id()
     default_endpoint=get_config_endpoint()
-    
+
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
     (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     response=sts_client.get_session_token()
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     s3_client=boto3.client('s3',
                 aws_access_key_id = response['Credentials']['AccessKeyId'],
 		aws_secret_access_key = response['Credentials']['SecretAccessKey'],
@@ -188,14 +185,14 @@ def test_get_session_token_permanent_creds_denied():
     default_endpoint=get_config_endpoint()
     s3_main_access_key=get_main_aws_access_key()
     s3_main_secret_key=get_main_aws_secret_key()
-    
+
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
     (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     response=sts_client.get_session_token()
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     s3_client=boto3.client('s3',
                 aws_access_key_id = s3_main_access_key,
 		aws_secret_access_key = s3_main_secret_key,
@@ -214,29 +211,29 @@ def test_get_session_token_permanent_creds_denied():
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
 def test_assume_role_allow():
-    iam_client=get_iam_client()    
+    iam_client=get_iam_client()
     sts_client=get_sts_client()
     sts_user_id=get_alt_user_id()
     default_endpoint=get_config_endpoint()
     role_session_name=get_parameter_name()
-    
+
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
     if role_response:
         assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     else:
         assert False, role_error
-    
+
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
     if response:
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     else:
         assert False, role_err
-    
+
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
 		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
@@ -254,29 +251,29 @@ def test_assume_role_allow():
 @pytest.mark.fails_on_dbstore
 def test_assume_role_deny():
     s3bucket_error=None
-    iam_client=get_iam_client()    
+    iam_client=get_iam_client()
     sts_client=get_sts_client()
     sts_user_id=get_alt_user_id()
     default_endpoint=get_config_endpoint()
     role_session_name=get_parameter_name()
-    
+
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
     if role_response:
         assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     else:
         assert False, role_error
-    
+
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
     if response:
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     else:
         assert False, role_err
-    
+
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
 		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
@@ -294,30 +291,30 @@ def test_assume_role_deny():
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
 def test_assume_role_creds_expiry():
-    iam_client=get_iam_client()    
+    iam_client=get_iam_client()
     sts_client=get_sts_client()
     sts_user_id=get_alt_user_id()
     default_endpoint=get_config_endpoint()
     role_session_name=get_parameter_name()
-    
+
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam:::user/"+sts_user_id+"\"]},\"Action\":[\"sts:AssumeRole\"]}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
     if role_response:
         assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
     else:
         assert False, role_error
-    
+
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
     if response:
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     else:
         assert False, role_err
-    
+
     resp=sts_client.assume_role(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,DurationSeconds=900)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
     time.sleep(900)
-    
+
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
 		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
@@ -426,7 +423,7 @@ def test_assume_role_allow_head_nonexistent():
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity():
     check_webidentity()
-    iam_client=get_iam_client()    
+    iam_client=get_iam_client()
     sts_client=get_sts_client()
     default_endpoint=get_config_endpoint()
     role_session_name=get_parameter_name()
@@ -434,28 +431,28 @@ def test_assume_role_with_web_identity():
     aud=get_aud()
     token=get_token()
     realm=get_realm_name()
-    
+
     oidc_response = iam_client.create_open_id_connect_provider(
     Url='http://localhost:8080/auth/realms/{}'.format(realm),
     ThumbprintList=[
         thumbprint,
     ],
     )
-    
+
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
     assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
-    
+
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\"}}"
     (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
     if response:
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     else:
         assert False, role_err
-    
+
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
+
     s3_client = boto3.client('s3',
 		aws_access_key_id = resp['Credentials']['AccessKeyId'],
 		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
@@ -468,7 +465,7 @@ def test_assume_role_with_web_identity():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
-    
+
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
     )
