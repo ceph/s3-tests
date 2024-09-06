@@ -1,36 +1,11 @@
 import boto3
-import botocore.session
 from botocore.exceptions import ClientError
-from botocore.exceptions import ParamValidationError
 import pytest
-import isodate
-import email.utils
-import datetime
-import threading
-import re
-import pytz
-from collections import OrderedDict
-import requests
 import json
-import base64
-import hmac
-import hashlib
-import xml.etree.ElementTree as ET
 import time
-import operator
-import os
-import string
-import random
-import socket
-import ssl
 import logging
-from collections import namedtuple
-
-from email.header import decode_header
 
 from . import(
-    configfile,
-    setup_teardown,
     get_iam_client,
     get_sts_client,
     get_client,
