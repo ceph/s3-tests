@@ -2,6 +2,7 @@ import boto3
 import botocore.session
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
+from botocore.handlers import validate_bucket_name
 import isodate
 import email.utils
 import datetime
@@ -10723,20 +10724,6 @@ def test_bucketv2_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
-def tenanted_bucket_name(tenant):
-    def change_bucket_name(params, **kwargs):
-        old_name = params['context']['signing']['bucket']
-        new_name = "{}:{}".format(tenant, old_name)
-        params['Bucket'] = new_name
-        params['context']['signing']['bucket'] = new_name
-
-        # the : needs to be url-encoded for urls
-        new_name_url = "{}%3A{}".format(tenant, old_name)
-        params['url'] = params['url'].replace(old_name, new_name_url)
-        params['url_path'] = params['url_path'].replace(old_name, new_name_url)
-
-    return change_bucket_name
-
 @pytest.mark.bucket_policy
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
@@ -10764,8 +10751,8 @@ def test_bucket_policy_different_tenant():
 
     # use the tenanted client to list the global tenant's bucket
     tenant_client = get_tenant_client()
-    tenant_client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(''))
-    response = tenant_client.list_objects(Bucket=bucket_name)
+    tenant_client.meta.events.unregister("before-parameter-build.s3", validate_bucket_name)
+    response = tenant_client.list_objects(Bucket=":{}".format(bucket_name))
 
     assert len(response['Contents']) == 1
 
@@ -10798,9 +10785,9 @@ def test_bucket_policy_tenanted_bucket():
 
     # use the global tenant's client to list the tenanted bucket
     client = get_client()
-    client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(tenant))
+    client.meta.events.unregister("before-parameter-build.s3", validate_bucket_name)
 
-    response = client.list_objects(Bucket=bucket_name)
+    response = client.list_objects(Bucket="{}:{}".format(tenant, bucket_name))
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
