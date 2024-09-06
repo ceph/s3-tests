@@ -794,30 +794,41 @@ def test_session_policy_check_on_same_bucket():
 @pytest.mark.fails_on_dbstore
 def test_session_policy_check_put_obj_denial():
     check_webidentity()
-    iam_client=get_iam_client()
-    iam_access_key=get_iam_access_key()
-    iam_secret_key=get_iam_secret_key()
-    sts_client=get_sts_client()
-    default_endpoint=get_config_endpoint()
-    role_session_name=get_parameter_name()
-    thumbprint=get_thumbprint()
-    aud=get_aud()
-    token=get_token()
-    realm=get_realm_name()
+    iam_client = get_iam_client()
+    sts_client = get_sts_client()
+    default_endpoint = get_config_endpoint()
+    role_session_name = get_parameter_name()
+    thumbprint = get_thumbprint()
+    aud = get_aud()
+    token = get_token()
+    realm = get_realm_name()
 
     url = 'http://localhost:8080/auth/realms/{}'.format(realm)
     thumbprintlist = [thumbprint]
-    (oidc_arn,oidc_error) = create_oidc_provider(iam_client, url, None, thumbprintlist)
+    oidc_arn, oidc_error = create_oidc_provider(iam_client, url, None, thumbprintlist)
     if oidc_error is not None:
         raise RuntimeError('Unable to create/get openid connect provider {}'.format(oidc_error))
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
-    (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
+    role_error, role_response, general_role_name = create_role(
+        iam_client,
+        '/',
+        None,
+        policy_document,
+        None,
+        None,
+        None,
+    )
     assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy_new = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
 
-    (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy_new)
+    role_err, response = put_role_policy(
+        iam_client,
+        general_role_name,
+        None,
+        role_policy_new,
+    )
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     s3_client_iam_creds = get_s3_client_using_iam_creds()
@@ -828,27 +839,32 @@ def test_session_policy_check_put_obj_denial():
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
-    resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
+    resp=sts_client.assume_role_with_web_identity(
+        RoleArn=role_response['Role']['Arn'],
+        RoleSessionName=role_session_name,
+        WebIdentityToken=token,
+        Policy=session_policy,
+    )
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client = boto3.client('s3',
-                aws_access_key_id = resp['Credentials']['AccessKeyId'],
-                aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-                aws_session_token = resp['Credentials']['SessionToken'],
-                endpoint_url=default_endpoint,
-                region_name='',
-                )
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id = resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
+        aws_session_token = resp['Credentials']['SessionToken'],
+        endpoint_url=default_endpoint,
+        region_name='',
+    )
 
     bucket_body = 'this is a test file'
+    s3_put_obj_error = "AccessGranted"
     try:
-        s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
+        s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
     except ClientError as e:
         s3_put_obj_error = e.response.get("Error", {}).get("Code")
     assert s3_put_obj_error == 'AccessDenied'
 
-    oidc_remove=iam_client.delete_open_id_connect_provider(
-    OpenIDConnectProviderArn=oidc_arn
-    )
+    iam_client.delete_open_id_connect_provider(OpenIDConnectProviderArn=oidc_arn)
 
 
 @pytest.mark.webidentity_test
