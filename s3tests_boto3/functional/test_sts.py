@@ -5,7 +5,7 @@ import json
 import time
 import logging
 
-from . import(
+from . import (
     get_iam_client,
     get_sts_client,
     get_client,
@@ -59,10 +59,10 @@ def create_role(
 
 
 def put_role_policy(iam_client, rolename, policyname, role_policy):
-    role_err=None
+    role_err = None
     role_response = None
     if policyname is None:
-        policyname=get_parameter_name()
+        policyname = get_parameter_name()
     try:
         role_response = iam_client.put_role_policy(
             RoleName=rolename,
@@ -75,7 +75,7 @@ def put_role_policy(iam_client, rolename, policyname, role_policy):
 
 
 def put_user_policy(iam_client, username, policyname, policy_document):
-    role_err=None
+    role_err = None
     role_response = None
     if policyname is None:
         policyname = get_parameter_name()
@@ -105,7 +105,7 @@ def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
     oidc_error = None
     clientids = []
     if clientidlist is None:
-        clientidlist=clientids
+        clientidlist = clientids
     try:
         oidc_response = iam_client.create_open_id_connect_provider(
             Url=url,
@@ -113,13 +113,13 @@ def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
             ThumbprintList=thumbprintlist,
         )
         oidc_arn = oidc_response['OpenIDConnectProviderArn']
-        print (oidc_arn)
+        print(oidc_arn)
     except ClientError as e:
         oidc_error = e.response['Code']
-        print (oidc_error)
+        print(oidc_error)
         try:
             oidc_error = None
-            print (url)
+            print(url)
             if url.startswith('http://'):
                 url = url[len('http://'):]
             elif url.startswith('https://'):
@@ -127,8 +127,8 @@ def create_oidc_provider(iam_client, url, clientidlist, thumbprintlist):
             elif url.startswith('www.'):
                 url = url[len('www.'):]
             oidc_arn = 'arn:aws:iam:::oidc-provider/{}'.format(url)
-            print (url)
-            print (oidc_arn)
+            print(url)
+            print(oidc_arn)
             iam_client.get_open_id_connect_provider(OpenIDConnectProviderArn=oidc_arn)
         except ClientError:
             oidc_arn = None
@@ -155,7 +155,7 @@ def test_get_session_token():
     default_endpoint = get_config_endpoint()
 
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    resp_err,resp, policy_name = put_user_policy(
+    resp_err, resp, policy_name = put_user_policy(
         iam_client,
         sts_user_id,
         None,
@@ -166,11 +166,11 @@ def test_get_session_token():
     response = sts_client.get_session_token()
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client=boto3.client(
+    s3_client = boto3.client(
         's3',
-        aws_access_key_id = response['Credentials']['AccessKeyId'],
-        aws_secret_access_key = response['Credentials']['SecretAccessKey'],
-        aws_session_token = response['Credentials']['SessionToken'],
+        aws_access_key_id=response['Credentials']['AccessKeyId'],
+        aws_secret_access_key=response['Credentials']['SecretAccessKey'],
+        aws_session_token=response['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -180,41 +180,42 @@ def test_get_session_token():
         assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
         s3_client.delete_bucket(Bucket=bucket_name)
     finally:  # clean up user policy even if create_bucket/delete_bucket fails
-        iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
+        iam_client.delete_user_policy(UserName=sts_user_id, PolicyName=policy_name)
 
 
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
 def test_get_session_token_permanent_creds_denied():
-    s3bucket_error=None
-    iam_client=get_iam_client()
-    sts_client=get_sts_client()
-    sts_user_id=get_alt_user_id()
-    default_endpoint=get_config_endpoint()
-    s3_main_access_key=get_main_aws_access_key()
-    s3_main_secret_key=get_main_aws_secret_key()
+    s3bucket_error = None
+    iam_client = get_iam_client()
+    sts_client = get_sts_client()
+    sts_user_id = get_alt_user_id()
+    default_endpoint = get_config_endpoint()
+    s3_main_access_key = get_main_aws_access_key()
+    s3_main_secret_key = get_main_aws_secret_key()
 
     user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
+    resp_err, resp, policy_name = put_user_policy(iam_client, sts_user_id, None, user_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    response=sts_client.get_session_token()
+    response = sts_client.get_session_token()
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client=boto3.client('s3',
-                aws_access_key_id = s3_main_access_key,
-		aws_secret_access_key = s3_main_secret_key,
-                aws_session_token = response['Credentials']['SessionToken'],
-		endpoint_url=default_endpoint,
-		region_name='',
-		)
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=s3_main_access_key,
+        aws_secret_access_key=s3_main_secret_key,
+        aws_session_token=response['Credentials']['SessionToken'],
+        endpoint_url=default_endpoint,
+        region_name='',
+    )
     bucket_name = get_new_bucket_name()
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
-    iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
+    iam_client.delete_user_policy(UserName=sts_user_id, PolicyName=policy_name)
 
 
 @pytest.mark.test_of_sts
@@ -319,9 +320,9 @@ def test_assume_role_deny():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -379,9 +380,9 @@ def test_assume_role_creds_expiry():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -442,9 +443,9 @@ def test_assume_role_deny_head_nonexistent():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -470,7 +471,15 @@ def test_assume_role_allow_head_nonexistent():
     role_session_name = get_parameter_name()
 
     policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
-    (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
+    role_error, role_response, general_role_name = create_role(
+        iam_client,
+        '/',
+        None,
+        policy_document,
+        None,
+        None,
+        None,
+    )
     if role_response:
         assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name
     else:
@@ -497,9 +506,9 @@ def test_assume_role_allow_head_nonexistent():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -554,7 +563,7 @@ def test_assume_role_with_web_identity():
     else:
         assert False, role_err
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=token,
@@ -563,9 +572,9 @@ def test_assume_role_with_web_identity():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -650,7 +659,8 @@ def test_session_policy_check_on_different_buckets():
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_arn+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\"],\"Condition\":{\"StringEquals\":{\"localhost:8080/auth/realms/"+realm+":app_id\":\""+aud+"\"}}}]}"
     role_error, role_response, general_role_name = create_role(
-        iam_client,'/',
+        iam_client,
+        '/',
         None,
         policy_document,
         None,
@@ -671,7 +681,7 @@ def test_session_policy_check_on_different_buckets():
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=token,
@@ -681,9 +691,9 @@ def test_session_policy_check_on_different_buckets():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -765,7 +775,7 @@ def test_session_policy_check_on_same_bucket():
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=token,
@@ -775,9 +785,9 @@ def test_session_policy_check_on_same_bucket():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -839,7 +849,7 @@ def test_session_policy_check_put_obj_denial():
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=token,
@@ -849,9 +859,9 @@ def test_session_policy_check_put_obj_denial():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -927,9 +937,9 @@ def test_swapping_role_policy_and_session_policy():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1000,9 +1010,9 @@ def test_session_policy_check_different_op_permissions():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1078,9 +1088,9 @@ def test_session_policy_check_with_deny_effect():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1155,9 +1165,9 @@ def test_session_policy_check_with_deny_on_same_op():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1222,18 +1232,18 @@ def test_session_policy_bucket_policy_role_arn():
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
     rolearn = "arn:aws:iam:::role/" + general_role_name
-    bucket_policy = json.dumps(
-    {
+    bucket_policy = json.dumps({
         "Version": "2012-10-17",
-        "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"AWS": "{}".format(rolearn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
-        "Resource": [
-            "{}".format(resource1),
-            "{}".format(resource2)
-          ]
-        }]
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": "{}".format(rolearn),
+                },
+                "Action": ["s3:GetObject", "s3:PutObject"],
+                "Resource": ["{}".format(resource1), "{}".format(resource2)],
+            },
+        ],
      })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -1248,9 +1258,9 @@ def test_session_policy_bucket_policy_role_arn():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1317,18 +1327,18 @@ def test_session_policy_bucket_policy_session_arn():
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
     rolesessionarn = "arn:aws:iam:::assumed-role/" + general_role_name + "/" + role_session_name
-    bucket_policy = json.dumps(
-    {
+    bucket_policy = json.dumps({
         "Version": "2012-10-17",
-        "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"AWS": "{}".format(rolesessionarn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
-        "Resource": [
-            "{}".format(resource1),
-            "{}".format(resource2)
-          ]
-        }]
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": "{}".format(rolesessionarn),
+                },
+                "Action": ["s3:GetObject", "s3:PutObject"],
+                "Resource": ["{}".format(resource1), "{}".format(resource2)],
+            },
+        ],
     })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -1343,9 +1353,9 @@ def test_session_policy_bucket_policy_session_arn():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1409,18 +1419,18 @@ def test_session_policy_copy_object():
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
     rolesessionarn = "arn:aws:iam:::assumed-role/" + general_role_name + "/" + role_session_name
     print(rolesessionarn)
-    bucket_policy = json.dumps(
-    {
+    bucket_policy = json.dumps({
         "Version": "2012-10-17",
-        "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"AWS": "{}".format(rolesessionarn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
-        "Resource": [
-            "{}".format(resource1),
-            "{}".format(resource2)
-          ]
-        }]
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "AWS": "{}".format(rolesessionarn),
+                },
+                "Action": ["s3:GetObject", "s3:PutObject"],
+                "Resource": ["{}".format(resource1), "{}".format(resource2)],
+            },
+        ],
      })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -1435,9 +1445,9 @@ def test_session_policy_copy_object():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1507,9 +1517,9 @@ def test_session_policy_no_bucket_role_policy():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1573,18 +1583,19 @@ def test_session_policy_bucket_policy_deny():
     resource1 = "arn:aws:s3:::" + bucket_name_1
     resource2 = "arn:aws:s3:::" + bucket_name_1 + "/*"
     rolesessionarn = "arn:aws:iam:::assumed-role/" + general_role_name + "/" + role_session_name
-    bucket_policy = json.dumps(
-    {
+    bucket_policy = json.dumps({
         "Version": "2012-10-17",
-        "Statement": [{
-        "Effect": "Deny",
-        "Principal": {"AWS": "{}".format(rolesessionarn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
-        "Resource": [
-            "{}".format(resource1),
-            "{}".format(resource2)
-          ]
-        }]
+        "Statement": [
+            {
+                "Effect": "Deny",
+                "Principal": {"AWS": "{}".format(rolesessionarn)},
+                "Action": ["s3:GetObject", "s3:PutObject"],
+                "Resource": [
+                    "{}".format(resource1),
+                    "{}".format(resource2),
+                ],
+            },
+        ],
     })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -1599,9 +1610,9 @@ def test_session_policy_bucket_policy_deny():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -1665,9 +1676,9 @@ def test_assume_role_with_web_identity_with_sub():
 
     s3_client = boto3.client(
         's3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
     )
@@ -2055,7 +2066,7 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
     )
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=user_token,
@@ -2211,7 +2222,7 @@ def test_assume_role_with_web_identity_resource_tag():
     )
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=user_token,
@@ -2332,8 +2343,7 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
-    bucket_tagging.put(Tagging=
-        {
+    bucket_tagging.put(Tagging={
             'TagSet': [
                 {
                     'Key': 'Department',
@@ -2420,8 +2430,7 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
-    bucket_tagging.put(Tagging=
-        {
+    bucket_tagging.put(Tagging={
             'TagSet': [
                 {
                     'Key': 'Department',
@@ -2506,8 +2515,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
-    bucket_tagging.put(Tagging=
-        {
+    bucket_tagging.put(Tagging={
             'TagSet': [
                 {
                     'Key': 'Department',
@@ -2522,8 +2530,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(copy_bucket_name)
-    bucket_tagging.put(Tagging=
-        {
+    bucket_tagging.put(Tagging={
             'TagSet': [
                 {
                     'Key': 'Department',
@@ -2556,7 +2563,7 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
     role_err, response = put_role_policy(iam_client, general_role_name, None, role_policy)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    resp=sts_client.assume_role_with_web_identity(
+    resp = sts_client.assume_role_with_web_identity(
         RoleArn=role_response['Role']['Arn'],
         RoleSessionName=role_session_name,
         WebIdentityToken=user_token,
@@ -2626,8 +2633,7 @@ def test_assume_role_with_web_identity_role_resource_tag():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
-    bucket_tagging.put(Tagging=
-        {
+    bucket_tagging.put(Tagging={
             'TagSet': [
                 {
                     'Key': 'Department',
