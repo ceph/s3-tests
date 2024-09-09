@@ -2151,13 +2151,13 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
 @pytest.mark.fails_on_dbstore
 def test_assume_role_with_web_identity_resource_tag():
     check_webidentity()
-    iam_client=get_iam_client()
-    sts_client=get_sts_client()
-    default_endpoint=get_config_endpoint()
-    role_session_name=get_parameter_name()
-    thumbprint=get_thumbprint()
-    user_token=get_user_token()
-    realm=get_realm_name()
+    iam_client = get_iam_client()
+    sts_client = get_sts_client()
+    default_endpoint = get_config_endpoint()
+    role_session_name = get_parameter_name()
+    thumbprint = get_thumbprint()
+    user_token = get_user_token()
+    realm = get_realm_name()
 
     s3_res_iam_creds = get_s3_resource_using_iam_creds()
 
@@ -2168,41 +2168,70 @@ def test_assume_role_with_web_identity_resource_tag():
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
-    Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'},{'Key':'Department', 'Value': 'Marketing'}]})
+    bucket_tagging.put(
+        Tagging={
+            'TagSet': [
+                {
+                    'Key': 'Department',
+                    'Value': 'Engineering',
+                },
+                {
+                    'Key': 'Department',
+                    'Value': 'Marketing',
+                },
+            ],
+        },
+    )
 
     oidc_response = iam_client.create_open_id_connect_provider(
-    Url='http://localhost:8080/auth/realms/{}'.format(realm),
-    ThumbprintList=[
-        thumbprint,
-    ],
+        Url='http://localhost:8080/auth/realms/{}'.format(realm),
+        ThumbprintList=[
+            thumbprint,
+        ],
     )
 
     policy_document = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Federated\":[\""+oidc_response["OpenIDConnectProviderArn"]+"\"]},\"Action\":[\"sts:AssumeRoleWithWebIdentity\",\"sts:TagSession\"],\"Condition\":{\"StringEquals\":{\"aws:RequestTag/Department\":\"Engineering\"}}}]}"
-    (role_error,role_response,general_role_name)=create_role(iam_client,'/',None,policy_document,None,None,None)
+    role_error, role_response, general_role_name = create_role(
+        iam_client,
+        '/',
+        None,
+        policy_document,
+        None,
+        None,
+        None,
+    )
     assert role_response['Role']['Arn'] == 'arn:aws:iam:::role/'+general_role_name+''
 
     role_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::*\",\"Condition\":{\"StringEquals\":{\"s3:ResourceTag/Department\":[\"Engineering\"]}}}}"
-    (role_err,response)=put_role_policy(iam_client,general_role_name,None,role_policy)
+    role_err, response = put_role_policy(
+        iam_client,
+        general_role_name,
+        None,
+        role_policy,
+    )
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=user_token)
+    resp=sts_client.assume_role_with_web_identity(
+        RoleArn=role_response['Role']['Arn'],
+        RoleSessionName=role_session_name,
+        WebIdentityToken=user_token,
+    )
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    s3_client = boto3.client('s3',
-        aws_access_key_id = resp['Credentials']['AccessKeyId'],
-        aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
-        aws_session_token = resp['Credentials']['SessionToken'],
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=resp['Credentials']['AccessKeyId'],
+        aws_secret_access_key=resp['Credentials']['SecretAccessKey'],
+        aws_session_token=resp['Credentials']['SessionToken'],
         endpoint_url=default_endpoint,
         region_name='',
-        )
+    )
 
-    bucket_body = 'this is a test file'
-    s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name, Key="test-1.txt")
+    s3_put_obj = s3_client.put_object(Body='this is a test file', Bucket=bucket_name, Key="test-1.txt")
     assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    oidc_remove=iam_client.delete_open_id_connect_provider(
-    OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"]
-    )
+    iam_client.delete_open_id_connect_provider(OpenIDConnectProviderArn=oidc_response["OpenIDConnectProviderArn"])
+
 
 @pytest.mark.webidentity_test
 @pytest.mark.abac_test
