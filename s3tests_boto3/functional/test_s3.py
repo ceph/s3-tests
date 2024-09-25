@@ -6782,6 +6782,12 @@ def test_cors_presigned_get_object():
         method='get_object',
     )
 
+def test_cors_presigned_get_object_sigv2():
+    _test_cors_options_presigned_method(
+        client=get_v2_client(),
+        method='get_object',
+    )
+
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
@@ -6799,6 +6805,12 @@ def test_cors_presigned_put_object_with_acl():
         client=get_client(),
         method='put_object',
         cannedACL='private',
+    )
+
+def test_cors_presigned_put_object_sigv2():
+    _test_cors_options_presigned_method(
+        client=get_v2_client(),
+        method='put_object',
     )
 
 def test_cors_presigned_put_object_tenant():
