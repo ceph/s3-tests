@@ -510,6 +510,17 @@ def get_tenant_client(client_config=None):
                         config=client_config)
     return client
 
+def get_v2_tenant_client():
+    client_config = Config(signature_version='s3')
+    client = boto3.client(service_name='s3',
+                          aws_access_key_id=config.tenant_access_key,
+                          aws_secret_access_key=config.tenant_secret_key,
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          config=client_config)
+    return client
+
 def get_tenant_iam_client():
 
     client = boto3.client(service_name='iam',

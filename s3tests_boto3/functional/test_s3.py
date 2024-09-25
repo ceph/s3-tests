@@ -67,6 +67,7 @@ from . import (
     get_alt_email,
     get_alt_client,
     get_tenant_client,
+    get_v2_tenant_client,
     get_tenant_iam_client,
     get_tenant_name,
     get_tenant_user_id,
@@ -6867,6 +6868,18 @@ def test_cors_presigned_get_object():
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
+        method='get_object',
+    )
+
+def test_cors_presigned_get_object_v2():
+    _test_cors_options_presigned_method(
+        client=get_v2_client(),
+        method='get_object',
+    )
+
+def test_cors_presigned_get_object_tenant_v2():
+    _test_cors_options_presigned_method(
+        client=get_v2_tenant_client(),
         method='get_object',
     )
 
