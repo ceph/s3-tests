@@ -1450,6 +1450,22 @@ def test_bucket_list_return_data_versioning():
         assert obj['VersionId'] == key_data['VersionId']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
+@pytest.mark.fails_on_dbstore
+def test_bucket_list_return_data_versioning_key_marker():
+
+    bucket_name = get_new_bucket()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    key_names = ['bar', 'baz', 'foo']
+    bucket_name = _create_objects(bucket_name=bucket_name,keys=key_names)
+
+    client = get_client()
+    response  = client.list_object_versions(Bucket=bucket_name, KeyMarker='baz')
+    assert response['KeyMarker'] == 'baz'
+    assert response['IsTruncated'] == False
+
+    keys = [obj['Key'] for obj in response['Versions']]
+    assert keys == ['foo']
+
 def test_bucket_list_objects_anonymous():
     bucket_name = get_new_bucket()
     client = get_client()
