@@ -13782,7 +13782,7 @@ def test_multipart_checksum_sha256():
     assert error_code == 'InvalidRequest'
 
     # should reject the missing part checksum
-    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='bad', MultipartUpload={'Parts': [
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='SHA256', MultipartUpload={'Parts': [
         {'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
