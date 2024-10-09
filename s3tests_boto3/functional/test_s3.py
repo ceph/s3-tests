@@ -9327,6 +9327,14 @@ def test_lifecycle_noncur_transition():
 
     bucket = get_new_bucket()
     client = get_client()
+
+    # before enabling versioning, create a plain entry
+    # which should get transitioned/expired similar to
+    # other non-current versioned entries.
+    key = 'test1/a'
+    content = 'fooz'
+    client.put_object(Bucket=bucket, Key=key, Body=content)
+
     check_configure_versioning_retry(bucket, "Enabled", "Enabled")
 
     rules = [
@@ -9352,7 +9360,7 @@ def test_lifecycle_noncur_transition():
     lifecycle = {'Rules': rules}
     response = client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
-    create_multiple_versions(client, bucket, "test1/a", 3)
+    create_multiple_versions(client, bucket, "test1/a", 2)
     create_multiple_versions(client, bucket, "test1/b", 3)
 
     init_keys = list_bucket_storage_class(client, bucket)
@@ -9608,6 +9616,14 @@ def test_lifecycle_noncur_cloud_transition():
 
     bucket = get_new_bucket()
     client = get_client()
+
+    # before enabling versioning, create a plain entry
+    # which should get transitioned/expired similar to
+    # other non-current versioned entries.
+    key = 'test1/a'
+    content = 'fooz'
+    client.put_object(Bucket=bucket, Key=key, Body=content)
+
     check_configure_versioning_retry(bucket, "Enabled", "Enabled")
 
     rules = [
@@ -9632,8 +9648,8 @@ def test_lifecycle_noncur_cloud_transition():
 
     keys = ['test1/a', 'test1/b']
 
-    for k in keys:
-        create_multiple_versions(client, bucket, k, 3)
+    create_multiple_versions(client, bucket, "test1/a", 2)
+    create_multiple_versions(client, bucket, "test1/b", 3)
 
     init_keys = list_bucket_storage_class(client, bucket)
     assert len(init_keys['STANDARD']) == 6
