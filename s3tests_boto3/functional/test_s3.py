@@ -1450,21 +1450,50 @@ def test_bucket_list_return_data_versioning():
         assert obj['VersionId'] == key_data['VersionId']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
-@pytest.mark.fails_on_dbstore
 def test_bucket_list_return_data_versioning_key_marker():
 
     bucket_name = get_new_bucket()
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
-    key_names = ['bar', 'baz', 'foo']
+    key_names = ['file1', 'file2', 'file3','file1','file2','file3']
     bucket_name = _create_objects(bucket_name=bucket_name,keys=key_names)
 
     client = get_client()
-    response  = client.list_object_versions(Bucket=bucket_name, KeyMarker='baz')
-    assert response['KeyMarker'] == 'baz'
+    list_object_versions_response = client.list_object_versions(Bucket=bucket_name)
+
+    all_keys=[obj['Key'] for obj in list_object_versions_response['Versions']]
+    all_version_ids=[obj['VersionId'] for obj in list_object_versions_response['Versions']]
+
+    expected_keys_response=all_keys[4:]
+    expected_version_ids_response=all_version_ids[4:]
+
+    response = client.list_object_versions(Bucket=bucket_name,KeyMarker='file2')
+    assert response['KeyMarker'] == 'file2'
     assert response['IsTruncated'] == False
 
-    keys = [obj['Key'] for obj in response['Versions']]
-    assert keys == ['foo']
+    keys_response = [obj['Key'] for obj in response['Versions']]
+    version_ids_response = [obj['VersionId'] for obj in response['Versions']]
+
+    assert keys_response == expected_keys_response
+    assert version_ids_response == expected_version_ids_response
+
+def test_bucket_list_return_data_versioning_version_id_marker():
+
+    bucket_name = get_new_bucket()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    key_names = ['bar', 'bar', 'bar','baz']
+    bucket_name = _create_objects(bucket_name=bucket_name,keys=key_names)
+
+    client = get_client()
+    list_object_versions_response = client.list_object_versions(Bucket=bucket_name)
+    all_version_ids=[obj['VersionId'] for obj in list_object_versions_response['Versions']]
+    
+    version_id_marker=all_version_ids[1]
+    expected_version_ids_response=all_version_ids[2:]
+
+    response = client.list_object_versions(Bucket=bucket_name, KeyMarker='bar', VersionIdMarker=version_id_marker)
+    version_ids_response=[obj['VersionId'] for obj in response['Versions']]
+
+    assert expected_version_ids_response==version_ids_response
 
 def test_bucket_list_objects_anonymous():
     bucket_name = get_new_bucket()
