@@ -13844,6 +13844,47 @@ def test_multipart_checksum_3parts():
     assert composite_sha256sum == response['ChecksumSHA256']
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_checksum_upload_fallback():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "mpu_cksum_fallback"
+    alg = 'SHA256'
+
+    response = client.create_multipart_upload(
+        Bucket=bucket, Key=key, ChecksumAlgorithm=alg)
+    assert alg == response['ChecksumAlgorithm']
+    upload_id = response['UploadId']
+
+    nparts = 3
+    parts = []
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    for ix in range(0,nparts):
+        body = FakeWriteFile(size, 'A')
+        part_num = ix + 1
+        res = client.upload_part(UploadId=upload_id, Bucket=bucket,
+                                 Key=key, PartNumber=part_num, Body=body)
+        etag = res['ETag']
+        part = {'ETag': etag, 'PartNumber': part_num}
+        parts.append(part)
+
+    res = client.complete_multipart_upload(
+        Bucket=bucket, Key=key, UploadId=upload_id,
+        MultipartUpload={'Parts': parts})
+
+    #pdb.set_trace()
+    assert res['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # not yet merged
+    #request_attributes = ['ETag', 'Checksum', 'ObjectParts', 'StorageClass',
+    #                      'ObjectSize']
+    #res = client.get_object_attributes(Bucket=bucket, Key=key, \
+    #                                   ObjectAttributes=request_attributes)
+    #upload_checksum = res['Checksum']['ChecksumSHA256']
+
+@pytest.mark.checksum
 def test_post_object_upload_checksum():
     megabytes = 1024 * 1024
     min_size = 0
