@@ -6976,6 +6976,9 @@ class FakeFile(object):
     def tell(self):
         return self.offset
 
+    def close(self):
+        pass
+
 class FakeWriteFile(FakeFile):
     """
     file that simulates interruptable reads of constant data
@@ -13931,3 +13934,20 @@ def test_post_object_upload_checksum():
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
+
+@pytest.mark.checksum
+# test streaming uploads with sizes below and above the 8MB multipart threshold
+@pytest.mark.parametrize("size", [7 * 1024 * 1024, 9 * 1024 * 1024])
+# test streaming uploads with each checksum algorithm
+@pytest.mark.parametrize("alg", ['CRC32', 'CRC32C', 'SHA1', 'SHA256'])
+def test_streaming_upload_checksum(size, alg):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'Avatar.mpg'
+    body = FakeWriteFile(size, 'A')
+    # uses STREAMING-UNSIGNED-PAYLOAD-TRAILER for https requests
+    client.upload_fileobj(body, bucket, key, ExtraArgs={'ChecksumAlgorithm': alg})
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert f'Checksum{alg}' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert f'Checksum{alg}' in response
