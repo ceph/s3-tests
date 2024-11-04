@@ -80,6 +80,7 @@ from . import (
     get_svc_client,
     get_cloud_storage_class,
     get_cloud_retain_head_object,
+    get_allow_read_through,
     get_cloud_regular_storage_class,
     get_cloud_target_path,
     get_cloud_target_storage_class,
@@ -87,6 +88,8 @@ from . import (
     nuke_prefixed_buckets,
     configured_storage_classes,
     get_lc_debug_interval,
+    get_restore_debug_interval,
+    get_read_through_days,
     )
 
 
@@ -9482,6 +9485,15 @@ def verify_object(client, bucket, key, content=None, sc=None):
         body = _get_body(response)
         assert body == content
 
+def verify_transition(client, bucket, key, sc=None):
+    response = client.head_object(Bucket=bucket, Key=key)
+
+    # Iterate over the contents to find the StorageClass
+    if 'StorageClass' in response:
+        assert response['StorageClass'] == sc
+    else:  # storage class should be STANDARD
+        assert 'STANDARD' == sc
+
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_transition
@@ -9778,6 +9790,136 @@ def test_lifecycle_cloud_transition_large_obj():
 
     expire1_key1_str = prefix + keys[1]
     verify_object(cloud_client, target_path, expire1_key1_str, data, target_sc)
+
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.cloud_restore
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_restore_object_temporary():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    bucket = get_new_bucket()
+    client = get_client()
+    key = 'test_restore_temp'
+    data = 'temporary restore data'
+
+    # Put object
+    client.put_object(Bucket=bucket, Key=key, Body=data)
+    verify_object(client, bucket, key, data)
+
+    # Transition object to cloud storage class
+    rules = [{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}], 'Prefix': '', 'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+    restore_interval = get_restore_debug_interval()
+    time.sleep(7 * lc_interval)
+
+    # Verify object is transitioned
+    verify_transition(client, bucket, key, cloud_sc)
+
+    # Restore object temporarily
+    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 2})
+    time.sleep(2)
+
+    # Verify object is restored temporarily
+    verify_transition(client, bucket, key, cloud_sc)
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentLength'] == len(data)
+    time.sleep(2 * (restore_interval + lc_interval))
+
+    #verify object expired
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentLength'] == 0
+
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.cloud_restore
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_restore_object_permanent():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+    
+    bucket = get_new_bucket()
+    client = get_client()
+    key = 'test_restore_perm'
+    data = 'permanent restore data'
+
+    # Put object
+    client.put_object(Bucket=bucket, Key=key, Body=data)
+    verify_object(client, bucket, key, data)
+
+    # Transition object to cloud storage class
+    rules = [{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}], 'Prefix': '', 'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+    time.sleep(7 * lc_interval)
+
+    # Verify object is transitioned
+    verify_transition(client, bucket, key, cloud_sc)
+
+    # Restore object permanently
+    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={})
+    time.sleep(2)
+    # Verify object is restored permanently
+    verify_transition(client, bucket, key, 'STANDARD')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentLength'] == len(data)
+
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.cloud_restore
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_read_through():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    bucket = get_new_bucket()
+    client = get_client()
+    key = 'test_restore_readthrough'
+    data = 'restore data with readthrough'
+
+     # Put object
+    client.put_object(Bucket=bucket, Key=key, Body=data)
+    verify_object(client, bucket, key, data)
+
+    # Transition object to cloud storage class
+    rules = [{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}], 'Prefix': '', 'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+    restore_interval = get_read_through_days()
+    time.sleep(7 * lc_interval)
+
+    # Check the storage class after transitioning
+    verify_transition(client, bucket, key, cloud_sc)
+
+    # Restore the object using read_through request
+    allow_readthrough = get_allow_read_through()
+    if allow_readthrough:
+        response = client.get_object(Bucket=bucket, Key=key)
+        time.sleep(2)
+        assert response['ContentLength'] == len(data)
+        time.sleep(2 * (restore_interval + lc_interval))
+        # verify object expired
+        response = client.head_object(Bucket=bucket, Key=key)
+        assert response['ContentLength'] == 0
+
+    else:
+        with assert_raises(ClientError) as e:
+            response = client.get_object(Bucket=bucket, Key=key)
+        assert e.exception.response['Error']['Code'] == '403'
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
