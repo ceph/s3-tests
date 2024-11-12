@@ -13297,6 +13297,33 @@ def test_ignore_public_acls():
     check_access_denied(alt_client.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key='key1')
 
+def test_put_get_delete_public_block():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    access_conf = {'BlockPublicAcls': True,
+                   'IgnorePublicAcls': True,
+                   'BlockPublicPolicy': True,
+                   'RestrictPublicBuckets': False}
+
+    client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=access_conf)
+
+    resp = client.get_public_access_block(Bucket=bucket_name)
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicAcls'] == access_conf['BlockPublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['BlockPublicPolicy'] == access_conf['BlockPublicPolicy']
+    assert resp['PublicAccessBlockConfiguration']['IgnorePublicAcls'] == access_conf['IgnorePublicAcls']
+    assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == access_conf['RestrictPublicBuckets']
+
+    resp = client.delete_public_access_block(Bucket=bucket_name)
+    assert resp['ResponseMetadata']['HTTPStatusCode'] == 204
+
+    response_code = ""
+    try:
+        resp = client.get_public_access_block(Bucket=bucket_name)
+    except ClientError as e:
+        response_code = e.response['Error']['Code']
+
+    assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
 def test_multipart_upload_on_a_bucket_with_policy():
     bucket_name = get_new_bucket()
