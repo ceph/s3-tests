@@ -10912,6 +10912,43 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     response =  client.get_bucket_policy(Bucket=bucket_name)
     print(response)
 
+@pytest.mark.bucket_policy
+def test_set_get_del_bucket_policy():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'asdf'
+    client.put_object(Bucket=bucket_name, Key=key, Body='asdf')
+
+    resource1 = "arn:aws:s3:::" + bucket_name
+    resource2 = "arn:aws:s3:::" + bucket_name + "/*"
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": "*"},
+        "Action": "s3:ListBucket",
+        "Resource": [
+            "{}".format(resource1),
+            "{}".format(resource2)
+          ]
+        }]
+     })
+
+    client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
+
+    response = client.get_bucket_policy(Bucket=bucket_name)
+    response_policy = response['Policy']
+    assert policy_document == response_policy
+
+    client.delete_bucket_policy(Bucket=bucket_name)
+
+    try:
+        response = client.get_bucket_policy(Bucket=bucket_name)
+    except botocore.exceptions.ClientError as e:
+        print (e)
+        assert e.response['Error']['Code'] == 'NoSuchBucketPolicy'
+
 def _create_simple_tagset(count):
     tagset = []
     for i in range(count):
