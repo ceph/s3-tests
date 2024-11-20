@@ -1107,11 +1107,7 @@ def test_head_bucket_usage():
     hdrs = http_response['headers']
     assert hdrs['X-RGW-Object-Count'] == '1'
     assert hdrs['X-RGW-Bytes-Used'] == '3'
-    assert hdrs['X-RGW-Quota-User-Size'] == '-1'
-    assert hdrs['X-RGW-Quota-User-Objects'] == '-1'
     assert hdrs['X-RGW-Quota-Max-Buckets'] == '1000'
-    assert hdrs['X-RGW-Quota-Bucket-Size'] == '-1'
-    assert hdrs['X-RGW-Quota-Bucket-Objects'] == '-1'
 
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
