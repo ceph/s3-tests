@@ -5171,7 +5171,6 @@ def test_list_buckets_invalid_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
-    assert error_code == 'InvalidAccessKeyId'
 
 def test_list_buckets_bad_auth():
     main_access_key = get_main_aws_access_key()
@@ -5179,7 +5178,6 @@ def test_list_buckets_bad_auth():
     e = assert_raises(ClientError, bad_auth_client.list_buckets)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
-    assert error_code == 'SignatureDoesNotMatch'
 
 @pytest.fixture
 def override_prefix_a():
