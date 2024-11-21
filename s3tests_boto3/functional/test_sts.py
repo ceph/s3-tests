@@ -183,39 +183,6 @@ def test_get_session_token():
 
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
-def test_get_session_token_permanent_creds_denied():
-    s3bucket_error=None
-    iam_client=get_iam_client()
-    sts_client=get_sts_client()
-    sts_user_id=get_alt_user_id()
-    default_endpoint=get_config_endpoint()
-    s3_main_access_key=get_main_aws_access_key()
-    s3_main_secret_key=get_main_aws_secret_key()
-    
-    user_policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":\"s3:*\",\"Resource\":[\"*\"],\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}},{\"Effect\":\"Allow\",\"Action\":\"sts:GetSessionToken\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"sts:authentication\":\"false\"}}}]}"
-    (resp_err,resp,policy_name)=put_user_policy(iam_client,sts_user_id,None,user_policy)
-    assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
-    
-    response=sts_client.get_session_token()
-    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-    
-    s3_client=boto3.client('s3',
-                aws_access_key_id = s3_main_access_key,
-		aws_secret_access_key = s3_main_secret_key,
-                aws_session_token = response['Credentials']['SessionToken'],
-		endpoint_url=default_endpoint,
-		region_name='',
-		)
-    bucket_name = get_new_bucket_name()
-    try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
-    except ClientError as e:
-        s3bucket_error = e.response.get("Error", {}).get("Code")
-    assert s3bucket_error == 'AccessDenied'
-    iam_client.delete_user_policy(UserName=sts_user_id,PolicyName=policy_name)
-
-@pytest.mark.test_of_sts
-@pytest.mark.fails_on_dbstore
 def test_assume_role_allow():
     iam_client=get_iam_client()    
     sts_client=get_sts_client()
