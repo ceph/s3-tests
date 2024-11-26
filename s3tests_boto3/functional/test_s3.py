@@ -815,6 +815,8 @@ def test_bucket_listv2_prefix_not_exist():
     assert keys == []
     assert prefixes == []
 
+@pytest.mark.fails_on_aws
+# AssertionError: assert '%0A' == '\n' on aws
 def test_bucket_list_prefix_unreadable():
     key_names = ['foo/bar', 'foo/baz', 'quux']
     bucket_name = _create_objects(keys=key_names)
@@ -1841,6 +1843,7 @@ def test_object_set_get_metadata_overwrite_to_empty():
 
 # TODO: the decoding of this unicode metadata is not happening properly for unknown reasons
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_set_get_unicode_metadata():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3091,6 +3094,8 @@ def test_put_object_ifmatch_good():
     assert body == 'zar'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_aws
+# 501 error on aws
 def test_put_object_ifmatch_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3470,6 +3475,7 @@ def test_object_raw_get_x_amz_expires_out_range_zero():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
+@pytest.mark.fails_on_aws
 def test_object_raw_get_x_amz_expires_out_max_range():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -3480,6 +3486,7 @@ def test_object_raw_get_x_amz_expires_out_max_range():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
+@pytest.mark.fails_on_aws
 def test_object_raw_get_x_amz_expires_out_positive_range():
     bucket_name = _setup_bucket_object_acl('public-read', 'public-read')
     client = get_client()
@@ -3551,6 +3558,7 @@ def test_object_presigned_put_object_with_acl_tenant():
     _test_object_presigned_put_object_with_acl(
         client=get_tenant_client())
 
+@pytest.mark.fails_on_aws
 def test_object_raw_put_authenticated_expired():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3912,6 +3920,8 @@ def test_bucket_acl_canned_during_create():
             ],
         )
 
+@pytest.mark.fails_on_aws
+# response structure is different from expected
 def test_bucket_acl_canned():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -3962,6 +3972,8 @@ def test_bucket_acl_canned():
             ],
         )
 
+@pytest.mark.fails_on_aws
+# response structure is different from expected
 def test_bucket_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4001,6 +4013,8 @@ def test_bucket_acl_canned_publicreadwrite():
             ],
         )
 
+@pytest.mark.fails_on_aws
+# response structure is different from expected
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -4059,6 +4073,7 @@ def test_object_acl_default():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4093,6 +4108,7 @@ def test_object_acl_canned_during_create():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4146,6 +4162,7 @@ def test_object_acl_canned():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4187,6 +4204,7 @@ def test_object_acl_canned_publicreadwrite():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -4220,6 +4238,7 @@ def test_object_acl_canned_authenticatedread():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned_bucketownerread():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -4262,6 +4281,7 @@ def test_object_acl_canned_bucketownerread():
             ],
         )
 
+@pytest.mark.fails_on_aws
 def test_object_acl_canned_bucketownerfullcontrol():
     bucket_name = get_new_bucket_name()
     main_client = get_client()
@@ -4928,6 +4948,8 @@ def test_bucket_acl_revoke_all():
 # TODO rgw log_bucket.set_as_logging_target() gives 403 Forbidden
 # http://tracker.newdream.net/issues/984
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
+# MalformedXML on aws
 def test_logging_toggle():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5801,6 +5823,8 @@ def test_object_copy_versioning_multipart_upload():
     assert key1_metadata == response['Metadata']
     assert content_type == response['ContentType']
 
+@pytest.mark.fails_on_aws
+# InvalidRequest error on aws
 def test_multipart_upload_empty():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6413,6 +6437,7 @@ def test_multipart_upload_incorrect_etag():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_aws
 def test_multipart_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6551,6 +6576,7 @@ def test_multipart_single_get_part():
     assert status == 400
     assert error_code == 'InvalidPart'
 
+@pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
 def test_non_multipart_get_part():
     bucket_name = get_new_bucket()
@@ -7275,6 +7301,8 @@ class ActionOnCount:
         if self.count == self.trigger_count:
             self.result = self.action()
 
+@pytest.mark.fails_on_aws
+# InvalidPartOrder on aws
 def test_multipart_resend_first_finishes_last():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7972,6 +8000,8 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert delete_marker_version_id == delete_markers[0]['VersionId']
     assert key == delete_markers[0]['Key']
 
+@pytest.mark.fails_on_aws
+# response structure is different from expected
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8039,6 +8069,8 @@ def test_versioned_object_acl():
     grants = response['Grants']
     check_grants(grants, default_policy)
 
+@pytest.mark.fails_on_aws
+# response structure is different from expected
 @pytest.mark.fails_on_dbstore
 def test_versioned_object_acl_no_version_specified():
     bucket_name = get_new_bucket()
@@ -10962,6 +10994,8 @@ def test_put_max_tags():
     assert response['TagSet'] == input_tagset['TagSet']
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_aws
+# BadRequest error on aws
 def test_put_excess_tags():
     key = 'testputmaxtags'
     bucket_name = _create_key_with_random_content(key)
@@ -11724,6 +11758,7 @@ def test_bucket_policy_put_obj_acl():
 
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_aws
 def test_bucket_policy_put_obj_grant():
 
     bucket_name = get_new_bucket()
@@ -12078,6 +12113,7 @@ def test_bucket_policy_put_obj_kms_s3():
 @pytest.mark.bucket_policy
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_bucket_policy_put_obj_request_obj_tag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12233,7 +12269,8 @@ def test_object_lock_put_obj_lock_with_days_and_years():
     assert status == 400
     assert error_code == 'MalformedXML'
 
-
+@pytest.mark.fails_on_aws
+# AssertionError: assert 'InvalidArgument' == 'InvalidRetentionPeriod'
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
@@ -12252,6 +12289,8 @@ def test_object_lock_put_obj_lock_invalid_days():
     assert error_code == 'InvalidRetentionPeriod'
 
 
+@pytest.mark.fails_on_aws
+# AssertionError: assert 'InvalidArgument' == 'InvalidRetentionPeriod'
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
@@ -12929,8 +12968,9 @@ def test_copy_object_ifnonematch_failed():
     body = _get_body(response)
     assert body == 'bar'
 
-# TODO: results in a 404 instead of 400 on the RGW
+# TODO: results in a 404 instead of 400 on the RGW and AWS
 @pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_aws
 def test_object_read_unreadable():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12939,12 +12979,15 @@ def test_object_read_unreadable():
     assert status == 400
     assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
 
+@pytest.mark.fails_on_aws
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == False
 
+@pytest.mark.fails_on_aws
+# bucket policy does not exist
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12960,6 +13003,8 @@ def test_get_authpublic_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == True
 
 
+@pytest.mark.fails_on_aws
+# bucket policy does not exist
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12987,7 +13032,8 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
-
+@pytest.mark.fails_on_aws
+# bucket policy does not exist
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13164,7 +13210,7 @@ def test_block_public_put_bucket_acls():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
-
+@pytest.mark.fails_on_aws
 def test_block_public_object_canned_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13228,6 +13274,8 @@ def test_block_public_policy_with_principal():
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
 
+@pytest.mark.fails_on_aws
+# public access control lists (ACLs) are blocked on aws
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
