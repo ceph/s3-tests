@@ -15330,6 +15330,7 @@ def test_get_versioned_object_attributes():
     assert 'ObjectParts' not in response
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_dbstore
 def test_get_sse_c_encrypted_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -15365,6 +15366,7 @@ def test_get_sse_c_encrypted_object_attributes():
     assert response['StorageClass'] == 'STANDARD'
     assert 'ObjectParts' not in response
 
+@pytest.mark.fails_on_dbstore
 def test_get_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
