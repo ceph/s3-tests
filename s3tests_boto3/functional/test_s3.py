@@ -1098,10 +1098,13 @@ def test_account_usage():
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
 def test_head_bucket_usage():
-    # boto3.set_stream_logger(name='botocore')
     client = get_client()
     bucket_name = _create_objects(keys=['foo'])
-    # adds the unordered query parameter
+
+    def add_read_stats_param(request, **kwargs):
+        request.params = {'read-stats': 'true'}
+
+    client.meta.events.register('request-created.s3.HeadBucket', add_read_stats_param)
     client.meta.events.register('after-call.s3.HeadBucket', get_http_response)
     client.head_bucket(Bucket=bucket_name)
     hdrs = http_response['headers']
