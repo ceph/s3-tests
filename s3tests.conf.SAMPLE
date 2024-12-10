@@ -54,6 +54,8 @@ secret_key = h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
 
 ## Lifecycle debug interval (default: 10)
 #lc_debug_interval = 20
+## Restore debug interval (default: 100)
+#rgw_restore_debug_interval = 60
 
 [s3 alt]
 # alt display_name set in vstart.sh
@@ -95,6 +97,8 @@ secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 
 ## Above configured cloud storage class config options
 # retain_head_object = false
+# allow_read_through = false    # change it to enable read_through
+# read_through_restore_days = 2
 # target_storage_class = Target_SC
 # target_path = cloud-bucket
 
