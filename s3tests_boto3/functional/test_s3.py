@@ -1770,6 +1770,13 @@ def test_bucket_list_return_data_versioning():
 def test_bucket_list_objects_anonymous():
     bucket_name = get_new_bucket()
     client = get_client()
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
 
     unauthenticated_client = get_unauthenticated_client()
@@ -1780,6 +1787,13 @@ def test_bucket_list_objects_anonymous():
 def test_bucket_listv2_objects_anonymous():
     bucket_name = get_new_bucket()
     client = get_client()
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
 
     unauthenticated_client = get_unauthenticated_client()
@@ -1862,6 +1876,13 @@ def test_bucket_delete_nonempty():
 @allure.step("Set Bucket ACL with Canned ACL")
 def _do_set_bucket_canned_acl(client, bucket_name, canned_acl, i, results):
     try:
+        client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+            "Rules": [
+                {
+                    "ObjectOwnership": "BucketOwnerPreferred"
+                }
+            ]
+        })
         client.put_bucket_acl(ACL=canned_acl, Bucket=bucket_name)
         results[i] = True
     except:
@@ -1890,6 +1911,14 @@ def _do_wait_completion(t):
 def test_bucket_concurrent_set_canned_acl():
     bucket_name = get_new_bucket()
     client = get_client()
+    
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     num_threads = (
         50  # boto2 retry defaults to 5 so we need a thread to fail at least 5 times
@@ -4034,6 +4063,13 @@ def _setup_bucket_object_acl(bucket_acl, object_acl, client=None):
         client = get_client()
     bucket_name = get_new_bucket_name()
     client.create_bucket(ACL=bucket_acl, Bucket=bucket_name)
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_object(ACL=object_acl, Bucket=bucket_name, Key="foo")
 
     return bucket_name
@@ -4047,6 +4083,13 @@ def _setup_bucket_acl(bucket_acl=None):
     bucket_name = get_new_bucket_name()
     client = get_client()
     client.create_bucket(ACL=bucket_acl, Bucket=bucket_name)
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     return bucket_name
 
@@ -4816,6 +4859,13 @@ def test_bucket_acl_canned():
         ],
     )
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(ACL="private", Bucket=bucket_name)
     response = client.get_bucket_acl(Bucket=bucket_name)
 
@@ -4939,6 +4989,13 @@ def test_object_acl_canned_during_create():
     bucket_name = get_new_bucket()
     client = get_client()
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_object(ACL="public-read", Bucket=bucket_name, Key="foo", Body="bar")
     response = client.get_object_acl(Bucket=bucket_name, Key="foo")
 
@@ -4974,6 +5031,13 @@ def test_object_acl_canned():
     client = get_client()
 
     # Since it defaults to private, set it public-read first
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_object(ACL="public-read", Bucket=bucket_name, Key="foo", Body="bar")
     response = client.get_object_acl(Bucket=bucket_name, Key="foo")
 
@@ -5027,6 +5091,13 @@ def test_object_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket()
     client = get_client()
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_object(
         ACL="public-read-write", Bucket=bucket_name, Key="foo", Body="bar"
     )
@@ -5072,6 +5143,13 @@ def test_object_acl_canned_authenticatedread():
     bucket_name = get_new_bucket()
     client = get_client()
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_object(
         ACL="authenticated-read", Bucket=bucket_name, Key="foo", Body="bar"
     )
@@ -5110,6 +5188,14 @@ def test_object_acl_canned_bucketownerread():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL="public-read-write")
+    
+    main_client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     alt_client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
 
@@ -5124,6 +5210,14 @@ def test_object_acl_canned_bucketownerfullcontrol():
     alt_client = get_alt_client()
 
     main_client.create_bucket(Bucket=bucket_name, ACL="public-read-write")
+    
+    main_client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     alt_client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
 
@@ -5245,6 +5339,13 @@ def test_bucket_acl_canned_private_to_private():
     bucket_name = get_new_bucket()
     client = get_client()
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     response = client.put_bucket_acl(Bucket=bucket_name, ACL="private")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
 
@@ -5363,6 +5464,13 @@ def _bucket_acl_grant_userid(permission):
 
     grant = add_bucket_user_grant(bucket_name, grant)
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=grant)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
@@ -5455,6 +5563,13 @@ def _check_bucket_acl_grant_can_writeacp(bucket_name):
     verify ability to set acls on the specified bucket
     """
     alt_client = get_alt_client()
+    alt_client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     alt_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
 
 
@@ -5464,6 +5579,13 @@ def _check_bucket_acl_grant_cant_writeacp(bucket_name):
     verify inability to set acls on the specified bucket
     """
     alt_client = get_alt_client()
+    alt_client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     check_access_denied(
         alt_client.put_bucket_acl, Bucket=bucket_name, ACL="public-read"
     )
@@ -5566,6 +5688,13 @@ def test_bucket_acl_grant_nonexist_user():
 
     grant = add_bucket_user_grant(bucket_name, grant)
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     e = assert_raises(
         ClientError,
         client.put_bucket_acl,
@@ -5591,6 +5720,13 @@ def test_bucket_acl_no_grants():
     policy["Grants"] = []
 
     # remove read/write permission
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     response = client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
 
     # can read
@@ -5787,6 +5923,13 @@ def test_bucket_header_acl_grants():
     alt_client.put_object(Bucket=bucket_name, Key="foo", Body="bar")
 
     # set bucket acl to public-read-write so that teardown can work
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     alt_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read-write")
 
 
@@ -5812,6 +5955,13 @@ def test_bucket_acl_grant_email():
 
     grant = add_bucket_user_grant(bucket_name, grant)
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=grant)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
@@ -5856,6 +6006,14 @@ def test_bucket_acl_grant_email_not_exist():
     }
 
     grant = add_bucket_user_grant(bucket_name, grant)
+    
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     e = assert_raises(
         ClientError,
@@ -5883,6 +6041,13 @@ def test_bucket_acl_revoke_all():
     policy["Grants"] = []
 
     # remove read/write permission for everyone
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
@@ -5941,6 +6106,13 @@ def _setup_access(bucket_acl, object_acl):
     key2 = "bar"
     newkey = "new"
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL=bucket_acl)
     client.put_object(Bucket=bucket_name, Key=key1, Body="foocontent")
     client.put_object_acl(Bucket=bucket_name, Key=key1, ACL=object_acl)
@@ -6614,6 +6786,13 @@ def test_object_copy_not_owned_object_bucket():
     )
 
     grant = add_bucket_user_grant(bucket_name, grant)
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=grant)
 
     alt_client.get_object(Bucket=bucket_name, Key="foo123bar")
@@ -7818,6 +7997,13 @@ def test_list_multipart_upload_owner():
     name2 = get_alt_display_name()
 
     # add bucket acl for public read/write access
+    client1.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client1.put_bucket_acl(Bucket=bucket_name, ACL="public-read-write")
 
     key1 = "multipart1"
@@ -7976,6 +8162,13 @@ def test_100_continue():
     status = _simple_http_req_100_cont(host, port, is_secure, "PUT", resource)
     assert status == "403"
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="public-read-write")
 
     status = _simple_http_req_100_cont(host, port, is_secure, "PUT", resource)
@@ -9532,6 +9725,14 @@ def test_versioned_object_acl():
     client = get_client()
 
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     key = "xyz"
     num_versions = 3
@@ -12608,6 +12809,13 @@ def test_bucket_policy_acl():
         }
     )
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="authenticated-read")
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
@@ -12646,6 +12854,13 @@ def test_bucketv2_policy_acl():
         }
     )
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="authenticated-read")
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
@@ -15261,6 +15476,13 @@ def test_get_bucket_policy_status():
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp["PolicyStatus"]["IsPublic"] == True
@@ -15270,6 +15492,13 @@ def test_get_public_acl_bucket_policy_status():
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="authenticated-read")
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp["PolicyStatus"]["IsPublic"] == True
@@ -15434,6 +15663,14 @@ def test_block_public_put_bucket_acls():
         resp["PublicAccessBlockConfiguration"]["BlockPublicPolicy"]
         == access_conf["BlockPublicPolicy"]
     )
+    
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
 
     e = assert_raises(
         ClientError, client.put_bucket_acl, Bucket=bucket_name, ACL="public-read"
@@ -15538,6 +15775,13 @@ def test_ignore_public_acls():
     client = get_client()
     alt_client = get_alt_client()
 
+    client.put_bucket_ownership_controls(Bucket=bucket_name, OwnershipControls={
+        "Rules": [
+            {
+                "ObjectOwnership": "BucketOwnerPreferred"
+            }
+        ]
+    })
     client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
     # Public bucket should be accessible
     alt_client.list_objects(Bucket=bucket_name)
