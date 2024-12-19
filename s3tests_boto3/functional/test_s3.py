@@ -14543,16 +14543,17 @@ def test_put_bucket_logging_errors():
     except ClientError as e:
         assert e.response['Error']['Code'] == 'InvalidArgument'
     
-    # TODO: log bucket is encrypted
-    #_put_bucket_encryption_s3(client, log_bucket_name)
-    #try:
-    #    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
-    #        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'},
-    #    })
-    #    assert False, 'expected failure'
-    #except ClientError as e:
-    #    assert e.response['Error']['Code'] == 'InvalidArgument'
+    # log bucket is encrypted
+    _put_bucket_encryption_s3(client, log_bucket_name1)
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name1, 'TargetPrefix': 'log/'},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'InvalidArgument'
 
+    # invalid log type
     if _has_bucket_logging_extension():
         try:
             response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
