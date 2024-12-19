@@ -14554,6 +14554,149 @@ def test_put_bucket_logging_errors():
             assert e.response['Error']['Code'] == 'MalformedXML'
 
 
+def _bucket_logging_tenant_objects(src_client, src_bucket_name, log_client, log_bucket_name, log_type, op_name):
+    num_keys = 5
+    for j in range(num_keys):
+        name = 'myobject'+str(j)    
+        src_client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+
+    expected_count = num_keys
+
+    response = src_client.list_objects_v2(Bucket=src_bucket_name)
+    src_keys = _get_keys(response)
+
+    time.sleep(expected_object_roll_time)
+    src_client.put_object(Bucket=src_bucket_name, Key='dummy', Body='dummy')
+
+    response = log_client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+
+    for key in keys:
+        assert key.startswith('log/')
+        response = log_client.get_object(Bucket=log_bucket_name, Key=key)
+        body = _get_body(response)
+        assert _verify_records(body, src_bucket_name, op_name, src_keys, log_type, expected_count)
+
+
+def _put_bucket_logging_tenant(log_type):
+    # src is on default tenant and log is on a different tenant
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    tenant_client = get_tenant_client()
+    log_bucket = get_new_bucket(client=tenant_client, name=log_bucket_name)
+    client = get_client()
+    logging_enabled = {'TargetBucket': get_tenant_name()+':'+log_bucket_name, 'TargetPrefix': 'log/'}
+    if log_type == 'Journal':
+        logging_enabled['LoggingType'] = 'Journal'
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    _bucket_logging_tenant_objects(client, src_bucket_name, tenant_client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+
+    try:
+        # src is on default tenant and log is on a different tenant
+        # log bucket name not set correctly
+        src_bucket_name = get_new_bucket_name()
+        src_bucket = get_new_bucket_resource(name=src_bucket_name)
+        log_bucket_name = get_new_bucket_name()
+        log_bucket = get_new_bucket(client=get_tenant_client(), name=log_bucket_name)
+        client = get_client()
+        logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+        if log_type == 'Journal':
+            logging_enabled['LoggingType'] = 'Journal'
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+        })
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'NoSuchKey'
+    else:
+        assert False, 'expected failure'
+
+    # src and log are on the same tenant
+    # log bucket name is set with tenant
+    client = get_tenant_client()
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket(client=client, name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket(client=client, name=log_bucket_name)
+    logging_enabled = {'TargetBucket': get_tenant_name()+':'+log_bucket_name, 'TargetPrefix': 'log/'}
+    if log_type == 'Journal':
+        logging_enabled['LoggingType'] = 'Journal'
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    _bucket_logging_tenant_objects(client, src_bucket_name, client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+    
+    # src and log are on the same tenant
+    # log bucket name is set without tenant
+    client = get_tenant_client()
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket(client=client, name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket(client=client, name=log_bucket_name)
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+    if log_type == 'Journal':
+        logging_enabled['LoggingType'] = 'Journal'
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    _bucket_logging_tenant_objects(client, src_bucket_name, client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+    
+    # src is on tenant and log is on the default tenant
+    # log bucket name is set with explicit default tenant
+    client = get_tenant_client()
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket(client=client, name=src_bucket_name)
+    log_client = get_client()
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket(client=log_client, name=log_bucket_name)
+    logging_enabled = {'TargetBucket': ':'+log_bucket_name, 'TargetPrefix': 'log/'}
+    if log_type == 'Journal':
+        logging_enabled['LoggingType'] = 'Journal'
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    _bucket_logging_tenant_objects(client, src_bucket_name, log_client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+    
+    try:
+        # src is on tenant and log is on the default tenant
+        client = get_tenant_client()
+        src_bucket_name = get_new_bucket_name()
+        src_bucket = get_new_bucket(client=client, name=src_bucket_name)
+        log_bucket_name = get_new_bucket_name()
+        log_bucket = get_new_bucket_resource(name=log_bucket_name)
+        logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': 'log/'}
+        if log_type == 'Journal':
+            logging_enabled['LoggingType'] = 'Journal'
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+        })
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'NoSuchKey'
+    else:
+        assert False, 'expected failure'
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_put_bucket_logging_tenant_s():
+    _put_bucket_logging_tenant('Standard')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_put_bucket_logging_tenant_j():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    _put_bucket_logging_tenant('Journal')
+
+
 @pytest.mark.bucket_logging
 def test_rm_bucket_logging():
     src_bucket_name = get_new_bucket_name()
