@@ -14515,8 +14515,8 @@ def test_put_bucket_logging_errors():
     except ClientError as e:
         assert e.response['Error']['Code'] == 'InvalidArgument'
     
+    # invalid partition prefix
     if _has_taget_object_key_format():
-        # invalid partition prefix
         logging_enabled = {
             'TargetBucket': log_bucket_name1, 
             'TargetPrefix': 'log/',
@@ -14534,6 +14534,15 @@ def test_put_bucket_logging_errors():
         except ClientError as e:
             assert e.response['Error']['Code'] == 'MalformedXML'
 
+    # log bucket is the same as source bucket
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': src_bucket_name, 'TargetPrefix': 'log/'},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'InvalidArgument'
+    
     # TODO: log bucket is encrypted
     #_put_bucket_encryption_s3(client, log_bucket_name)
     #try:
@@ -14595,6 +14604,24 @@ def _put_bucket_logging_tenant(log_type):
     })
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     _bucket_logging_tenant_objects(client, src_bucket_name, tenant_client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+
+
+    # src is on default tenant and log is on a different tenant with the same name
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = src_bucket_name
+    tenant_client = get_tenant_client()
+    log_bucket = get_new_bucket(client=tenant_client, name=log_bucket_name)
+    client = get_client()
+    logging_enabled = {'TargetBucket': get_tenant_name()+':'+log_bucket_name, 'TargetPrefix': 'log/'}
+    if log_type == 'Journal':
+        logging_enabled['LoggingType'] = 'Journal'
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    _bucket_logging_tenant_objects(client, src_bucket_name, tenant_client, log_bucket_name, log_type, 'REST.PUT.OBJECT')
+
 
     try:
         # src is on default tenant and log is on a different tenant
