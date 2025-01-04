@@ -5372,6 +5372,7 @@ def test_bucket_list_special_prefix():
     objs_list = get_objects_list(bucket_name, prefix='_bla/')
     assert len(objs_list) == 4
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_zero_size():
     key = 'foo123bar'
@@ -5386,6 +5387,7 @@ def test_object_copy_zero_size():
     response = client.get_object(Bucket=bucket_name, Key='bar321foo')
     assert response['ContentLength'] == 0
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_16m():
     bucket_name = get_new_bucket()
@@ -5399,6 +5401,7 @@ def test_object_copy_16m():
     response = client.get_object(Bucket=bucket_name, Key=key2)
     assert response['ContentLength'] == 16*1024*1024
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_same_bucket():
     bucket_name = get_new_bucket()
@@ -5413,6 +5416,7 @@ def test_object_copy_same_bucket():
     body = _get_body(response)
     assert 'foo' == body
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_verify_contenttype():
     bucket_name = get_new_bucket()
@@ -5431,6 +5435,7 @@ def test_object_copy_verify_contenttype():
     response_content_type = response['ContentType']
     assert response_content_type == content_type
 
+@pytest.mark.copy
 def test_object_copy_to_itself():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5443,6 +5448,7 @@ def test_object_copy_to_itself():
     assert status == 400
     assert error_code == 'InvalidRequest'
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_to_itself_with_metadata():
     bucket_name = get_new_bucket()
@@ -5455,6 +5461,7 @@ def test_object_copy_to_itself_with_metadata():
     response = client.get_object(Bucket=bucket_name, Key='foo123bar')
     assert response['Metadata'] == metadata
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_diff_bucket():
     bucket_name1 = get_new_bucket()
@@ -5471,6 +5478,7 @@ def test_object_copy_diff_bucket():
     body = _get_body(response)
     assert 'foo' == body
 
+@pytest.mark.copy
 def test_object_copy_not_owned_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -5487,6 +5495,7 @@ def test_object_copy_not_owned_bucket():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
+@pytest.mark.copy
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -5508,6 +5517,7 @@ def test_object_copy_not_owned_object_bucket():
     copy_source = {'Bucket': bucket_name, 'Key': 'foo123bar'}
     alt_client.copy(copy_source, bucket_name, 'bar321foo')
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_canned_acl():
     bucket_name = get_new_bucket()
@@ -5528,6 +5538,7 @@ def test_object_copy_canned_acl():
     # check ACL is applied by doing GET from another user
     alt_client.get_object(Bucket=bucket_name, Key='foo123bar')
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_retaining_metadata():
     for size in [3, 1024 * 1024]:
@@ -5547,6 +5558,7 @@ def test_object_copy_retaining_metadata():
         body = _get_body(response)
         assert size == response['ContentLength']
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_replacing_metadata():
     for size in [3, 1024 * 1024]:
@@ -5568,6 +5580,7 @@ def test_object_copy_replacing_metadata():
         assert metadata == response['Metadata']
         assert size == response['ContentLength']
 
+@pytest.mark.copy
 def test_object_copy_bucket_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5577,6 +5590,7 @@ def test_object_copy_bucket_not_found():
     status = _get_status(e.response)
     assert status == 404
 
+@pytest.mark.copy
 def test_object_copy_key_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5586,6 +5600,7 @@ def test_object_copy_key_not_found():
     status = _get_status(e.response)
     assert status == 404
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioned_bucket():
     bucket_name = get_new_bucket()
@@ -5650,6 +5665,7 @@ def test_object_copy_versioned_bucket():
     assert data_str == body
     assert size == response['ContentLength']
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioned_url_encoding():
     bucket = get_new_bucket_resource()
@@ -5713,6 +5729,7 @@ def _multipart_upload(bucket_name, key, size, part_size=5*1024*1024, client=None
 
     return (upload_id, s, parts)
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_object_copy_versioning_multipart_upload():
     bucket_name = get_new_bucket()
@@ -5877,6 +5894,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
     src_data = _get_body(response)
     assert src_data == dest_data
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_small():
     src_key = 'foo'
@@ -5894,6 +5912,7 @@ def test_multipart_copy_small():
     assert size == response['ContentLength']
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
+@pytest.mark.copy
 def test_multipart_copy_invalid_range():
     client = get_client()
     src_key = 'source'
@@ -5913,6 +5932,7 @@ def test_multipart_copy_invalid_range():
     assert error_code == 'InvalidRange'
 
 
+@pytest.mark.copy
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
 @pytest.mark.fails_on_rgw
 def test_multipart_copy_improper_range():
@@ -5944,6 +5964,7 @@ def test_multipart_copy_improper_range():
         assert error_code == 'InvalidArgument'
 
 
+@pytest.mark.copy
 def test_multipart_copy_without_range():
     client = get_client()
     src_key = 'source'
@@ -5969,6 +5990,7 @@ def test_multipart_copy_without_range():
     assert response['ContentLength'] == 10
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
@@ -6061,6 +6083,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
     assert expected_string == read_status
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
@@ -6148,6 +6171,7 @@ def test_multipart_upload_multiple_sizes():
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen)
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
@@ -7692,6 +7716,7 @@ def test_versioning_obj_suspend_versions():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_versioning_obj_suspended_copy():
     bucket_name = get_new_bucket()
@@ -7844,6 +7869,7 @@ def test_versioning_obj_list_marker():
         check_obj_content(client, bucket_name, key, version['VersionId'], contents[j])
         i += 1
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_versioning_copy_obj_version():
     bucket_name = get_new_bucket()
@@ -11553,6 +11579,7 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
     assert status == 403
 
 
+@pytest.mark.copy
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_upload_part_copy():
@@ -11610,6 +11637,7 @@ def test_bucket_policy_upload_part_copy():
     alt_client.abort_multipart_upload(Bucket=bucket_name2, Key='new_foo2', UploadId=upload_id)
 
 
+@pytest.mark.copy
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
@@ -11657,6 +11685,7 @@ def test_bucket_policy_put_obj_copy_source():
     copy_source = {'Bucket': bucket_name, 'Key': 'private/foo'}
     check_access_denied(alt_client.copy_object, Bucket=bucket_name2, CopySource=copy_source, Key='new_foo2')
 
+@pytest.mark.copy
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
@@ -12909,6 +12938,7 @@ def test_object_lock_changing_mode_from_compliance():
     assert status == 403
     assert error_code == 'AccessDenied'
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_copy_object_ifmatch_good():
     bucket_name = get_new_bucket()
@@ -12920,6 +12950,7 @@ def test_copy_object_ifmatch_good():
     body = _get_body(response)
     assert body == 'bar'
 
+@pytest.mark.copy
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40808 is resolved
 @pytest.mark.fails_on_rgw
 def test_copy_object_ifmatch_failed():
@@ -12932,6 +12963,7 @@ def test_copy_object_ifmatch_failed():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
+@pytest.mark.copy
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40808 is resolved
 @pytest.mark.fails_on_rgw
 def test_copy_object_ifnonematch_good():
@@ -12944,6 +12976,7 @@ def test_copy_object_ifnonematch_good():
     assert status == 412
     assert error_code == 'PreconditionFailed'
 
+@pytest.mark.copy
 @pytest.mark.fails_on_dbstore
 def test_copy_object_ifnonematch_failed():
     bucket_name = get_new_bucket()
