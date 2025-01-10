@@ -11258,6 +11258,38 @@ def test_put_obj_with_tags():
     tagset = tagset
     assert response_tagset == tagset
 
+@pytest.mark.tagging
+@pytest.mark.fails_on_dbstore
+def test_multipart_obj_tagging():
+    from urllib import parse
+    import os
+
+    key = "testputtags"
+    bucket_name = get_new_bucket()
+    file_path = "/tmp/random-content.tmp"; open(file_path, "wb").write(os.urandom(300 * 1024 * 1024))
+    client = get_client()
+
+    # Define tags
+    input_tagset = _create_simple_tagset(2)
+    tagging = parse.urlencode({tag['Key']: tag['Value'] for tag in input_tagset['TagSet']})
+
+    # Upload object using 'upload_file' with tags
+    client.upload_file(
+        Filename=file_path,
+        Bucket=bucket_name,
+        Key=key,
+        ExtraArgs={"Tagging": tagging}
+    )
+
+    # Retrieve tags and verify
+    response = client.get_object_tagging(Bucket=bucket_name, Key=key)
+    try:
+        assert response["TagSet"] == input_tagset["TagSet"]
+    except KeyError as e:
+        assert False, f"Test failed: Tags retrieved do not match the input tags."
+    os.remove(file_path)
+    print("Test passed: Tags retrieved successfully match the input tags.")
+
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
 
