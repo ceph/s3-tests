@@ -11763,7 +11763,7 @@ def test_bucket_policy_put_obj_grant():
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11789,7 +11789,7 @@ def test_put_obj_enc_conflict_c_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11816,7 +11816,7 @@ def test_put_obj_enc_conflict_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11840,7 +11840,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11863,7 +11863,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_noenc():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_unencrypted_obj = {
         "Null" : {
@@ -11892,7 +11892,7 @@ def test_bucket_policy_put_obj_s3_noenc():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_incorrect_algo_sse_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -11923,7 +11923,7 @@ def test_bucket_policy_put_obj_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-twice'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -11969,7 +11969,7 @@ def test_bucket_policy_put_obj_kms_noenc():
     if kms_keyid is None:
         pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12012,7 +12012,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
