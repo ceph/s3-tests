@@ -7581,6 +7581,21 @@ def test_versioning_obj_create_read_remove_head():
 
     clean_up_bucket(client, bucket_name, key, version_ids)
 
+def test_versioning_stack_delete_merkers():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    create_multiple_versions(client, bucket_name, "test1/a", 1)
+    client.delete_object(Bucket=bucket_name, Key="test1/a")
+    client.delete_object(Bucket=bucket_name, Key="test1/a")
+    client.delete_object(Bucket=bucket_name, Key="test1/a")
+
+    response  = client.list_object_versions(Bucket=bucket_name)
+    versions = response['Versions']
+    delete_markers = response['DeleteMarkers']
+    assert len(versions) == 1
+    assert len(delete_markers) == 3
+
 def test_versioning_obj_plain_null_version_removal():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
