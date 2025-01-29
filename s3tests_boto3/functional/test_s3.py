@@ -1695,6 +1695,27 @@ def test_multi_object_delete():
     assert 'Contents' not in response
 
 @pytest.mark.list_objects_v2
+def test_expected_bucket_owner():
+  bucket_name = get_new_bucket()
+  client = get_client()
+  client.put_bucket_acl(Bucket=bucket_name, ACL='public-read-write')
+  client.list_objects(Bucket=bucket_name)
+  client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+
+  unauthenticated_client = get_unauthenticated_client()
+  incorrect_expected_owner = get_main_user_id() + 'foo'
+
+  e = assert_raises(ClientError, unauthenticated_client.list_objects, Bucket=bucket_name, ExpectedBucketOwner=incorrect_expected_owner)
+  status, error_code = _get_status_and_error_code(e.response)
+  assert status == 403
+  assert error_code == 'AccessDenied'
+
+  e = assert_raises(ClientError, unauthenticated_client.put_object, Bucket=bucket_name, Key='bar', Body='coffee', ExpectedBucketOwner=incorrect_expected_owner)
+  status, error_code = _get_status_and_error_code(e.response)
+  assert status == 403
+  assert error_code == 'AccessDenied'
+
+@pytest.mark.list_objects_v2
 def test_multi_objectv2_delete():
     key_names = ['key0', 'key1', 'key2']
     bucket_name = _create_objects(keys=key_names)
