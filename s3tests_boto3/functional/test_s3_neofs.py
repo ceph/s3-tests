@@ -943,9 +943,11 @@ def test_object_versioning_workflow():
 
     response = client.put_object(Bucket=bucket_name, Key=object_name, Body="version1")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
+    time.sleep(1)
 
     response = client.put_object(Bucket=bucket_name, Key=object_name, Body="version2")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
+    time.sleep(1)
 
     response = client.delete_object(Bucket=bucket_name, Key=object_name)
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 204

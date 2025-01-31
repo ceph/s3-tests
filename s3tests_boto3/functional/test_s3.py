@@ -9184,6 +9184,7 @@ def create_multiple_versions(
 
         contents.append(body)
         version_ids.append(version_id)
+        time.sleep(1)
 
     #    if check_versions:
     #        check_obj_versions(client, bucket_name, key, version_ids, contents)
@@ -9554,6 +9555,7 @@ def test_versioning_obj_list_marker():
 
         contents.append(body)
         version_ids.append(version_id)
+        time.sleep(1)
 
     # for key #2
     for i in range(num_versions):
@@ -9563,6 +9565,7 @@ def test_versioning_obj_list_marker():
 
         contents2.append(body)
         version_ids2.append(version_id)
+        time.sleep(1)
 
     response = client.list_object_versions(Bucket=bucket_name)
     versions = response["Versions"]
