@@ -85,14 +85,16 @@ def test_cross_account_topic(sns, sns_alt):
     name = get_new_topic_name()
     arn = sns.create_topic(Name=name)['TopicArn']
 
-    # not visible to any alt user apis
-    with pytest.raises(sns.exceptions.NotFoundException):
+    # not authorized to any alt user apis
+    with pytest.raises(sns.exceptions.AuthorizationErrorException):
         sns_alt.get_topic_attributes(TopicArn=arn)
-    with pytest.raises(sns.exceptions.NotFoundException):
+    with pytest.raises(sns.exceptions.AuthorizationErrorException):
         sns_alt.set_topic_attributes(TopicArn=arn, AttributeName='Policy', AttributeValue='')
+    with pytest.raises(sns.exceptions.AuthorizationErrorException):
+        sns_alt.delete_topic(TopicArn=arn)
 
     # delete returns success
-    sns_alt.delete_topic(TopicArn=arn)
+    sns.delete_topic(TopicArn=arn)
 
     response = sns_alt.list_topics()
     assert arn not in [p['TopicArn'] for p in response['Topics']]
