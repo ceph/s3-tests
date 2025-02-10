@@ -225,13 +225,18 @@ def test_object_create_bad_contentlength_negative():
 # TODO: remove 'fails_on_rgw' and once we have learned how to remove the content-length header
 @pytest.mark.fails_on_rgw
 def test_object_create_bad_contentlength_none(mocker):
+    client = get_client()
+
+    # NOTE: When https enabled, boto use s3v4 trailing auth with aws-chunked auth with Transfer-Encoding: chunked.
+    if client.meta.endpoint_url.startswith('https://'):
+        pytest.skip("disabled Content-Length header could be tested only on not secure endpoint")
+
     # NOTE: Urllib set Transfer-Encoding header if Content-Length header not set, prevent such behaviour.
     from urllib3.util import SKIPPABLE_HEADERS, SKIP_HEADER
     new_skippable_headers = {*SKIPPABLE_HEADERS, 'content-length'}
     mocker.patch('urllib3.connection.SKIPPABLE_HEADERS', new_skippable_headers)
 
     bucket_name = get_new_bucket()
-    client = get_client()
 
     # remove custom headers before PutObject call
     def remove_header(request, **kwargs):

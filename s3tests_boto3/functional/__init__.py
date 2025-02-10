@@ -219,9 +219,9 @@ def configure():
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
     config.main_secret_key = cfg.get('s3 main',"secret_key")
-    config.main_display_name = cfg.get('s3 main',"display_name")
+    config.main_display_name = cfg.get('s3 main', "display_name", fallback=None)
     config.main_user_id = cfg.get('s3 main',"user_id")
-    config.main_email = cfg.get('s3 main',"email")
+    config.main_email = cfg.get('s3 main', "email", fallback=None)
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
     except (configparser.NoSectionError, configparser.NoOptionError):
@@ -251,9 +251,9 @@ def configure():
 
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
-    config.alt_display_name = cfg.get('s3 alt',"display_name")
+    config.alt_display_name = cfg.get('s3 alt', "display_name", fallback=None)
     config.alt_user_id = cfg.get('s3 alt',"user_id")
-    config.alt_email = cfg.get('s3 alt',"email")
+    config.alt_email = cfg.get('s3 alt', "email", fallback=None)
 
     # vars from the fixtures section
     template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')

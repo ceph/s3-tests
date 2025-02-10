@@ -19,6 +19,9 @@ jobs:
     name: e2e Tests
     environment: ${{ inputs.environment || 'RCS stage' }}
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        url-scheme: ['http', 'https']
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +36,16 @@ jobs:
 
       - name: Update config file
         run: |
+          port=80
+          is_secure=False
+          if [[ "${{ matrix.url-scheme }}" == "https" ]]; then
+            port=443
+            is_secure=True
+          fi
+
           sed -i "s|<host>|${{ vars.HOST }}|" s3tests.conf
+          sed -i "s|<port>|$port|" s3tests.conf
+          sed -i "s|<is_secure>|$is_secure|" s3tests.conf
           sed -i "s|<main_access_key>|${{ vars.MAIN_ACCESS_KEY }}|" s3tests.conf
           sed -i "s|<main_secret_key>|${{ secrets.MAIN_SECRET_KEY }}|" s3tests.conf
           sed -i "s|<alt_access_key>|${{ vars.ALT_ACCESS_KEY }}|" s3tests.conf
