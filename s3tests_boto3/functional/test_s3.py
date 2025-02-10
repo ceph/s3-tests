@@ -1,3 +1,4 @@
+import binascii
 import codecs
 
 import boto3
@@ -5363,13 +5364,16 @@ def test_bucket_create_naming_good_contains_hyphen():
     check_good_bucket_name('aaa-111')
 
 def test_bucket_recreate_not_overriding():
+    client = get_client()
+    if client.meta.region_name != DEFAULT_REGION:
+        pytest.skip('bucket recreate only works in default region')
+
     key_names = ['mykey1', 'mykey2']
     bucket_name = _create_objects(keys=key_names)
 
     objs_list = get_objects_list(bucket_name)
     assert key_names == objs_list
 
-    client = get_client()
     # NOTE: works only with default region
     client.create_bucket(Bucket=bucket_name)
 
@@ -6510,14 +6514,20 @@ def test_multipart_get_part():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     assert len(parts) == part_count
 
+    h = hashlib.md5()
+    for part in parts:
+        h.update(binascii.unhexlify(part['ETag']))
+
+    object_etag = '"{}-{}"'.format(h.hexdigest(), part_count)
+
     for part, size in zip(parts, part_sizes):
         response = client.head_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == object_etag
 
         response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == object_etag
         assert response['ContentLength'] == size
         # compare contents
         for chunk in response['Body'].iter_chunks():
@@ -6527,8 +6537,8 @@ def test_multipart_get_part():
     # request PartNumber out of range
     e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=key, PartNumber=5)
     status, error_code = _get_status_and_error_code(e.response)
-    assert status == 400
-    assert error_code == 'InvalidPart'
+    assert status == 416
+    assert error_code == 'InvalidPartNumber'
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
@@ -12109,7 +12119,7 @@ def test_bucket_policy_put_obj_s3_noenc():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_incorrect_algo_sse_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
