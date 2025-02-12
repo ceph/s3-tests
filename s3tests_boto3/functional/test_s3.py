@@ -5919,6 +5919,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
     assert src_data == dest_data
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_small():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key)
@@ -6011,6 +6012,7 @@ def test_multipart_copy_without_range():
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
 
@@ -6190,6 +6192,7 @@ def test_multipart_upload_multiple_sizes():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key, 12*1024*1024)
@@ -7366,6 +7369,7 @@ def test_multipart_resend_first_finishes_last():
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_response_code():
     content = 'testcontent'
 
@@ -7384,6 +7388,7 @@ def _generate_random_string(size):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_big_request_response_code():
     content = _generate_random_string(8*1024*1024)
 
@@ -7399,6 +7404,7 @@ def test_ranged_big_request_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_skip_leading_bytes_response_code():
     content = 'testcontent'
 
@@ -7414,6 +7420,7 @@ def test_ranged_request_skip_leading_bytes_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_return_trailing_bytes_response_code():
     content = 'testcontent'
 
