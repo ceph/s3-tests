@@ -1,5 +1,6 @@
 import boto3
 import botocore.session
+import botocore.config
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
 from botocore.handlers import validate_bucket_name
@@ -14041,7 +14042,11 @@ def test_multipart_checksum_3parts():
 @pytest.mark.fails_on_dbstore
 def test_multipart_checksum_upload_fallback():
     bucket = get_new_bucket()
-    client = get_client()
+
+    # to test client.upload_part() without a checksum header,
+    # we have to disable its calculation in botocore config
+    config = botocore.config.Config(request_checksum_calculation = 'when_required')
+    client = get_client(config)
 
     key = "mpu_cksum_fallback"
     alg = 'SHA256'
