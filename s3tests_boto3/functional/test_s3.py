@@ -1,7 +1,9 @@
 import boto3
 import botocore.session
+import botocore.config
 from botocore.exceptions import ClientError
 from botocore.exceptions import ParamValidationError
+from botocore.handlers import validate_bucket_name
 import isodate
 import email.utils
 import datetime
@@ -5941,6 +5943,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
     assert src_data == dest_data
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_small():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key)
@@ -6033,6 +6036,7 @@ def test_multipart_copy_without_range():
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
 
@@ -6212,6 +6216,7 @@ def test_multipart_upload_multiple_sizes():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key, 12*1024*1024)
@@ -6917,12 +6922,14 @@ def test_cors_presigned_get_object_tenant():
         method='get_object',
     )
 
+@pytest.mark.fails_on_rgw
 def test_cors_presigned_get_object_v2():
     _test_cors_options_presigned_method(
         client=get_v2_client(),
         method='get_object',
     )
 
+@pytest.mark.fails_on_rgw
 def test_cors_presigned_get_object_tenant_v2():
     _test_cors_options_presigned_method(
         client=get_v2_tenant_client(),
@@ -6942,12 +6949,14 @@ def test_cors_presigned_put_object_with_acl():
         cannedACL='private',
     )
 
+@pytest.mark.fails_on_rgw
 def test_cors_presigned_put_object_v2():
     _test_cors_options_presigned_method(
         client=get_v2_client(),
         method='put_object',
     )
 
+@pytest.mark.fails_on_rgw
 def test_cors_presigned_put_object_tenant_v2():
     _test_cors_options_presigned_method(
         client=get_v2_tenant_client(),
@@ -7384,6 +7393,7 @@ def test_multipart_resend_first_finishes_last():
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_response_code():
     content = 'testcontent'
 
@@ -7402,6 +7412,7 @@ def _generate_random_string(size):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_big_request_response_code():
     content = _generate_random_string(8*1024*1024)
 
@@ -7417,6 +7428,7 @@ def test_ranged_big_request_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_skip_leading_bytes_response_code():
     content = 'testcontent'
 
@@ -7432,6 +7444,7 @@ def test_ranged_request_skip_leading_bytes_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/69936
 def test_ranged_request_return_trailing_bytes_response_code():
     content = 'testcontent'
 
@@ -10777,20 +10790,6 @@ def test_bucketv2_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
-def tenanted_bucket_name(tenant):
-    def change_bucket_name(params, **kwargs):
-        old_name = params['context']['signing']['bucket']
-        new_name = "{}:{}".format(tenant, old_name)
-        params['Bucket'] = new_name
-        params['context']['signing']['bucket'] = new_name
-
-        # the : needs to be url-encoded for urls
-        new_name_url = "{}%3A{}".format(tenant, old_name)
-        params['url'] = params['url'].replace(old_name, new_name_url)
-        params['url_path'] = params['url_path'].replace(old_name, new_name_url)
-
-    return change_bucket_name
-
 @pytest.mark.bucket_policy
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
@@ -10818,8 +10817,8 @@ def test_bucket_policy_different_tenant():
 
     # use the tenanted client to list the global tenant's bucket
     tenant_client = get_tenant_client()
-    tenant_client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(''))
-    response = tenant_client.list_objects(Bucket=bucket_name)
+    tenant_client.meta.events.unregister("before-parameter-build.s3", validate_bucket_name)
+    response = tenant_client.list_objects(Bucket=":{}".format(bucket_name))
 
     assert len(response['Contents']) == 1
 
@@ -10852,9 +10851,9 @@ def test_bucket_policy_tenanted_bucket():
 
     # use the global tenant's client to list the tenanted bucket
     client = get_client()
-    client.meta.events.register('before-call.s3.ListObjects', tenanted_bucket_name(tenant))
+    client.meta.events.unregister("before-parameter-build.s3", validate_bucket_name)
 
-    response = client.list_objects(Bucket=bucket_name)
+    response = client.list_objects(Bucket="{}:{}".format(tenant, bucket_name))
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
@@ -11935,7 +11934,7 @@ def test_bucket_policy_put_obj_grant():
 @pytest.mark.encryption
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11961,7 +11960,7 @@ def test_put_obj_enc_conflict_c_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -11988,7 +11987,7 @@ def test_put_obj_enc_conflict_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -12012,7 +12011,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-once'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     # boto3.set_stream_logger(name='botocore')
 
@@ -12035,7 +12034,7 @@ def test_put_obj_enc_conflict_bad_enc_kms():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_noenc():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_unencrypted_obj = {
         "Null" : {
@@ -12064,7 +12063,7 @@ def test_bucket_policy_put_obj_s3_noenc():
 @pytest.mark.fails_on_dbstore
 def test_bucket_policy_put_obj_s3_incorrect_algo_sse_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12095,7 +12094,7 @@ def test_bucket_policy_put_obj_s3_kms():
     if kms_keyid is None:
         kms_keyid = 'fool-me-twice'
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12141,7 +12140,7 @@ def test_bucket_policy_put_obj_kms_noenc():
     if kms_keyid is None:
         pytest.skip('[s3 main] section missing kms_keyid')
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -12184,7 +12183,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 @pytest.mark.bucket_policy
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
-    client = get_v2_client()
+    client = get_client()
 
     deny_incorrect_algo = {
         "StringNotEquals": {
@@ -14050,7 +14049,11 @@ def test_multipart_checksum_3parts():
 @pytest.mark.fails_on_dbstore
 def test_multipart_checksum_upload_fallback():
     bucket = get_new_bucket()
-    client = get_client()
+
+    # to test client.upload_part() without a checksum header,
+    # we have to disable its calculation in botocore config
+    config = botocore.config.Config(request_checksum_calculation = 'when_required')
+    client = get_client(config)
 
     key = "mpu_cksum_fallback"
     alg = 'SHA256'
