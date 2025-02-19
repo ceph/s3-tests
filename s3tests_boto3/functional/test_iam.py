@@ -2524,6 +2524,47 @@ def test_verify_add_existing_client_id_to_oidc(iam_root):
                     )
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
+@pytest.mark.iam_account
+def test_verify_remove_client_id_from_oidc(iam_root):
+    url_host = get_iam_path_prefix()[1:] + 'example.com'
+    url = 'http://' + url_host
+
+    response = iam_root.create_open_id_connect_provider(
+        Url=url,
+        ClientIDList=['app-jee-jsp', 'app-profile-jsp'],
+        ThumbprintList=['3768084dfb3d2b68b7897bf5f565da8efEXAMPLE']
+    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    oidc_provider_arn = response['OpenIDConnectProviderArn']
+
+    get_response = iam_root.get_open_id_connect_provider(
+        OpenIDConnectProviderArn=oidc_provider_arn
+    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 2
+    assert 'app-jee-jsp' in get_response['ClientIDList']
+    assert 'app-profile-jsp' in get_response['ClientIDList']
+
+    remove_response = iam_root.remove_client_id_from_open_id_connect_provider(
+        OpenIDConnectProviderArn=oidc_provider_arn,
+        ClientID='app-profile-jsp'
+    )
+    assert remove_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    get_response = iam_root.get_open_id_connect_provider(
+        OpenIDConnectProviderArn=oidc_provider_arn
+    )
+    assert get_response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert len(get_response['ClientIDList']) == 1
+    assert get_response['ClientIDList'][0] == 'app-jee-jsp'
+    assert 'app-profile-jsp' not in get_response['ClientIDList']
+
+    del_response = iam_root.delete_open_id_connect_provider(
+        OpenIDConnectProviderArn=oidc_provider_arn
+    )
+    assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
+
 def test_verify_update_thumbprintlist_of_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
