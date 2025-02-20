@@ -12360,6 +12360,35 @@ def test_object_lock_put_obj_lock_invalid_bucket():
     assert status == 409
     assert error_code == 'InvalidBucketState'
 
+def test_object_lock_put_obj_lock_enable_after_create():
+    bucket_name = get_new_bucket_name()
+    client = get_client()
+    client.create_bucket(Bucket=bucket_name)
+    conf = {'ObjectLockEnabled':'Enabled',
+            'Rule': {
+                'DefaultRetention':{
+                    'Mode':'GOVERNANCE',
+                    'Days':1
+                }
+            }}
+
+    # fail if bucket is not versioned
+    e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 409
+    assert error_code == 'InvalidBucketState'
+
+    # fail if versioning is suspended
+    check_configure_versioning_retry(bucket_name, "Suspended", "Suspended")
+    e = assert_raises(ClientError, client.put_object_lock_configuration, Bucket=bucket_name, ObjectLockConfiguration=conf)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 409
+    assert error_code == 'InvalidBucketState'
+
+    # enable object lock if versioning is enabled
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+    response = client.put_object_lock_configuration(Bucket=bucket_name, ObjectLockConfiguration=conf)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.fails_on_dbstore
 def test_object_lock_put_obj_lock_with_days_and_years():
