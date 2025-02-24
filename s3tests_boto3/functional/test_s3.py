@@ -1590,7 +1590,6 @@ def test_bucket_listv2_continuationtoken():
 
 
 @pytest.mark.list_objects_v2
-@pytest.mark.fails_on_dbstore
 def test_bucket_listv2_both_continuationtoken_startafter():
     key_names = ["bar", "baz", "foo", "quxx"]
     bucket_name = _create_objects(keys=key_names)
