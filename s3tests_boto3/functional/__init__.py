@@ -398,7 +398,7 @@ def get_cloud_config(cfg):
         config.cloud_regular_storage_class = cfg.get('s3 cloud', "storage_class")
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.cloud_regular_storage_class  = None
-    
+
     try:
         config.read_through_restore_days = int(cfg.get('s3 cloud', "read_through_restore_days"))
     except (configparser.NoSectionError, configparser.NoOptionError):
