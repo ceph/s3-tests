@@ -9739,8 +9739,6 @@ def test_lifecycle_cloud_transition_large_obj():
     expire1_key1_str = prefix + keys[1]
     verify_object(cloud_client, target_path, expire1_key1_str, data, target_sc)
 
-@pytest.mark.lifecycle_transition
-@pytest.mark.cloud_transition
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
@@ -9784,8 +9782,6 @@ def test_restore_object_temporary():
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == 0
 
-@pytest.mark.lifecycle_transition
-@pytest.mark.cloud_transition
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
@@ -9822,8 +9818,6 @@ def test_restore_object_permanent():
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
 
-@pytest.mark.lifecycle_transition
-@pytest.mark.cloud_transition
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore

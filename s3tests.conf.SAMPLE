@@ -73,7 +73,7 @@ access_key = NOPQRSTUVWXYZABCDEFG
 secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 
 #[s3 cloud]
-## to run the testcases with "cloud_transition" for transition 
+## to run the testcases with "cloud_transition" for transition
 ## and "cloud_restore" for restore attribute.
 ## Note: the waiting time may have to tweaked depending on
 ## the I/O latency to the cloud endpoint.
