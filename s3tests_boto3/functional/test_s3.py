@@ -13614,6 +13614,28 @@ def test_object_checksum_sha256():
     assert error_code == 'InvalidRequest'
 
 @pytest.mark.checksum
+def test_object_checksum_crc64nvme():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "myobj"
+    size = 1024
+    body = FakeWriteFile(size, 'A')
+    crc64sum = 'Qeh8oXvGiSo='
+    response = client.put_object(Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='CRC64NVME', ChecksumCRC64NVME=crc64sum)
+    assert crc64sum == response['ChecksumCRC64NVME']
+
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ChecksumCRC64NVME' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert crc64sum == response['ChecksumCRC64NVME']
+
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='CRC64NVME', ChecksumCRC64NVME='bad')
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 400
+    assert error_code == 'InvalidRequest'
+
+@pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
 def test_multipart_checksum_sha256():
     bucket = get_new_bucket()
