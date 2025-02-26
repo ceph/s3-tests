@@ -8115,8 +8115,6 @@ def _do_clear_versioned_bucket_concurrent(client, bucket_name):
         t.append(thr)
     return t
 
-# TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/39142 is resolved
-@pytest.mark.fails_on_rgw
 def test_versioned_concurrent_object_create_concurrent_remove():
     bucket_name = get_new_bucket()
     client = get_client()
