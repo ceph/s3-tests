@@ -10990,6 +10990,40 @@ def test_bucket_policy_different_tenant():
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
+def test_bucket_policy_multipart():
+    client = get_client()
+    alt_client = get_alt_client()
+    bucket_name = get_new_bucket(client)
+    key = 'mpobj'
+
+    # alt user has no permission
+    assert_raises(ClientError, alt_client.create_multipart_upload, Bucket=bucket_name, Key=key)
+
+    # grant permission on bucket ARN but not objects
+    client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"AWS": "*"},
+                "Action": "s3:PutObject",
+                "Resource": f"arn:aws:s3:::{bucket_name}"
+            }]
+        }))
+    assert_raises(ClientError, alt_client.create_multipart_upload, Bucket=bucket_name, Key=key)
+
+    # grant permission on object ARN
+    client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps({
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"AWS": "*"},
+                "Action": "s3:PutObject",
+                "Resource": f"arn:aws:s3:::{bucket_name}/{key}"
+            }]
+        }))
+    alt_client.create_multipart_upload(Bucket=bucket_name, Key=key)
+
+@pytest.mark.bucket_policy
 def test_bucket_policy_tenanted_bucket():
     tenant_client = get_tenant_client()
     bucket_name = get_new_bucket(tenant_client)
