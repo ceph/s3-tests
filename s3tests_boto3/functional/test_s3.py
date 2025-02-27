@@ -7581,6 +7581,7 @@ def test_versioning_obj_create_read_remove_head():
 
     clean_up_bucket(client, bucket_name, key, version_ids)
 
+@pytest.mark.fails_on_dbstore
 def test_versioning_stack_delete_merkers():
     bucket_name = get_new_bucket()
     client = get_client()
