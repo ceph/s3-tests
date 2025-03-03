@@ -24,6 +24,7 @@ import random
 import socket
 import dateutil.parser
 import ssl
+import pdb
 from collections import namedtuple
 from collections import defaultdict
 from io import StringIO
@@ -13611,7 +13612,7 @@ def test_object_checksum_sha256():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256='bad')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == 'InvalidRequest'
+    assert error_code == 'BadDigest'
 
 @pytest.mark.checksum
 def test_object_checksum_crc64nvme():
@@ -13633,7 +13634,7 @@ def test_object_checksum_crc64nvme():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='CRC64NVME', ChecksumCRC64NVME='bad')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == 'InvalidRequest'
+    assert error_code == 'BadDigest'
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
@@ -13656,7 +13657,7 @@ def test_multipart_checksum_sha256():
         {'ETag': response['ETag'].strip('"'), 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 1}]})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == 'InvalidRequest'
+    assert error_code == 'BadDigest'
 
     # XXXX re-trying the complete is failing in RGW due to an internal error that appears not caused
     # checksums;
@@ -13679,7 +13680,7 @@ def test_multipart_checksum_sha256():
         {'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
-    assert error_code == 'InvalidRequest'
+    assert error_code == 'BadDigest'
 
     key = "mymultipart3"
     response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
@@ -13700,85 +13701,174 @@ def test_multipart_checksum_sha256():
     response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
     assert composite_sha256sum == response['ChecksumSHA256']
 
-@pytest.mark.checksum
-@pytest.mark.fails_on_dbstore
-def test_multipart_checksum_3parts():
+def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type=None, **kwargs):
+
     bucket = get_new_bucket()
     client = get_client()
 
-    key = "mymultipart3"
-    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
-    assert 'SHA256' == response['ChecksumAlgorithm']
+    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm=checksum_algo, ChecksumType=checksum_type)
+    assert checksum_algo == response['ChecksumAlgorithm']
     upload_id = response['UploadId']
 
-    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
-    body = FakeWriteFile(size, 'A')
-    part1_sha256sum = '275VF5loJr1YYawit0XSHREhkFXYkkPKGuoK0x9VKxI='
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part1_sha256sum)
+    cksum_arg_name = "Checksum" + checksum_algo
+
+    upload_args = {cksum_arg_name : kwargs['part1_cksum']}
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=kwargs['body1'], ChecksumAlgorithm=checksum_algo, **upload_args)
     etag1 = response['ETag'].strip('"')
+    cksum1 = response[cksum_arg_name]
 
-    body = FakeWriteFile(size, 'B')
-    part2_sha256sum = 'mrHwOfjTL5Zwfj74F05HOQGLdUb7E5szdCbxgUSq6NM='
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=2, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part2_sha256sum)
+    upload_args = {cksum_arg_name : kwargs['part2_cksum']}
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=2, Body=kwargs['body2'], ChecksumAlgorithm=checksum_algo, **upload_args)
     etag2 = response['ETag'].strip('"')
+    cksum2 = response[cksum_arg_name]
 
-    body = FakeWriteFile(size, 'C')
-    part3_sha256sum = 'Vw7oB/nKQ5xWb3hNgbyfkvDiivl+U+/Dft48nfJfDow='
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=3, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part3_sha256sum)
+    upload_args = {cksum_arg_name : kwargs['part3_cksum']}
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=3, Body=kwargs['body3'], ChecksumAlgorithm=checksum_algo, **upload_args)
     etag3 = response['ETag'].strip('"')
+    cksum3 = response[cksum_arg_name]
 
-    composite_sha256sum = 'uWBwpe1dxI4Vw8Gf0X9ynOdw/SS6VBzfWm9giiv1sf4=-3'
-    response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
-        {'ETag': etag1, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 1},
-        {'ETag': etag2, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 2},
-        {'ETag': etag3, 'ChecksumSHA256': response['ChecksumSHA256'], 'PartNumber': 3}]})
-    assert composite_sha256sum == response['ChecksumSHA256']
+    upload_args = {cksum_arg_name : kwargs['composite_cksum']}
+    response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, MultipartUpload={'Parts': [
+        {'ETag': etag1, cksum_arg_name: cksum1, 'PartNumber': 1},
+        {'ETag': etag2, cksum_arg_name: cksum2, 'PartNumber': 2},
+        {'ETag': etag3, cksum_arg_name: cksum3, 'PartNumber': 3}]},
+        **upload_args)
 
-    response = client.head_object(Bucket=bucket, Key=key)
-    assert 'ChecksumSHA256' not in response
-    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
-    assert composite_sha256sum == response['ChecksumSHA256']
+    assert response['ChecksumType'] == checksum_type
+    assert response[cksum_arg_name] == kwargs['composite_cksum']
+
+    response1 = client.head_object(Bucket=bucket, Key=key)
+    assert cksum_arg_name not in response1
+
+    response2 = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert response2['ChecksumType'] == checksum_type
+    assert response2[cksum_arg_name] == kwargs['composite_cksum']
+
+    request_attributes = ['Checksum']
+    response3 = client.get_object_attributes(Bucket=bucket, Key=key, \
+                                             ObjectAttributes=request_attributes)
+    assert response3['Checksum']['ChecksumType'] == checksum_type
+    assert response3['Checksum'][cksum_arg_name] == kwargs['composite_cksum']
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-def test_multipart_checksum_upload_fallback():
-    bucket = get_new_bucket()
-    client = get_client()
-
-    key = "mpu_cksum_fallback"
-    alg = 'SHA256'
-
-    response = client.create_multipart_upload(
-        Bucket=bucket, Key=key, ChecksumAlgorithm=alg)
-    assert alg == response['ChecksumAlgorithm']
-    upload_id = response['UploadId']
-
-    nparts = 3
-    parts = []
+def test_multipart_use_cksum_helper_sha256():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
-    for ix in range(0,nparts):
-        body = FakeWriteFile(size, 'A')
-        part_num = ix + 1
-        res = client.upload_part(UploadId=upload_id, Bucket=bucket,
-                                 Key=key, PartNumber=part_num, Body=body)
-        etag = res['ETag']
-        part = {'ETag': etag, 'PartNumber': part_num}
-        parts.append(part)
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
 
-    res = client.complete_multipart_upload(
-        Bucket=bucket, Key=key, UploadId=upload_id,
-        MultipartUpload={'Parts': parts})
+    upload_args = {
+        "body1" : body1,
+        "part1_cksum" : '275VF5loJr1YYawit0XSHREhkFXYkkPKGuoK0x9VKxI=',
+        "body2" : body2,
+        "part2_cksum" : 'mrHwOfjTL5Zwfj74F05HOQGLdUb7E5szdCbxgUSq6NM=',
+        "body3" : body3,
+        "part3_cksum" : 'Vw7oB/nKQ5xWb3hNgbyfkvDiivl+U+/Dft48nfJfDow=',
+        # the composite OR combined checksum, as appropriate
+        "composite_cksum" : 'uWBwpe1dxI4Vw8Gf0X9ynOdw/SS6VBzfWm9giiv1sf4=-3',
+    }
 
-    #pdb.set_trace()
-    assert res['ResponseMetadata']['HTTPStatusCode'] == 200
+    res = multipart_checksum_3parts_helper(key="mymultipart3", checksum_algo="SHA256", checksum_type="COMPOSITE", **upload_args)
+    #eof
 
-    # not yet merged
-    #request_attributes = ['ETag', 'Checksum', 'ObjectParts', 'StorageClass',
-    #                      'ObjectSize']
-    #res = client.get_object_attributes(Bucket=bucket, Key=key, \
-    #                                   ObjectAttributes=request_attributes)
-    #upload_checksum = res['Checksum']['ChecksumSHA256']
+@pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_use_cksum_helper_crc64nvme():
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
+
+    upload_args = {
+        "body1" : body1,
+        "part1_cksum" : 'L/E4WYn8v98=',
+        "body2" : body2,
+        "part2_cksum" : 'xW1l19VobYM=',
+        "body3" : body3,
+        "part3_cksum" : 'cK5MnNaWrW4=',
+        # the composite OR combined checksum, as appropriate
+        "composite_cksum" : 'i+6LR0y3eFo=',
+    }
+
+    res = multipart_checksum_3parts_helper(key="mymultipart3", checksum_algo="CRC64NVME", checksum_type="FULL_OBJECT", **upload_args)
+    #eof
+
+@pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_use_cksum_helper_crc32():
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
+
+    upload_args = {
+        "body1" : body1,
+        "part1_cksum" : 'JRTCyQ==',
+        "body2" : body2,
+        "part2_cksum" : 'QoZTGg==',
+        "body3" : body3,
+        "part3_cksum" : 'YAgjqw==',
+        # the composite OR combined checksum, as appropriate
+        "composite_cksum" : 'WgDhBQ==',
+    }
+
+    res = multipart_checksum_3parts_helper(key="mymultipart3", checksum_algo="CRC32", checksum_type="FULL_OBJECT", **upload_args)
+    #eof
+
+@pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_use_cksum_helper_crc32c():
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
+
+    upload_args = {
+        "body1" : body1,
+        "part1_cksum" : 'MDaLrw==',
+        "body2" : body2,
+        "part2_cksum" : 'TH4EZg==',
+        "body3" : body3,
+        "part3_cksum" : 'Z7mBIQ==',
+        # the composite OR combined checksum, as appropriate
+        "composite_cksum" : 'xU+Krw==',
+    }
+
+    res = multipart_checksum_3parts_helper(key="mymultipart3", checksum_algo="CRC32C", checksum_type="FULL_OBJECT", **upload_args)
+    #eof
+
+@pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_use_cksum_helper_sha1():
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
+
+    upload_args = {
+        "body1" : body1,
+        "part1_cksum" : 'iIaTCGbm+vdVjNqIMF2S0T7ibMk=',
+        "body2" : body2,
+        "part2_cksum" : 'LS/TJ32bAVKEwRu+sE3X7awh/lk=',
+        "body3" : body3,
+        "part3_cksum" : '6DDwovUaHwrKNXDMzOGbuvj9kxI=',
+        # the composite OR combined checksum, as appropriate
+        "composite_cksum" : 'sizjvY4eud3MrcHdZM3cQ/ol39o=-3',
+    }
+
+    res = multipart_checksum_3parts_helper(key="mymultipart3", checksum_algo="SHA1", checksum_type="COMPOSITE", **upload_args)
+    #eof    
 
 @pytest.mark.checksum
 def test_post_object_upload_checksum():
