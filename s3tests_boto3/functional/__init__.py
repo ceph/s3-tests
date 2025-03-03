@@ -248,6 +248,11 @@ def configure():
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.lc_debug_interval = 10
 
+    try:
+        config.rgw_restore_debug_interval = int(cfg.get('s3 main',"rgw_restore_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.rgw_restore_debug_interval = 100
+
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
     config.alt_display_name = cfg.get('s3 alt',"display_name")
@@ -376,6 +381,11 @@ def get_cloud_config(cfg):
         config.cloud_retain_head_object = None
 
     try:
+        config.allow_read_through = cfg.get('s3 cloud',"allow_read_through")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.allow_read_through = False
+
+    try:
         config.cloud_target_path = cfg.get('s3 cloud',"target_path")
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.cloud_target_path = None
@@ -389,6 +399,11 @@ def get_cloud_config(cfg):
         config.cloud_regular_storage_class = cfg.get('s3 cloud', "storage_class")
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.cloud_regular_storage_class  = None
+
+    try:
+        config.read_through_restore_days = int(cfg.get('s3 cloud', "read_through_restore_days"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.read_through_restore_days = 10
 
 
 def get_client(client_config=None):
@@ -769,6 +784,9 @@ def get_cloud_storage_class():
 def get_cloud_retain_head_object():
     return config.cloud_retain_head_object
 
+def get_allow_read_through():
+    return config.allow_read_through
+
 def get_cloud_regular_storage_class():
     return config.cloud_regular_storage_class
 
@@ -780,3 +798,9 @@ def get_cloud_target_storage_class():
 
 def get_lc_debug_interval():
     return config.lc_debug_interval
+
+def get_restore_debug_interval():
+    return config.rgw_restore_debug_interval
+
+def get_read_through_days():
+    return config.read_through_restore_days
