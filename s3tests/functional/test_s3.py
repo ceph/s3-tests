@@ -89,6 +89,7 @@ from . import (
     get_cloud_client,
     nuke_prefixed_buckets,
     configured_storage_classes,
+    configure,
     get_lc_debug_interval,
     get_restore_debug_interval,
     get_restore_processor_period,
@@ -19798,8 +19799,8 @@ _copy_enc_source_modes = {
     },
     'sse-c': {
         'args': {
-            'SSECustomerAlgorithm': 'AES256', 
-            'SSECustomerKey': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=', 
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': 'pO3upElrwuEXSoFwCfnZPdSsmt/xWeFa0N9KgDijwVs=',
             'SSECustomerKeyMD5': 'DWygnHRtgiJ77HCm+1rvHw==',
         },
         'source_copy_args': {
@@ -19810,7 +19811,7 @@ _copy_enc_source_modes = {
     },
     'sse-kms': {
         'args': {
-            'ServerSideEncryption': 'aws:kms', 
+            'ServerSideEncryption': 'aws:kms',
             'SSEKMSKeyId': lambda: get_main_kms_keyid()
         },
     }
@@ -19842,7 +19843,7 @@ _copy_enc_dest_modes = {
     },
     'sse-kms': {
         'args': {
-            'ServerSideEncryption': 'aws:kms', 
+            'ServerSideEncryption': 'aws:kms',
             'SSEKMSKeyId': lambda: get_secondary_kms_keyid()
         },
         'assert': lambda r: (
@@ -19852,7 +19853,7 @@ _copy_enc_dest_modes = {
     }
 }
 
-def _test_copy_enc(file_size, source_mode_key, dest_mode_key):
+def _test_copy_enc(file_size, source_mode_key, dest_mode_key, source_sc=None, dest_sc=None):
     source_args = _copy_enc_source_modes[source_mode_key]
     dest_args = _copy_enc_dest_modes[dest_mode_key]
 
@@ -19862,6 +19863,8 @@ def _test_copy_enc(file_size, source_mode_key, dest_mode_key):
     # upload original file with source encryption
     data = 'A'*file_size
     args = {key: value() if callable(value) else value for key, value in source_args.get('args', {}).items()}
+    if source_sc:
+        args['StorageClass'] = source_sc
     response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data, **args)
     assert source_args.get('assert', lambda r: True)(response)
 
@@ -19869,6 +19872,8 @@ def _test_copy_enc(file_size, source_mode_key, dest_mode_key):
     dest_bucket_name = get_new_bucket()
     copy_args = {key: value() if callable(value) else value for key, value in dest_args.get('args', {}).items()}
     copy_args.update(source_args.get('source_copy_args', {}))
+    if dest_sc:
+        copy_args['StorageClass'] = dest_sc
     response = client.copy_object(Bucket=dest_bucket_name, Key='testobj2', CopySource={'Bucket': bucket_name, 'Key': 'testobj'}, **copy_args)
     assert dest_args.get('assert', lambda r: True)(response)
 
@@ -19946,3 +19951,51 @@ def test_copy_enc_1mb(source_mode_key, dest_mode_key):
 ])
 def test_copy_enc_8mb(source_mode_key, dest_mode_key):
     _test_copy_enc(8*1024*1024, source_mode_key, dest_mode_key)
+
+def generate_copy_enc_storage_class_params():
+    configure()
+    sc = configured_storage_classes()
+    if len(sc) < 2:
+        return []
+
+    obj_sizes = [1, 1024, 1024*1024, 8*1024*1024]
+
+    params = []
+    for source_key in _copy_enc_source_modes.keys():
+        for dest_key in _copy_enc_dest_modes.keys():
+            source_marks = _copy_enc_source_modes[source_key].get('marks', [])
+            dest_marks = _copy_enc_dest_modes[dest_key].get('marks', [])
+
+            for source_sc in sc:
+                for dest_sc in sc:
+                    if source_sc == dest_sc:
+                        continue
+                    for obj_size in obj_sizes:
+                        param = pytest.param(
+                            source_key,
+                            dest_key,
+                            source_sc,
+                            dest_sc,
+                            obj_size,
+                            marks=[*source_marks, *dest_marks]
+                        )
+                        params.append(param)
+    return params
+
+@pytest.mark.encryption
+@pytest.mark.fails_on_dbstore
+@pytest.mark.storage_class
+@pytest.mark.fails_on_aws  # storage classes are not there
+@pytest.mark.parametrize(
+    "source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size",
+    generate_copy_enc_storage_class_params()
+)
+def test_copy_enc_storage_class(source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size):
+    if len(configured_storage_classes()) < 2:
+        pytest.skip('need at least two storage classes to test copy storage class')
+
+    print(
+        f"Testing copy from {source_mode_key} to {dest_mode_key} with storage class "
+        f"{source_storage_class} -> {dest_storage_class} and object size {obj_size}"
+    )
+    _test_copy_enc(obj_size, source_mode_key, dest_mode_key, source_storage_class, dest_storage_class)
