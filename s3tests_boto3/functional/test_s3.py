@@ -9606,19 +9606,21 @@ def test_lifecycle_cloud_transition():
         response = client.head_object(Bucket=bucket_name, Key=keys[0])
         assert 0 == response['ContentLength']
         assert cloud_sc == response['StorageClass']
-    
-        # GET should return InvalidObjectState error
-        e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=src_key)
-        status, error_code = _get_status_and_error_code(e.response)
-        assert status == 403
-        assert error_code == 'InvalidObjectState'
 
-        # COPY of object should return InvalidObjectState error
-        copy_source = {'Bucket': bucket_name, 'Key': src_key}
-        e = assert_raises(ClientError, client.copy, CopySource=copy_source, Bucket=bucket_name, Key='copy_obj')
-        status, error_code = _get_status_and_error_code(e.response)
-        assert status == 403
-        assert error_code == 'InvalidObjectState'
+        allow_readthrough = get_allow_read_through()
+        if (allow_readthrough == None or allow_readthrough == "false"):
+            # GET should return InvalidObjectState error
+            e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key=src_key)
+            status, error_code = _get_status_and_error_code(e.response)
+            assert status == 403
+            assert error_code == 'InvalidObjectState'
+
+            # COPY of object should return InvalidObjectState error
+            copy_source = {'Bucket': bucket_name, 'Key': src_key}
+            e = assert_raises(ClientError, client.copy, CopySource=copy_source, Bucket=bucket_name, Key='copy_obj')
+            status, error_code = _get_status_and_error_code(e.response)
+            assert status == 403
+            assert error_code == 'InvalidObjectState'
 
         # DELETE should succeed
         response = client.delete_object(Bucket=bucket_name, Key=src_key)
@@ -9952,7 +9954,7 @@ def test_read_through():
 
     # Restore the object using read_through request
     allow_readthrough = get_allow_read_through()
-    if allow_readthrough:
+    if (allow_readthrough != None and allow_readthrough == "true"):
         response = client.get_object(Bucket=bucket, Key=key)
         time.sleep(2)
         assert response['ContentLength'] == len(data)
@@ -9960,11 +9962,11 @@ def test_read_through():
         # verify object expired
         response = client.head_object(Bucket=bucket, Key=key)
         assert response['ContentLength'] == 0
-
     else:
-        with assert_raises(ClientError) as e:
-            response = client.get_object(Bucket=bucket, Key=key)
-        assert e.exception.response['Error']['Code'] == '403'
+        e = assert_raises(ClientError, client.get_object, Bucket=bucket, Key=key)
+        status, error_code = _get_status_and_error_code(e.response)
+        assert status == 403
+        assert error_code == 'InvalidObjectState'
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
