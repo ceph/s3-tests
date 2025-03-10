@@ -10920,6 +10920,7 @@ def test_bucketv2_policy_acl():
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_aws
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10952,6 +10953,7 @@ def test_bucket_policy_different_tenant():
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_aws
 def test_bucket_policy_tenanted_bucket():
     tenant_client = get_tenant_client()
     bucket_name = get_new_bucket(tenant_client)
