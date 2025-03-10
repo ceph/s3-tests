@@ -7614,6 +7614,27 @@ def test_versioning_obj_create_read_remove_head():
 
     clean_up_bucket(client, bucket_name, key, version_ids)
 
+def test_delete_object_with_null_version_id():
+    bucket_name = get_new_bucket()
+
+    client = get_client()
+    key = 'testobjfoo'
+    content = 'fooz'
+    client.put_object(Bucket=bucket_name, Key=key, Body=content)
+
+    client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={'Status': 'Enabled'})
+    num_versions = 1
+
+    (version_ids, contents) = create_multiple_versions(client, bucket_name, key, num_versions)
+
+    response = client.list_object_versions(Bucket=bucket_name)
+    assert len(response['Versions']) == num_versions+1
+
+    client.delete_object(Bucket=bucket_name, Key=key, VersionId='null')
+    response_2 = client.list_object_versions(Bucket=bucket_name)
+    assert len(response_2['Versions']) == num_versions
+
+
 def test_versioning_obj_plain_null_version_removal():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
