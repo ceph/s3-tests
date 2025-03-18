@@ -1392,7 +1392,7 @@ def test_bucket_list_return_data():
         acl_response = client.get_object_acl(Bucket=bucket_name, Key=key_name)
         data.update({
             key_name: {
-                'DisplayName': acl_response['Owner']['DisplayName'],
+                'DisplayName': acl_response['Owner'].get('DisplayName'),
                 'ID': acl_response['Owner']['ID'],
                 'ETag': obj_response['ETag'],
                 'LastModified': obj_response['LastModified'],
@@ -1407,7 +1407,7 @@ def test_bucket_list_return_data():
         key_data = data[key_name]
         assert obj['ETag'] == key_data['ETag']
         assert obj['Size'] == key_data['ContentLength']
-        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        assert obj['Owner'].get('DisplayName') == key_data['DisplayName']
         assert obj['Owner']['ID'] == key_data['ID']
         _compare_dates(obj['LastModified'],key_data['LastModified'])
 
@@ -4122,20 +4122,20 @@ def test_object_acl_canned_during_create():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AllUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
+            ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AllUsers',
+                EmailAddress=None,
+                Type='Group',
                 ),
             ],
         )
@@ -4156,20 +4156,20 @@ def test_object_acl_canned():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AllUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
+            ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AllUsers',
+                EmailAddress=None,
+                Type='Group',
                 ),
             ],
         )
@@ -4208,6 +4208,14 @@ def test_object_acl_canned_publicreadwrite():
         grants,
         [
             dict(
+                Permission='FULL_CONTROL',
+                ID=user_id,
+                DisplayName=display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+            ),
+            dict(
                 Permission='READ',
                 ID=None,
                 DisplayName=None,
@@ -4222,14 +4230,6 @@ def test_object_acl_canned_publicreadwrite():
                 URI='http://acs.amazonaws.com/groups/global/AllUsers',
                 EmailAddress=None,
                 Type='Group',
-                ),
-            dict(
-                Permission='FULL_CONTROL',
-                ID=user_id,
-                DisplayName=display_name,
-                URI=None,
-                EmailAddress=None,
-                Type='CanonicalUser',
                 ),
             ],
         )
@@ -4249,20 +4249,20 @@ def test_object_acl_canned_authenticatedread():
         grants,
         [
             dict(
-                Permission='READ',
-                ID=None,
-                DisplayName=None,
-                URI='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
-                EmailAddress=None,
-                Type='Group',
-                ),
-            dict(
                 Permission='FULL_CONTROL',
                 ID=user_id,
                 DisplayName=display_name,
                 URI=None,
                 EmailAddress=None,
                 Type='CanonicalUser',
+            ),
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AuthenticatedUsers',
+                EmailAddress=None,
+                Type='Group',
                 ),
             ],
         )
@@ -4277,8 +4277,8 @@ def test_object_acl_canned_bucketownerread():
     alt_client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
-    bucket_owner_id = bucket_acl_response['Grants'][2]['Grantee']['ID']
-    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee']['DisplayName']
+    bucket_owner_id = bucket_acl_response['Grants'][0]['Grantee']['ID']
+    bucket_owner_display_name = bucket_acl_response['Grants'][0]['Grantee'].get('DisplayName')
 
     alt_client.put_object(ACL='bucket-owner-read', Bucket=bucket_name, Key='foo')
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='foo')
@@ -4319,8 +4319,8 @@ def test_object_acl_canned_bucketownerfullcontrol():
     alt_client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
     bucket_acl_response = main_client.get_bucket_acl(Bucket=bucket_name)
-    bucket_owner_id = bucket_acl_response['Grants'][2]['Grantee']['ID']
-    bucket_owner_display_name = bucket_acl_response['Grants'][2]['Grantee']['DisplayName']
+    bucket_owner_id = bucket_acl_response['Grants'][0]['Grantee']['ID']
+    bucket_owner_display_name = bucket_acl_response['Grants'][0]['Grantee'].get('DisplayName')
 
     alt_client.put_object(ACL='bucket-owner-full-control', Bucket=bucket_name, Key='foo')
     response = alt_client.get_object_acl(Bucket=bucket_name, Key='foo')
@@ -4367,11 +4367,11 @@ def test_object_acl_full_control_verify_owner():
     main_user_id = get_main_user_id()
     main_display_name = get_main_display_name()
 
-    grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'FULL_CONTROL'}], 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
+    grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'FULL_CONTROL'}], 'Owner': {'DisplayName': main_display_name or '', 'ID': main_user_id}}
 
     main_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grant)
 
-    grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'READ_ACP'}], 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
+    grant = { 'Grants': [{'Grantee': {'ID': alt_user_id, 'Type': 'CanonicalUser' }, 'Permission': 'READ_ACP'}], 'Owner': {'DisplayName': main_display_name or '', 'ID': main_user_id}}
 
     alt_client.put_object_acl(Bucket=bucket_name, Key='foo', AccessControlPolicy=grant)
 
@@ -4396,7 +4396,7 @@ def add_obj_user_grant(bucket_name, key, grant):
     grants = response['Grants']
     grants.append(grant)
 
-    grant = {'Grants': grants, 'Owner': {'DisplayName': main_display_name, 'ID': main_user_id}}
+    grant = {'Grants': grants, 'Owner': {'DisplayName': main_display_name or '', 'ID': main_user_id}}
 
     return grant
 
@@ -4784,6 +4784,14 @@ def test_object_header_acl_grants():
                 Type='CanonicalUser',
                 ),
             dict(
+                Permission='FULL_CONTROL',
+                ID=alt_user_id,
+                DisplayName=alt_display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+            ),
+            dict(
                 Permission='READ_ACP',
                 ID=alt_user_id,
                 DisplayName=alt_display_name,
@@ -4799,14 +4807,7 @@ def test_object_header_acl_grants():
                 EmailAddress=None,
                 Type='CanonicalUser',
                 ),
-            dict(
-                Permission='FULL_CONTROL',
-                ID=alt_user_id,
-                DisplayName=alt_display_name,
-                URI=None,
-                EmailAddress=None,
-                Type='CanonicalUser',
-                ),
+
             ],
         )
 

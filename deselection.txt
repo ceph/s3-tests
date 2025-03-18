@@ -48,42 +48,6 @@ s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_failed
 s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_nonexisted_good
 s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_overwrite_existed_failed
 
-# NotImplemented - Object ACL
-s3tests/functional/test_headers.py::test_object_acl_create_contentlength_none
-s3tests_boto3/functional/test_headers.py::test_object_acl_create_contentlength_none
-s3tests_boto3/functional/test_s3.py::test_object_header_acl_grants
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_object_private
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_objectv2_private
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_object_publicread
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_objectv2_publicread
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_object_publicreadwrite
-s3tests_boto3/functional/test_s3.py::test_access_bucket_private_objectv2_publicreadwrite
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicread_object_private
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicread_object_publicread
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicread_object_publicreadwrite
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicreadwrite_object_private
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicreadwrite_object_publicread
-s3tests_boto3/functional/test_s3.py::test_access_bucket_publicreadwrite_object_publicreadwrite
-s3tests_boto3/functional/test_s3.py::test_bucket_list_return_data
-s3tests_boto3/functional/test_s3.py::test_object_put_acl_mtime
-s3tests_boto3/functional/test_s3.py::test_object_acl_default
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned_during_create
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned_publicreadwrite
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned_authenticatedread
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned_bucketownerread
-s3tests_boto3/functional/test_s3.py::test_object_acl_canned_bucketownerfullcontrol
-s3tests_boto3/functional/test_s3.py::test_object_acl_full_control_verify_attributes
-s3tests_boto3/functional/test_s3.py::test_object_acl_full_control_verify_owner
-s3tests_boto3/functional/test_s3.py::test_object_acl
-s3tests_boto3/functional/test_s3.py::test_object_acl_write
-s3tests_boto3/functional/test_s3.py::test_object_acl_writeacp
-s3tests_boto3/functional/test_s3.py::test_object_acl_read
-s3tests_boto3/functional/test_s3.py::test_object_acl_readacp
-s3tests_boto3/functional/test_s3.py::test_object_raw_get
-s3tests_boto3/functional/test_s3.py::test_object_raw_get_bucket_acl
-s3tests_boto3/functional/test_s3.py::test_object_raw_get_object_gone
-
 # NotImplemented - DeleteObjects
 s3tests_boto3/functional/test_s3.py::test_multi_object_delete
 s3tests_boto3/functional/test_s3.py::test_multi_objectv2_delete
@@ -156,6 +120,7 @@ s3tests_boto3/functional/test_s3.py::test_versioned_object_acl
 s3tests_boto3/functional/test_s3.py::test_versioned_object_acl_no_version_specified
 s3tests_boto3/functional/test_s3.py::test_versioned_concurrent_object_create_concurrent_remove
 s3tests_boto3/functional/test_s3.py::test_versioned_concurrent_object_create_and_remove
+s3tests_boto3/functional/test_s3.py::test_object_put_acl_mtime
 
 # NotImplemented - Multiple storage classes
 s3tests/functional/test_s3.py::test_object_storage_class
