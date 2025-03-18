@@ -4,7 +4,6 @@ import string
 import re
 import json
 from botocore.exceptions import ClientError
-from botocore.exceptions import EventStreamError
 
 import uuid
 import warnings
@@ -295,7 +294,6 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
     s3 = get_client()
     result = ""
     result_status = {}
-
     try:
         r = s3.select_object_content(
         Bucket=bucket,
@@ -311,34 +309,26 @@ def run_s3select(bucket,key,query,column_delim=",",row_delim="\n",quot_char='"',
         return result
 
     if progress == False:
-
-        try:
-            for event in r['Payload']:
-                if 'Records' in event:
-                    records = event['Records']['Payload'].decode('utf-8')
-                    result += records
-
-        except EventStreamError as c:
-            result = str(c)
-            return result
-        
+        for event in r['Payload']:
+            if 'Records' in event:
+                records = event['Records']['Payload'].decode('utf-8')
+                result += records
     else:
-            result = []
-            max_progress_scanned = 0
-            for event in r['Payload']:
-                if 'Records' in event:
-                    records = event['Records']
-                    result.append(records.copy())
-                if 'Progress' in event:
-                    if(event['Progress']['Details']['BytesScanned'] > max_progress_scanned):
-                        max_progress_scanned = event['Progress']['Details']['BytesScanned']
-                        result_status['Progress'] = event['Progress']
+        result = []
+        max_progress_scanned = 0
+        for event in r['Payload']:
+            if 'Records' in event:
+                records = event['Records']
+                result.append(records.copy())
+            if 'Progress' in event:
+                if(event['Progress']['Details']['BytesScanned'] > max_progress_scanned):
+                    max_progress_scanned = event['Progress']['Details']['BytesScanned']
+                    result_status['Progress'] = event['Progress']
 
-                if 'Stats' in event:
-                    result_status['Stats'] = event['Stats']
-                if 'End' in event:
-                    result_status['End'] = event['End']
-
+            if 'Stats' in event:
+                result_status['Stats'] = event['Stats']
+            if 'End' in event:
+                result_status['End'] = event['End']
 
     if progress == False:
         return result
@@ -894,7 +884,7 @@ def test_like_expressions():
 
     res_s3select_like = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,'select count(*) from stdin where _1 like "%aeio%" like;')).replace("\n","")
 
-    find_like = res_s3select_like.find("UnsupportedSyntax")
+    find_like = res_s3select_like.find("s3select-Syntax-Error")
 
     assert int(find_like) >= 0
 
@@ -1359,6 +1349,7 @@ def test_schema_definition():
 
     # using the scheme on first line, query is using the attach schema
     res_use = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select c1,c3 from s3object;",csv_header_info="USE") ).replace("\n","")
+    
     # result of both queries should be the same
     s3select_assert_result( res_ignore, res_use)
 
@@ -1367,8 +1358,8 @@ def test_schema_definition():
 
     assert ((res_multiple_defintion.find("alias {c11} or column not exist in schema")) >= 0)
 
-    #find_processing_error = res_multiple_defintion.find("ProcessingTimeError")
-    assert ((res_multiple_defintion.find("ProcessingTimeError")) >= 0)
+    #find_processing_error = res_multiple_defintion.find("s3select-ProcessingTime-Error")
+    assert ((res_multiple_defintion.find("s3select-ProcessingTime-Error")) >= 0)
 
     # alias-name is identical to column-name
     res_multiple_defintion = remove_xml_tags_from_result( run_s3select(bucket_name,csv_obj_name,"select int(c1)+int(c2) as c4,c4 from s3object;",csv_header_info="USE") ).replace("\n","")
