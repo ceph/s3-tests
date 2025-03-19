@@ -159,6 +159,9 @@ s3tests_boto3/functional/test_s3.py::test_bucket_policy_get_obj_acl_existing_tag
 s3tests_boto3/functional/test_s3.py::test_multipart_upload_on_a_bucket_with_policy
 s3tests_boto3/functional/test_s3.py::test_set_get_del_bucket_policy
 s3tests_boto3/functional/test_s3.py::test_bucket_policy_upload_part_copy
+s3tests_boto3/functional/test_s3.py::test_bucket_policy_multipart
+s3tests_boto3/functional/test_s3.py::test_bucket_policy_deny_self_denied_policy
+s3tests_boto3/functional/test_s3.py::test_bucket_policy_deny_self_denied_policy_confirm_header
 
 # NotImplemented - Object lock
 s3tests_boto3/functional/test_s3.py::test_object_lock_put_obj_lock
@@ -199,6 +202,7 @@ s3tests_boto3/functional/test_s3.py::test_object_lock_changing_mode_from_governa
 s3tests_boto3/functional/test_s3.py::test_object_lock_changing_mode_from_compliance
 s3tests_boto3/functional/test_s3.py::test_object_lock_delete_multipart_object_with_legal_hold_on
 s3tests_boto3/functional/test_s3.py::test_object_lock_delete_multipart_object_with_retention
+s3tests_boto3/functional/test_s3.py::test_object_lock_put_obj_lock_enable_after_create
 
 # NotImplemented - GetBucketPolicyStatus
 s3tests_boto3/functional/test_s3.py::test_get_public_acl_bucket_policy_status
@@ -221,6 +225,12 @@ s3tests_boto3/functional/test_s3.py::test_put_get_delete_public_block
 s3tests_boto3/functional/test_s3.py::test_get_nonpublicpolicy_principal_bucket_policy_status
 s3tests_boto3/functional/test_s3.py::test_bucket_policy_allow_notprincipal
 s3tests_boto3/functional/test_s3.py::test_block_public_policy_with_principal
+
+# NotImplemented - RestoreObject
+s3tests_boto3/functional/test_s3.py::test_read_through
+s3tests_boto3/functional/test_s3.py::test_restore_object_temporary
+s3tests_boto3/functional/test_s3.py::test_restore_object_permanent
+s3tests_boto3/functional/test_s3.py::test_restore_noncur_obj
 
 # NotImplemented - Bucket Encryption
 s3tests_boto3/functional/test_s3.py::test_put_bucket_encryption_s3
@@ -758,3 +768,4 @@ s3tests_boto3/functional/test_sts.py::test_assume_role_with_web_identity_role_re
 s3tests_boto3/functional/test_iam.py::test_verify_add_new_client_id_to_oidc
 s3tests_boto3/functional/test_iam.py::test_verify_add_existing_client_id_to_oidc
 s3tests_boto3/functional/test_iam.py::test_verify_update_thumbprintlist_of_oidc
+s3tests_boto3/functional/test_iam.py::test_verify_remove_client_id_from_oidc
