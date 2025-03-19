@@ -66,16 +66,28 @@ def get_objects_list(bucket, client=None, prefix=None):
     if client == None:
         client = get_client()
 
-    if prefix == None:
-        response = client.list_objects(Bucket=bucket)
-    else:
-        response = client.list_objects(Bucket=bucket, Prefix=prefix)
     objects_list = []
+    marker = None
+    while True:
+        if prefix == None:
+            if marker == None:
+                response = client.list_objects(Bucket=bucket)
+            else:
+                response = client.list_objects(Bucket=bucket, Marker=marker)
+        else:
+            if marker == None:
+                response = client.list_objects(Bucket=bucket, Prefix=prefix)
+            else:
+                response = client.list_objects(Bucket=bucket, Prefix=prefix, Marker=marker)
 
-    if 'Contents' in response:
-        contents = response['Contents']
-        for obj in contents:
-            objects_list.append(obj['Key'])
+        if 'Contents' in response:
+            contents = response['Contents']
+            for obj in contents:
+                objects_list.append(obj['Key'])
+
+        marker = response.get('NextMarker')
+        if marker == None:
+            break
 
     return objects_list
 
