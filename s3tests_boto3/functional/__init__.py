@@ -804,3 +804,24 @@ def get_restore_debug_interval():
 
 def get_read_through_days():
     return config.read_through_restore_days
+
+def create_iam_user_s3client(client):
+    prefix = get_iam_path_prefix()
+
+    # generate random name
+    randname = ''.join(
+        random.choice(string.ascii_lowercase + string.digits)
+        for c in range(8)
+    )
+    name = make_iam_name(randname)
+
+    user = client.create_user(UserName=name, Path=prefix)
+
+    # create s3 access and secret keys
+    keys = client.create_access_key(UserName=user['User']['UserName'])
+
+    # create s3 client
+    return get_iam_s3client(
+        aws_access_key_id=keys['AccessKey']['AccessKeyId'],
+        aws_secret_access_key=keys['AccessKey']['SecretAccessKey'],
+    )
