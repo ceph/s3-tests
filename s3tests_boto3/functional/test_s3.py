@@ -4046,6 +4046,41 @@ def test_bucket_acl_canned_authenticatedread():
             ],
         )
 
+def test_put_bucket_acl_grant_group_read():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    display_name = get_main_display_name()
+    user_id = get_main_user_id()
+
+    grant = {'Grantee': {'Type': 'Group', 'URI': 'http://acs.amazonaws.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    policy = add_bucket_user_grant(bucket_name, grant)
+
+    client.put_bucket_acl(Bucket=bucket_name, AccessControlPolicy=policy)
+
+    response = client.get_bucket_acl(Bucket=bucket_name)
+
+    check_grants(
+        response['Grants'],
+        [
+            dict(
+                Permission='READ',
+                ID=None,
+                DisplayName=None,
+                URI='http://acs.amazonaws.com/groups/global/AllUsers',
+                EmailAddress=None,
+                Type='Group',
+                ),
+            dict(
+                Permission='FULL_CONTROL',
+                ID=user_id,
+                DisplayName=display_name,
+                URI=None,
+                EmailAddress=None,
+                Type='CanonicalUser',
+                ),
+            ],
+        )
+
 def test_object_acl_default():
     bucket_name = get_new_bucket()
     client = get_client()
