@@ -79,28 +79,18 @@ def get_objects_list(bucket, client=None, prefix=None):
 
     return objects_list
 
-# generator function that returns object listings in batches, where each
-# batch is a list of dicts compatible with delete_objects()
-def list_versions(client, bucket, batch_size):
-    kwargs = {'Bucket': bucket, 'MaxKeys': batch_size}
-    truncated = True
-    while truncated:
-        listing = client.list_object_versions(**kwargs)
-
-        kwargs['KeyMarker'] = listing.get('NextKeyMarker')
-        kwargs['VersionIdMarker'] = listing.get('NextVersionIdMarker')
-        truncated = listing['IsTruncated']
-
-        objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
-        if len(objs):
-            yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
-
 def nuke_bucket(client, bucket):
     batch_size = 128
     max_retain_date = None
 
     # list and delete objects in batches
-    for objects in list_versions(client, bucket, batch_size):
+    truncated = True
+    while truncated:
+        listing = client.list_object_versions(Bucket=bucket, MaxKeys=batch_size)
+        truncated = listing['IsTruncated']
+        objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
+        objects = [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
+
         delete = client.delete_objects(Bucket=bucket,
                 Delete={'Objects': objects, 'Quiet': True},
                 BypassGovernanceRetention=True)
@@ -131,7 +121,13 @@ bucket cleanup'.format(bucket, delta.total_seconds()))
                     'seconds for object locks to expire')
             time.sleep(delta.total_seconds())
 
-        for objects in list_versions(client, bucket, batch_size):
+        truncated = True
+        while truncated:
+            listing = client.list_object_versions(Bucket=bucket, MaxKeys=batch_size)
+            truncated = listing['IsTruncated']
+            objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
+            objects = [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
+
             client.delete_objects(Bucket=bucket,
                     Delete={'Objects': objects, 'Quiet': True},
                     BypassGovernanceRetention=True)
