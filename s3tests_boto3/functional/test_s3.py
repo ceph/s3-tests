@@ -14922,6 +14922,21 @@ def test_put_bucket_logging_errors():
     except ClientError as e:
         assert e.response['Error']['Code'] == 'InvalidArgument'
 
+    # "requester pays" is set on log bucket
+    log_bucket_name3 = get_new_bucket_name()
+    log_bucket3 = get_new_bucket_resource(name=log_bucket_name3)
+    _set_log_bucket_policy(client, log_bucket_name3, [src_bucket_name], [prefix])
+    response = client.put_bucket_request_payment(Bucket=log_bucket_name3,
+                                                 RequestPaymentConfiguration={'Payer': 'Requester'})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    try:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name3, 'TargetPrefix': prefix},
+        })
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'InvalidArgument'
+
     # invalid log type
     if _has_bucket_logging_extension():
         try:
@@ -14931,6 +14946,52 @@ def test_put_bucket_logging_errors():
             assert False, 'expected failure'
         except ClientError as e:
             assert e.response['Error']['Code'] == 'MalformedXML'
+
+
+@pytest.mark.bucket_logging
+def test_bucket_logging_owner():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    alt_client = get_alt_client()
+    prefix = 'log/'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    # set policy to allow all action on source bucket
+    policy_document = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [{
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": ["s3:PutBucketLogging"],
+        }]
+     })
+
+    response = client.put_bucket_policy(Bucket=src_bucket_name, Policy=policy_document)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
+
+    # try set bucket logging from another user
+    try:
+        response = alt_client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'AccessDenied'
+
+    # set bucket logging from the bucket owner user
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # try remove bucket logging from another user
+    try:
+        response = alt_client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'AccessDenied'
 
 
 def _bucket_logging_tenant_objects(src_client, src_bucket_name, log_client, log_bucket_name, log_type, op_name):
