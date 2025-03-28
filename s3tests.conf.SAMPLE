@@ -111,7 +111,7 @@ secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 display_name = testx$tenanteduser
 
 # tenant user_id set in vstart.sh
-user_id = 9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+user_id = testx$9876543210abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
 # tenant AWS secret key set in vstart.sh
 access_key = HIJKLMNOPQRSTUVWXYZA

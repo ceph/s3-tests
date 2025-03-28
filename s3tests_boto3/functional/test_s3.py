@@ -14490,7 +14490,7 @@ def _set_log_bucket_policy_tenant(client, log_tenant, log_bucket_name, src_tenan
             "Condition": {
                 "ArnLike": {"aws:SourceArn": "arn:aws:s3::{}:{}".format(src_tenant, src_buckets[j])},
                 "StringEquals": {
-                    "aws:SourceAccount": "{}${}".format(src_tenant, src_user) if src_tenant else src_user
+                    "aws:SourceAccount": src_user
                     }
             }
         })
