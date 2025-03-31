@@ -221,7 +221,7 @@ def configure():
     config.main_display_name = cfg.get('s3 main',"display_name")
     config.main_user_id = cfg.get('s3 main',"user_id")
     config.main_email = cfg.get('s3 main',"email")
-    config.main_account_id = cfg.get('s3 main', 'account_id')
+    config.main_account_id = cfg.get('s3 main', 'account_id', fallback=None)
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
     except (configparser.NoSectionError, configparser.NoOptionError):
