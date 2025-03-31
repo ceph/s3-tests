@@ -466,6 +466,18 @@ def get_iam_s3client(**kwargs):
                           **kwargs)
     return client
 
+def get_iam_root_s3client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
+    client = boto3.client(service_name='s3',
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
+    return client
+
 def get_iam_root_client(**kwargs):
     kwargs.setdefault('service_name', 'iam')
     kwargs.setdefault('region_name', '')
