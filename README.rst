@@ -109,7 +109,7 @@ should be copied to the: `~/.aws/models/s3/2006-03-01/` directory on the machine
 If the file is not present, the tests will still run, but the extension tests will be skipped. In this case, the bucket logging object roll time must be decreased manually from its default of 
 300 seconds to 5 seconds::
 
-  vstart.sh -o rgw_bucket_log_object_roll_time=5
+  vstart.sh -o rgw_bucket_logging_object_roll_time=5
 
 Then the tests can be run with::
 
