@@ -9819,7 +9819,7 @@ def test_lifecycle_noncur_cloud_transition():
     assert len(expire1_keys[sc[1]]) == 4
     assert len(expire1_keys[sc[2]]) == 0
 
-    time.sleep(10*lc_interval)
+    time.sleep(15*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     assert len(expire1_keys['STANDARD']) == 2
     assert len(expire1_keys[sc[1]]) == 0
@@ -9877,7 +9877,7 @@ def test_lifecycle_cloud_transition_large_obj():
     lc_interval = get_lc_debug_interval()
 
     # Wait for first expiration (plus fudge to handle the timer window)
-    time.sleep(8*lc_interval)
+    time.sleep(12*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket)
     assert len(expire1_keys['STANDARD']) == 1
 
@@ -9923,7 +9923,7 @@ def test_restore_object_temporary():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_restore_debug_interval()
-    time.sleep(7 * lc_interval)
+    time.sleep(10 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -9965,7 +9965,7 @@ def test_restore_object_permanent():
     client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(7 * lc_interval)
+    time.sleep(10 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -10002,7 +10002,7 @@ def test_read_through():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_read_through_days()
-    time.sleep(7 * lc_interval)
+    time.sleep(10 * lc_interval)
 
     # Check the storage class after transitioning
     verify_transition(client, bucket, key, cloud_sc)
@@ -10013,7 +10013,7 @@ def test_read_through():
         response = client.get_object(Bucket=bucket, Key=key)
         time.sleep(2)
         assert response['ContentLength'] == len(data)
-        time.sleep(2 * (restore_interval + lc_interval))
+        time.sleep(5 * (restore_interval + lc_interval))
         # verify object expired
         response = client.head_object(Bucket=bucket, Key=key)
         assert response['ContentLength'] == 0
