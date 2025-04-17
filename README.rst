@@ -104,9 +104,9 @@ You can filter tests based on their attributes::
  Bucket logging tests
 ========================
 
-Ceph has extensions for the bucket logging S3 API. For the tests to cover these extensions, the following file: `examples/rgw/boto3/service-2.sdk-extras.json` from the Ceph repo, 
+Ceph has extensions for the bucket logging S3 API. For the tests to cover these extensions, the following file: `examples/rgw/boto3/service-2.sdk-extras.json` from the Ceph repo,
 should be copied to the: `~/.aws/models/s3/2006-03-01/` directory on the machine where the tests are run.
-If the file is not present, the tests will still run, but the extension tests will be skipped. In this case, the bucket logging object roll time must be decreased manually from its default of 
+If the file is not present, the tests will still run, but the extension tests will be skipped. In this case, the bucket logging object roll time must be decreased manually from its default of
 300 seconds to 5 seconds::
 
   vstart.sh -o rgw_bucket_logging_object_roll_time=5
@@ -114,3 +114,7 @@ If the file is not present, the tests will still run, but the extension tests wi
 Then the tests can be run with::
 
   S3TEST_CONF=your.conf tox -- -m 'bucket_logging'
+
+To run the only bucket logging tests that do not need extension of rollover time, use::
+
+  S3TEST_CONF=your.conf tox -- -m 'bucket_logging and not fails_without_logging_rollover'

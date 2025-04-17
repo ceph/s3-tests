@@ -15694,6 +15694,7 @@ def _put_bucket_logging_tenant(log_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_put_bucket_logging_tenant_s():
     _put_bucket_logging_tenant('Standard')
 
@@ -15765,6 +15766,7 @@ def _put_bucket_logging_account(log_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_put_bucket_logging_account_s():
     _put_bucket_logging_account('Standard')
 
@@ -15882,16 +15884,22 @@ def _bucket_logging_put_objects(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_put_objects():
     _bucket_logging_put_objects(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_put_objects_versioned():
     _bucket_logging_put_objects(True)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_put_concurrency():
     src_bucket_name = get_new_bucket()
     log_bucket_name = get_new_bucket_name()
@@ -16006,11 +16014,15 @@ def _bucket_logging_delete_objects(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_delete_objects():
     _bucket_logging_delete_objects(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_delete_objects_versioned():
     _bucket_logging_delete_objects(True)
 
@@ -16071,11 +16083,15 @@ def _bucket_logging_get_objects(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_get_objects():
     _bucket_logging_get_objects(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_get_objects_versioned():
     _bucket_logging_get_objects(True)
 
@@ -16143,21 +16159,29 @@ def _bucket_logging_copy_objects(versioned, another_bucket):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_copy_objects():
     _bucket_logging_copy_objects(False, False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_copy_objects_versioned():
     _bucket_logging_copy_objects(True, False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_copy_objects_bucket():
     _bucket_logging_copy_objects(False, True)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_copy_objects_bucket_versioned():
     _bucket_logging_copy_objects(True, True)
 
@@ -16216,11 +16240,15 @@ def _bucket_logging_head_objects(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_head_objects():
     _bucket_logging_head_objects(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_head_objects_versioned():
     _bucket_logging_head_objects(True)
 
@@ -16275,11 +16303,15 @@ def _bucket_logging_mpu(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_mpu():
     _bucket_logging_mpu(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_mpu_versioned():
     _bucket_logging_mpu(True)
 
@@ -16331,11 +16363,15 @@ def _bucket_logging_mpu_copy(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_mpu_copy():
     _bucket_logging_mpu_copy(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_mpu_copy_versioned():
     _bucket_logging_mpu_copy(True)
 
@@ -16402,11 +16438,15 @@ def _bucket_logging_multi_delete(versioned):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_multi_delete():
     _bucket_logging_multi_delete(False)
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_multi_delete_versioned():
     _bucket_logging_multi_delete(True)
 
@@ -16547,6 +16587,8 @@ def test_bucket_logging_roll_time():
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_multiple_prefixes():
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
@@ -16601,6 +16643,8 @@ def test_bucket_logging_multiple_prefixes():
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_single_prefix():
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
