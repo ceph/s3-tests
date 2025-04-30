@@ -8315,6 +8315,38 @@ def test_lifecycle_get():
     assert response['Rules'] == rules
 
 @pytest.mark.lifecycle
+def test_lifecycle_delete():
+    client = get_client()
+    bucket_name = get_new_bucket(client)
+
+    e = assert_raises(ClientError, client.get_bucket_lifecycle_configuration, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 404
+    assert error_code == 'NoSuchLifecycleConfiguration'
+
+    # returns 204 even if there is no lifecycle config
+    response = client.delete_bucket_lifecycle(Bucket=bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
+
+    rules=[{'ID': 'test1/', 'Expiration': {'Days': 31}, 'Prefix': 'test1/', 'Status':'Enabled'},
+           {'ID': 'test2/', 'Expiration': {'Days': 120}, 'Prefix': 'test2/', 'Status':'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+
+    response = client.delete_bucket_lifecycle(Bucket=bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
+
+    e = assert_raises(ClientError, client.get_bucket_lifecycle_configuration, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 404
+    assert error_code == 'NoSuchLifecycleConfiguration'
+
+    # returns 204 even if there is no lifecycle config
+    response = client.delete_bucket_lifecycle(Bucket=bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 204
+
+@pytest.mark.lifecycle
 def test_lifecycle_get_no_id():
     bucket_name = get_new_bucket()
     client = get_client()
