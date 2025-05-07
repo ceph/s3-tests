@@ -15362,7 +15362,7 @@ def test_bucket_logging_owner():
         assert e.response['Error']['Code'] == 'AccessDenied'
 
 
-def _set_access_denied_policy(client, log_bucket_name, policy):
+def _set_bucket_policy(client, log_bucket_name, policy):
     policy_document = json.dumps(policy)
     response = client.put_bucket_policy(Bucket=log_bucket_name, Policy=policy_document)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -15402,33 +15402,33 @@ def test_put_bucket_logging_permissions():
 
     # missing service principal
     policy['Statement'][0]['Principal'] = {"AWS": "*"}
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
 
     # invalid service principal
     policy['Statement'][0]['Principal'] = {"Service": "logging.s3.amazonaws.com"+"kaboom"}
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid principal
     policy['Statement'][0]['Principal'] = {"Service": "logging.s3.amazonaws.com"}
 
     # invalid action
     policy['Statement'][0]['Action'] = ["s3:GetObject"]
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid action
     policy['Statement'][0]['Action'] = ["s3:PutObject"]
 
     # invalid resource
     policy['Statement'][0]['Resource'] = "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid resource
     policy['Statement'][0]['Resource'] = "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix)
 
     # invalid source bucket
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format(src_tenant, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format("kaboom", src_bucket)
     # set valid source bucket
@@ -15437,13 +15437,140 @@ def test_put_bucket_logging_permissions():
     # invalid source account
     src_user = "kaboom"
     policy['Statement'][0]['Condition']['StringEquals']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     src_user = get_main_user_id()
     src_tenant = "kaboom"
     policy['Statement'][0]['Condition']['StringEquals']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
+
+
+def _put_bucket_logging_policy_wildcard(add_objects):
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    alt_client = get_alt_client()
+    alt_src_bucket_name = get_new_bucket_name()
+    alt_src_bucket = get_new_bucket(client=alt_client, name=alt_src_bucket_name)
+    prefix = 'log/'
+    log_tenant = ""
+    src_tenant = ""
+    src_user = get_main_user_id()
+    alt_user = get_alt_user_id()
+
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "S3ServerAccessLogsPolicy",
+                "Effect": "Allow",
+                "Principal": {"Service": "logging.s3.amazonaws.com"},
+                "Action": ["s3:PutObject"],
+                "Resource": "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix),
+                "Condition": {
+                    "ArnLike": {"aws:SourceArn": "arn:aws:s3::{}:{}".format(src_tenant, src_bucket_name)},
+                    "StringLike": {
+                        "aws:SourceAccount": "{}${}".format(src_tenant, src_user) if src_tenant else src_user
+                        }
+                }
+            },
+            {
+                "Sid": "S3ServerAccessLogsPolicy",
+                "Effect": "Allow",
+                "Principal": {"Service": "logging.s3.amazonaws.com"},
+                "Action": ["s3:PutObject"],
+                "Resource": "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix),
+                "Condition": {
+                    "ArnLike": {"aws:SourceArn": "arn:aws:s3::{}:{}".format(src_tenant, alt_src_bucket_name)},
+                    "StringLike": {
+                        "aws:SourceAccount": "{}${}".format(src_tenant, src_user) if src_tenant else alt_user
+                        }
+                }
+            }
+        ]
+    }
+
+    # verify policy is ok
+    _set_bucket_policy(client, log_bucket_name, policy)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = alt_client.put_bucket_logging(Bucket=alt_src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # remove the 2nd statement from the policy
+    # and make sure it fails
+    policy['Statement'].pop()
+    _set_bucket_policy(client, log_bucket_name, policy)
+    _verify_access_denied(alt_client, alt_src_bucket_name, log_bucket_name, prefix)
+
+    # use wildcards account/bucket
+    policy['Statement'][0]['Condition']['StringLike']['aws:SourceAccount'] = "*"
+    policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:*".format(src_tenant)
+    _set_bucket_policy(client, log_bucket_name, policy)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = alt_client.put_bucket_logging(Bucket=alt_src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    if not add_objects:
+        return
+
+    # put objects when policy is ok
+    num_keys = 5
+    src_keys = []
+    for j in range(num_keys):
+        name = 'myobject_1_'+str(j)
+        src_keys.append(name)
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+        name = 'myobject_2_'+str(j)
+        src_keys.append(name)
+        alt_client.put_object(Bucket=alt_src_bucket_name, Key=name, Body=randcontent())
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+    for key in keys:
+        assert key.startswith('log/')
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body = _get_body(response)
+        assert _verify_records(body, " ", 'REST.PUT.OBJECT', src_keys, "Standard", num_keys*2)
+
+    # non wildcard source account policy
+    policy['Statement'][0]['Condition']['StringLike']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
+    _set_bucket_policy(client, log_bucket_name, policy)
+    for j in range(num_keys):
+        name = 'myobject_2_'+str(j)
+        src_keys.append(name)
+        alt_client.put_object(Bucket=alt_src_bucket_name, Key=name, Body=randcontent())
+    try:
+        _flush_logs(alt_client, alt_src_bucket_name)
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'AccessDenied'
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    # no new keys were added
+    assert len(keys) == 1
+
+
+@pytest.mark.bucket_logging
+def test_put_bucket_logging_policy_wildcard():
+    _put_bucket_logging_policy_wildcard(False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_put_bucket_logging_policy_wildcard_objects():
+    _put_bucket_logging_policy_wildcard(True)
 
 
 def _bucket_logging_permission_change(logging_type):
@@ -15477,8 +15604,12 @@ def _bucket_logging_permission_change(logging_type):
     policy_document = json.dumps(policy)
     response = client.put_bucket_policy(Bucket=log_bucket_name, Policy=policy_document)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
-    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
-        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix, 'LoggingType': logging_type}})
+    if logging_type == 'Journal':
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix, 'LoggingType': logging_type}})
+    else:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # put objects when policy is ok
@@ -15490,7 +15621,7 @@ def _bucket_logging_permission_change(logging_type):
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
     # change policy to invalid source bucket
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format(src_tenant, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
 
     bad_src_keys = []
     # put objects when policy should reject them
@@ -15519,9 +15650,8 @@ def _bucket_logging_permission_change(logging_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_permission_change_s():
-    if not _has_bucket_logging_extension():
-        pytest.skip('ceph extension to bucket logging not supported at client')
     _bucket_logging_permission_change('Standard')
 
 
