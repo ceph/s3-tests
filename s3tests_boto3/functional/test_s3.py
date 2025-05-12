@@ -16319,20 +16319,19 @@ def test_bucket_logging_head_objects_versioned():
 
 
 @pytest.mark.bucket_logging
-def _bucket_logging_mpu(versioned):
+def _bucket_logging_mpu(versioned, record_type):
     src_bucket_name = get_new_bucket()
     if versioned:
         check_configure_versioning_retry(src_bucket_name, "Enabled", "Enabled")
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-    has_extensions = _has_bucket_logging_extension()
 
     prefix = 'log/'
     _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
     # minimal configuration
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}
-    if has_extensions:
+    if record_type == 'Journal':
         logging_enabled['ObjectRollTime'] = expected_object_roll_time
         logging_enabled['LoggingType'] = 'Journal'
     response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -16355,31 +16354,45 @@ def _bucket_logging_mpu(versioned):
     assert len(keys) == 1
 
     if versioned:
-        expected_count = 4 if not has_extensions else 2
+        expected_count = 4 if not record_type == 'Journal' else 2
     else:
-        expected_count = 2 if not has_extensions else 1
+        expected_count = 2 if not record_type == 'Journal' else 1
 
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
     body = _get_body(response)
-    record_type = 'Standard' if not has_extensions else 'Journal'
     assert _verify_records(body, src_bucket_name, 'REST.POST.UPLOAD', [src_key, src_key], record_type, expected_count)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_without_logging_rollover
-def test_bucket_logging_mpu():
-    _bucket_logging_mpu(False)
+def test_bucket_logging_mpu_s():
+    _bucket_logging_mpu(False, 'Standard')
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_without_logging_rollover
-def test_bucket_logging_mpu_versioned():
-    _bucket_logging_mpu(True)
+def test_bucket_logging_mpu_versioned_s():
+    _bucket_logging_mpu(True, 'Standard')
 
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_mpu_j():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    _bucket_logging_mpu(False, 'Journal')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_mpu_versioned_j():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    _bucket_logging_mpu(True, 'Journal')
 
 @pytest.mark.bucket_logging
 def _bucket_logging_mpu_copy(versioned):
