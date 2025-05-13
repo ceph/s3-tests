@@ -26,6 +26,8 @@ calling_formats = dict(
     vhost=boto.s3.connection.VHostCallingFormat(),
     )
 
+DEFAULT_REGION = 'us-east-1'
+
 def get_prefix():
     assert prefix is not None
     return prefix
@@ -413,7 +415,14 @@ def get_new_bucket(target=None, name=None, headers=None):
     # the only way for this to fail with a pre-existing bucket is if
     # someone raced us between setup nuke_prefixed_buckets and here;
     # ignore that as astronomically unlikely
-    bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
+    params = {
+        'bucket_name': name,
+        'headers': headers,
+    }
+    if target.conf.api_name != DEFAULT_REGION:
+        params['location'] = target.conf.api_name
+
+    bucket = connection.create_bucket(**params)
     return bucket
 
 def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):

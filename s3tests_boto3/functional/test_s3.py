@@ -3808,7 +3808,13 @@ def test_bucket_get_location():
     bucket_name = get_new_bucket_name()
     client = get_client()
 
-    client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': location_constraint})
+    params = {
+        'Bucket': bucket_name,
+    }
+    if location_constraint != DEFAULT_REGION:
+        params['CreateBucketConfiguration'] = {'LocationConstraint': location_constraint}
+
+    client.create_bucket(**params)
 
     response = client.get_bucket_location(Bucket=bucket_name)
     if location_constraint in {'', DEFAULT_REGION}:
