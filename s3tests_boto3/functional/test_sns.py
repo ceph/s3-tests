@@ -3,6 +3,7 @@ import pytest
 from botocore.exceptions import ClientError
 from . import (
     configfile,
+    create_bucket,
     get_iam_root_client,
     get_iam_alt_root_client,
     get_new_bucket_name,
@@ -110,7 +111,7 @@ def test_account_topic_publish(sns, s3):
     topic_arn = response['TopicArn']
 
     bucket = get_new_bucket_name()
-    s3.create_bucket(Bucket=bucket)
+    create_bucket(s3, Bucket=bucket)
 
     config = {'TopicConfigurations': [{
         'Id': 'id',
@@ -130,7 +131,7 @@ def test_cross_account_topic_publish(sns, s3_alt, iam_alt_root):
     topic_arn = response['TopicArn']
 
     bucket = get_new_bucket_name()
-    s3_alt.create_bucket(Bucket=bucket)
+    create_bucket(s3_alt, Bucket=bucket)
 
     config = {'TopicConfigurations': [{
         'Id': 'id',

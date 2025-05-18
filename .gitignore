@@ -19,6 +19,5 @@ config.yaml
 build
 .tox
 .env
-aws.s3tests.conf
-rcs.s3tests.conf
+*.s3tests.conf
 selection.txt

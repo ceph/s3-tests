@@ -44,6 +44,7 @@ from .iam import iam_root
 
 from . import (
     configfile,
+    create_bucket,
     setup_teardown,
     get_client,
     get_prefix,
@@ -187,7 +188,7 @@ def test_basic_key_count():
     client = get_client()
     bucket_names = []
     bucket_name = get_new_bucket_name()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     for j in range(5):
             client.put_object(Bucket=bucket_name, Key=str(j))
     response1 = client.list_objects_v2(Bucket=bucket_name)
@@ -1943,7 +1944,7 @@ def test_post_object_anonymous_request():
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -1991,7 +1992,7 @@ def test_post_object_authenticated_request():
 def test_post_object_authenticated_no_content_type():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
 
     url = _get_post_url(bucket_name)
@@ -2028,7 +2029,7 @@ def test_post_object_authenticated_no_content_type():
 def test_post_object_authenticated_request_bad_access_key():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     url = _get_post_url(bucket_name)
     utc = pytz.utc
@@ -2063,7 +2064,7 @@ def test_post_object_authenticated_request_bad_access_key():
 def test_post_object_set_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     url = _get_post_url(bucket_name)
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
@@ -2078,7 +2079,7 @@ def test_post_object_set_success_code():
 def test_post_object_set_invalid_success_code():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     url = _get_post_url(bucket_name)
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
@@ -2273,7 +2274,7 @@ def test_post_object_escaped_field_values():
 def test_post_object_success_redirect_action():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     url = _get_post_url(bucket_name)
     redirect_url = _get_post_url(bucket_name)
@@ -3282,7 +3283,7 @@ def _setup_bucket_acl(bucket_acl=None):
     client = get_client()
 
     try:
-        client.create_bucket(Bucket=bucket_name, ObjectOwnership='BucketOwnerPreferred')
+        create_bucket(client, Bucket=bucket_name, ObjectOwnership='BucketOwnerPreferred')
         client.put_public_access_block(
             Bucket=bucket_name,
             PublicAccessBlockConfiguration={
@@ -3307,7 +3308,7 @@ def _setup_bucket_acl(bucket_acl=None):
         if bucket_acl is not None:
             params['ACL'] = bucket_acl
 
-        client.create_bucket(**params)
+        create_bucket(client, **params)
 
     return bucket_name
 
@@ -3635,7 +3636,7 @@ def check_bad_bucket_name(bucket_name):
     that the request fails because of an invalid bucket name.
     """
     client = get_client()
-    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
+    e = assert_raises(ClientError, create_bucket, client, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'InvalidBucketName'
@@ -3659,7 +3660,7 @@ def check_invalid_bucketname(invalid_name):
         new_url = url.replace(valid_bucket_name, invalid_name)
         kwargs['params']['url'] = new_url
     client.meta.events.register('before-call.s3.CreateBucket', replace_bucketname_from_url)
-    e = assert_raises(ClientError, client.create_bucket, Bucket=invalid_name)
+    e = assert_raises(ClientError, create_bucket, client, Bucket=invalid_name)
     status, error_code = _get_status_and_error_code(e.response)
     return (status, error_code)
 
@@ -3688,7 +3689,7 @@ def check_good_bucket_name(name, _prefix=None):
             name=name,
             )
     client = get_client()
-    response = client.create_bucket(Bucket=bucket_name)
+    response = create_bucket(client, Bucket=bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def _test_bucket_create_naming_good_long(length):
@@ -3712,7 +3713,7 @@ def _test_bucket_create_naming_good_long(length):
             name=name,
             )
     client = get_client()
-    response = client.create_bucket(Bucket=bucket_name)
+    response = create_bucket(client, Bucket=bucket_name)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 def test_bucket_create_naming_good_long_60():
@@ -3792,9 +3793,9 @@ def test_bucket_create_exists():
     bucket_name = get_new_bucket_name()
     client = get_client()
 
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     try:
-        response = client.create_bucket(Bucket=bucket_name)
+        response = create_bucket(client, Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
         assert status == 409
@@ -3814,7 +3815,7 @@ def test_bucket_get_location():
     if location_constraint != DEFAULT_REGION:
         params['CreateBucketConfiguration'] = {'LocationConstraint': location_constraint}
 
-    client.create_bucket(**params)
+    create_bucket(client, **params)
 
     response = client.get_bucket_location(Bucket=bucket_name)
     if location_constraint in {'', DEFAULT_REGION}:
@@ -3830,8 +3831,8 @@ def test_bucket_create_exists_nonowner():
 
     alt_client = get_alt_client()
 
-    client.create_bucket(Bucket=bucket_name)
-    e = assert_raises(ClientError, alt_client.create_bucket, Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
+    e = assert_raises(ClientError, create_bucket, alt_client, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 409
     assert error_code == 'BucketAlreadyExists'
@@ -3844,7 +3845,7 @@ def test_bucket_recreate_overwrite_acl():
 
     bucket_name = _setup_bucket_acl('public-read')
 
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
 
@@ -3874,8 +3875,8 @@ def test_bucket_recreate_new_acl():
     bucket_name = get_new_bucket_name()
     client = get_client()
 
-    client.create_bucket(Bucket=bucket_name)
-    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name, ACL='public-read')
+    create_bucket(client, Bucket=bucket_name)
+    e = assert_raises(ClientError, create_bucket, client, Bucket=bucket_name, ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 409
     assert error_code == 'BucketAlreadyExists'
@@ -3941,7 +3942,7 @@ def test_bucket_acl_default():
 def test_bucket_acl_canned_during_create():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read', Bucket=bucket_name)
     response = client.get_bucket_acl(Bucket=bucket_name)
 
     display_name = get_main_display_name()
@@ -3973,7 +3974,7 @@ def test_bucket_acl_canned_during_create():
 def test_bucket_acl_canned():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read', Bucket=bucket_name)
     response = client.get_bucket_acl(Bucket=bucket_name)
 
     display_name = get_main_display_name()
@@ -4023,7 +4024,7 @@ def test_bucket_acl_canned():
 def test_bucket_acl_canned_publicreadwrite():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
     response = client.get_bucket_acl(Bucket=bucket_name)
 
     display_name = get_main_display_name()
@@ -4062,7 +4063,7 @@ def test_bucket_acl_canned_publicreadwrite():
 def test_bucket_acl_canned_authenticatedread():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(ACL='authenticated-read', Bucket=bucket_name)
+    create_bucket(client, ACL='authenticated-read', Bucket=bucket_name)
     response = client.get_bucket_acl(Bucket=bucket_name)
 
     display_name = get_main_display_name()
@@ -4821,7 +4822,7 @@ def test_bucket_header_acl_grants():
 
     client.meta.events.register('before-sign.s3.CreateBucket', add_headers_before_sign)
 
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
     response = client.get_bucket_acl(Bucket=bucket_name)
 
@@ -5275,7 +5276,7 @@ def test_buckets_create_then_list():
         bucket_names.append(bucket_name)
 
     for name in bucket_names:
-        client.create_bucket(Bucket=name)
+        create_bucket(client, Bucket=name)
 
     response = client.list_buckets()
     bucket_dicts = response['Buckets']
@@ -5295,7 +5296,7 @@ def test_buckets_list_ctime():
     buckets = []
     for i in range(5):
         name = get_new_bucket_name()
-        client.create_bucket(Bucket=name)
+        create_bucket(client, Bucket=name)
         buckets.append(name)
 
     response = client.list_buckets()
@@ -5370,7 +5371,7 @@ def test_bucket_recreate_not_overriding():
     assert key_names == objs_list
 
     # NOTE: works only with default region
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
     objs_list = get_objects_list(bucket_name)
     assert key_names == objs_list
@@ -5521,8 +5522,8 @@ def test_object_copy_not_owned_bucket():
     alt_client = get_alt_client()
     bucket_name1 = get_new_bucket_name()
     bucket_name2 = get_new_bucket_name()
-    client.create_bucket(Bucket=bucket_name1)
-    alt_client.create_bucket(Bucket=bucket_name2)
+    create_bucket(client, Bucket=bucket_name1)
+    create_bucket(alt_client, Bucket=bucket_name2)
 
     client.put_object(Bucket=bucket_name1, Key='foo123bar', Body='foo')
 
@@ -5536,7 +5537,7 @@ def test_object_copy_not_owned_object_bucket():
     client = get_client()
     alt_client = get_alt_client()
     bucket_name = get_new_bucket_name()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     client.put_object(Bucket=bucket_name, Key='foo123bar', Body='foo')
 
     alt_user_id = get_alt_user_id()
@@ -6740,7 +6741,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 def test_100_continue():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     objname='testobj'
     resource = '/{bucket}/{obj}'.format(bucket=bucket_name, obj=objname)
 
@@ -11621,7 +11622,7 @@ def test_post_object_tags_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
     url = _get_post_url(bucket_name)
-    client.create_bucket(ACL='public-read-write', Bucket=bucket_name)
+    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     key_name = "foo.txt"
     input_tagset = _create_simple_tagset(2)
@@ -12693,7 +12694,7 @@ def test_bucket_policy_get_obj_acl_existing_tag():
 def test_object_lock_put_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12725,7 +12726,7 @@ def test_object_lock_put_obj_lock():
 def test_object_lock_put_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12741,7 +12742,7 @@ def test_object_lock_put_obj_lock_invalid_bucket():
 def test_object_lock_put_obj_lock_enable_after_create():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12772,7 +12773,7 @@ def test_object_lock_put_obj_lock_enable_after_create():
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12791,7 +12792,7 @@ def test_object_lock_put_obj_lock_with_days_and_years():
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12809,7 +12810,7 @@ def test_object_lock_put_obj_lock_invalid_days():
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12827,7 +12828,7 @@ def test_object_lock_put_obj_lock_invalid_years():
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12857,7 +12858,7 @@ def test_object_lock_put_obj_lock_invalid_mode():
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Disabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12875,7 +12876,7 @@ def test_object_lock_put_obj_lock_invalid_status():
 def test_object_lock_suspend_versioning():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     e = assert_raises(ClientError, client.put_bucket_versioning, Bucket=bucket_name, VersioningConfiguration={'Status': 'Suspended'})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 409
@@ -12886,7 +12887,7 @@ def test_object_lock_suspend_versioning():
 def test_object_lock_get_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -12904,7 +12905,7 @@ def test_object_lock_get_obj_lock():
 def test_object_lock_get_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     e = assert_raises(ClientError, client.get_object_lock_configuration, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 404
@@ -12915,7 +12916,7 @@ def test_object_lock_get_obj_lock_invalid_bucket():
 def test_object_lock_put_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -12931,7 +12932,7 @@ def test_object_lock_put_obj_retention():
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     retention = {'Mode':'GOVERNANCE', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
@@ -12945,7 +12946,7 @@ def test_object_lock_put_obj_retention_invalid_bucket():
 def test_object_lock_put_obj_retention_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     retention = {'Mode':'governance', 'RetainUntilDate':datetime.datetime(2030,1,1,tzinfo=pytz.UTC)}
@@ -12965,7 +12966,7 @@ def test_object_lock_put_obj_retention_invalid_mode():
 def test_object_lock_get_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -12980,7 +12981,7 @@ def test_object_lock_get_obj_retention():
 def test_object_lock_get_obj_retention_iso8601():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -12997,7 +12998,7 @@ def test_object_lock_get_obj_retention_iso8601():
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     e = assert_raises(ClientError, client.get_object_retention, Bucket=bucket_name, Key=key)
@@ -13010,7 +13011,7 @@ def test_object_lock_get_obj_retention_invalid_bucket():
 def test_object_lock_put_obj_retention_versionid():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
@@ -13026,7 +13027,7 @@ def test_object_lock_put_obj_retention_versionid():
 def test_object_lock_put_obj_retention_override_default_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     conf = {'ObjectLockEnabled':'Enabled',
             'Rule': {
                 'DefaultRetention':{
@@ -13051,7 +13052,7 @@ def test_object_lock_put_obj_retention_override_default_retention():
 def test_object_lock_put_obj_retention_increase_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -13068,7 +13069,7 @@ def test_object_lock_put_obj_retention_increase_period():
 def test_object_lock_put_obj_retention_shorten_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -13086,7 +13087,7 @@ def test_object_lock_put_obj_retention_shorten_period():
 def test_object_lock_put_obj_retention_shorten_period_bypass():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     version_id = response['VersionId']
@@ -13103,7 +13104,7 @@ def test_object_lock_put_obj_retention_shorten_period_bypass():
 def test_object_lock_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
 
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
@@ -13121,7 +13122,7 @@ def test_object_lock_delete_object_with_retention():
 def test_object_lock_delete_multipart_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
 
     key = 'file1'
     body = 'abc'
@@ -13146,7 +13147,7 @@ def test_object_lock_delete_multipart_object_with_retention():
 def test_object_lock_delete_object_with_retention_and_marker():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
 
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
@@ -13171,7 +13172,7 @@ def test_object_lock_delete_object_with_retention_and_marker():
 def test_object_lock_multi_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key1 = 'file1'
     key2 = 'file2'
 
@@ -13238,7 +13239,7 @@ def test_object_lock_multi_delete_object_with_retention():
 def test_object_lock_put_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'ON'}
@@ -13251,7 +13252,7 @@ def test_object_lock_put_legal_hold():
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'ON'}
@@ -13265,7 +13266,7 @@ def test_object_lock_put_legal_hold_invalid_bucket():
 def test_object_lock_put_legal_hold_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'abc'}
@@ -13279,7 +13280,7 @@ def test_object_lock_put_legal_hold_invalid_status():
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'ON'}
@@ -13295,7 +13296,7 @@ def test_object_lock_get_legal_hold():
 def test_object_lock_get_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     e = assert_raises(ClientError, client.get_object_legal_hold, Bucket=bucket_name, Key=key)
@@ -13308,7 +13309,7 @@ def test_object_lock_get_legal_hold_invalid_bucket():
 def test_object_lock_delete_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status': 'ON'})
@@ -13322,7 +13323,7 @@ def test_object_lock_delete_object_with_legal_hold_on():
 def test_object_lock_delete_multipart_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
 
     key = 'file1'
     body = 'abc'
@@ -13344,7 +13345,7 @@ def test_object_lock_delete_multipart_object_with_legal_hold_on():
 def test_object_lock_delete_object_with_legal_hold_off():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     response = client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status': 'OFF'})
@@ -13356,7 +13357,7 @@ def test_object_lock_delete_object_with_legal_hold_off():
 def test_object_lock_get_obj_metadata():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key)
     legal_hold = {'Status': 'ON'}
@@ -13376,7 +13377,7 @@ def test_object_lock_get_obj_metadata():
 def test_object_lock_uploading_obj():
     bucket_name = get_new_bucket_name()
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     key = 'file1'
     client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
                       ObjectLockRetainUntilDate=datetime.datetime(2030,1,1,tzinfo=pytz.UTC), ObjectLockLegalHoldStatus='ON')
@@ -13393,7 +13394,7 @@ def test_object_lock_changing_mode_from_governance_with_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     # upload object with mode=GOVERNANCE
     retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
     client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
@@ -13407,7 +13408,7 @@ def test_object_lock_changing_mode_from_governance_without_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     # upload object with mode=GOVERNANCE
     retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
     client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='GOVERNANCE',
@@ -13424,7 +13425,7 @@ def test_object_lock_changing_mode_from_compliance():
     bucket_name = get_new_bucket_name()
     key = 'file1'
     client = get_client()
-    client.create_bucket(Bucket=bucket_name, ObjectLockEnabledForBucket=True)
+    create_bucket(client, Bucket=bucket_name, ObjectLockEnabledForBucket=True)
     # upload object with mode=COMPLIANCE
     retain_until = datetime.datetime.now(pytz.utc) + datetime.timedelta(seconds=10)
     client.put_object(Bucket=bucket_name, Body='abc', Key=key, ObjectLockMode='COMPLIANCE',

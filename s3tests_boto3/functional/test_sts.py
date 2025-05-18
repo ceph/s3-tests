@@ -28,8 +28,9 @@ from collections import namedtuple
 
 from email.header import decode_header
 
-from . import(
+from . import (
     configfile,
+    create_bucket,
     setup_teardown,
     get_iam_client,
     get_sts_client,
@@ -175,7 +176,7 @@ def test_get_session_token():
 		)
     bucket_name = get_new_bucket_name()
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name)
         assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
         finish=s3_client.delete_bucket(Bucket=bucket_name)
     finally: # clean up user policy even if create_bucket/delete_bucket fails
@@ -215,7 +216,7 @@ def test_assume_role_allow():
 		region_name='',
 		)
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -256,7 +257,7 @@ def test_assume_role_deny():
 		)
     bucket_name = get_new_bucket_name()
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
@@ -297,7 +298,7 @@ def test_assume_role_creds_expiry():
 		)
     bucket_name = get_new_bucket_name()
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
@@ -307,7 +308,7 @@ def test_assume_role_creds_expiry():
 def test_assume_role_deny_head_nonexistent():
     # create a bucket with the normal s3 client
     bucket_name = get_new_bucket_name()
-    get_client().create_bucket(Bucket=bucket_name)
+    create_bucket(get_client(), Bucket=bucket_name)
 
     iam_client=get_iam_client()
     sts_client=get_sts_client()
@@ -351,7 +352,7 @@ def test_assume_role_deny_head_nonexistent():
 def test_assume_role_allow_head_nonexistent():
     # create a bucket with the normal s3 client
     bucket_name = get_new_bucket_name()
-    get_client().create_bucket(Bucket=bucket_name)
+    create_bucket(get_client(), Bucket=bucket_name)
 
     iam_client=get_iam_client()
     sts_client=get_sts_client()
@@ -434,7 +435,7 @@ def test_assume_role_with_web_identity():
 		region_name='',
 		)
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -534,14 +535,14 @@ def test_session_policy_check_on_different_buckets():
 
     bucket_name_1 = 'test1'
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name_1)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name_1)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
 
     bucket_name_2 = 'test2'
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name_2)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name_2)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
@@ -591,7 +592,7 @@ def test_session_policy_check_on_same_bucket():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -650,7 +651,7 @@ def test_session_policy_check_put_obj_denial():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -712,7 +713,7 @@ def test_swapping_role_policy_and_session_policy():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":[\"*\"]}}"
@@ -769,7 +770,7 @@ def test_session_policy_check_different_op_permissions():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -831,7 +832,7 @@ def test_session_policy_check_with_deny_effect():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -892,7 +893,7 @@ def test_session_policy_check_with_deny_on_same_op():
     s3_client_iam_creds = get_s3_client_using_iam_creds()
 
     bucket_name_1 = 'test1'
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Deny\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -949,7 +950,7 @@ def test_session_policy_bucket_policy_role_arn():
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
-    s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3client_iamcreds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
@@ -1025,7 +1026,7 @@ def test_session_policy_bucket_policy_session_arn():
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
-    s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3client_iamcreds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
@@ -1099,7 +1100,7 @@ def test_session_policy_copy_object():
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
-    s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3client_iamcreds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
@@ -1176,7 +1177,7 @@ def test_session_policy_no_bucket_role_policy():
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
-    s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3client_iamcreds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\",\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
@@ -1232,7 +1233,7 @@ def test_session_policy_bucket_policy_deny():
 
     s3client_iamcreds = get_s3_client_using_iam_creds()
     bucket_name_1 = 'test1'
-    s3bucket = s3client_iamcreds.create_bucket(Bucket=bucket_name_1)
+    s3bucket = create_bucket(s3client_iamcreds, Bucket=bucket_name_1)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     resource1 = "arn:aws:s3:::" + bucket_name_1
@@ -1316,7 +1317,7 @@ def test_assume_role_with_web_identity_with_sub():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1365,7 +1366,7 @@ def test_assume_role_with_web_identity_with_azp():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1414,7 +1415,7 @@ def test_assume_role_with_web_identity_with_request_tag():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1463,7 +1464,7 @@ def test_assume_role_with_web_identity_with_principal_tag():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1512,7 +1513,7 @@ def test_assume_role_with_web_identity_for_all_values():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1563,7 +1564,7 @@ def test_assume_role_with_web_identity_for_all_values_deny():
         )
     bucket_name = get_new_bucket_name()
     try:
-        s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+        s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
     assert s3bucket_error == 'AccessDenied'
@@ -1612,7 +1613,7 @@ def test_assume_role_with_web_identity_tag_keys_trust_policy():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1661,7 +1662,7 @@ def test_assume_role_with_web_identity_tag_keys_role_policy():
         region_name='',
         )
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
     bkt = s3_client.delete_bucket(Bucket=bucket_name)
     assert bkt['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -1689,7 +1690,7 @@ def test_assume_role_with_web_identity_resource_tag():
     s3_client_iam_creds = s3_res_iam_creds.meta.client
 
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
@@ -1748,7 +1749,7 @@ def test_assume_role_with_web_identity_resource_tag_deny():
     s3_client_iam_creds = s3_res_iam_creds.meta.client
 
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     oidc_response = iam_client.create_open_id_connect_provider(
@@ -1807,7 +1808,7 @@ def test_assume_role_with_web_identity_wrong_resource_tag_deny():
     s3_client_iam_creds = s3_res_iam_creds.meta.client
 
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
@@ -1869,7 +1870,7 @@ def test_assume_role_with_web_identity_resource_tag_princ_tag():
     s3_client_iam_creds = s3_res_iam_creds.meta.client
 
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
@@ -1934,14 +1935,14 @@ def test_assume_role_with_web_identity_resource_tag_copy_obj():
 
     #create two buckets and add same tags to both
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)
     Set_Tag = bucket_tagging.put(Tagging={'TagSet':[{'Key':'Department', 'Value': 'Engineering'}]})
 
     copy_bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=copy_bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=copy_bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(copy_bucket_name)
@@ -2024,7 +2025,7 @@ def test_assume_role_with_web_identity_role_resource_tag():
     s3_client_iam_creds = s3_res_iam_creds.meta.client
 
     bucket_name = get_new_bucket_name()
-    s3bucket = s3_client_iam_creds.create_bucket(Bucket=bucket_name)
+    s3bucket = create_bucket(s3_client_iam_creds, Bucket=bucket_name)
     assert s3bucket['ResponseMetadata']['HTTPStatusCode'] == 200
 
     bucket_tagging = s3_res_iam_creds.BucketTagging(bucket_name)

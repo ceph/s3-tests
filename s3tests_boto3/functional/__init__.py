@@ -50,6 +50,12 @@ def choose_bucket_prefix(template, max_len=30):
             ),
         )
 
+def create_bucket(client, **params):
+    if 'CreateBucketConfiguration' not in params and client.meta.region_name not in ('', DEFAULT_REGION):
+        params['CreateBucketConfiguration'] = {'LocationConstraint': client.meta.region_name}
+
+    return client.create_bucket(**params)
+
 def get_buckets_list(client=None, prefix=None):
     if client == None:
         client = get_client()
@@ -390,6 +396,7 @@ def get_client(client_config=None):
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
+                        region_name=config.main_api_name,
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
                         config=client_config)
@@ -580,7 +587,7 @@ def get_new_bucket(client=None, name=None):
     if name is None:
         name = get_new_bucket_name()
 
-    client.create_bucket(Bucket=name)
+    create_bucket(client, Bucket=name)
     return name
 
 def get_parameter_name():

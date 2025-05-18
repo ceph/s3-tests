@@ -419,7 +419,7 @@ def get_new_bucket(target=None, name=None, headers=None):
         'bucket_name': name,
         'headers': headers,
     }
-    if target.conf.api_name != DEFAULT_REGION:
+    if target.conf.api_name not in ('',  DEFAULT_REGION):
         params['location'] = target.conf.api_name
 
     bucket = connection.create_bucket(**params)

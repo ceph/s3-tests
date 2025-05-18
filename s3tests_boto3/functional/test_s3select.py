@@ -12,6 +12,7 @@ import traceback
 
 from . import (
     configfile,
+    create_bucket,
     setup_teardown,
     get_client,
     get_new_bucket_name
@@ -282,7 +283,7 @@ def csv_to_json(obj, field_split=",",row_split="\n",csv_schema=""):
 def upload_object(bucket_name,new_key,obj):
 
         client = get_client()
-        client.create_bucket(Bucket=bucket_name)
+        create_bucket(client, Bucket=bucket_name)
         client.put_object(Bucket=bucket_name, Key=new_key, Body=obj)
 
         # validate uploaded object

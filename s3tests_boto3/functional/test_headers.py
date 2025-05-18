@@ -9,6 +9,7 @@ from .utils import _get_status
 
 from . import (
     configfile,
+    create_bucket,
     setup_teardown,
     get_client,
     get_v2_client,
@@ -105,7 +106,7 @@ def _add_header_create_bucket(headers, client=None):
     # pass in custom headers before PutObject call
     add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
     client.meta.events.register('before-call.s3.CreateBucket', add_headers)
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
     return bucket_name
 
@@ -120,7 +121,7 @@ def _add_header_create_bad_bucket(headers=None, client=None):
     add_headers = (lambda **kwargs: kwargs['request'].headers.update(headers))
     client.meta.events.register('before-send.s3.CreateBucket', add_headers)
 
-    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
+    e = assert_raises(ClientError, create_bucket, client, Bucket=bucket_name)
 
     return e
 
@@ -138,7 +139,7 @@ def _remove_header_create_bucket(remove, client=None):
             del kwargs['request'].headers[remove]
 
     client.meta.events.register('before-send.s3.CreateBucket', remove_header)
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
     return bucket_name
 
@@ -155,7 +156,7 @@ def _remove_header_create_bad_bucket(remove, client=None):
             del kwargs['request'].headers[remove]
 
     client.meta.events.register('before-send.s3.CreateBucket', remove_header)
-    e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
+    e = assert_raises(ClientError, create_bucket, client, Bucket=bucket_name)
 
     return e
 
@@ -329,7 +330,7 @@ def _setup_bucket_acl():
     client = get_client()
 
     try:
-        client.create_bucket(Bucket=bucket_name, ObjectOwnership='BucketOwnerPreferred')
+        create_bucket(client, Bucket=bucket_name, ObjectOwnership='BucketOwnerPreferred')
         client.put_public_access_block(
             Bucket=bucket_name,
             PublicAccessBlockConfiguration={
@@ -341,7 +342,7 @@ def _setup_bucket_acl():
         )
     except:
         # NOTE: Skip error until we don't implement PutPublicAccessBlock API.
-        client.create_bucket(Bucket=bucket_name)
+        create_bucket(client, Bucket=bucket_name)
 
     return bucket_name
 
@@ -383,7 +384,7 @@ def test_bucket_create_bad_expect_mismatch():
     headers = {'Expect': 200}
     add_headers = (lambda **kwargs: kwargs['params']['headers'].update(headers))
     client.meta.events.register('before-call.s3.CreateBucket', add_headers)
-    client.create_bucket(Bucket=bucket_name)
+    create_bucket(client, Bucket=bucket_name)
 
 @pytest.mark.auth_common
 def test_bucket_create_bad_expect_empty():

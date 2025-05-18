@@ -9,6 +9,7 @@ from s3tests_boto3.functional.utils import assert_raises
 from s3tests_boto3.functional.test_s3 import _multipart_upload
 from . import (
     configfile,
+    create_bucket,
     setup_teardown,
     get_alt_client,
     get_iam_client,
@@ -2145,7 +2146,7 @@ def test_same_account_role_policy_allow(iam_root, iam_alt_root):
     key = iam_alt_root.create_access_key(UserName=user_name)['AccessKey']
 
     s3_main = get_iam_root_client(service_name='s3')
-    s3_main.create_bucket(Bucket=bucket_name)
+    create_bucket(s3_main, Bucket=bucket_name)
 
     trust_policy = json.dumps({
         'Version': '2012-10-17',
@@ -2210,7 +2211,7 @@ def test_cross_account_role_policy_allow(iam_root, iam_alt_root):
     key = iam_alt_root.create_access_key(UserName=user_name)['AccessKey']
 
     s3_alt = get_iam_alt_root_client(service_name='s3')
-    s3_alt.create_bucket(Bucket=bucket_name)
+    create_bucket(s3_alt, Bucket=bucket_name)
 
     trust_policy = json.dumps({
         'Version': '2012-10-17',
@@ -2318,7 +2319,7 @@ def test_account_role_policy_allow_create_bucket(iam_root, iam_alt_root):
                           aws_session_token = creds['SessionToken'])
 
     # expect AccessDenied because no identity policy allows s3 actions
-    e = assert_raises(ClientError, s3.create_bucket, Bucket=bucket_name, ObjectOwnership='ObjectWriter', ACL='private')
+    e = assert_raises(ClientError, create_bucket, s3, Bucket=bucket_name, ObjectOwnership='ObjectWriter', ACL='private')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
     assert error_code == 'AccessDenied'
@@ -2336,7 +2337,7 @@ def test_account_role_policy_allow_create_bucket(iam_root, iam_alt_root):
 
     # the policy may take a bit to start working. retry until it returns
     # something other than AccessDenied
-    retry_on('AccessDenied', 10, s3.create_bucket, Bucket=bucket_name, ObjectOwnership='ObjectWriter', ACL='private')
+    retry_on('AccessDenied', 10, create_bucket, s3, Bucket=bucket_name, ObjectOwnership='ObjectWriter', ACL='private')
 
     # verify that the bucket is owned by the role's account
     s3_main = get_iam_root_client(service_name='s3')
