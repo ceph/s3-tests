@@ -345,6 +345,8 @@ def setup():
                 calling_format=conf.calling_format,
                 )
 
+            conn.auth_region_name = cfg.get(section, 'api_name', fallback='us-east-1')
+
             temp_targetConn = TargetConnection(conf, conn)
             targets[name].add(k, temp_targetConn)
 
