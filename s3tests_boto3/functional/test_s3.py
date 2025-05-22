@@ -6772,6 +6772,20 @@ def test_100_continue():
     status = _simple_http_req_100_cont(host, port, is_secure, 'PUT', resource)
     assert status == '100'
 
+@pytest.mark.fails_on_rgw # https://tracker.ceph.com/issues/64841
+def test_100_continue_error_retry():
+    client = get_client()
+    bucket_name = get_new_bucket(client)
+
+    # expects put_object() to use 'Expect: 100-continue'. send one request to a
+    # non-existent bucket, expecting '404 NoSuchBucket' instead of '100 Continue'
+    not_bucket_name = f'{bucket_name}-but-doesnt-exist'
+    e = assert_raises(ClientError, client.put_object, Bucket=not_bucket_name, Key='foo', Body='bar')
+    assert 404 == _get_status(e.response)
+
+    # send another request on the same connection
+    client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
