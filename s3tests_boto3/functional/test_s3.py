@@ -10649,7 +10649,7 @@ def test_encryption_sse_c_deny_algo_with_bucket_policy():
 
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
-    check_access_denied(client.put_object, Bucket=bucket_name, Key='foo', Body='bar', SSECustomerAlgorithm='AES192')
+    check_access_denied(client.put_object, Bucket=bucket_name, Key='foo', SSECustomerAlgorithm='AES192')
 
     client.put_object(
         Bucket=bucket_name, Key='foo', Body='bar',
