@@ -224,6 +224,8 @@ def configure():
     if not config.default_ssl_verify:
         urllib3.disable_warnings()
 
+    config.default_api_name = defaults.get("api_name", "")
+
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
     config.main_secret_key = cfg.get('s3 main',"secret_key")
@@ -393,10 +395,10 @@ def get_client(client_config=None):
         client_config = Config(signature_version='s3v4')
 
     client = boto3.client(service_name='s3',
+                        region_name=config.default_api_name,
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
-                        region_name=config.main_api_name,
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
                         config=client_config)
@@ -404,6 +406,7 @@ def get_client(client_config=None):
 
 def get_v2_client():
     client = boto3.client(service_name='s3',
+                        region_name=config.default_api_name,
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
@@ -443,6 +446,7 @@ def get_iam_s3client(**kwargs):
     kwargs.setdefault('config', Config(signature_version='s3v4'))
 
     client = boto3.client(service_name='s3',
+                          region_name=config.default_api_name,
                           endpoint_url=config.default_endpoint,
                           use_ssl=config.default_is_secure,
                           verify=config.default_ssl_verify,
@@ -476,6 +480,7 @@ def get_alt_client(client_config=None):
         client_config = Config(signature_version='s3v4')
 
     client = boto3.client(service_name='s3',
+                        region_name=config.default_api_name,
                         aws_access_key_id=config.alt_access_key,
                         aws_secret_access_key=config.alt_secret_key,
                         endpoint_url=config.default_endpoint,
@@ -489,6 +494,7 @@ def get_cloud_client(client_config=None):
         client_config = Config(signature_version='s3v4')
 
     client = boto3.client(service_name='s3',
+                        region_name=config.default_api_name,
                         aws_access_key_id=config.cloud_access_key,
                         aws_secret_access_key=config.cloud_secret_key,
                         endpoint_url=config.cloud_endpoint,
@@ -519,6 +525,7 @@ def get_unauthenticated_client():
 
 def get_bad_auth_client(aws_access_key_id='badauth'):
     client = boto3.client(service_name='s3',
+                        region_name=config.default_api_name,
                         aws_access_key_id=aws_access_key_id,
                         aws_secret_access_key='roflmao',
                         endpoint_url=config.default_endpoint,
@@ -532,6 +539,7 @@ def get_svc_client(client_config=None, svc='s3'):
         client_config = Config(signature_version='s3v4')
 
     client = boto3.client(service_name=svc,
+                        region_name=config.default_api_name,
                         aws_access_key_id=config.main_access_key,
                         aws_secret_access_key=config.main_secret_key,
                         endpoint_url=config.default_endpoint,
