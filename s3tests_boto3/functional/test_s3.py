@@ -13548,5 +13548,7 @@ def test_upload_part_copy_percent_encoded_key():
             CopySource={'Bucket': bucket_name, 'Key': raw_key}
         )
 
-    error = exc_info.value.response["Error"]
-    assert error["Code"] == "InvalidArgument"
+    # Download the object and verify content
+    final_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
+    content = final_obj['Body'].read()
+    assert content == b"foo"
