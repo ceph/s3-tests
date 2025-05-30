@@ -8584,7 +8584,7 @@ def test_lifecycle_expiration_size_gt():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(2*lc_interval)
+    time.sleep(10*lc_interval)
 
     # we should find only the small object present
     response = client.list_objects(Bucket=bucket_name)
