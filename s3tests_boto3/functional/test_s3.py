@@ -16632,7 +16632,7 @@ def test_bucket_logging_roll_time():
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
-    len(keys) == 1
+    assert len(keys) == 1
 
     key = keys[0]
     assert key.startswith('log/')
