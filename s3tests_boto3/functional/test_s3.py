@@ -15061,6 +15061,138 @@ def _flush_logs(client, src_bucket_name, dummy_key="dummy"):
         client.put_object(Bucket=src_bucket_name, Key=dummy_key, Body='dummy')
 
 
+def _verify_logging_key(key_format, key, expected_prefix, expected_dt, expected_src_account, expected_src_region, expected_src_bucket):
+    # NOTE: prefix value has to be terminated with non alphanumeric character
+    # for the regex to work properly
+    if key_format == 'SimplePrefix':
+        #[DestinationPrefix][YYYY]-[MM]-[DD]-[hh]-[mm]-[ss]-[UniqueString]
+        pattern = r'^(.+?)(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+        no_prefix_pattern = r'^(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+    elif key_format == 'PartitionedPrefix':
+        # [DestinationPrefix][SourceAccountId]/[SourceRegion]/[SourceBucket]/[YYYY]/[MM]/[DD]/[YYYY]-[MM]-[DD]-[hh]-[mm]-[ss]-[UniqueString]
+        pattern = r'^(.+?)([^/]+)/([^/]+)/([^/]+)/(\d{4})/(\d{2})/(\d{2})/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+        no_prefix_pattern = r'^([^/]+)/([^/]+)/([^/]+)/(\d{4})/(\d{2})/(\d{2})/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+    else:
+        assert False, 'unknown key format: {}'.format(key_format)
+
+    match = re.match(no_prefix_pattern, key)
+    if not match:
+        match = re.match(pattern, key)
+        assert match
+        match_index = 1
+        prefix = match.group(match_index)
+    else:
+        prefix = ''
+        match_index = 0
+
+    _year = None
+    _month = None
+    _day = None
+    assert prefix == expected_prefix
+    if key_format == 'PartitionedPrefix':
+        match_index += 1
+        src_account = match.group(match_index)
+        assert src_account == expected_src_account
+        match_index += 1
+        src_region = match.group(match_index)
+        assert src_region == expected_src_region
+        match_index += 1
+        src_bucket = match.group(match_index)
+        assert src_bucket == expected_src_bucket
+        match_index += 1
+        _year = int(match.group(match_index))
+        match_index += 1
+        _month = int(match.group(match_index))
+        match_index += 1
+        _day = int(match.group(match_index))
+
+    match_index += 1
+    year = int(match.group(match_index))
+    if _year:
+        assert year == _year
+    match_index += 1
+    month = int(match.group(match_index))
+    if _month:
+        assert month == _month
+    match_index += 1
+    day = int(match.group(match_index))
+    if _day:
+        assert day == _day
+    match_index += 1
+    hour = int(match.group(match_index))
+    match_index += 1
+    minute = int(match.group(match_index))
+    match_index += 1
+    second = int(match.group(match_index))
+    match_index += 1
+    unique_string = match.group(match_index)
+    try:
+        dt = datetime.datetime(year, month, day, hour, minute, second)
+        assert abs(dt - expected_dt) <= datetime.timedelta(seconds=5)
+    except ValueError:
+        # Invalid date/time values
+        assert False, 'invalid date/time values in key: {}'.format(key)
+
+
+def _bucket_logging_object_name(key_format, prefix):
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    logging_enabled = {
+            'TargetBucket': log_bucket_name,
+            'TargetPrefix': prefix
+            }
+    if key_format == 'SimplePrefix':
+        logging_enabled['TargetObjectKeyFormat'] = {'SimplePrefix': {}}
+    elif key_format == 'PartitionedPrefix':
+        logging_enabled['TargetObjectKeyFormat'] = {
+                'PartitionedPrefix': {
+                    'PartitionDateSource': 'DeliveryTime'
+                    }
+                }
+    else:
+        assert False, 'unknown key format: %s' % key_format
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 5
+    for j in range(num_keys):
+        name = 'myobject'+str(j)
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+
+    user_id = get_main_user_id()
+    timestamp = datetime.datetime.now()
+    _verify_logging_key(key_format, keys[0], prefix, timestamp, user_id, 'default', src_bucket_name)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_bucket_logging_simple_key():
+    _bucket_logging_object_name('SimplePrefix', 'log/')
+    _bucket_logging_object_name('SimplePrefix', '')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_bucket_logging_partitioned_key():
+    _bucket_logging_object_name('PartitionedPrefix', 'log/')
+    _bucket_logging_object_name('PartitionedPrefix', '')
+
+
 def _bucket_logging_key_filter(log_type):
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
