@@ -1002,8 +1002,8 @@ for redirect_code in VALID_AMZ_REDIRECT:
 # give an error of 'The provided HTTP redirect code (314) is not valid. Valid codes are 3XX except 300.' during setting the website config
 # we should check that we can return that too on ceph
 
+@pytest.fixture
 def routing_setup():
-  check_can_test_website()
   kwargs = {'obj':[]}
   bucket = get_new_bucket()
   kwargs['bucket'] = bucket
@@ -1033,9 +1033,8 @@ def routing_setup():
   while bucket.get_key(f['ErrorDocument_Key']) is None:
       time.sleep(SLEEP_INTERVAL)
 
-  return kwargs
+  yield kwargs
 
-def routing_teardown(**kwargs):
   for o in reversed(kwargs['obj']):
     print('Deleting', str(o))
     o.delete()
@@ -1078,7 +1077,7 @@ def routing_check(*args, **kwargs):
 @pytest.mark.s3website
 @pytest.mark.fails_on_dbstore
 @pytest.mark.parametrize('t', ROUTING_RULES_TESTS)
-def test_routing_generator(t):
+def test_routing_generator(t, routing_setup):
     if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
         t['xml']['RoutingRules'] = common.trim_xml(t['xml']['RoutingRules'])
-    routing_check(t)
+    routing_check(t, **routing_setup)
