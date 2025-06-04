@@ -1077,8 +1077,8 @@ def routing_check(*args, **kwargs):
 @pytest.mark.s3website_routing_rules
 @pytest.mark.s3website
 @pytest.mark.fails_on_dbstore
-def test_routing_generator():
-    for t in ROUTING_RULES_TESTS:
-        if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
-            t['xml']['RoutingRules'] = common.trim_xml(t['xml']['RoutingRules'])
-        yield routing_check, t
+@pytest.mark.parametrize('t', ROUTING_RULES_TESTS)
+def test_routing_generator(t):
+    if 'xml' in t and 'RoutingRules' in t['xml'] and len(t['xml']['RoutingRules']) > 0:
+        t['xml']['RoutingRules'] = common.trim_xml(t['xml']['RoutingRules'])
+    routing_check(t)
