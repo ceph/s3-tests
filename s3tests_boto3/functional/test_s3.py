@@ -13506,7 +13506,6 @@ def test_get_object_torrent():
         assert status == 404
         assert error_code == 'NoSuchKey'
 
-@pytest.mark.s3
 def test_upload_part_copy_percent_encoded_key():
     
     s3_client = get_client()
