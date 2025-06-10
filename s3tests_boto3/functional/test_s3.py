@@ -17407,7 +17407,6 @@ def test_get_object_attributes():
     assert 'ObjectParts' not in response
 
 
-@pytest.mark.s3
 def test_upload_part_copy_percent_encoded_key():
     
     s3_client = get_client()
