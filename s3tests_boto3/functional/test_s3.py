@@ -17453,3 +17453,49 @@ def test_get_object_attributes():
     assert response['StorageClass'] == 'STANDARD'
     assert 'ObjectParts' not in response
 
+
+def test_upload_part_copy_percent_encoded_key():
+    
+    s3_client = get_client()
+    bucket_name = get_new_bucket()
+    key = "anyfile.txt"
+    encoded_key = "anyfilename%25.txt"
+    raw_key = "anyfilename%.txt"
+
+    ## PutObject: the copy source
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=encoded_key,
+        Body=b"foo",
+        ContentType="text/plain"
+    )
+
+    # Upload the target object (initial state)
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=key,
+        Body=b"foo",
+        ContentType="text/plain"
+    )
+
+    # Initiate multipart upload
+    mp_response = s3_client.create_multipart_upload(
+        Bucket=bucket_name,
+        Key=key
+    )
+    upload_id = mp_response["UploadId"]
+
+    # The following operation is expected to fail
+    with pytest.raises(s3_client.exceptions.ClientError) as exc_info:
+        s3_client.upload_part_copy(
+            Bucket=bucket_name,
+            Key=key,
+            PartNumber=1,
+            UploadId=upload_id,
+            CopySource={'Bucket': bucket_name, 'Key': raw_key}
+        )
+
+    # Download the object and verify content
+    final_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
+    content = final_obj['Body'].read()
+    assert content == b"foo"
