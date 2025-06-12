@@ -1451,6 +1451,138 @@ def test_account_user_policy_allow(iam_root):
     # something other than AccessDenied
     retry_on('AccessDenied', 10, client.list_buckets)
 
+# IAM Customer Managed Policy
+@pytest.mark.policy
+@pytest.mark.iam_account
+def test_create_policy(iam_root):
+  name = make_iam_name('create-policy')
+  path = get_iam_path_prefix()
+  policy_document = {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": [
+                  "s3:GetObject",
+                  "s3:ListBucket"
+              ],
+              "Resource": [
+                  "arn:aws:s3:::mybucket",
+                  "arn:aws:s3:::mybucket/*"
+              ]
+          }
+      ]
+  }
+  policy = iam_root.create_policy(
+      PolicyName=name,
+      PolicyDocument=json.dumps(policy_document),
+      Description='Read-only access to mybucket',
+      Path=path,
+      Tags=[
+          {"Key": "Perms", "Value": "READ"},
+          {"Key": "Principle", "Value": "S3"}
+      ]
+  )
+  assert policy['Policy']['PolicyName'] == name
+  assert policy['Policy']['Path'] == path
+
+   # Cleanup
+  iam_root.delete_policy(PolicyArn=policy['Policy']['Arn'])
+
+@pytest.mark.policy
+@pytest.mark.iam_account
+def test_create_duplicate_policy(iam_root):
+    name = make_iam_name('duplicate-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::example"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    try:
+        with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+            iam_root.create_policy(
+                PolicyName=name,
+                PolicyDocument=json.dumps(policy_document),
+                Path=path
+            )
+    finally:
+        iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.policy
+@pytest.mark.iam_account
+def test_get_policy(iam_root):
+    name = make_iam_name('get-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    fetched = iam_root.get_policy(PolicyArn=policy_arn)
+
+    assert fetched['Policy']['PolicyName'] == name
+    assert fetched['Policy']['Arn'] == policy_arn
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.policy
+@pytest.mark.iam_account
+def test_delete_policy(iam_root):
+    name = make_iam_name('delete-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_policy(PolicyArn=policy_arn)
+
+@pytest.mark.policy
+@pytest.mark.iam_account
+def test_delete_nonexistent_policy(iam_root):
+    main_arn = iam_root.get_user()['User']['Arn']
+    account_id = main_arn.removeprefix('arn:aws:iam::').removesuffix(':root')
+    fake_arn = f"arn:aws:iam::{account_id}:policy/NonExistentPolicy"
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_policy(PolicyArn=fake_arn)
 
 def group_list_names(client, **kwargs):
     p = client.get_paginator('list_groups')
