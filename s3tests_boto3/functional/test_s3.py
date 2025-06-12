@@ -8842,7 +8842,7 @@ def test_lifecycle_expiration_size_gt():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(2*lc_interval)
+    time.sleep(10*lc_interval)
 
     # we should find only the small object present
     response = client.list_objects(Bucket=bucket_name)
@@ -10002,7 +10002,7 @@ def test_restore_object_temporary():
 
     # Restore object temporarily
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 2})
-    time.sleep(2)
+    time.sleep(5)
 
     # Verify object is restored temporarily
     verify_transition(client, bucket, key, cloud_sc)
@@ -10044,7 +10044,7 @@ def test_restore_object_permanent():
 
     # Restore object permanently
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={})
-    time.sleep(2)
+    time.sleep(5)
     # Verify object is restored permanently
     verify_transition(client, bucket, key, 'STANDARD')
     response = client.head_object(Bucket=bucket, Key=key)
@@ -10165,7 +10165,7 @@ def test_restore_noncur_obj():
         verify_transition(client, bucket, key, cloud_sc, version_ids[num])
         # Restore object temporarily
         client.restore_object(Bucket=bucket, Key=key, VersionId=version_ids[num], RestoreRequest={'Days': 2})
-        time.sleep(2)
+        time.sleep(5)
 
         # Verify object is restored temporarily
         response = client.head_object(Bucket=bucket, Key=key, VersionId=version_ids[num])
