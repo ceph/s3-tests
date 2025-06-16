@@ -19909,6 +19909,130 @@ def test_copy_enc_1mb(source_mode_key, dest_mode_key):
 def test_copy_enc_8mb(source_mode_key, dest_mode_key):
     _test_copy_enc(8*1024*1024, source_mode_key, dest_mode_key)
 
+def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=None, dest_sc=None):
+    source_args = _copy_enc_source_modes[source_mode_key]
+    dest_args = _copy_enc_dest_modes[dest_mode_key]
+
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    # upload original file with source encryption
+    data = 'A'*file_size
+    args = {key: value() if callable(value) else value for key, value in source_args.get('args', {}).items()}
+    if source_sc:
+        args['StorageClass'] = source_sc
+    response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data, **args)
+    assert source_args.get('assert', lambda r: True)(response)
+
+    # create a multipart upload with source encryption
+    dest_bucket_name = get_new_bucket()
+    upload_args = {key: value() if callable(value) else value for key, value in dest_args.get('args', {}).items()}
+    if dest_sc:
+        upload_args['StorageClass'] = dest_sc
+    response = client.create_multipart_upload(Bucket=dest_bucket_name, Key='testobj2', **upload_args)
+    assert dest_args.get('assert', lambda r: True)(response)
+    upload_id = response['UploadId']
+    assert len(upload_id)
+
+    parts = []
+
+    # copy the object as the part
+    copy_args = {key: value() if callable(value) else value for key, value in source_args.get('source_copy_args', {}).items()}
+    if dest_mode_key == 'sse-c':
+        copy_args.update(upload_args)
+    if dest_sc:
+        copy_args.pop('StorageClass', None)  # StorageClass is not allowed in copy part
+    response = client.upload_part_copy(
+        Bucket=dest_bucket_name,
+        Key='testobj2',
+        PartNumber=1,
+        UploadId=upload_id,
+        CopySource={'Bucket': bucket_name, 'Key': 'testobj'},
+        **copy_args
+    )
+    assert dest_args.get('assert', lambda r: True)(response)
+    parts.append({
+        'ETag': response['CopyPartResult']['ETag'],
+        'PartNumber': 1
+    })
+
+    # add another temporary part to the upload
+    complete_args = {}
+    if dest_mode_key == 'sse-c':
+        complete_args.update(upload_args)
+    if dest_sc:
+        complete_args.pop('StorageClass', None)  # StorageClass is not allowed in complete multipart upload
+    temp_part = client.upload_part(
+        Bucket=dest_bucket_name,
+        Key='testobj2',
+        PartNumber=2,
+        UploadId=upload_id,
+        Body='B'*file_size,
+        **complete_args
+    )
+    assert dest_args.get('assert', lambda r: True)(temp_part)
+    parts.append({
+        'ETag': temp_part['ETag'],
+        'PartNumber': 2
+    })
+
+    # complete the multipart upload
+    response = client.complete_multipart_upload(
+        Bucket=dest_bucket_name,
+        Key='testobj2',
+        UploadId=upload_id,
+        MultipartUpload={'Parts': parts},
+        **complete_args
+    )
+    assert dest_args.get('assert', lambda r: True)(response)
+    # verify the copy is encrypted
+    get_args = dest_args.get('get_args', {})
+    response = client.get_object(Bucket=dest_bucket_name, Key='testobj2', **get_args)
+    assert dest_args.get('assert', lambda r: True)(response)
+    body = _get_body(response)
+    assert body == (data + 'B'*file_size)
+
+def generate_copy_part_enc_params():
+    configure()
+    sc = configured_storage_classes()
+    
+    obj_sizes = [8*1024*1024] # min multipart is 5MB
+    params = []
+    for source_key in _copy_enc_source_modes.keys():
+        for dest_key in _copy_enc_dest_modes.keys():
+            source_marks = _copy_enc_source_modes[source_key].get('marks', [])
+            dest_marks = _copy_enc_dest_modes[dest_key].get('marks', [])
+            for source_sc in sc:
+                for dest_sc in sc:
+                    additional_marks = []
+                    if source_sc != 'STANDARD' or dest_sc != 'STANDARD':
+                        # storage classes are not supported on AWS
+                        additional_marks.append(pytest.mark.fails_on_aws)
+                    for obj_size in obj_sizes:
+                        param = pytest.param(
+                            source_key,
+                            dest_key,
+                            source_sc,
+                            dest_sc,
+                            obj_size,
+                            marks=[*source_marks, *dest_marks, *additional_marks]
+                        )
+                        params.append(param)
+    return params
+
+@pytest.mark.encryption
+@pytest.mark.fails_on_dbstore
+@pytest.mark.parametrize(
+    "source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size",
+    generate_copy_part_enc_params()
+)
+def test_copy_part_enc(source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size):
+    print(
+        f"Testing copy part from {source_mode_key} to {dest_mode_key} with storage class "
+        f"{source_storage_class} -> {dest_storage_class} and object size {obj_size}"
+    )
+    _test_copy_part_enc(obj_size, source_mode_key, dest_mode_key, source_storage_class, dest_storage_class)
+
 def generate_copy_enc_storage_class_params():
     configure()
     sc = configured_storage_classes()
