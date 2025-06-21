@@ -19976,6 +19976,25 @@ def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=Non
         'PartNumber': 2
     })
 
+    if dest_mode_key == 'sse-c':
+        # make sure api is verifying the SSE-C headers
+        e = assert_raises(ClientError, client.complete_multipart_upload,
+                          Bucket=dest_bucket_name, Key='testobj2',
+                          UploadId=upload_id, MultipartUpload={'Parts': parts})
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
+        # and the key would be the same as the one used in upload part
+        # use the source key to complete the upload
+        # this is not allowed, so we expect an error
+        source_sse_c_args = _copy_enc_source_modes['sse-c']['args']
+        e = assert_raises(ClientError, client.complete_multipart_upload,
+                          Bucket=dest_bucket_name, Key='testobj2',
+                          UploadId=upload_id, MultipartUpload={'Parts': parts},
+                          **source_sse_c_args)
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
     # complete the multipart upload
     response = client.complete_multipart_upload(
         Bucket=dest_bucket_name,
@@ -19985,6 +20004,7 @@ def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=Non
         **complete_args
     )
     assert dest_args.get('assert', lambda r: True)(response)
+
     # verify the copy is encrypted
     get_args = dest_args.get('get_args', {})
     response = client.get_object(Bucket=dest_bucket_name, Key='testobj2', **get_args)
