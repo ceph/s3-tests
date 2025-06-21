@@ -19938,6 +19938,31 @@ def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=Non
 
     # copy the object as the part
     copy_args = {key: value() if callable(value) else value for key, value in source_args.get('source_copy_args', {}).items()}
+
+    # verify sse-c headers
+    if dest_mode_key == 'sse-c':
+        # make sure api is verifying the SSE-C headers
+        e = assert_raises(ClientError, client.upload_part_copy,
+                            Bucket=dest_bucket_name, Key='testobj2',
+                            PartNumber=1, UploadId=upload_id,
+                            CopySource={'Bucket': bucket_name, 'Key': 'testobj'},
+                            **copy_args)
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
+        # and use the source key to copy the part
+        source_sse_c_args = _copy_enc_source_modes['sse-c']['source_copy_args']
+        wrong_copy_args = copy_args.copy()
+        wrong_copy_args.update(source_sse_c_args)
+        wrong_copy_args.pop('StorageClass', None)  # StorageClass is not allowed in copy part
+        e = assert_raises(ClientError, client.upload_part_copy,
+                            Bucket=dest_bucket_name, Key='testobj2',
+                            PartNumber=1, UploadId=upload_id,
+                            CopySource={'Bucket': bucket_name, 'Key': 'testobj'},
+                            **wrong_copy_args)
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
     if dest_mode_key == 'sse-c':
         copy_args.update(upload_args)
     if dest_sc:
@@ -19958,6 +19983,31 @@ def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=Non
 
     # add another temporary part to the upload
     complete_args = {}
+
+    # verify sse-c headers
+    if dest_mode_key == 'sse-c':
+        # make sure api is verifying the SSE-C headers
+        e = assert_raises(ClientError, client.upload_part,
+                            Bucket=dest_bucket_name, Key='testobj2',
+                            PartNumber=2, UploadId=upload_id,
+                            Body='B'*file_size,
+                            **complete_args)
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
+        # and use the source key to upload the part
+        source_sse_c_args = _copy_enc_source_modes['sse-c']['args']
+        wrong_upload_args = complete_args.copy()
+        wrong_upload_args.update(source_sse_c_args)
+        wrong_upload_args.pop('StorageClass', None)  # StorageClass is not allowed in upload part
+        e = assert_raises(ClientError, client.upload_part,
+                            Bucket=dest_bucket_name, Key='testobj2',
+                            PartNumber=2, UploadId=upload_id,
+                            Body='B'*file_size,
+                            **wrong_upload_args)
+        status, _ = _get_status_and_error_code(e.response)
+        assert status == 400
+
     if dest_mode_key == 'sse-c':
         complete_args.update(upload_args)
     if dest_sc:
