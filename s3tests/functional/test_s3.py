@@ -19841,74 +19841,6 @@ def _test_copy_enc(file_size, source_mode_key, dest_mode_key, source_sc=None, de
     body = _get_body(response)
     assert body == data
 
-@pytest.mark.encryption
-@pytest.mark.fails_on_dbstore
-@pytest.mark.parametrize("source_mode_key, dest_mode_key", [
-    pytest.param(
-        source_key,
-        dest_key,
-        marks=[
-            *_copy_enc_source_modes[source_key].get('marks', []),
-            *_copy_enc_dest_modes[dest_key].get('marks', [])
-        ]
-    )
-    for source_key in _copy_enc_source_modes.keys()
-    for dest_key in _copy_enc_dest_modes.keys()
-])
-def test_copy_enc_1b(source_mode_key, dest_mode_key):
-    _test_copy_enc(1, source_mode_key, dest_mode_key)
-
-@pytest.mark.encryption
-@pytest.mark.fails_on_dbstore
-@pytest.mark.parametrize("source_mode_key, dest_mode_key", [
-    pytest.param(
-        source_key,
-        dest_key,
-        marks=[
-            *_copy_enc_source_modes[source_key].get('marks', []),
-            *_copy_enc_dest_modes[dest_key].get('marks', [])
-        ]
-    )
-    for source_key in _copy_enc_source_modes.keys()
-    for dest_key in _copy_enc_dest_modes.keys()
-])
-def test_copy_enc_1kb(source_mode_key, dest_mode_key):
-    _test_copy_enc(1024, source_mode_key, dest_mode_key)
-
-@pytest.mark.encryption
-@pytest.mark.fails_on_dbstore
-@pytest.mark.parametrize("source_mode_key, dest_mode_key", [
-    pytest.param(
-        source_key,
-        dest_key,
-        marks=[
-            *_copy_enc_source_modes[source_key].get('marks', []),
-            *_copy_enc_dest_modes[dest_key].get('marks', [])
-        ]
-    )
-    for source_key in _copy_enc_source_modes.keys()
-    for dest_key in _copy_enc_dest_modes.keys()
-])
-def test_copy_enc_1mb(source_mode_key, dest_mode_key):
-    _test_copy_enc(1024*1024, source_mode_key, dest_mode_key)
-
-@pytest.mark.encryption
-@pytest.mark.fails_on_dbstore
-@pytest.mark.parametrize("source_mode_key, dest_mode_key", [
-    pytest.param(
-        source_key,
-        dest_key,
-        marks=[
-            *_copy_enc_source_modes[source_key].get('marks', []),
-            *_copy_enc_dest_modes[dest_key].get('marks', [])
-        ]
-    )
-    for source_key in _copy_enc_source_modes.keys()
-    for dest_key in _copy_enc_dest_modes.keys()
-])
-def test_copy_enc_8mb(source_mode_key, dest_mode_key):
-    _test_copy_enc(8*1024*1024, source_mode_key, dest_mode_key)
-
 def _test_copy_part_enc(file_size, source_mode_key, dest_mode_key, source_sc=None, dest_sc=None):
     source_args = _copy_enc_source_modes[source_mode_key]
     dest_args = _copy_enc_dest_modes[dest_mode_key]
@@ -20103,11 +20035,9 @@ def test_copy_part_enc(source_mode_key, dest_mode_key, source_storage_class, des
     )
     _test_copy_part_enc(obj_size, source_mode_key, dest_mode_key, source_storage_class, dest_storage_class)
 
-def generate_copy_enc_storage_class_params():
+def generate_copy_enc_params():
     configure()
     sc = configured_storage_classes()
-    if len(sc) < 2:
-        return []
 
     obj_sizes = [1, 1024, 1024*1024, 8*1024*1024]
 
@@ -20119,8 +20049,12 @@ def generate_copy_enc_storage_class_params():
 
             for source_sc in sc:
                 for dest_sc in sc:
-                    if source_sc == dest_sc:
-                        continue
+                    additional_marks = []
+                    if source_sc != 'STANDARD' or dest_sc != 'STANDARD':
+                        additional_marks.extend([
+                            pytest.mark.fails_on_aws, # storage classes are not supported on AWS
+                            pytest.mark.storage_class,
+                        ])
                     for obj_size in obj_sizes:
                         param = pytest.param(
                             source_key,
@@ -20128,23 +20062,18 @@ def generate_copy_enc_storage_class_params():
                             source_sc,
                             dest_sc,
                             obj_size,
-                            marks=[*source_marks, *dest_marks]
+                            marks=[*source_marks, *dest_marks, *additional_marks]
                         )
                         params.append(param)
     return params
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
-@pytest.mark.storage_class
-@pytest.mark.fails_on_aws  # storage classes are not there
 @pytest.mark.parametrize(
     "source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size",
-    generate_copy_enc_storage_class_params()
+    generate_copy_enc_params()
 )
-def test_copy_enc_storage_class(source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size):
-    if len(configured_storage_classes()) < 2:
-        pytest.skip('need at least two storage classes to test copy storage class')
-
+def test_copy_enc(source_mode_key, dest_mode_key, source_storage_class, dest_storage_class, obj_size):
     print(
         f"Testing copy from {source_mode_key} to {dest_mode_key} with storage class "
         f"{source_storage_class} -> {dest_storage_class} and object size {obj_size}"
