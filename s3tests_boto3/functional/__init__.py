@@ -442,6 +442,19 @@ def get_sts_client(**kwargs):
                           **kwargs)
     return client
 
+def get_sts_root_client(**kwargs):
+    kwargs.setdefault('region_name', '')
+    kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
+    client = boto3.client(service_name='sts',
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
+    return client
+
 def get_iam_client(**kwargs):
     kwargs.setdefault('region_name', '')
     kwargs.setdefault('aws_access_key_id', config.iam_access_key)
