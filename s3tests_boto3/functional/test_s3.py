@@ -17991,3 +17991,41 @@ def test_upload_part_copy_percent_encoded_key():
     final_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
     content = final_obj['Body'].read()
     assert content == b"foo"
+
+def _test_put_object_if_match(client, bucket):
+    key = 'obj'
+
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfMatch='*')
+    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfMatch='badetag')
+    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+
+    etag = client.put_object(Bucket=bucket, Key=key, IfNoneMatch='*')['ETag']
+
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfNoneMatch='*')
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfNoneMatch=etag)
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
+
+    client.put_object(Bucket=bucket, Key=key, IfMatch=etag)
+
+    # create a delete marker and recheck
+    client.delete_object(Bucket=bucket, Key=key)
+
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfMatch='*')
+    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, IfMatch='badetag')
+    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+
+    client.put_object(Bucket=bucket, Key=key, IfNoneMatch=etag)
+
+def test_put_object_if_match():
+    client = get_client()
+    bucket = get_new_bucket(client)
+    _test_put_object_if_match(client, bucket)
+
+def test_versioned_put_object_if_match():
+    client = get_client()
+    bucket = get_new_bucket(client)
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    _test_put_object_if_match(client, bucket)
