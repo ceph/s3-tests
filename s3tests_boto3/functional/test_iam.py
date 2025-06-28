@@ -2961,3 +2961,46 @@ def test_cross_account_root_bucket_acl_grant_account_email(iam_root, iam_alt_roo
     grantee = 'emailAddress=' + get_iam_alt_root_email()
     _test_cross_account_root_bucket_acl(roots3, alts3, grantee)
 
+@pytest.mark.iam_account
+def test_get_account_summary_root(iam_root):
+  summary = iam_root.get_account_summary()['SummaryMap']
+  assert 'Users' in summary
+  assert 'Groups' in summary
+  assert 'UsersQuota' in summary
+  assert 'GroupsQuota' in summary
+  assert 'AccessKeysPerUserQuota' in summary
+
+@pytest.mark.iam_account
+def test_get_account_summary_policy(iam_root):
+  path = get_iam_path_prefix()
+  user_name = make_iam_name('MyUser')
+  iam_root.create_user(UserName=user_name, Path=path)['User']
+
+  policy_name = "AllowIamAction"
+  policy_document = {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": "iam:GetAccountSummary",
+        "Resource": "*"
+      }
+    ]
+  }
+
+  iam_root.put_user_policy(
+    UserName=user_name,
+    PolicyName=policy_name,
+    PolicyDocument=json.dumps(policy_document)
+  )
+  
+  key = iam_root.create_access_key(UserName=user_name)['AccessKey']
+  iam_client = get_iam_client(aws_access_key_id=key['AccessKeyId'],
+                        aws_secret_access_key=key['SecretAccessKey']) 
+
+  summary = iam_client.get_account_summary()['SummaryMap']
+  assert 'Users' in summary
+  assert 'Groups' in summary
+  assert 'UsersQuota' in summary
+  assert 'GroupsQuota' in summary
+  assert 'AccessKeysPerUserQuota' in summary
