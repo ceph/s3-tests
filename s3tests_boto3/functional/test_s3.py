@@ -15006,12 +15006,213 @@ def test_put_bucket_logging():
     assert response['LoggingEnabled'] == logging_enabled
 
 
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_mtime():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    prefix = 'log/'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+    # minimal configuration
+    logging_enabled = {
+            'TargetBucket': log_bucket_name,
+            'TargetPrefix': prefix
+            }
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    mtime = response['ResponseMetadata']['HTTPHeaders']['last-modified']
+
+    # wait and set the same conf - mtime should be the same
+    time.sleep(1)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert mtime == response['ResponseMetadata']['HTTPHeaders']['last-modified']
+
+    # wait and change conf - new mtime should be larger
+    time.sleep(1)
+    prefix = 'another-log/'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+    # minimal configuration
+    logging_enabled = {
+            'TargetBucket': log_bucket_name,
+            'TargetPrefix': prefix
+            }
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert mtime < response['ResponseMetadata']['HTTPHeaders']['last-modified']
+    mtime = response['ResponseMetadata']['HTTPHeaders']['last-modified']
+
+    # wait and disable/enable conf - new mtime should be larger
+    time.sleep(1)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = client.get_bucket_logging(Bucket=src_bucket_name)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    assert mtime < response['ResponseMetadata']['HTTPHeaders']['last-modified']
+
+
 def _flush_logs(client, src_bucket_name, dummy_key="dummy"):
     if _has_bucket_logging_extension():
-        client.post_bucket_logging(Bucket=src_bucket_name)
+        result = client.post_bucket_logging(Bucket=src_bucket_name)
+        assert result['ResponseMetadata']['HTTPStatusCode'] == 200
+        return result['FlushedLoggingObject']
     else:
         time.sleep(expected_object_roll_time*1.1)
         client.put_object(Bucket=src_bucket_name, Key=dummy_key, Body='dummy')
+        return None
+
+
+def _verify_logging_key(key_format, key, expected_prefix, expected_dt, expected_src_account, expected_src_region, expected_src_bucket):
+    # NOTE: prefix value has to be terminated with non alphanumeric character
+    # for the regex to work properly
+    if key_format == 'SimplePrefix':
+        #[DestinationPrefix][YYYY]-[MM]-[DD]-[hh]-[mm]-[ss]-[UniqueString]
+        pattern = r'^(.+?)(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+        no_prefix_pattern = r'^(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+    elif key_format == 'PartitionedPrefix':
+        # [DestinationPrefix][SourceAccountId]/[SourceRegion]/[SourceBucket]/[YYYY]/[MM]/[DD]/[YYYY]-[MM]-[DD]-[hh]-[mm]-[ss]-[UniqueString]
+        pattern = r'^(.+?)([^/]+)/([^/]+)/([^/]+)/(\d{4})/(\d{2})/(\d{2})/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+        no_prefix_pattern = r'^([^/]+)/([^/]+)/([^/]+)/(\d{4})/(\d{2})/(\d{2})/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(.+)$'
+    else:
+        assert False, 'unknown key format: {}'.format(key_format)
+
+    match = re.match(no_prefix_pattern, key)
+    if not match:
+        match = re.match(pattern, key)
+        assert match
+        match_index = 1
+        prefix = match.group(match_index)
+    else:
+        prefix = ''
+        match_index = 0
+
+    _year = None
+    _month = None
+    _day = None
+    assert prefix == expected_prefix
+    if key_format == 'PartitionedPrefix':
+        match_index += 1
+        src_account = match.group(match_index)
+        assert src_account == expected_src_account
+        match_index += 1
+        src_region = match.group(match_index)
+        assert src_region == expected_src_region
+        match_index += 1
+        src_bucket = match.group(match_index)
+        assert src_bucket == expected_src_bucket
+        match_index += 1
+        _year = int(match.group(match_index))
+        match_index += 1
+        _month = int(match.group(match_index))
+        match_index += 1
+        _day = int(match.group(match_index))
+
+    match_index += 1
+    year = int(match.group(match_index))
+    if _year:
+        assert year == _year
+    match_index += 1
+    month = int(match.group(match_index))
+    if _month:
+        assert month == _month
+    match_index += 1
+    day = int(match.group(match_index))
+    if _day:
+        assert day == _day
+    match_index += 1
+    hour = int(match.group(match_index))
+    match_index += 1
+    minute = int(match.group(match_index))
+    match_index += 1
+    second = int(match.group(match_index))
+    match_index += 1
+    unique_string = match.group(match_index)
+    try:
+        dt = datetime.datetime(year, month, day, hour, minute, second)
+        assert abs(dt - expected_dt) <= datetime.timedelta(seconds=5)
+    except ValueError:
+        # Invalid date/time values
+        assert False, 'invalid date/time values in key: {}'.format(key)
+
+
+def _bucket_logging_object_name(key_format, prefix):
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    logging_enabled = {
+            'TargetBucket': log_bucket_name,
+            'TargetPrefix': prefix
+            }
+    if key_format == 'SimplePrefix':
+        logging_enabled['TargetObjectKeyFormat'] = {'SimplePrefix': {}}
+    elif key_format == 'PartitionedPrefix':
+        logging_enabled['TargetObjectKeyFormat'] = {
+                'PartitionedPrefix': {
+                    'PartitionDateSource': 'DeliveryTime'
+                    }
+                }
+    else:
+        assert False, 'unknown key format: %s' % key_format
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 5
+    for j in range(num_keys):
+        name = 'myobject'+str(j)
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+
+    user_id = get_main_user_id()
+    timestamp = datetime.datetime.now()
+    _verify_logging_key(key_format, keys[0], prefix, timestamp, user_id, 'default', src_bucket_name)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_bucket_logging_simple_key():
+    _bucket_logging_object_name('SimplePrefix', 'log/')
+    _bucket_logging_object_name('SimplePrefix', '')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_bucket_logging_partitioned_key():
+    _bucket_logging_object_name('PartitionedPrefix', 'log/')
+    _bucket_logging_object_name('PartitionedPrefix', '')
 
 
 def _bucket_logging_key_filter(log_type):
@@ -15071,13 +15272,15 @@ def _bucket_logging_key_filter(log_type):
 
     expected_count = len(names)
 
-    _flush_logs(client, src_bucket_name, dummy_key="test/dummy.txt")
+    flushed_obj = _flush_logs(client, src_bucket_name, dummy_key="test/dummy.txt")
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
 
     for key in keys:
+        if flushed_obj is not None:
+            assert key == flushed_obj
         assert key.startswith('log/')
         response = client.get_object(Bucket=log_bucket_name, Key=key)
         body = _get_body(response)
@@ -15098,6 +15301,12 @@ def test_bucket_logging_key_filter_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
     _bucket_logging_key_filter('Journal')
+
+
+def _post_bucket_logging(client, src_bucket_name, flushed_objs):
+    result = client.post_bucket_logging(Bucket=src_bucket_name)
+    assert result['ResponseMetadata']['HTTPStatusCode'] == 200
+    flushed_objs[src_bucket_name] = result['FlushedLoggingObject']
 
 
 def _bucket_logging_flush(logging_type, single_prefix, concurrency):
@@ -15149,18 +15358,18 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
     assert len(keys) == 0
 
     t = []
+    flushed_objs = {}
     for src_bucket_name in buckets:
         if concurrency:
-            thr = threading.Thread(target = client.post_bucket_logging,
-                               kwargs={'Bucket': src_bucket_name})
+            thr = threading.Thread(target = _post_bucket_logging,
+                                   args=(client, src_bucket_name, flushed_objs))
             thr.start()
             t.append(thr)
         else:
-            client.post_bucket_logging(Bucket=src_bucket_name)
-        if single_prefix and logging_type == 'Standard':
-            # in case of single prefix we flush only once
-            # because flushing itself will be logged
-            # and the next flush will commit the log
+            result = client.post_bucket_logging(Bucket=src_bucket_name)
+            assert result['ResponseMetadata']['HTTPStatusCode'] == 200
+            flushed_objs[src_bucket_name] = result['FlushedLoggingObject']
+        if single_prefix:
             break
 
     _do_wait_completion(t)
@@ -15170,8 +15379,10 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
 
     if single_prefix:
         assert len(keys) == 1
+        assert len(flushed_objs) == 1
     else:
-        assert len(keys) >= num_buckets
+        assert len(keys) == num_buckets
+        assert len(flushed_objs) >= num_buckets
 
     for key in keys:
         response = client.get_object(Bucket=log_bucket_name, Key=key)
@@ -15180,6 +15391,9 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
         for j in range(num_buckets):
             prefix = log_prefixes[j]
             if key.startswith(prefix):
+                flushed_obj = flushed_objs.get(buckets[j])
+                if flushed_obj is not None:
+                    assert key == flushed_obj
                 found = True
                 assert _verify_records(body, buckets[j], 'REST.PUT.OBJECT', src_names, logging_type, num_keys)
                 assert _verify_records(body, buckets[j], 'REST.DELETE.OBJECT', src_names, logging_type, num_keys)
@@ -15232,6 +15446,72 @@ def test_bucket_logging_concurrent_flush_j_single():
 @pytest.mark.fails_on_aws
 def test_bucket_logging_concurrent_flush_s_single():
     _bucket_logging_flush('Standard', True, True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_put_and_flush():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client_config = botocore.config.Config(max_pool_connections=100)
+    client = get_client(client_config=client_config)
+
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_prefix = 'log/'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [log_prefix])
+
+    logging_enabled = {'TargetBucket': log_bucket_name,
+                       'LoggingType': 'Journal',
+                       'TargetPrefix': log_prefix
+                       }
+
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 300
+    flush_rate = 10
+    put_threads = []
+    flush_threads = []
+    src_names = []
+    for j in range(num_keys):
+        name = 'myobject'+str(j)
+        src_names.append(name)
+        put_thr = threading.Thread(target=client.put_object,
+                                      kwargs={'Bucket': src_bucket_name,
+                                              'Key': name,
+                                              'Body': randcontent()})
+        put_thr.start()
+        put_threads.append(put_thr)
+
+        if j % flush_rate == 0:
+            flush_thr = threading.Thread(target = client.post_bucket_logging,
+                                         kwargs={'Bucket': src_bucket_name})
+            flush_thr.start()
+            flush_threads.append(flush_thr)
+
+    _do_wait_completion(put_threads)
+    _do_wait_completion(flush_threads)
+
+    # making sure everything is flushed synchronously
+    _flush_logs(client, src_bucket_name)
+
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+
+    body = ''
+    prev_key = ''
+    for key in keys:
+        logger.info('bucket log record: %s', key)
+        assert key > prev_key
+        prev_key = key
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body += _get_body(response)
+    assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, 'Journal', num_keys)
 
 
 @pytest.mark.bucket_logging
@@ -15394,7 +15674,7 @@ def test_bucket_logging_owner():
         assert e.response['Error']['Code'] == 'AccessDenied'
 
 
-def _set_access_denied_policy(client, log_bucket_name, policy):
+def _set_bucket_policy(client, log_bucket_name, policy):
     policy_document = json.dumps(policy)
     response = client.put_bucket_policy(Bucket=log_bucket_name, Policy=policy_document)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
@@ -15434,33 +15714,33 @@ def test_put_bucket_logging_permissions():
 
     # missing service principal
     policy['Statement'][0]['Principal'] = {"AWS": "*"}
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
 
     # invalid service principal
     policy['Statement'][0]['Principal'] = {"Service": "logging.s3.amazonaws.com"+"kaboom"}
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid principal
     policy['Statement'][0]['Principal'] = {"Service": "logging.s3.amazonaws.com"}
 
     # invalid action
     policy['Statement'][0]['Action'] = ["s3:GetObject"]
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid action
     policy['Statement'][0]['Action'] = ["s3:PutObject"]
 
     # invalid resource
     policy['Statement'][0]['Resource'] = "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     # set valid resource
     policy['Statement'][0]['Resource'] = "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix)
 
     # invalid source bucket
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format(src_tenant, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format("kaboom", src_bucket)
     # set valid source bucket
@@ -15469,13 +15749,140 @@ def test_put_bucket_logging_permissions():
     # invalid source account
     src_user = "kaboom"
     policy['Statement'][0]['Condition']['StringEquals']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
     src_user = get_main_user_id()
     src_tenant = "kaboom"
     policy['Statement'][0]['Condition']['StringEquals']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
     _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix)
+
+
+def _put_bucket_logging_policy_wildcard(add_objects):
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    alt_client = get_alt_client()
+    alt_src_bucket_name = get_new_bucket_name()
+    alt_src_bucket = get_new_bucket(client=alt_client, name=alt_src_bucket_name)
+    prefix = 'log/'
+    log_tenant = ""
+    src_tenant = ""
+    src_user = get_main_user_id()
+    alt_user = get_alt_user_id()
+
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "S3ServerAccessLogsPolicy",
+                "Effect": "Allow",
+                "Principal": {"Service": "logging.s3.amazonaws.com"},
+                "Action": ["s3:PutObject"],
+                "Resource": "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix),
+                "Condition": {
+                    "ArnLike": {"aws:SourceArn": "arn:aws:s3::{}:{}".format(src_tenant, src_bucket_name)},
+                    "StringLike": {
+                        "aws:SourceAccount": "{}${}".format(src_tenant, src_user) if src_tenant else src_user
+                        }
+                }
+            },
+            {
+                "Sid": "S3ServerAccessLogsPolicy",
+                "Effect": "Allow",
+                "Principal": {"Service": "logging.s3.amazonaws.com"},
+                "Action": ["s3:PutObject"],
+                "Resource": "arn:aws:s3::{}:{}/{}".format(log_tenant, log_bucket_name, prefix),
+                "Condition": {
+                    "ArnLike": {"aws:SourceArn": "arn:aws:s3::{}:{}".format(src_tenant, alt_src_bucket_name)},
+                    "StringLike": {
+                        "aws:SourceAccount": "{}${}".format(src_tenant, src_user) if src_tenant else alt_user
+                        }
+                }
+            }
+        ]
+    }
+
+    # verify policy is ok
+    _set_bucket_policy(client, log_bucket_name, policy)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = alt_client.put_bucket_logging(Bucket=alt_src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # remove the 2nd statement from the policy
+    # and make sure it fails
+    policy['Statement'].pop()
+    _set_bucket_policy(client, log_bucket_name, policy)
+    _verify_access_denied(alt_client, alt_src_bucket_name, log_bucket_name, prefix)
+
+    # use wildcards account/bucket
+    policy['Statement'][0]['Condition']['StringLike']['aws:SourceAccount'] = "*"
+    policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:*".format(src_tenant)
+    _set_bucket_policy(client, log_bucket_name, policy)
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+    response = alt_client.put_bucket_logging(Bucket=alt_src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    if not add_objects:
+        return
+
+    # put objects when policy is ok
+    num_keys = 5
+    src_keys = []
+    for j in range(num_keys):
+        name = 'myobject_1_'+str(j)
+        src_keys.append(name)
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+        name = 'myobject_2_'+str(j)
+        src_keys.append(name)
+        alt_client.put_object(Bucket=alt_src_bucket_name, Key=name, Body=randcontent())
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+    for key in keys:
+        assert key.startswith('log/')
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body = _get_body(response)
+        assert _verify_records(body, " ", 'REST.PUT.OBJECT', src_keys, "Standard", num_keys*2)
+
+    # non wildcard source account policy
+    policy['Statement'][0]['Condition']['StringLike']['aws:SourceAccount'] = "{}${}".format(src_tenant, src_user) if src_tenant else src_user
+    _set_bucket_policy(client, log_bucket_name, policy)
+    for j in range(num_keys):
+        name = 'myobject_2_'+str(j)
+        src_keys.append(name)
+        alt_client.put_object(Bucket=alt_src_bucket_name, Key=name, Body=randcontent())
+    try:
+        _flush_logs(alt_client, alt_src_bucket_name)
+        assert False, 'expected failure'
+    except ClientError as e:
+        assert e.response['Error']['Code'] == 'AccessDenied'
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    # no new keys were added
+    assert len(keys) == 1
+
+
+@pytest.mark.bucket_logging
+def test_put_bucket_logging_policy_wildcard():
+    _put_bucket_logging_policy_wildcard(False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
+def test_put_bucket_logging_policy_wildcard_objects():
+    _put_bucket_logging_policy_wildcard(True)
 
 
 def _bucket_logging_permission_change(logging_type):
@@ -15509,8 +15916,12 @@ def _bucket_logging_permission_change(logging_type):
     policy_document = json.dumps(policy)
     response = client.put_bucket_policy(Bucket=log_bucket_name, Policy=policy_document)
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
-    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
-        'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix, 'LoggingType': logging_type}})
+    if logging_type == 'Journal':
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix, 'LoggingType': logging_type}})
+    else:
+        response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+            'LoggingEnabled': {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}})
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # put objects when policy is ok
@@ -15522,7 +15933,7 @@ def _bucket_logging_permission_change(logging_type):
         client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
     # change policy to invalid source bucket
     policy['Statement'][0]['Condition']['ArnLike']['aws:SourceArn'] = "arn:aws:s3::{}:{}".format(src_tenant, "kaboom")
-    _set_access_denied_policy(client, log_bucket_name, policy)
+    _set_bucket_policy(client, log_bucket_name, policy)
 
     bad_src_keys = []
     # put objects when policy should reject them
@@ -15551,9 +15962,8 @@ def _bucket_logging_permission_change(logging_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_without_logging_rollover
 def test_bucket_logging_permission_change_s():
-    if not _has_bucket_logging_extension():
-        pytest.skip('ceph extension to bucket logging not supported at client')
     _bucket_logging_permission_change('Standard')
 
 
@@ -15576,13 +15986,15 @@ def _bucket_logging_objects(src_client, src_bucket_name, log_client, log_bucket_
     response = src_client.list_objects_v2(Bucket=src_bucket_name)
     src_keys = _get_keys(response)
 
-    _flush_logs(src_client, src_bucket_name)
+    flushed_obj = _flush_logs(src_client, src_bucket_name)
 
     response = log_client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
 
     for key in keys:
+        if flushed_obj is not None:
+            assert key == flushed_obj
         assert key.startswith('log/')
         response = log_client.get_object(Bucket=log_bucket_name, Key=key)
         body = _get_body(response)
@@ -15900,7 +16312,7 @@ def _bucket_logging_put_objects(versioned):
     response = client.list_objects_v2(Bucket=src_bucket_name)
     src_keys = _get_keys(response)
 
-    _flush_logs(client, src_bucket_name)
+    flushed_obj = _flush_logs(client, src_bucket_name)
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
@@ -15909,6 +16321,8 @@ def _bucket_logging_put_objects(versioned):
     record_type = 'Standard' if not has_extensions else 'Journal'
 
     for key in keys:
+        if flushed_obj is not None:
+            assert key == flushed_obj
         assert key.startswith('log/')
         response = client.get_object(Bucket=log_bucket_name, Key=key)
         body = _get_body(response)
@@ -16286,20 +16700,19 @@ def test_bucket_logging_head_objects_versioned():
 
 
 @pytest.mark.bucket_logging
-def _bucket_logging_mpu(versioned):
+def _bucket_logging_mpu(versioned, record_type):
     src_bucket_name = get_new_bucket()
     if versioned:
         check_configure_versioning_retry(src_bucket_name, "Enabled", "Enabled")
     log_bucket_name = get_new_bucket_name()
     log_bucket = get_new_bucket_resource(name=log_bucket_name)
     client = get_client()
-    has_extensions = _has_bucket_logging_extension()
 
     prefix = 'log/'
     _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
     # minimal configuration
     logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}
-    if has_extensions:
+    if record_type == 'Journal':
         logging_enabled['ObjectRollTime'] = expected_object_roll_time
         logging_enabled['LoggingType'] = 'Journal'
     response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -16322,31 +16735,51 @@ def _bucket_logging_mpu(versioned):
     assert len(keys) == 1
 
     if versioned:
-        expected_count = 4 if not has_extensions else 2
+        expected_count = 4 if not record_type == 'Journal' else 2
     else:
-        expected_count = 2 if not has_extensions else 1
+        expected_count = 2 if not record_type == 'Journal' else 1
 
     key = keys[0]
     assert key.startswith('log/')
     response = client.get_object(Bucket=log_bucket_name, Key=key)
     body = _get_body(response)
-    record_type = 'Standard' if not has_extensions else 'Journal'
     assert _verify_records(body, src_bucket_name, 'REST.POST.UPLOAD', [src_key, src_key], record_type, expected_count)
+    if record_type == 'Standard':
+        if versioned:
+            expected_count = 12
+        else:
+            expected_count = 6
+        assert _verify_records(body, src_bucket_name, 'REST.PUT.PART', [src_key, src_key], record_type, expected_count)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_without_logging_rollover
-def test_bucket_logging_mpu():
-    _bucket_logging_mpu(False)
+def test_bucket_logging_mpu_s():
+    _bucket_logging_mpu(False, 'Standard')
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_without_logging_rollover
-def test_bucket_logging_mpu_versioned():
-    _bucket_logging_mpu(True)
+def test_bucket_logging_mpu_versioned_s():
+    _bucket_logging_mpu(True, 'Standard')
 
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_mpu_j():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    _bucket_logging_mpu(False, 'Journal')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_mpu_versioned_j():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    _bucket_logging_mpu(True, 'Journal')
 
 @pytest.mark.bucket_logging
 def _bucket_logging_mpu_copy(versioned):
@@ -16727,6 +17160,65 @@ def test_bucket_logging_single_prefix():
         src_keys = _get_keys(response)
         found = _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_keys, 'Standard', num_keys)
     assert found
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_object_meta():
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    client = get_client()
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = client.create_bucket(Bucket=src_bucket_name, ObjectLockEnabledForBucket=True)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+
+    prefix = 'log/'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix, 'LoggingType': 'Journal'}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    name = 'myobject'
+    response = client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+    version_id = response['VersionId']
+    # PutObjectAcl
+    client.put_object_acl(ACL='public-read-write', Bucket=src_bucket_name, Key=name, VersionId=version_id)
+    # PutObjectTagging
+    client.put_object_tagging(Bucket=src_bucket_name, Key=name, VersionId=version_id,
+                              Tagging={'TagSet': [{'Key': 'tag1', 'Value': 'value1'}, {'Key': 'tag2', 'Value': 'value2'}]})
+    # DeleteObjectTagging
+    client.delete_object_tagging(Bucket=src_bucket_name, Key=name, VersionId=version_id)
+    # PutObjectLegalHold
+    client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'ON'})
+    # PutObjectRetention
+    client.put_object_retention(Bucket=src_bucket_name, Key=name, Retention={'Mode': 'GOVERNANCE', 'RetainUntilDate': datetime.datetime(2026, 1, 1)})
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    log_keys = _get_keys(response)
+    assert len(log_keys) == 1
+    log_key = log_keys[0]
+    expected_op_list = ['REST.PUT.OBJECT', 'REST.PUT.ACL', 'REST.PUT.LEGAL_HOLD', 'REST.PUT.RETENTION', 'REST.PUT.OBJECT_TAGGING', 'REST.DELETE.OBJECT_TAGGING']
+    op_list = []
+    response = client.get_object(Bucket=log_bucket_name, Key=log_key)
+    body = _get_body(response)
+    for record in iter(body.splitlines()):
+        parsed_record = _parse_log_record(record, 'Journal')
+        logger.info('bucket log record: %s', json.dumps(parsed_record, indent=4))
+        op_list.append(parsed_record['Operation'])
+        version = parsed_record['VersionID']
+        if version != '-':
+            assert version == version_id
+
+    assert sorted(expected_op_list) == sorted(op_list)
+
+    # allow cleanup
+    client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'OFF'})
+    client.delete_object(Bucket=src_bucket_name, Key=name, VersionId=version_id, BypassGovernanceRetention=True)
+
 
 def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurrency):
     if not _has_bucket_logging_extension():
