@@ -13811,16 +13811,15 @@ def test_block_public_object_canned_acls():
 
     #FIXME: use empty body until #42208
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo1', Body='', ACL='public-read')
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 403
+    assert 403 == _get_status(e.response)
 
-    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo2', Body='', ACL='public-read')
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 403
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo2', Body='', ACL='public-read-write')
+    assert 403 == _get_status(e.response)
 
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key='foo3', Body='', ACL='authenticated-read')
-    status, error_code = _get_status_and_error_code(e.response)
-    assert status == 403
+    assert 403 == _get_status(e.response)
+
+    client.put_object(Bucket=bucket_name, Key='foo4', Body='', ACL='private')
 
 
 def test_block_public_policy():
