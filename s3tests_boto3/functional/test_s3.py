@@ -14840,7 +14840,7 @@ def _has_bucket_logging_extension():
     return True
 
 
-def _has_taget_object_key_format():
+def _has_target_object_key_format():
     src_bucket_name = get_new_bucket_name()
     log_bucket_name = get_new_bucket_name()
     client = get_client()
@@ -14962,7 +14962,7 @@ def randcontent():
 @pytest.mark.bucket_logging
 def test_put_bucket_logging():
     has_extensions = _has_bucket_logging_extension()
-    has_key_format = _has_taget_object_key_format()
+    has_key_format = _has_target_object_key_format()
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
     log_bucket_name = get_new_bucket_name()
@@ -15482,7 +15482,7 @@ def test_put_bucket_logging_errors():
         assert e.response['Error']['Code'] == 'InvalidArgument'
 
     # invalid partition prefix
-    if _has_taget_object_key_format():
+    if _has_target_object_key_format():
         logging_enabled = {
             'TargetBucket': log_bucket_name1,
             'TargetPrefix': prefix,
