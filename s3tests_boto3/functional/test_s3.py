@@ -9647,7 +9647,6 @@ def test_lifecycle_plain_null_version_current_transition():
 
 def verify_object(client, bucket, key, content=None, sc=None):
     response = client.get_object(Bucket=bucket, Key=key)
-
     if (sc == None):
         sc = 'STANDARD'
 
@@ -9661,16 +9660,39 @@ def verify_object(client, bucket, key, content=None, sc=None):
         assert body == content
 
 def verify_transition(client, bucket, key, sc=None, version=None):
-    if (version != None):
-        response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
-    else:
-        response = client.head_object(Bucket=bucket, Key=key)
+    transition_not_completed = True
+    retry = 0
+    while (transition_not_completed and retry < 4):
+        if (version != None):
+            response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
+        else:
+            response = client.head_object(Bucket=bucket, Key=key)
+        if response['ContentLength'] == 0:
+            transition_not_completed = False
+            assert response['StorageClass'] == sc
+        time.sleep(2)
+        retry = retry + 1
+    assert transition_not_completed == False
 
-    # Iterate over the contents to find the StorageClass
-    if 'StorageClass' in response:
-        assert response['StorageClass'] == sc
-    else:  # storage class should be STANDARD
-        assert 'STANDARD' == sc
+def verify_restore(client, bucket, key, sc=None, version=None):
+    restore_not_completed = True
+    retry = 0
+    while (restore_not_completed and retry < 4):
+        if (version != None):
+            response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
+        else:
+            response = client.head_object(Bucket=bucket, Key=key)
+        # checks for temporary restore
+        if 'Restore' in response:
+            restore_complete_string = "ongoing-request=\"false\""
+            if restore_complete_string in response['Restore']:
+                restore_not_completed = False
+            assert response['StorageClass'] == sc
+        # checks for permanent restore
+        elif response['ContentLength'] != 0:
+            restore_not_completed = False
+            assert response['StorageClass'] == sc
+    assert restore_not_completed == False
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @pytest.mark.lifecycle
@@ -9700,7 +9722,6 @@ def test_lifecycle_cloud_transition():
     assert len(init_keys) == 4
 
     lc_interval = get_lc_debug_interval()
-
     # Wait for first expiration (plus fudge to handle the timer window)
     time.sleep(10*lc_interval)
     expire1_keys = list_bucket_storage_class(client, bucket_name)
@@ -9719,7 +9740,7 @@ def test_lifecycle_cloud_transition():
 
     cloud_client = get_cloud_client()
 
-    time.sleep(12*lc_interval)
+    time.sleep(2*lc_interval)
     expire1_key1_str = prefix + keys[0]
     verify_object(cloud_client, target_path, expire1_key1_str, keys[0], target_sc)
 
@@ -9995,7 +10016,7 @@ def test_restore_object_temporary():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_restore_debug_interval()
-    time.sleep(10 * lc_interval)
+    time.sleep(2 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -10005,7 +10026,7 @@ def test_restore_object_temporary():
     time.sleep(5)
 
     # Verify object is restored temporarily
-    verify_transition(client, bucket, key, cloud_sc)
+    verify_restore(client, bucket, key, cloud_sc)
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
     time.sleep(2 * (restore_interval + lc_interval))
@@ -10037,7 +10058,7 @@ def test_restore_object_permanent():
     client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(10 * lc_interval)
+    time.sleep(2 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -10046,7 +10067,7 @@ def test_restore_object_permanent():
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={})
     time.sleep(5)
     # Verify object is restored permanently
-    verify_transition(client, bucket, key, 'STANDARD')
+    verify_restore(client, bucket, key, 'STANDARD')
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
 
@@ -10073,15 +10094,15 @@ def test_read_through():
     client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
     lc_interval = get_lc_debug_interval()
-    restore_interval = get_read_through_days()
-    time.sleep(10 * lc_interval)
+    restore_interval = get_restore_debug_interval()
+    time.sleep(2 * lc_interval)
 
     # Check the storage class after transitioning
     verify_transition(client, bucket, key, cloud_sc)
 
     # Restore the object using read_through request
     allow_readthrough = get_allow_read_through()
-    if (allow_readthrough != None and allow_readthrough == "true"):
+    if (allow_readthrough != None and allow_readthrough):
         response = client.get_object(Bucket=bucket, Key=key)
         time.sleep(2)
         assert response['ContentLength'] == len(data)
