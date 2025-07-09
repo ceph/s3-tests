@@ -18056,10 +18056,11 @@ def test_delete_object_if_match():
 
     client.delete_object(Bucket=bucket, Key=key, IfMatch=etag)
 
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='badetag')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    # -ENOENT doesn't raise error in delete op
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='*')
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='badetag')
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
     # recreate to test IfMatch='*'
     client.put_object(Bucket=bucket, Key=key)
@@ -18073,11 +18074,11 @@ def test_delete_object_current_if_match():
     check_configure_versioning_retry(bucket, "Enabled", "Enabled")
     key = 'obj'
 
-    # on nonexistent object
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='badetag')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    # -ENOENT doesn't raise error in delete op
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='*')
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='badetag')
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
     response = client.put_object(Bucket=bucket, Key=key)
     version = response['VersionId']
@@ -18090,11 +18091,10 @@ def test_delete_object_current_if_match():
     response = client.delete_object(Bucket=bucket, Key=key, IfMatch=etag)
     assert response['DeleteMarker']
 
-    # on current delete marker
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    # -ENOENT doesn't raise error in delete op
+    client.delete_object(Bucket=bucket, Key=key, IfMatch='*')
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='badetag')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     # remove delete marker to retest IfMatch='*'
     client.delete_object(Bucket=bucket, Key=key, VersionId=version)
@@ -18117,13 +18117,11 @@ def test_delete_object_version_if_match():
     assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch=etag)
-    assert not response['DeleteMarker']
+    assert 'DeleteMarker' not in response
 
-    # on nonexistent version
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatch='*')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatch='badetag')
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    # -ENOENT doesn't raise error in delete op
+    client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch='*')
+    client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch='badetag')
 
     # recreate to test IfMatch='*'
     response = client.put_object(Bucket=bucket, Key=key)
@@ -18147,8 +18145,8 @@ def test_delete_object_if_match_last_modified_time():
 
     client.delete_object(Bucket=bucket, Key=key, IfMatchLastModifiedTime=mtime)
 
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatchLastModifiedTime=badmtime)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatchLastModifiedTime=badmtime)
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18167,10 +18165,11 @@ def test_delete_object_current_if_match_last_modified_time():
     assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     response = client.delete_object(Bucket=bucket, Key=key, IfMatchLastModifiedTime=mtime)
-    assert response['DeleteMarker']
+    assert 'DeleteMarker' in response
 
+    # object is marked as deleted but still exists
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatchLastModifiedTime=badmtime)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18189,10 +18188,10 @@ def test_delete_object_version_if_match_last_modified_time():
     assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatchLastModifiedTime=mtime)
-    assert not response['DeleteMarker']
+    assert 'DeleteMarker' not in response
 
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatchLastModifiedTime=badmtime)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatchLastModifiedTime=badmtime)
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18211,8 +18210,8 @@ def test_delete_object_if_match_size():
 
     client.delete_object(Bucket=bucket, Key=key, IfMatchSize=size)
 
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatchSize=badsize)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    response = client.delete_object(Bucket=bucket, Key=key, IfMatchSize=badsize)
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18231,10 +18230,10 @@ def test_delete_object_current_if_match_size():
     assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     response = client.delete_object(Bucket=bucket, Key=key, IfMatchSize=size)
-    assert response['DeleteMarker']
+    assert 'DeleteMarker' in response
 
     e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatchSize=badsize)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18253,10 +18252,10 @@ def test_delete_object_version_if_match_size():
     assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
 
     response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatchSize=size)
-    assert not response['DeleteMarker']
+    assert 'DeleteMarker' not in response
 
-    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatchSize=badsize)
-    assert (404, 'NoSuchKey') == _get_status_and_error_code(e.response)
+    response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatchSize=badsize)
+    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18273,8 +18272,9 @@ def test_delete_objects_if_match():
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'ETag': etag}]})
     assert key == response['Deleted'][0]['Key'] # success
 
+    # -ENOENT doesn't raise error in delete op
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'ETag': 'badetag'}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18293,8 +18293,9 @@ def test_delete_objects_current_if_match():
     assert key == response['Deleted'][0]['Key'] # success
     assert response['Deleted'][0]['DeleteMarker']
 
+    # object is marked as deleted but still exists
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'ETag': 'badetag'}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 'PreconditionFailed' == response['Errors'][0]['Code']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18313,10 +18314,10 @@ def test_delete_objects_version_if_match():
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'VersionId': version, 'ETag': etag}]})
     assert key == response['Deleted'][0]['Key'] # success
-    assert not response['Deleted'][0]['DeleteMarker']
+    assert 'DeleteMarker' not in response['Deleted'][0]
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'VersionId': version, 'ETag': 'badetag'}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18337,7 +18338,7 @@ def test_delete_objects_if_match_last_modified_time():
     assert key == response['Deleted'][0]['Key'] # success
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'LastModifiedTime': badmtime}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18359,8 +18360,9 @@ def test_delete_objects_current_if_match_last_modified_time():
     assert key == response['Deleted'][0]['Key'] # success
     assert response['Deleted'][0]['DeleteMarker']
 
+    # object exists, but marked as deleted
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'LastModifiedTime': badmtime}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 'PreconditionFailed' == response['Errors'][0]['Code']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18383,7 +18385,7 @@ def test_delete_objects_version_if_match_last_modified_time():
     assert key == response['Deleted'][0]['Key'] # success
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'VersionId': version, 'LastModifiedTime': badmtime}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18404,7 +18406,7 @@ def test_delete_objects_if_match_size():
     assert key == response['Deleted'][0]['Key'] # success
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'Size': badsize}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18426,8 +18428,9 @@ def test_delete_objects_current_if_match_size():
     assert key == response['Deleted'][0]['Key'] # success
     assert response['Deleted'][0]['DeleteMarker']
 
+    # object exists, but marked as deleted
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'Size': badsize}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 'PreconditionFailed' == response['Errors'][0]['Code']
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
@@ -18449,4 +18452,4 @@ def test_delete_objects_version_if_match_size():
     assert key == response['Deleted'][0]['Key'] # success
 
     response = client.delete_objects(Bucket=bucket, Delete={'Objects': [{'Key': key, 'VersionId': version, 'Size': badsize}]})
-    assert 'NoSuchKey' == response['Errors'][0]['Code']
+    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
