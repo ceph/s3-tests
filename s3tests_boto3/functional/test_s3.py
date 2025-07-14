@@ -6168,7 +6168,7 @@ def check_versioning(bucket_name, status):
     except KeyError:
         assert status == None
 
-# amazon is eventual consistent, retry a bit if failed
+# amazon is eventually consistent, retry a bit if failed
 def check_configure_versioning_retry(bucket_name, status, expected_string):
     client = get_client()
     client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={'Status': status})
@@ -17991,3 +17991,81 @@ def test_upload_part_copy_percent_encoded_key():
     final_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
     content = final_obj['Body'].read()
     assert content == b"foo"
+
+def check_delete_marker(client, bucket, key, status):
+    dm_header_val = 'none'
+
+    try:
+        res = client.head_object(Bucket=bucket, Key=key)
+    except ClientError as e:
+        response_headers = e.response['ResponseMetadata']['HTTPHeaders']
+        dm_header_val = response_headers['x-amz-delete-marker']
+
+    assert dm_header_val == status
+
+@pytest.mark.delete_marker
+@pytest.mark.fails_on_dbstore
+def test_delete_marker_nonversioned():
+    bucket = get_new_bucket()
+    client = get_client()
+    key = "frodo.txt"
+    body = "body version %s" % (key)
+    # no versioning case
+    res = client.put_object(Bucket=bucket, Key=key, Body=body)
+    res = client.delete_object(Bucket=bucket, Key=key)
+    check_delete_marker(client, bucket, key, 'false')
+
+@pytest.mark.delete_marker
+@pytest.mark.fails_on_dbstore
+def test_delete_marker_versioned():
+    bucket = get_new_bucket()
+    client = get_client()
+    key = "bilbo.txt"
+    body = "body version %s" % (key)
+    # versioning case
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    res = client.put_object(Bucket=bucket, Key=key, Body=body)
+    res = client.delete_object(Bucket=bucket, Key=key)
+    check_delete_marker(client, bucket, key, 'true')
+
+@pytest.mark.delete_marker
+@pytest.mark.fails_on_dbstore
+def test_delete_marker_suspended():
+    bucket = get_new_bucket()
+    client = get_client()
+    key = "ringo.txt"
+    body = "body version %s" % (key)
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    res = client.put_object(Bucket=bucket, Key=key, Body=body)
+    check_configure_versioning_retry(bucket, "Suspended", "Suspended")
+    res = client.delete_object(Bucket=bucket, Key=key)
+    check_delete_marker(client, bucket, key, 'true')
+
+@pytest.mark.delete_marker
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_dbstore
+def test_delete_marker_expiration():
+    bucket = get_new_bucket()
+    client = get_client()
+    key = "nugent.ted"
+    body = "body version %s" % (key)
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    res = client.put_object(Bucket=bucket, Key=key, Body=body)
+    res = client.delete_object(Bucket=bucket, Key=key)
+    # object should be a delete marker
+    check_delete_marker(client, bucket, key, 'true')
+
+    # to observe delete marker expiration, we must expire any existing
+    # noncurrent version, as these inhibit delete marker expiration
+    lifecycle = {
+        'Rules': [{'Expiration': {'ExpiredObjectDeleteMarker': True}, 'ID': 'dm-1-days', 'Prefix': '', 'Status': 'Enabled'}, {'ID': 'noncur-1-days', 'Prefix': '', 'Status': 'Enabled', 'NoncurrentVersionExpiration': {'NoncurrentDays': 1}}]
+    }
+    response = client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    lc_interval = get_lc_debug_interval()
+    time.sleep(6*lc_interval)
+
+    # delete marker should have expired
+    check_delete_marker(client, bucket, key, 'false')
