@@ -14942,6 +14942,19 @@ def _verify_records(records, bucket_name, event_type, src_keys, record_type, exp
     return len(keys_found) == expected_count
 
 
+def _verify_record_field(records, bucket_name, event_type, object_key, record_type, field_name, expected_value):
+    for record in iter(records.splitlines()):
+        if bucket_name in record and event_type in record and object_key in record:
+            parsed_record = _parse_log_record(record, record_type)
+            logger.info('bucket log record: %s', json.dumps(parsed_record, indent=4))
+            try:
+                value = parsed_record[field_name]
+                return expected_value == value
+            except KeyError:
+                return False
+    return False
+
+
 def randcontent():
     letters = string.ascii_lowercase
     length = random.randint(10, 1024)
@@ -15260,6 +15273,82 @@ def test_bucket_logging_simple_key():
 def test_bucket_logging_partitioned_key():
     _bucket_logging_object_name('PartitionedPrefix', 'log/')
     _bucket_logging_object_name('PartitionedPrefix', '')
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_bucket_auth_type():
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    prefix = 'log/'
+    key = 'my-test-object'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    client.put_object(Bucket=src_bucket_name, Key=key, Body=randcontent())
+    client.put_object_acl(ACL='public-read',Bucket=src_bucket_name, Key=key)
+
+    response = client.list_objects_v2(Bucket=src_bucket_name)
+    keys = _get_keys(response)
+
+    # minimal configuration
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # AuthType AuthHeader:
+    response = client.get_object(Bucket=src_bucket_name, Key=key)
+    client.list_objects_v2(Bucket=src_bucket_name)
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    log_keys = _get_keys(response)
+    assert len(log_keys) == 1
+
+    for log_key in log_keys:
+        response = client.get_object(Bucket=log_bucket_name, Key=log_key)
+        body = _get_body(response)
+        assert _verify_records(body, src_bucket_name, 'REST.GET.OBJECT', [key], "Standard", 1)
+        assert _verify_record_field(body, src_bucket_name, 'REST.GET.OBJECT', key, "Standard", "AuthType", "AuthHeader")
+
+
+    #AuthType "-" (unauthenticated)
+    unauthenticated_client = get_unauthenticated_client()
+    unauthenticated_client.get_object(Bucket=src_bucket_name, Key=key)
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    log_keys = _get_keys(response)
+
+    log_key = log_keys[-1]
+    response = client.get_object(Bucket=log_bucket_name, Key=log_key)
+    body = _get_body(response)
+    assert _verify_records(body, src_bucket_name, 'REST.GET.OBJECT', [key], "Standard", 1)
+    assert _verify_record_field(body, src_bucket_name, 'REST.GET.OBJECT', key, "Standard", "AuthType", "-")
+
+    #AuthType "QueryString" (presigned)
+    params = {'Bucket': src_bucket_name, 'Key': key}
+    url = client.generate_presigned_url(ClientMethod='get_object', Params=params, ExpiresIn=100000, HttpMethod='GET')
+
+    res = requests.options(url, verify=get_config_ssl_verify()).__dict__
+    assert res['status_code'] == 400
+
+    res = requests.get(url, verify=get_config_ssl_verify()).__dict__
+    assert res['status_code'] == 200
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    log_keys = _get_keys(response)
+
+    log_key = log_keys[-1]
+    response = client.get_object(Bucket=log_bucket_name, Key=log_key)
+    body = _get_body(response)
+    assert _verify_records(body, src_bucket_name, 'REST.GET.OBJECT', [key], "Standard", 1)
+    assert _verify_record_field(body, src_bucket_name, 'REST.GET.OBJECT', key, "Standard", "AuthType", "QueryString")
 
 
 def _bucket_logging_key_filter(log_type):
