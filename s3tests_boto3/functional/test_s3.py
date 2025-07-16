@@ -5837,6 +5837,7 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_object_copy_versioning_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5913,6 +5914,7 @@ def test_object_copy_versioning_multipart_upload():
     assert key1_metadata == response['Metadata']
     assert content_type == response['ContentType']
 
+@pytest.mark.multipart
 def test_multipart_upload_empty():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5926,6 +5928,7 @@ def test_multipart_upload_empty():
     assert error_code == 'MalformedXML'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_upload_small():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6002,6 +6005,7 @@ def _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name, ver
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_copy_small():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key)
@@ -6019,6 +6023,7 @@ def test_multipart_copy_small():
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @pytest.mark.copy
+@pytest.mark.multipart
 def test_multipart_copy_invalid_range():
     client = get_client()
     src_key = 'source'
@@ -6041,6 +6046,7 @@ def test_multipart_copy_invalid_range():
 @pytest.mark.copy
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
 @pytest.mark.fails_on_rgw
+@pytest.mark.multipart
 def test_multipart_copy_improper_range():
     client = get_client()
     src_key = 'source'
@@ -6071,6 +6077,7 @@ def test_multipart_copy_improper_range():
 
 
 @pytest.mark.copy
+@pytest.mark.multipart
 def test_multipart_copy_without_range():
     client = get_client()
     src_key = 'source'
@@ -6098,6 +6105,7 @@ def test_multipart_copy_without_range():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
 
@@ -6132,6 +6140,7 @@ def _check_content_using_range(key, bucket_name, data, step):
         assert body == data[ofs:end+1]
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6191,6 +6200,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
     dest_bucket_name = get_new_bucket()
@@ -6237,6 +6247,7 @@ def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
     _check_content_using_range(key, bucket_name, data, 10000000)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_upload_resend_part():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6248,6 +6259,7 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [1,2])
     _check_upload_multipart_resend(bucket_name, key, objlen, [0,1,2,3,4,5])
 
+@pytest.mark.multipart
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6279,6 +6291,7 @@ def test_multipart_upload_multiple_sizes():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key, 12*1024*1024)
@@ -6317,6 +6330,7 @@ def test_multipart_copy_multiple_sizes():
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
+@pytest.mark.multipart
 def test_multipart_upload_size_too_small():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6364,10 +6378,12 @@ def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
     return all_payload
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_upload_contents():
     bucket_name = get_new_bucket()
     _do_test_multipart_upload_contents(bucket_name, 'mymultipart', 3)
 
+@pytest.mark.multipart
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6393,6 +6409,7 @@ def test_multipart_upload_overwrite_existing_object():
 
     assert test_string == payload*num_parts
 
+@pytest.mark.multipart
 def test_abort_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6405,6 +6422,7 @@ def test_abort_multipart_upload():
     response = client.list_objects_v2(Bucket=bucket_name, Prefix=key)
     assert 'Contents' not in response
 
+@pytest.mark.multipart
 def test_abort_multipart_upload_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6417,6 +6435,7 @@ def test_abort_multipart_upload_not_found():
     assert error_code == 'NoSuchUpload'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_list_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6448,6 +6467,7 @@ def test_list_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id3)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_list_multipart_upload_owner():
     bucket_name = get_new_bucket()
 
@@ -6493,6 +6513,7 @@ def test_list_multipart_upload_owner():
     finally:
         client1.abort_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload1)
 
+@pytest.mark.multipart
 def test_multipart_upload_missing_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6512,6 +6533,7 @@ def test_multipart_upload_missing_part():
     assert status == 400
     assert error_code == 'InvalidPart'
 
+@pytest.mark.multipart
 def test_multipart_upload_incorrect_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6532,6 +6554,7 @@ def test_multipart_upload_incorrect_etag():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6575,6 +6598,7 @@ def test_multipart_get_part():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_sse_c_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6629,6 +6653,7 @@ def test_multipart_sse_c_get_part():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_single_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6671,6 +6696,7 @@ def test_multipart_single_get_part():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_non_multipart_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6692,6 +6718,7 @@ def test_non_multipart_get_part():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_non_multipart_sse_c_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7374,6 +7401,7 @@ def test_atomic_write_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
+@pytest.mark.multipart
 def test_atomic_multipart_upload_write():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7412,6 +7440,7 @@ class ActionOnCount:
         if self.count == self.trigger_count:
             self.result = self.action()
 
+@pytest.mark.multipart
 def test_multipart_resend_first_finishes_last():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7926,6 +7955,7 @@ def test_versioning_obj_create_versions_remove_special_names():
         assert len(version_ids) == len(contents)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_versioning_obj_create_overwrite_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9320,6 +9350,7 @@ def test_lifecycle_deletemarker_expiration_with_days_tag():
     assert len(delete_markers) == 0
 
 @pytest.mark.lifecycle
+@pytest.mark.multipart
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9337,6 +9368,7 @@ def test_lifecycle_set_multipart():
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_lifecycle_multipart_expiration():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10392,6 +10424,7 @@ def _check_content_using_range_enc(client, bucket_name, key, data, size, step, e
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_encryption_sse_c_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10438,6 +10471,7 @@ def test_encryption_sse_c_multipart_upload():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_encryption_sse_c_unaligned_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10485,6 +10519,7 @@ def test_encryption_sse_c_unaligned_multipart_upload():
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
+@pytest.mark.multipart
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10513,6 +10548,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
+@pytest.mark.multipart
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10539,6 +10575,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.multipart
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10807,6 +10844,7 @@ def test_sse_kms_not_declared():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_sse_kms_multipart_upload():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10852,6 +10890,7 @@ def test_sse_kms_multipart_upload():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_sse_kms_multipart_invalid_chunks_1():
     kms_keyid = get_main_kms_keyid()
     kms_keyid2 = get_secondary_kms_keyid()
@@ -10879,6 +10918,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_sse_kms_multipart_invalid_chunks_2():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -11248,6 +11288,7 @@ def test_bucket_policy_different_tenant():
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
+@pytest.mark.multipart
 def test_bucket_policy_multipart():
     client = get_client()
     alt_client = get_alt_client()
@@ -11498,6 +11539,7 @@ def _make_random_string(size):
     return ''.join(random.choice(string.ascii_letters) for _ in range(size))
 
 @pytest.mark.tagging
+@pytest.mark.multipart
 def test_set_multipart_tagging():
   bucket_name = get_new_bucket()
   client = get_client()
@@ -11905,6 +11947,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response = client.put_object(Bucket=bucket_name, Key=key)
     assert not 'VersionId' in response
 
+@pytest.mark.multipart
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
@@ -13202,6 +13245,7 @@ def test_object_lock_delete_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_object_lock_delete_multipart_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13403,6 +13447,7 @@ def test_object_lock_delete_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_object_lock_delete_multipart_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13963,6 +14008,7 @@ def test_put_get_delete_public_block():
 
     assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
+@pytest.mark.multipart
 def test_multipart_upload_on_a_bucket_with_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14255,6 +14301,7 @@ def test_sse_s3_default_method_head():
 @pytest.mark.bucket_encryption
 @pytest.mark.sse_s3
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_sse_s3_default_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14500,6 +14547,7 @@ def test_object_checksum_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_checksum_sha256():
     bucket = get_new_bucket()
     client = get_client()
@@ -14614,6 +14662,7 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_use_cksum_helper_sha256():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14638,6 +14687,7 @@ def test_multipart_use_cksum_helper_sha256():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_use_cksum_helper_crc64nvme():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14662,6 +14712,7 @@ def test_multipart_use_cksum_helper_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_use_cksum_helper_crc32():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14686,6 +14737,7 @@ def test_multipart_use_cksum_helper_crc32():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_use_cksum_helper_crc32c():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14710,6 +14762,7 @@ def test_multipart_use_cksum_helper_crc32c():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_multipart_use_cksum_helper_sha1():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -17894,6 +17947,7 @@ def check_parts_count(parts, expected):
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_get_multipart_checksum_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -17937,6 +17991,7 @@ def test_get_multipart_checksum_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_get_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -17973,6 +18028,7 @@ def test_get_multipart_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_get_paginated_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18034,6 +18090,7 @@ def test_get_paginated_multipart_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.multipart
 def test_get_single_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
