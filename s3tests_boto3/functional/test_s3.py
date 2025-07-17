@@ -14953,19 +14953,6 @@ def _verify_record_field(records, bucket_name, event_type, object_key, record_ty
                 return False
     return False
 
-def _verify_record_field(records, bucket_name, event_type, object_key, record_type, field_name, expected_value):
-    for record in iter(records.splitlines()):
-        if bucket_name in record and event_type in record and object_key in record:
-            parsed_record = _parse_log_record(record, record_type)
-            logger.info('bucket log record: %s', json.dumps(parsed_record, indent=4))
-            try:
-                value = parsed_record[field_name]
-                return expected_value == value
-            except KeyError:
-                return False
-    return False
-
-
 def randcontent():
     letters = string.ascii_lowercase
     length = random.randint(10, 1024)
