@@ -3527,6 +3527,34 @@ def test_object_raw_get_x_amz_expires_out_positive_range():
     res = requests.get(url, verify=get_config_ssl_verify()).__dict__
     assert res['status_code'] == 403
 
+def test_object_content_encoding_aws_chunked():
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'encoding'
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='gzip')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentEncoding'] == 'gzip'
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='deflate, gzip')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentEncoding'] == 'deflate, gzip'
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='gzip, aws-chunked')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentEncoding'] == 'gzip'
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='aws-chunked, gzip')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentEncoding'] == 'gzip'
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='aws-chunked')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ContentEncoding' not in response
+
+    client.put_object(Bucket=bucket, Key=key, ContentEncoding='aws-chunked, aws-chunked')
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert 'ContentEncoding' not in response
 
 def test_object_anon_put():
     bucket_name = get_new_bucket()
