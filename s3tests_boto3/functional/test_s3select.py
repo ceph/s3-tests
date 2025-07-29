@@ -506,10 +506,20 @@ def test_json_column_sum_min_max():
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name_2,json_obj_name_2,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 2;" ) )
     count,sum1,sum2 = res_s3select.split(",")
 
+    if int(count) == 0:
+        # it means that the where clause condition is not satisfied, so the sum should be 0(otherwise the null value will cause an error)
+          sum1 = 0
+          sum2 = 0
+
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 4;" ) ) 
     count,sum1,sum2 = res_s3select.split(",")
+
+    if int(count) == 0:
+        # it means that the where clause condition is not satisfied, so the sum should be 0(otherwise the null value will cause an error)
+        sum1 = 0
+        sum2 = 0
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
@@ -613,10 +623,20 @@ def test_column_sum_min_max():
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name_2,csv_obj_name_2,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 2;" ) )
     count,sum1,sum2 = res_s3select.split(",")
 
+    if int(count) == 0:
+        # it could happen that the condition is not met, so the count is 0, thus the sums are 0
+        sum1 = 0
+        sum2 = 0
+
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
     res_s3select = remove_xml_tags_from_result(  run_s3select(bucket_name,csv_obj_name,"select count(0),sum(int(_1)),sum(int(_2)) from s3object where (int(_1)-int(_2)) = 4;" ) ) 
     count,sum1,sum2 = res_s3select.split(",")
+
+    if int(count) == 0:
+        # it could happen that the condition is not met, so the count is 0, thus the sums are 0
+        sum1 = 0
+        sum2 = 0
 
     s3select_assert_result( int(count)*4 , int(sum1)-int(sum2) )
 
