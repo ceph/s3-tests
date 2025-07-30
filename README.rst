@@ -26,11 +26,11 @@ You can specify which directory of tests to run::
 
 You can specify which file of tests to run::
 
-	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_s3.py
+	S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_s3.py
 
 You can specify which test to run::
 
-	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_s3.py::test_bucket_list_empty
+	S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_s3.py::test_bucket_list_empty
 
 Some tests have attributes set based on their current reliability and
 things like AWS not enforcing their spec stricly. You can filter tests
@@ -63,7 +63,7 @@ After the cluster is up the following command should be executed::
 
 You can run only the sts tests (all the three API's) with::
 
-        S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_sts.py
+        S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_sts.py
 
 You can filter tests based on the attributes. There is a attribute named ``test_of_sts`` to run AssumeRole and GetSessionToken tests and ``webidentity_test`` to run the AssumeRoleWithWebIdentity tests. If you want to execute only ``test_of_sts`` tests you can apply that filter as below::
 
@@ -89,11 +89,11 @@ Adding above capabilities to "iam" user is also taken care by vstart (If Ceph cl
 To run these tests, create configuration file with section "iam" and "s3 alt" refer s3tests.conf.SAMPLE.
 Once you have that configuration file copied and edited, you can run all the tests with::
 
-	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_iam.py
+	S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_iam.py
 
 You can also specify specific test to run::
 
-	S3TEST_CONF=your.conf tox s3tests_boto3/functional/test_iam.py::test_put_user_policy
+	S3TEST_CONF=your.conf tox -- s3tests_boto3/functional/test_iam.py::test_put_user_policy
 
 Some tests have attributes set such as "fails_on_rgw".
 You can filter tests based on their attributes::
