@@ -9661,10 +9661,22 @@ def verify_object(client, bucket, key, content=None, sc=None):
         assert body == content
 
 def verify_transition(client, bucket, key, sc=None, version=None):
-    if (version != None):
-        response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
-    else:
-        response = client.head_object(Bucket=bucket, Key=key)
+    restore_not_completed = True
+    transition_not_completed = True
+    retry = 0
+    while (restore_not_completed and transition_not_completed and retry < 4):
+        if (version != None):
+            response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
+        else:
+            response = client.head_object(Bucket=bucket, Key=key)
+        if 'Restore' in response:
+            restore_complete_string = "ongoing-request=\"false\""
+            if restore_complete_string in response['Restore']:
+                restore_not_completed = False
+        elif response['ContentLength'] != "0":
+            transition_not_completed = False
+        time.sleep(2)
+        retry = retry + 1
 
     # Iterate over the contents to find the StorageClass
     if 'StorageClass' in response:
@@ -9719,7 +9731,7 @@ def test_lifecycle_cloud_transition():
 
     cloud_client = get_cloud_client()
 
-    time.sleep(12*lc_interval)
+    time.sleep(2*lc_interval)
     expire1_key1_str = prefix + keys[0]
     verify_object(cloud_client, target_path, expire1_key1_str, keys[0], target_sc)
 
@@ -9995,7 +10007,7 @@ def test_restore_object_temporary():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_restore_debug_interval()
-    time.sleep(10 * lc_interval)
+    time.sleep(2 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -10037,7 +10049,7 @@ def test_restore_object_permanent():
     client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(10 * lc_interval)
+    time.sleep(2 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
@@ -10074,7 +10086,7 @@ def test_read_through():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_read_through_days()
-    time.sleep(10 * lc_interval)
+    time.sleep(2 * lc_interval)
 
     # Check the storage class after transitioning
     verify_transition(client, bucket, key, cloud_sc)
