@@ -9961,16 +9961,23 @@ def test_restore_object_temporary():
     verify_transition(client, bucket, key, cloud_sc)
 
     # Restore object temporarily
-    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 2})
+    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 20})
     time.sleep(5)
 
     # Verify object is restored temporarily
     verify_transition(client, bucket, key, cloud_sc)
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
-    time.sleep(2 * (restore_interval + lc_interval))
 
-    #verify object expired
+    # Now re-issue the request with 'Days' set to lower value
+    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 2})
+    time.sleep(2)
+    # ensure the object is still restored
+    response = client.head_object(Bucket=bucket, Key=key)
+    assert response['ContentLength'] == len(data)
+
+    # now verify if the object is expired as per the updated days value
+    time.sleep(2 * (restore_interval + lc_interval))
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == 0
 
