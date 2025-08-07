@@ -18364,10 +18364,15 @@ def test_multi_put_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
     key = 'obj'
+    body='abc'
 
     response = successful_conditional_multipart_upload(client, bucket, key, if_none_match='*')
     etag = response['ETag']
 
+    upload_id = client.create_multipart_upload(Bucket=bucket, Key=key)['UploadId']
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body)
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+    response = client.complete_multipart_upload(Bucket=bucket, Key=key, IfNoneMatch='*', UploadId=upload_id, MultipartUpload={'Parts': parts})
     failing_conditional_multipart_upload((412, 'PreconditionFailed'), client, bucket, key, if_none_match='*')
     failing_conditional_multipart_upload((412, 'PreconditionFailed'), client, bucket, key, if_none_match=etag)
 
