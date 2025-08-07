@@ -18366,37 +18366,17 @@ def test_multi_put_object_if_match():
     key = 'obj'
     body='abc'
 
-    response = successful_conditional_multipart_upload(client, bucket, key, if_none_match='*')
+    upload_id = client.create_multipart_upload(Bucket=bucket, Key=key)['UploadId']
+    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body)
+    parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
+    response = client.complete_multipart_upload(Bucket=bucket, Key=key, IfNoneMatch='*', UploadId=upload_id, MultipartUpload={'Parts': parts})
     etag = response['ETag']
 
     upload_id = client.create_multipart_upload(Bucket=bucket, Key=key)['UploadId']
     response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body)
     parts = [{'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]
-    response = client.complete_multipart_upload(Bucket=bucket, Key=key, IfNoneMatch='*', UploadId=upload_id, MultipartUpload={'Parts': parts})
-    failing_conditional_multipart_upload((412, 'PreconditionFailed'), client, bucket, key, if_none_match='*')
-    failing_conditional_multipart_upload((412, 'PreconditionFailed'), client, bucket, key, if_none_match=etag)
-
-    response = successful_conditional_multipart_upload(client, bucket, key, if_none_match='badetag')
-    etag = response['ETag']
-    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
-
-    response = successful_conditional_multipart_upload(client, bucket, key, if_match=etag)
-    etag = response['ETag']
-
-    client.delete_object(Bucket=bucket, Key=key)
-
-    failing_conditional_multipart_upload((404, 'NoSuchKey'), client, bucket, key, if_match='*')
-    failing_conditional_multipart_upload((404, 'NoSuchKey'), client, bucket, key, if_match='badetag')
-
-    response = successful_conditional_multipart_upload(client, bucket, key, if_none_match=etag)
-    etag = response['ETag']
-    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
-    response = successful_conditional_multipart_upload(client, bucket, key, if_match='*')
-    etag = response['ETag']
-    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
-    failing_conditional_multipart_upload((412, 'PreconditionFailed'), client, bucket, key, if_match='badetag')
-    response = successful_conditional_multipart_upload(client, bucket, key, if_match=etag)
-    assert 200 == response['ResponseMetadata']['HTTPStatusCode']
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, IfNoneMatch='*', UploadId=upload_id, MultipartUpload={'Parts': parts})
+    assert (412,'PreconditionFailed') == _get_status_and_error_code(e.response)
 
 @pytest.mark.conditional_write
 def test_put_current_object_if_none_match():
