@@ -14125,6 +14125,61 @@ def test_delete_bucket_encryption_kms():
 
     assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
 
+def _test_forced_sse_s3_default_upload(file_size):
+    """
+    The cluster is forcing AES256 encryption if the encryption header is empty.
+    Create a file of A's of certain size, and use it to set_contents_from_file.
+    Re-read the contents, and confirm we get same content as input i.e., A's
+    """
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    # make sure there is no bucket encryption in place
+    response_code = ""
+    try:
+        client.get_bucket_encryption(Bucket=bucket_name)
+    except ClientError as e:
+        response_code = e.response['Error']['Code']
+
+    assert response_code == 'ServerSideEncryptionConfigurationNotFoundError'
+
+    data = 'A'*file_size
+    response = client.put_object(Bucket=bucket_name, Key='testobj', Body=data)
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
+
+    response = client.get_object(Bucket=bucket_name, Key='testobj')
+    assert response['ResponseMetadata']['HTTPHeaders']['x-amz-server-side-encryption'] == 'AES256'
+    body = _get_body(response)
+    assert body == data
+
+@pytest.mark.encryption
+@pytest.mark.sse_s3
+@pytest.mark.forced_sse_s3
+@pytest.mark.fails_on_dbstore
+def test_forced_sse_s3_default_upload_1b():
+    _test_forced_sse_s3_default_upload(1)
+
+@pytest.mark.encryption
+@pytest.mark.sse_s3
+@pytest.mark.forced_sse_s3
+@pytest.mark.fails_on_dbstore
+def test_forced_sse_s3_default_upload_1kb():
+    _test_forced_sse_s3_default_upload(1024)
+
+@pytest.mark.encryption
+@pytest.mark.sse_s3
+@pytest.mark.forced_sse_s3
+@pytest.mark.fails_on_dbstore
+def test_forced_sse_s3_default_upload_1mb():
+    _test_forced_sse_s3_default_upload(1024*1024)
+
+@pytest.mark.encryption
+@pytest.mark.sse_s3
+@pytest.mark.forced_sse_s3
+@pytest.mark.fails_on_dbstore
+def test_forced_sse_s3_default_upload_8mb():
+    _test_forced_sse_s3_default_upload(8*1024*1024)
+
 def _test_sse_s3_default_upload(file_size):
     """
     Test enables bucket encryption.
