@@ -11803,6 +11803,47 @@ def test_put_obj_with_tags():
     tagset = tagset
     assert response_tagset == tagset
 
+@attr(resource='object')
+@attr(method='copy')
+@attr(operation='Test CopyObject with tag directive')
+@attr(assertion='success')
+@attr('tagging')
+def test_copy_object_with_tag_directive():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    client.put_object(Bucket=bucket_name, Key='foo123bar', Body=bytearray(1024), Tagging='foo=bar&1=2')
+    replace_tag_str = 'foo=1&bar=2&3=bar'
+    copy_source = {'Bucket': bucket_name, 'Key': 'foo123bar'}
+
+    # replace tags
+    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='bar321foo', Tagging=replace_tag_str, TaggingDirective='REPLACE')
+    response = client.get_object_tagging(Bucket=bucket_name, Key='bar321foo')
+    eq(response['TagSet'], [{'Key': '3', 'Value': 'bar'}, {'Key': 'bar', 'Value': '2'}, {'Key': 'foo', 'Value': '1'}])
+
+    # replace tags without specifing Tagging parameter
+    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='bar321', TaggingDirective='REPLACE')
+    response = client.get_object_tagging(Bucket=bucket_name, Key='bar321')
+    eq(response['TagSet'], [])
+
+    # copy tags from copy source object
+    client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key='bar123foo', TaggingDirective='COPY')
+    response = client.get_object_tagging(Bucket=bucket_name, Key='bar123foo')
+    eq(response['TagSet'], [{'Key': '1', 'Value': '2'}, {'Key': 'foo', 'Value': 'bar'}])
+
+    # replace too many tags
+    exceed_tags = '1=1&2=2&3=3&4=4&5=5&6=6&7=7&8=8&9=9&10=10&11=11'
+    e = assert_raises(ClientError, client.copy_object, Bucket=bucket_name, CopySource=copy_source, Key='foo123', Tagging=exceed_tags, TaggingDirective='REPLACE')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(error_code, 'InvalidArgument')
+
+    # wrong tagging directive, ignoring case and only allow: COPY | REPLACE
+    e = assert_raises(ClientError, client.copy_object, Bucket=bucket_name, CopySource=copy_source, Key='bar123', Tagging=replace_tag_str, TaggingDirective='REPALACE')
+    status, error_code = _get_status_and_error_code(e.response)
+    eq(status, 400)
+    eq(error_code, 'InvalidArgument')
+
 def _make_arn_resource(path="*"):
     return "arn:aws:s3:::{}".format(path)
 
