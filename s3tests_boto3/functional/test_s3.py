@@ -14521,37 +14521,12 @@ def test_multipart_checksum_sha256():
     assert status == 400
     assert error_code == 'BadDigest'
 
-    # XXXX re-trying the complete is failing in RGW due to an internal error that appears not caused
-    # checksums;
-    # 2024-04-25T17:47:47.991-0400 7f78e3a006c0  0 req 4931907640780566174 0.011000143s s3:complete_multipart check_previously_completed() ERROR: get_obj_attrs() returned ret=-2
-    # 2024-04-25T17:47:47.991-0400 7f78e3a006c0  2 req 4931907640780566174 0.011000143s s3:complete_multipart completing
-    # 2024-04-25T17:47:47.991-0400 7f78e3a006c0  1 req 4931907640780566174 0.011000143s s3:complete_multipart ERROR: either op_ret is negative (execute failed) or target_obj is null, op_ret: -2200
-    # -2200 turns into 500, InternalError
-
-    key = "mymultipart2"
-    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
-    assert 'SHA256' == response['ChecksumAlgorithm']
-    upload_id = response['UploadId']
-
-    body = FakeWriteFile(size, 'A')
-    part_sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part_sha256sum)
-
     # should reject the missing part checksum
-    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='bad', MultipartUpload={'Parts': [
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256='SHA256', MultipartUpload={'Parts': [
         {'ETag': response['ETag'].strip('"'), 'PartNumber': 1}]})
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 400
     assert error_code == 'BadDigest'
-
-    key = "mymultipart3"
-    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
-    assert 'SHA256' == response['ChecksumAlgorithm']
-    upload_id = response['UploadId']
-
-    body = FakeWriteFile(size, 'A')
-    part_sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
-    response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=part_sha256sum)
 
     composite_sha256sum = 'Ok6Cs5b96ux6+MWQkJO7UBT5sKPBeXBLwvj/hK89smg=-1'
     response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
