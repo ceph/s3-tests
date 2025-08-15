@@ -8416,6 +8416,67 @@ def test_lifecycle_get_no_id():
             print("rules not right")
             assert False
 
+@attr(resource='bucket')
+@attr(method='get')
+@attr(operation='get lifecycle config for filter with And operator')
+@attr('lifecycle')
+def test_lifecycle_get_with_filter():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    rules = [
+        {
+            'ID': 'Rule1',
+            'Status': 'Enabled',
+            'Filter': {
+              'And': {
+                'Prefix': 'expired/',
+                'Tags': [
+                  { 'Key': 'test1', 'Value': 'test1' },
+                  { 'Key': 'test2', 'Value': 'test2' },
+                ],
+              }
+            },
+            'Expiration': { 'Days': 365 },
+            'Status': 'Enabled',
+        },
+        {
+            'ID': 'Rule2',
+            'Status': 'Enabled',
+            'Filter': {
+              'And': {
+                'Prefix': 'GLACIER/',
+                'Tags': [
+                  { 'Key': 'test3', 'Value': 'test3' },
+                  { 'Key': 'test4', 'Value': 'test4' },
+                ],
+              }
+            },
+            'Transitions': [
+              {'Days': 120, 'StorageClass': 'GLACIER'},
+            ],
+            'Status': 'Enabled',
+        },
+    ]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+    response = client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+    current_lc = response['Rules']
+
+    for lc_rule in current_lc:
+        if lc_rule['ID'] == rules[0]['ID']:
+            eq(lc_rule['Expiration']['Days'],      rules[0]['Expiration']['Days'])
+            eq(lc_rule['Filter']['And']['Prefix'], rules[0]['Filter']['And']['Prefix'])
+            eq(lc_rule['Filter']['And']['Tags'],   rules[0]['Filter']['And']['Tags'])
+        elif lc_rule['ID'] == rules[1]['ID']:
+            eq(lc_rule['Transitions'],             rules[1]['Transitions'])
+            eq(lc_rule['Filter']['And']['Prefix'], rules[1]['Filter']['And']['Prefix'])
+            eq(lc_rule['Filter']['And']['Tags'],   rules[1]['Filter']['And']['Tags'])
+        else:
+            # neither of the rules we supplied was returned, something wrong
+            print("rules not right")
+            assert False
+
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
