@@ -86,6 +86,16 @@ def get_random_string():
 
     return uuid.uuid4().hex[:6].upper()
 
+def get_json_value(json_str):
+#purpose : return only values for the case of single key/value or multiple
+    parsed = json.loads(json_str)
+    values = list(parsed.values())
+    
+    if len(parsed) == 1:
+        return values[0]
+    else:
+        return values
+
 @pytest.mark.s3select
 def test_generate_where_clause():
 
@@ -435,15 +445,15 @@ def test_count_json_operation():
     obj_to_load = create_random_json_object(num_of_rows,10)
     upload_object(bucket_name,json_obj_name,obj_to_load)
     res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*];"))
-    s3select_assert_result( 1,  int(res))
+    s3select_assert_result( 1,  int(get_json_value(res)))
 
     res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;"))
-    s3select_assert_result( 1,  int(res))
+    s3select_assert_result( 1,  int(get_json_value(res)))
 
     obj_to_load = create_random_json_object(3,10)
     upload_object(bucket_name,json_obj_name,obj_to_load)
     res = remove_xml_tags_from_result(run_s3select_json(bucket_name,json_obj_name,"select count(0) from s3object[*].root;"))
-    s3select_assert_result( 3,  int(res))
+    s3select_assert_result( 3,  int(get_json_value(res)))
 
 @pytest.mark.s3select
 def test_json_column_sum_min_max():
@@ -464,47 +474,48 @@ def test_json_column_sum_min_max():
     list_int = create_list_of_int( 1 , csv_obj )
     res_target = min( list_int )
 
-    s3select_assert_result( int(res_s3select), int(res_target))
+    s3select_assert_result( int(get_json_value(res_s3select)), int(res_target))
 
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select min(_1.c4) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = min( list_int )
 
-    s3select_assert_result( int(res_s3select), int(res_target))
+    s3select_assert_result( int(get_json_value(res_s3select)), int(res_target))
 
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select avg(_1.c6) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 6 , csv_obj )
     res_target = float(sum(list_int ))/10000
 
-    s3select_assert_result( float(res_s3select), float(res_target))
+    s3select_assert_result( float(get_json_value(res_s3select)), float(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select max(_1.c4) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = max( list_int )
 
-    s3select_assert_result( int(res_s3select), int(res_target))
+    s3select_assert_result( int(get_json_value(res_s3select)), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select max(_1.c7) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 7 , csv_obj )
     res_target = max( list_int )
 
-    s3select_assert_result( int(res_s3select), int(res_target))
+    s3select_assert_result( int(get_json_value(res_s3select)), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c4) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 4 , csv_obj )
     res_target = sum( list_int )
 
-    s3select_assert_result( int(res_s3select), int(res_target))
+    s3select_assert_result( int(get_json_value(res_s3select)), int(res_target))
     
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select sum(_1.c7) from s3object[*].root;")  ).replace(",","")
     list_int = create_list_of_int( 7 , csv_obj )
     res_target = sum( list_int )
 
-    s3select_assert_result(  int(res_s3select) , int(res_target) )
+    s3select_assert_result(  int(get_json_value(res_s3select)) , int(res_target) )
 
     # the following queries, validates on *random* input an *accurate* relation between condition result,sum operation and count operation.
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name_2,json_obj_name_2,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 2;" ) )
-    count,sum1,sum2 = res_s3select.split(",")
+    res_s3select = get_json_value(res_s3select)
+    count,sum1,sum2 = res_s3select
 
     if int(count) == 0:
         # it means that the where clause condition is not satisfied, so the sum should be 0(otherwise the null value will cause an error)
@@ -514,7 +525,9 @@ def test_json_column_sum_min_max():
     s3select_assert_result( int(count)*2 , int(sum1)-int(sum2 ) )
 
     res_s3select = remove_xml_tags_from_result(  run_s3select_json(bucket_name,json_obj_name,"select count(0),sum(_1.c1),sum(_1.c2) from s3object[*].root where (_1.c1-_1.c2) = 4;" ) ) 
-    count,sum1,sum2 = res_s3select.split(",")
+
+    res_s3select = get_json_value(res_s3select)
+    count,sum1,sum2 = res_s3select
 
     if int(count) == 0:
         # it means that the where clause condition is not satisfied, so the sum should be 0(otherwise the null value will cause an error)
