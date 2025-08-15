@@ -1346,6 +1346,48 @@ def test_bucket_list_marker_not_in_list():
     keys = _get_keys(response)
     assert keys == [ 'foo','quxx']
 
+def test_versioned_bucket_listing():
+    client = get_client()
+    bucket_name = get_new_bucket(client)
+    count = 15
+    all_versions = set()
+
+    # write one object before enabling versioning
+    client.put_object(Bucket=bucket_name, Key='A')
+    # this gets converted to a "null" version
+    all_versions.add('null')
+
+    check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
+
+    for i in range(count):
+        response = client.put_object(Bucket=bucket_name, Key='A')
+        all_versions.add(response['VersionId'])
+
+    response = client.put_object(Bucket=bucket_name, Key='B')
+    all_versions.add(response['VersionId'])
+
+    last_marker = None
+    last_version = None
+    paginator = client.get_paginator('list_object_versions')
+    for page in paginator.paginate(Bucket=bucket_name, MaxKeys=1):
+        next_marker = page.get('NextKeyMarker')
+        next_version = page.get('NextVersionIdMarker')
+        assert last_marker != next_marker or last_version != next_version
+        last_marker = next_marker
+        last_version = next_version
+        for v in page['Versions']:
+            all_versions.remove(v['VersionId']) # fails if already removed
+
+    assert not all_versions, 'list_object_versions() did not visit every version'
+
+    response = client.list_objects(Bucket=bucket_name, Marker='A', MaxKeys=1)
+    assert response['Contents'][0]['Key'] == 'B'
+    assert not response['IsTruncated']
+
+    response = client.list_objects_v2(Bucket=bucket_name, StartAfter='A', MaxKeys=1)
+    assert response['Contents'][0]['Key'] == 'B'
+    assert not response['IsTruncated']
+
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_startafter_not_in_list():
     key_names = ['bar', 'baz', 'foo', 'quxx']
