@@ -1648,6 +1648,7 @@ def _make_objs_dict(key_names):
     objs_dict = {'Objects': objs_list}
     return objs_dict
 
+@pytest.mark.fails_on_posix
 def test_versioning_concurrent_multi_object_delete():
     num_objects = 5
     num_threads = 5
@@ -3164,6 +3165,7 @@ def test_put_object_ifmatch_overwrite_existed_good():
 
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_object_ifmatch_nonexisted_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -3494,6 +3496,7 @@ def _test_object_raw_get_x_amz_expires_not_expired(client):
 def test_object_raw_get_x_amz_expires_not_expired():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_client())
 
+@pytest.mark.fails_on_posix
 def test_object_raw_get_x_amz_expires_not_expired_tenant():
     _test_object_raw_get_x_amz_expires_not_expired(client=get_tenant_client())
 
@@ -3584,6 +3587,7 @@ def test_object_presigned_put_object_with_acl():
     _test_object_presigned_put_object_with_acl(
         client=get_client())
 
+@pytest.mark.fails_on_posix
 def test_object_presigned_put_object_with_acl_tenant():
     _test_object_presigned_put_object_with_acl(
         client=get_tenant_client())
@@ -5544,6 +5548,7 @@ def test_object_copy_diff_bucket():
     assert 'foo' == body
 
 @pytest.mark.copy
+@pytest.mark.fails_on_posix
 def test_object_copy_not_owned_bucket():
     client = get_client()
     alt_client = get_alt_client()
@@ -5913,6 +5918,7 @@ def test_object_copy_versioning_multipart_upload():
     assert key1_metadata == response['Metadata']
     assert content_type == response['ContentType']
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_empty():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6019,6 +6025,7 @@ def test_multipart_copy_small():
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
 @pytest.mark.copy
+@pytest.mark.fails_on_posix
 def test_multipart_copy_invalid_range():
     client = get_client()
     src_key = 'source'
@@ -6098,6 +6105,7 @@ def test_multipart_copy_without_range():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_copy_special_names():
     src_bucket_name = get_new_bucket()
 
@@ -6132,6 +6140,7 @@ def _check_content_using_range(key, bucket_name, data, step):
         assert body == data[ofs:end+1]
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6191,6 +6200,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
     dest_bucket_name = get_new_bucket()
@@ -6237,6 +6247,7 @@ def _check_upload_multipart_resend(bucket_name, key, objlen, resend_parts):
     _check_content_using_range(key, bucket_name, data, 10000000)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_upload_resend_part():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6248,6 +6259,7 @@ def test_multipart_upload_resend_part():
     _check_upload_multipart_resend(bucket_name, key, objlen, [1,2])
     _check_upload_multipart_resend(bucket_name, key, objlen, [0,1,2,3,4,5])
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_multiple_sizes():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6279,6 +6291,7 @@ def test_multipart_upload_multiple_sizes():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_copy_multiple_sizes():
     src_key = 'foo'
     src_bucket_name = _create_key_with_random_content(src_key, 12*1024*1024)
@@ -6317,6 +6330,7 @@ def test_multipart_copy_multiple_sizes():
     client.complete_multipart_upload(Bucket=dest_bucket_name, Key=dest_key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     _check_key_content(src_key, src_bucket_name, dest_key, dest_bucket_name)
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_size_too_small():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6332,6 +6346,7 @@ def test_multipart_upload_size_too_small():
 def gen_rand_string(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
+@pytest.mark.fails_on_posix
 def _do_test_multipart_upload_contents(bucket_name, key, num_parts):
     payload=gen_rand_string(5)*1024*1024
     client = get_client()
@@ -6368,6 +6383,7 @@ def test_multipart_upload_contents():
     bucket_name = get_new_bucket()
     _do_test_multipart_upload_contents(bucket_name, 'mymultipart', 3)
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_overwrite_existing_object():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6393,6 +6409,7 @@ def test_multipart_upload_overwrite_existing_object():
 
     assert test_string == payload*num_parts
 
+@pytest.mark.fails_on_posix
 def test_abort_multipart_upload():
     bucket_name = get_new_bucket()
     key="mymultipart"
@@ -6405,6 +6422,7 @@ def test_abort_multipart_upload():
     response = client.list_objects_v2(Bucket=bucket_name, Prefix=key)
     assert 'Contents' not in response
 
+@pytest.mark.fails_on_posix
 def test_abort_multipart_upload_not_found():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6417,6 +6435,7 @@ def test_abort_multipart_upload_not_found():
     assert error_code == 'NoSuchUpload'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_list_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6448,6 +6467,7 @@ def test_list_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id3)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_list_multipart_upload_owner():
     bucket_name = get_new_bucket()
 
@@ -6493,6 +6513,7 @@ def test_list_multipart_upload_owner():
     finally:
         client1.abort_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload1)
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_missing_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6512,6 +6533,7 @@ def test_multipart_upload_missing_part():
     assert status == 400
     assert error_code == 'InvalidPart'
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_incorrect_etag():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6532,6 +6554,7 @@ def test_multipart_upload_incorrect_etag():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6575,6 +6598,7 @@ def test_multipart_get_part():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_sse_c_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6629,6 +6653,7 @@ def test_multipart_sse_c_get_part():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_single_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6671,6 +6696,7 @@ def test_multipart_single_get_part():
     assert error_code == 'InvalidPart'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_non_multipart_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6692,6 +6718,7 @@ def test_non_multipart_get_part():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_non_multipart_sse_c_get_part():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6752,6 +6779,7 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     return l[1]
 
+@pytest.mark.fails_on_posix
 def test_100_continue():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -6786,6 +6814,7 @@ def test_100_continue_error_retry():
     # send another request on the same connection
     client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
 
+@pytest.mark.fails_on_posix
 def test_set_cors():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6821,6 +6850,7 @@ def _cors_request_and_check(func, url, headers, expect_status, expect_allow_orig
     assert r.headers.get('access-control-allow-origin', None) == expect_allow_origin
     assert r.headers.get('access-control-allow-methods', None) == expect_allow_methods
 
+@pytest.mark.fails_on_posix
 def test_cors_origin_response():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6896,6 +6926,7 @@ def test_cors_origin_response():
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'GET'}, 403, None, None)
     _cors_request_and_check(requests.options, url, {'Origin': 'foo.put', 'Access-Control-Request-Method': 'PUT'}, 200, 'foo.put', 'PUT')
 
+@pytest.mark.fails_on_posix
 def test_cors_origin_wildcard():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6921,6 +6952,7 @@ def test_cors_origin_wildcard():
     _cors_request_and_check(requests.get, url, None, 200, None, None)
     _cors_request_and_check(requests.get, url, {'Origin': 'example.origin'}, 200, '*', 'GET')
 
+@pytest.mark.fails_on_posix
 def test_cors_header_option():
     bucket_name = _setup_bucket_acl(bucket_acl='public-read')
     client = get_client()
@@ -6986,12 +7018,14 @@ def _test_cors_options_presigned_method(client, method, cannedACL=None):
     _cors_request_and_check(requests.options, url, headers,
                             200, 'example', httpMethod)
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_get_object():
     _test_cors_options_presigned_method(
         client=get_client(),
         method='get_object',
     )
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_get_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
@@ -7012,12 +7046,14 @@ def test_cors_presigned_get_object_tenant_v2():
         method='get_object',
     )
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_put_object():
     _test_cors_options_presigned_method(
         client=get_client(),
         method='put_object',
     )
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_put_object_with_acl():
     _test_cors_options_presigned_method(
         client=get_client(),
@@ -7039,12 +7075,14 @@ def test_cors_presigned_put_object_tenant_v2():
         method='put_object',
     )
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_put_object_tenant():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
         method='put_object',
     )
 
+@pytest.mark.fails_on_posix
 def test_cors_presigned_put_object_tenant_with_acl():
     _test_cors_options_presigned_method(
         client=get_tenant_client(),
@@ -7053,6 +7091,7 @@ def test_cors_presigned_put_object_tenant_with_acl():
     )
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_set_bucket_tagging():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7201,12 +7240,15 @@ def _test_atomic_read(file_size):
 
     _verify_atomic_key_data(bucket_name, 'testobj', file_size, 'B')
 
+@pytest.mark.fails_on_posix
 def test_atomic_read_1mb():
     _test_atomic_read(1024*1024)
 
+@pytest.mark.fails_on_posix
 def test_atomic_read_4mb():
     _test_atomic_read(1024*1024*4)
 
+@pytest.mark.fails_on_posix
 def test_atomic_read_8mb():
     _test_atomic_read(1024*1024*8)
 
@@ -7242,12 +7284,15 @@ def _test_atomic_write(file_size):
     # verify B's
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
+@pytest.mark.fails_on_posix
 def test_atomic_write_1mb():
     _test_atomic_write(1024*1024)
 
+@pytest.mark.fails_on_posix
 def test_atomic_write_4mb():
     _test_atomic_write(1024*1024*4)
 
+@pytest.mark.fails_on_posix
 def test_atomic_write_8mb():
     _test_atomic_write(1024*1024*8)
 
@@ -7275,12 +7320,15 @@ def _test_atomic_dual_write(file_size):
     # verify the file
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
+@pytest.mark.fails_on_posix
 def test_atomic_dual_write_1mb():
     _test_atomic_dual_write(1024*1024)
 
+@pytest.mark.fails_on_posix
 def test_atomic_dual_write_4mb():
     _test_atomic_dual_write(1024*1024*4)
 
+@pytest.mark.fails_on_posix
 def test_atomic_dual_write_8mb():
     _test_atomic_dual_write(1024*1024*8)
 
@@ -7314,6 +7362,7 @@ def _test_atomic_conditional_write(file_size):
     _verify_atomic_key_data(bucket_name, objname, file_size, 'B')
 
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_atomic_conditional_write_1mb():
     _test_atomic_conditional_write(1024*1024)
 
@@ -7374,6 +7423,7 @@ def test_atomic_write_bucket_gone():
     assert status == 404
     assert error_code == 'NoSuchBucket'
 
+@pytest.mark.fails_on_posix
 def test_atomic_multipart_upload_write():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7412,6 +7462,7 @@ class ActionOnCount:
         if self.count == self.trigger_count:
             self.result = self.action()
 
+@pytest.mark.fails_on_posix
 def test_multipart_resend_first_finishes_last():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7469,6 +7520,7 @@ def test_multipart_resend_first_finishes_last():
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_ranged_request_response_code():
     content = 'testcontent'
 
@@ -7487,6 +7539,7 @@ def _generate_random_string(size):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_ranged_big_request_response_code():
     content = _generate_random_string(8*1024*1024)
 
@@ -7502,6 +7555,7 @@ def test_ranged_big_request_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_ranged_request_skip_leading_bytes_response_code():
     content = 'testcontent'
 
@@ -7517,6 +7571,7 @@ def test_ranged_request_skip_leading_bytes_response_code():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_ranged_request_return_trailing_bytes_response_code():
     content = 'testcontent'
 
@@ -7531,6 +7586,7 @@ def test_ranged_request_return_trailing_bytes_response_code():
     assert response['ResponseMetadata']['HTTPHeaders']['content-range'] == 'bytes 4-10/11'
     assert response['ResponseMetadata']['HTTPStatusCode'] == 206
 
+@pytest.mark.fails_on_posix
 def test_ranged_request_invalid_range():
     content = 'testcontent'
 
@@ -7545,6 +7601,7 @@ def test_ranged_request_invalid_range():
     assert status == 416
     assert error_code == 'InvalidRange'
 
+@pytest.mark.fails_on_posix
 def test_ranged_request_empty_object():
     content = ''
 
@@ -7559,6 +7616,7 @@ def test_ranged_request_empty_object():
     assert status == 416
     assert error_code == 'InvalidRange'
 
+@pytest.mark.fails_on_posix
 def test_versioning_bucket_create_suspend():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -7642,6 +7700,7 @@ def _do_test_create_remove_versions(client, bucket_name, key, num_versions, remo
         print(response['Versions'])
 
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_create_read_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7656,6 +7715,7 @@ def test_versioning_obj_create_read_remove():
     _do_test_create_remove_versions(client, bucket_name, key, num_versions, 4, -1)
     _do_test_create_remove_versions(client, bucket_name, key, num_versions, 3, 3)
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_create_read_remove_head():
     bucket_name = get_new_bucket()
 
@@ -7691,6 +7751,7 @@ def test_versioning_obj_create_read_remove_head():
     clean_up_bucket(client, bucket_name, key, version_ids)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_stack_delete_merkers():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7706,6 +7767,7 @@ def test_versioning_stack_delete_merkers():
     assert len(versions) == 1
     assert len(delete_markers) == 3
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_plain_null_version_removal():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -7726,6 +7788,7 @@ def test_versioning_obj_plain_null_version_removal():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_plain_null_version_overwrite():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -7759,6 +7822,7 @@ def test_versioning_obj_plain_null_version_overwrite():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_plain_null_version_overwrite_suspended():
     bucket_name = get_new_bucket()
     check_versioning(bucket_name, None)
@@ -7824,6 +7888,7 @@ def overwrite_suspended_versioning_obj(client, bucket_name, key, version_ids, co
     return (version_ids, contents)
 
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_suspend_versions():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7858,6 +7923,7 @@ def test_versioning_obj_suspend_versions():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_obj_suspended_copy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7892,6 +7958,7 @@ def test_versioning_obj_suspended_copy():
 
     clean_up_bucket(client, bucket_name, key1, version_ids)
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_create_versions_remove_all():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7908,6 +7975,7 @@ def test_versioning_obj_create_versions_remove_all():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_create_versions_remove_special_names():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7926,6 +7994,7 @@ def test_versioning_obj_create_versions_remove_special_names():
         assert len(version_ids) == len(contents)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_obj_create_overwrite_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -7954,6 +8023,7 @@ def test_versioning_obj_create_overwrite_multipart():
     assert len(version_ids) == 0
     assert len(version_ids) == len(contents)
 
+@pytest.mark.fails_on_posix
 def test_versioning_obj_list_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8011,6 +8081,7 @@ def test_versioning_obj_list_marker():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_copy_obj_version():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8048,6 +8119,7 @@ def test_versioning_copy_obj_version():
     body = _get_body(response)
     assert body == contents[-1]
 
+@pytest.mark.fails_on_posix
 def test_versioning_multi_object_delete():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8073,6 +8145,7 @@ def test_versioning_multi_object_delete():
     response = client.list_object_versions(Bucket=bucket_name)
     assert not 'Versions' in response
 
+@pytest.mark.fails_on_posix
 def test_versioning_multi_object_delete_with_marker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8106,6 +8179,7 @@ def test_versioning_multi_object_delete_with_marker():
     assert not 'DeleteMarkers' in response
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_multi_object_delete_with_marker_create():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8127,6 +8201,7 @@ def test_versioning_multi_object_delete_with_marker_create():
     assert delete_marker_version_id == delete_markers[0]['VersionId']
     assert key == delete_markers[0]['Key']
 
+@pytest.mark.fails_on_posix
 def test_versioned_object_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8195,6 +8270,7 @@ def test_versioned_object_acl():
     check_grants(grants, default_policy)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioned_object_acl_no_version_specified():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8281,6 +8357,7 @@ def _do_clear_versioned_bucket_concurrent(client, bucket_name):
         t.append(thr)
     return t
 
+@pytest.mark.fails_on_posix
 def test_versioned_concurrent_object_create_concurrent_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8305,6 +8382,7 @@ def test_versioned_concurrent_object_create_concurrent_remove():
         response = client.list_object_versions(Bucket=bucket_name)
         assert not 'Versions' in response
 
+@pytest.mark.fails_on_posix
 def test_versioned_concurrent_object_create_and_remove():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8334,6 +8412,7 @@ def test_versioned_concurrent_object_create_and_remove():
     assert not 'Versions' in response
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8344,6 +8423,7 @@ def test_lifecycle_set():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_get():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8355,6 +8435,7 @@ def test_lifecycle_get():
     assert response['Rules'] == rules
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_delete():
     client = get_client()
     bucket_name = get_new_bucket(client)
@@ -8387,6 +8468,7 @@ def test_lifecycle_delete():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_get_no_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8562,6 +8644,7 @@ def test_lifecycle_expiration_tags1():
     assert len(expire_objects) == 0
 
 # factor out common setup code
+@pytest.mark.fails_on_posix
 def setup_lifecycle_tags2(client, bucket_name):
     tom_key = 'days1/tom'
     tom_tagset = {'TagSet':
@@ -8622,6 +8705,7 @@ def setup_lifecycle_tags2(client, bucket_name):
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_tags2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8640,6 +8724,7 @@ def test_lifecycle_expiration_tags2():
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_versioned_tags2():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8710,6 +8795,7 @@ def verify_lifecycle_expiration_noncur_tags(client, bucket_name, secs):
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_noncur_tags1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8734,6 +8820,7 @@ def test_lifecycle_expiration_noncur_tags1():
     # at T+60, only the current object version should exist
     assert num_objs == 1
 
+@pytest.mark.fails_on_posix
 def wait_interval_list_object_versions(client, bucket_name, secs):
     time.sleep(secs)
     try:
@@ -8747,6 +8834,7 @@ def wait_interval_list_object_versions(client, bucket_name, secs):
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_newer_noncurrent():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8791,6 +8879,7 @@ def test_lifecycle_expiration_newer_noncurrent():
     # at T+20, 6 objects should exist (1 current and (9 - 5) noncurrent)
     assert num_objs == 6
 
+@pytest.mark.fails_on_posix
 def get_byte_buffer(nbytes):
     buf = BytesIO(b"")
     for x in range(nbytes):
@@ -8802,6 +8891,7 @@ def get_byte_buffer(nbytes):
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_size_gt():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8855,6 +8945,7 @@ def test_lifecycle_expiration_size_gt():
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_size_lt():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8905,6 +8996,7 @@ def test_lifecycle_expiration_size_lt():
     assert objects[0]['Key'] == "myobject_big"
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_id_too_long():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8917,6 +9009,7 @@ def test_lifecycle_id_too_long():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_same_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8930,6 +9023,7 @@ def test_lifecycle_same_id():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_invalid_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8958,6 +9052,7 @@ def test_lifecycle_invalid_status():
     assert error_code == 'MalformedXML'
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8968,6 +9063,7 @@ def test_lifecycle_set_date():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8982,6 +9078,7 @@ def test_lifecycle_set_invalid_date():
 @pytest.mark.lifecycle_expiration
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_date():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
     client = get_client()
@@ -9004,6 +9101,7 @@ def test_lifecycle_expiration_date():
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_posix
 def test_lifecycle_expiration_days0():
     bucket_name = _create_objects(keys=['days0/foo', 'days0/bar'])
     client = get_client()
@@ -9185,6 +9283,7 @@ def test_lifecycle_expiration_header_and_tags_head():
     assert check_lifecycle_expiration_header(response, datetime.datetime.now(None), 'rule1', 1) == False
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_noncurrent():
     bucket_name = _create_objects(keys=['past/foo', 'future/bar'])
     client = get_client()
@@ -9224,6 +9323,7 @@ def test_lifecycle_noncur_expiration():
     assert len(expire_versions) == 4
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_deletemarker():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9233,6 +9333,7 @@ def test_lifecycle_set_deletemarker():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9242,6 +9343,7 @@ def test_lifecycle_set_filter():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_empty_filter():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9320,6 +9422,7 @@ def test_lifecycle_deletemarker_expiration_with_days_tag():
     assert len(delete_markers) == 0
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_multipart():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9369,6 +9472,7 @@ def test_lifecycle_multipart_expiration():
     assert len(expired_uploads) == 1
 
 @pytest.mark.lifecycle
+@pytest.mark.fails_on_posix
 def test_lifecycle_transition_set_invalid_date():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -9408,6 +9512,7 @@ def _test_encryption_sse_customer_write(file_size):
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_transition
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_lifecycle_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
@@ -9453,6 +9558,7 @@ def test_lifecycle_transition():
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_transition
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_lifecycle_transition_single_rule_multi_trans():
     sc = configured_storage_classes()
     if len(sc) < 3:
@@ -9495,6 +9601,7 @@ def test_lifecycle_transition_single_rule_multi_trans():
 
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_transition
+@pytest.mark.fails_on_posix
 def test_lifecycle_set_noncurrent_transition():
     sc = configured_storage_classes()
     if len(sc) < 3:
@@ -9678,6 +9785,7 @@ def verify_transition(client, bucket, key, sc=None, version=None):
 @pytest.mark.cloud_transition
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_cloud_transition():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
@@ -9762,6 +9870,7 @@ def test_lifecycle_cloud_transition():
 @pytest.mark.cloud_transition
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_cloud_multiple_transition():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
@@ -9922,6 +10031,7 @@ def test_lifecycle_noncur_cloud_transition():
 @pytest.mark.cloud_transition
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_lifecycle_cloud_transition_large_obj():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
@@ -9974,6 +10084,7 @@ def test_lifecycle_cloud_transition_large_obj():
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_restore_object_temporary():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc is None:
@@ -10024,6 +10135,7 @@ def test_restore_object_temporary():
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_restore_object_permanent():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc is None:
@@ -10060,6 +10172,7 @@ def test_restore_object_permanent():
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_read_through():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc is None:
@@ -10105,6 +10218,7 @@ def test_read_through():
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_restore_noncur_obj():
     cloud_sc = get_cloud_storage_class()
     if cloud_sc == None:
@@ -10190,29 +10304,34 @@ def test_restore_noncur_obj():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encrypted_transfer_1b():
     _test_encryption_sse_customer_write(1)
 
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encrypted_transfer_1kb():
     _test_encryption_sse_customer_write(1024)
 
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encrypted_transfer_1MB():
     _test_encryption_sse_customer_write(1024*1024)
 
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encrypted_transfer_13b():
     _test_encryption_sse_customer_write(13)
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_method_head():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10238,6 +10357,7 @@ def test_encryption_sse_c_method_head():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_present():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10258,6 +10378,7 @@ def test_encryption_sse_c_present():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_other_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10285,6 +10406,7 @@ def test_encryption_sse_c_other_key():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_invalid_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10303,6 +10425,7 @@ def test_encryption_sse_c_invalid_md5():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_no_md5():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10318,6 +10441,7 @@ def test_encryption_sse_c_no_md5():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10332,6 +10456,7 @@ def test_encryption_sse_c_no_key():
     e = assert_raises(ClientError, client.put_object, Bucket=bucket_name, Key=key, Body=data)
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_key_no_sse_c():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10399,6 +10524,7 @@ def _check_content_using_range_enc(client, bucket_name, key, data, size, step, e
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10445,6 +10571,7 @@ def test_encryption_sse_c_multipart_upload():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_unaligned_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10546,6 +10673,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_2():
     assert status == 400
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_multipart_bad_download():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10593,6 +10721,7 @@ def test_encryption_sse_c_multipart_bad_download():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_post_object_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10648,6 +10777,7 @@ def test_encryption_sse_c_post_object_authenticated_request():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_enforced_with_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10678,6 +10808,7 @@ def test_encryption_sse_c_enforced_with_bucket_policy():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_deny_algo_with_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10733,6 +10864,7 @@ def _test_sse_kms_customer_write(file_size, key_id = 'testkey-1'):
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_method_head():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10760,6 +10892,7 @@ def test_sse_kms_method_head():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_present():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10780,6 +10913,7 @@ def test_sse_kms_present():
     assert body == data
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_sse_kms_no_key():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10796,6 +10930,7 @@ def test_sse_kms_no_key():
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_sse_kms_not_declared():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10814,6 +10949,7 @@ def test_sse_kms_not_declared():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_multipart_upload():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10859,6 +10995,7 @@ def test_sse_kms_multipart_upload():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_multipart_invalid_chunks_1():
     kms_keyid = get_main_kms_keyid()
     kms_keyid2 = get_secondary_kms_keyid()
@@ -10886,6 +11023,7 @@ def test_sse_kms_multipart_invalid_chunks_1():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_multipart_invalid_chunks_2():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10912,6 +11050,7 @@ def test_sse_kms_multipart_invalid_chunks_2():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
     bucket_name = get_new_bucket()
@@ -10958,6 +11097,7 @@ def test_sse_kms_post_object_authenticated_request():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_transfer_1b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -10967,6 +11107,7 @@ def test_sse_kms_transfer_1b():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_transfer_1kb():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -10976,6 +11117,7 @@ def test_sse_kms_transfer_1kb():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_transfer_1MB():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -10985,6 +11127,7 @@ def test_sse_kms_transfer_1MB():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_transfer_13b():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -10993,6 +11136,7 @@ def test_sse_kms_transfer_13b():
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_sse_kms_read_declare():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11012,6 +11156,7 @@ def test_sse_kms_read_declare():
     assert status == 400
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11042,6 +11187,7 @@ def test_bucket_policy():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
+@pytest.mark.fails_on_posix
 def test_bucketv2_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11152,6 +11298,7 @@ def test_bucket_policy_deny_self_denied_policy_confirm_header(iam_root):
     check_access_denied(root_client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11188,6 +11335,7 @@ def test_bucket_policy_acl():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
+@pytest.mark.fails_on_posix
 def test_bucketv2_policy_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11223,6 +11371,7 @@ def test_bucketv2_policy_acl():
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_different_tenant():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11255,6 +11404,7 @@ def test_bucket_policy_different_tenant():
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_multipart():
     client = get_client()
     alt_client = get_alt_client()
@@ -11289,6 +11439,7 @@ def test_bucket_policy_multipart():
     alt_client.create_multipart_upload(Bucket=bucket_name, Key=key)
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_tenanted_bucket():
     tenant_client = get_tenant_client()
     bucket_name = get_new_bucket(tenant_client)
@@ -11323,6 +11474,7 @@ def test_bucket_policy_tenanted_bucket():
     assert len(response['Contents']) == 1
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_another_bucket():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
@@ -11361,6 +11513,7 @@ def test_bucket_policy_another_bucket():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
+@pytest.mark.fails_on_posix
 def test_bucketv2_policy_another_bucket():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
@@ -11458,6 +11611,7 @@ def test_bucket_policy_set_condition_operator_end_with_IfExists():
     print(response)
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_set_get_del_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11505,6 +11659,7 @@ def _make_random_string(size):
     return ''.join(random.choice(string.ascii_letters) for _ in range(size))
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_set_multipart_tagging():
   bucket_name = get_new_bucket()
   client = get_client()
@@ -11531,6 +11686,7 @@ def test_set_multipart_tagging():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_obj_tagging():
     key = 'testputtags'
     bucket_name = _create_key_with_random_content(key)
@@ -11545,6 +11701,7 @@ def test_get_obj_tagging():
 
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_get_obj_head_tagging():
     key = 'testputtags'
     bucket_name = _create_key_with_random_content(key)
@@ -11561,6 +11718,7 @@ def test_get_obj_head_tagging():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_max_tags():
     key = 'testputmaxtags'
     bucket_name = _create_key_with_random_content(key)
@@ -11574,6 +11732,7 @@ def test_put_max_tags():
     assert response['TagSet'] == input_tagset['TagSet']
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_put_excess_tags():
     key = 'testputmaxtags'
     bucket_name = _create_key_with_random_content(key)
@@ -11589,6 +11748,7 @@ def test_put_excess_tags():
     assert len(response['TagSet']) == 0
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_put_max_kvsize_tags():
     key = 'testputmaxkeysize'
     bucket_name = _create_key_with_random_content(key)
@@ -11610,6 +11770,7 @@ def test_put_max_kvsize_tags():
         assert kv_pair in input_tagset['TagSet']
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_put_excess_key_tags():
     key = 'testputexcesskeytags'
     bucket_name = _create_key_with_random_content(key)
@@ -11632,6 +11793,7 @@ def test_put_excess_key_tags():
     assert len(response['TagSet']) == 0
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_put_excess_val_tags():
     key = 'testputexcesskeytags'
     bucket_name = _create_key_with_random_content(key)
@@ -11655,6 +11817,7 @@ def test_put_excess_val_tags():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_modify_tags():
     key = 'testputmodifytags'
     bucket_name = _create_key_with_random_content(key)
@@ -11685,6 +11848,7 @@ def test_put_modify_tags():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_delete_tags():
     key = 'testputmodifytags'
     bucket_name = _create_key_with_random_content(key)
@@ -11705,6 +11869,7 @@ def test_put_delete_tags():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_post_object_tags_anonymous_request():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -11736,6 +11901,7 @@ def test_post_object_tags_anonymous_request():
     assert response['TagSet'] == input_tagset['TagSet']
 
 @pytest.mark.tagging
+@pytest.mark.fails_on_posix
 def test_post_object_tags_authenticated_request():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11783,6 +11949,7 @@ def test_post_object_tags_authenticated_request():
 
 @pytest.mark.tagging
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_obj_with_tags():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11816,6 +11983,7 @@ def _make_arn_resource(path="*"):
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_tags_acl_public():
     key = 'testputtagsacl'
     bucket_name = _create_key_with_random_content(key)
@@ -11839,6 +12007,7 @@ def test_get_tags_acl_public():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_put_tags_acl_public():
     key = 'testputtagsacl'
     bucket_name = _create_key_with_random_content(key)
@@ -11860,6 +12029,7 @@ def test_put_tags_acl_public():
 
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_delete_tags_obj_public():
     key = 'testputtagsacl'
     bucket_name = _create_key_with_random_content(key)
@@ -11883,6 +12053,7 @@ def test_delete_tags_obj_public():
     response = client.get_object_tagging(Bucket=bucket_name, Key=key)
     assert len(response['TagSet']) == 0
 
+@pytest.mark.fails_on_posix
 def test_versioning_bucket_atomic_upload_return_version_id():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11912,6 +12083,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response = client.put_object(Bucket=bucket_name, Key=key)
     assert not 'VersionId' in response
 
+@pytest.mark.fails_on_posix
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
@@ -11956,6 +12128,7 @@ def test_versioning_bucket_multipart_upload_return_version_id():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_get_obj_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
     client = get_client()
@@ -12011,6 +12184,7 @@ def test_bucket_policy_get_obj_existing_tag():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_get_obj_tagging_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
     client = get_client()
@@ -12073,6 +12247,7 @@ def test_bucket_policy_get_obj_tagging_existing_tag():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_tagging_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
     client = get_client()
@@ -12142,6 +12317,7 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
 @pytest.mark.copy
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_upload_part_copy():
     bucket_name = _create_objects(keys=['public/foo', 'public/bar', 'private/foo'])
     client = get_client()
@@ -12201,6 +12377,7 @@ def test_bucket_policy_upload_part_copy():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_copy_source():
     bucket_name = _create_objects(keys=['public/foo', 'public/bar', 'private/foo'])
     client = get_client()
@@ -12249,6 +12426,7 @@ def test_bucket_policy_put_obj_copy_source():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_copy_source_meta():
     src_bucket_name = _create_objects(keys=['public/foo', 'public/bar'])
     client = get_client()
@@ -12299,6 +12477,7 @@ def test_bucket_policy_put_obj_copy_source_meta():
 
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12339,6 +12518,7 @@ def test_bucket_policy_put_obj_acl():
 
 
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_grant():
 
     bucket_name = get_new_bucket()
@@ -12401,6 +12581,7 @@ def test_bucket_policy_put_obj_grant():
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_put_obj_enc_conflict_c_s3():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12424,6 +12605,7 @@ def test_put_obj_enc_conflict_c_s3():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_put_obj_enc_conflict_c_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -12451,6 +12633,7 @@ def test_put_obj_enc_conflict_c_kms():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_put_obj_enc_conflict_s3_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -12475,6 +12658,7 @@ def test_put_obj_enc_conflict_s3_kms():
     assert error_code == 'InvalidArgument'
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_put_obj_enc_conflict_bad_enc_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -12604,6 +12788,7 @@ def test_bucket_policy_put_obj_s3_kms():
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_kms_noenc():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -12650,6 +12835,7 @@ def test_bucket_policy_put_obj_kms_noenc():
 
 @pytest.mark.encryption
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_posix
 def test_bucket_policy_put_obj_kms_s3():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12722,6 +12908,7 @@ def test_bucket_policy_put_obj_request_obj_tag():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_bucket_policy_get_obj_acl_existing_tag():
     bucket_name = _create_objects(keys=['publictag', 'privatetag', 'invalidtag'])
     client = get_client()
@@ -12781,6 +12968,7 @@ def test_bucket_policy_get_obj_acl_existing_tag():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12813,6 +13001,7 @@ def test_object_lock_put_obj_lock():
     assert response['Status'] == 'Enabled'
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12829,6 +13018,7 @@ def test_object_lock_put_obj_lock_invalid_bucket():
     assert status == 409
     assert error_code == 'InvalidBucketState'
 
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_enable_after_create():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12860,6 +13050,7 @@ def test_object_lock_put_obj_lock_enable_after_create():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_with_days_and_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12879,6 +13070,7 @@ def test_object_lock_put_obj_lock_with_days_and_years():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_invalid_days():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12897,6 +13089,7 @@ def test_object_lock_put_obj_lock_invalid_days():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_invalid_years():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12915,6 +13108,7 @@ def test_object_lock_put_obj_lock_invalid_years():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12945,6 +13139,7 @@ def test_object_lock_put_obj_lock_invalid_mode():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_lock_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12963,6 +13158,7 @@ def test_object_lock_put_obj_lock_invalid_status():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_suspend_versioning():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12974,6 +13170,7 @@ def test_object_lock_suspend_versioning():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_lock():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -12992,6 +13189,7 @@ def test_object_lock_get_obj_lock():
     assert response['ObjectLockConfiguration'] == conf
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_lock_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13003,6 +13201,7 @@ def test_object_lock_get_obj_lock_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13019,6 +13218,7 @@ def test_object_lock_put_obj_retention():
 
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13033,6 +13233,7 @@ def test_object_lock_put_obj_retention_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_invalid_mode():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13053,6 +13254,7 @@ def test_object_lock_put_obj_retention_invalid_mode():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13068,6 +13270,7 @@ def test_object_lock_get_obj_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_retention_iso8601():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13085,6 +13288,7 @@ def test_object_lock_get_obj_retention_iso8601():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=version_id, BypassGovernanceRetention=True)
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_retention_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13098,6 +13302,7 @@ def test_object_lock_get_obj_retention_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_versionid():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13114,6 +13319,7 @@ def test_object_lock_put_obj_retention_versionid():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_override_default_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13139,6 +13345,7 @@ def test_object_lock_put_obj_retention_override_default_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_increase_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13156,6 +13363,7 @@ def test_object_lock_put_obj_retention_increase_period():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_shorten_period():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13174,6 +13382,7 @@ def test_object_lock_put_obj_retention_shorten_period():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_obj_retention_shorten_period_bypass():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13191,6 +13400,7 @@ def test_object_lock_put_obj_retention_shorten_period_bypass():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13209,6 +13419,7 @@ def test_object_lock_delete_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_multipart_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13234,6 +13445,7 @@ def test_object_lock_delete_multipart_object_with_retention():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_object_with_retention_and_marker():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13259,6 +13471,7 @@ def test_object_lock_delete_object_with_retention_and_marker():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 204
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_multi_delete_object_with_retention():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13326,6 +13539,7 @@ def test_object_lock_multi_delete_object_with_retention():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13339,6 +13553,7 @@ def test_object_lock_put_legal_hold():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_put_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13353,6 +13568,7 @@ def test_object_lock_put_legal_hold_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_put_legal_hold_invalid_status():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13367,6 +13583,7 @@ def test_object_lock_put_legal_hold_invalid_status():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_get_legal_hold():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13383,6 +13600,7 @@ def test_object_lock_get_legal_hold():
     assert response['LegalHold'] == legal_hold_off
 
 
+@pytest.mark.fails_on_posix
 def test_object_lock_get_legal_hold_invalid_bucket():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13396,6 +13614,7 @@ def test_object_lock_get_legal_hold_invalid_bucket():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13410,6 +13629,7 @@ def test_object_lock_delete_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_multipart_object_with_legal_hold_on():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13432,6 +13652,7 @@ def test_object_lock_delete_multipart_object_with_legal_hold_on():
     client.put_object_legal_hold(Bucket=bucket_name, Key=key, LegalHold={'Status':'OFF'})
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_delete_object_with_legal_hold_off():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13444,6 +13665,7 @@ def test_object_lock_delete_object_with_legal_hold_off():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_get_obj_metadata():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13464,6 +13686,7 @@ def test_object_lock_get_obj_metadata():
 
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_uploading_obj():
     bucket_name = get_new_bucket_name()
     client = get_client()
@@ -13480,6 +13703,7 @@ def test_object_lock_uploading_obj():
     client.delete_object(Bucket=bucket_name, Key=key, VersionId=response['VersionId'], BypassGovernanceRetention=True)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_changing_mode_from_governance_with_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
@@ -13494,6 +13718,7 @@ def test_object_lock_changing_mode_from_governance_with_bypass():
     client.put_object_retention(Bucket=bucket_name, Key=key, Retention=retention, BypassGovernanceRetention=True)
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_changing_mode_from_governance_without_bypass():
     bucket_name = get_new_bucket_name()
     key = 'file1'
@@ -13511,6 +13736,7 @@ def test_object_lock_changing_mode_from_governance_without_bypass():
     assert error_code == 'AccessDenied'
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_object_lock_changing_mode_from_compliance():
     bucket_name = get_new_bucket_name()
     key = 'file1'
@@ -13529,6 +13755,7 @@ def test_object_lock_changing_mode_from_compliance():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_copy_object_ifmatch_good():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13567,6 +13794,7 @@ def test_copy_object_ifnonematch_good():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_copy_object_ifnonematch_failed():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13587,12 +13815,14 @@ def test_object_read_unreadable():
     assert status == 400
     assert e.response['Error']['Message'] == 'Couldn\'t parse the specified URI.'
 
+@pytest.mark.fails_on_posix
 def test_get_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == False
 
+@pytest.mark.fails_on_posix
 def test_get_public_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13600,6 +13830,7 @@ def test_get_public_acl_bucket_policy_status():
     resp = client.get_bucket_policy_status(Bucket=bucket_name)
     assert resp['PolicyStatus']['IsPublic'] == True
 
+@pytest.mark.fails_on_posix
 def test_get_authpublic_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13608,6 +13839,7 @@ def test_get_authpublic_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == True
 
 
+@pytest.mark.fails_on_posix
 def test_get_publicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13636,6 +13868,7 @@ def test_get_publicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == True
 
 
+@pytest.mark.fails_on_posix
 def test_get_nonpublicpolicy_acl_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13668,6 +13901,7 @@ def test_get_nonpublicpolicy_acl_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
+@pytest.mark.fails_on_posix
 def test_get_nonpublicpolicy_principal_bucket_policy_status():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13693,6 +13927,7 @@ def test_get_nonpublicpolicy_principal_bucket_policy_status():
     assert resp['PolicyStatus']['IsPublic'] == False
 
 
+@pytest.mark.fails_on_posix
 def test_bucket_policy_allow_notprincipal():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13720,6 +13955,7 @@ def test_bucket_policy_allow_notprincipal():
     assert error_code == 'InvalidArgument' or error_code == 'MalformedPolicy'
 
 
+@pytest.mark.fails_on_posix
 def test_get_undefined_public_block():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13737,6 +13973,7 @@ def test_get_undefined_public_block():
 
     assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
+@pytest.mark.fails_on_posix
 def test_get_public_block_deny_bucket_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13765,6 +14002,7 @@ def test_get_public_block_deny_bucket_policy():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
+@pytest.mark.fails_on_posix
 def test_put_public_block():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -13784,6 +14022,7 @@ def test_put_public_block():
     assert resp['PublicAccessBlockConfiguration']['RestrictPublicBuckets'] == access_conf['RestrictPublicBuckets']
 
 
+@pytest.mark.fails_on_posix
 def test_block_public_put_bucket_acls():
     #client = get_svc_client(svc='s3control', client_config=Config(s3={'addressing_style': 'path'}))
     bucket_name = get_new_bucket()
@@ -13813,6 +14052,7 @@ def test_block_public_put_bucket_acls():
     assert status == 403
 
 
+@pytest.mark.fails_on_posix
 def test_block_public_object_canned_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13842,6 +14082,7 @@ def test_block_public_object_canned_acls():
     assert status == 403
 
 
+@pytest.mark.fails_on_posix
 def test_block_public_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13859,6 +14100,7 @@ def test_block_public_policy():
     check_access_denied(client.put_bucket_policy, Bucket=bucket_name, Policy=policy_document)
 
 
+@pytest.mark.fails_on_posix
 def test_block_public_policy_with_principal():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13876,6 +14118,7 @@ def test_block_public_policy_with_principal():
     client.put_bucket_policy(Bucket=bucket_name, Policy=policy_document)
 
 
+@pytest.mark.fails_on_posix
 def test_block_public_restrict_public_buckets():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13916,6 +14159,7 @@ def test_block_public_restrict_public_buckets():
     assert _get_body(response) == 'bar'
 
 
+@pytest.mark.fails_on_posix
 def test_ignore_public_acls():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13942,6 +14186,7 @@ def test_ignore_public_acls():
     check_access_denied(alt_client.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client.get_object, Bucket=bucket_name, Key='key1')
 
+@pytest.mark.fails_on_posix
 def test_put_get_delete_public_block():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -13970,6 +14215,7 @@ def test_put_get_delete_public_block():
 
     assert response_code == 'NoSuchPublicAccessBlockConfiguration'
 
+@pytest.mark.fails_on_posix
 def test_multipart_upload_on_a_bucket_with_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14039,6 +14285,7 @@ def test_put_bucket_encryption_s3():
     _put_bucket_encryption_s3(client, bucket_name)
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_put_bucket_encryption_kms():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14066,6 +14313,7 @@ def test_get_bucket_encryption_s3():
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_get_bucket_encryption_kms():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14112,6 +14360,7 @@ def test_delete_bucket_encryption_s3():
 
 
 @pytest.mark.encryption
+@pytest.mark.fails_on_posix
 def test_delete_bucket_encryption_kms():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -14353,6 +14602,7 @@ def test_sse_s3_default_post_object_authenticated_request():
 @pytest.mark.encryption
 @pytest.mark.bucket_encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_sse_kms_default_post_object_authenticated_request():
     kms_keyid = get_main_kms_keyid()
     if kms_keyid is None:
@@ -14440,6 +14690,7 @@ def test_sse_s3_encrypted_upload_1mb():
 def test_sse_s3_encrypted_upload_8mb():
     _test_sse_s3_encrypted_upload(8*1024*1024)
 
+@pytest.mark.fails_on_posix
 def test_get_object_torrent():
     client = get_client()
     bucket_name = get_new_bucket()
@@ -14462,6 +14713,7 @@ def test_get_object_torrent():
         assert error_code == 'NoSuchKey'
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_posix
 def test_object_checksum_sha256():
     bucket = get_new_bucket()
     client = get_client()
@@ -14484,6 +14736,7 @@ def test_object_checksum_sha256():
     assert error_code == 'BadDigest'
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_posix
 def test_object_checksum_crc64nvme():
     bucket = get_new_bucket()
     client = get_client()
@@ -14507,6 +14760,7 @@ def test_object_checksum_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_checksum_sha256():
     bucket = get_new_bucket()
     client = get_client()
@@ -14621,6 +14875,7 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_use_cksum_helper_sha256():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14645,6 +14900,7 @@ def test_multipart_use_cksum_helper_sha256():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_use_cksum_helper_crc64nvme():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14669,6 +14925,7 @@ def test_multipart_use_cksum_helper_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_use_cksum_helper_crc32():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14693,6 +14950,7 @@ def test_multipart_use_cksum_helper_crc32():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_use_cksum_helper_crc32c():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14717,6 +14975,7 @@ def test_multipart_use_cksum_helper_crc32c():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_multipart_use_cksum_helper_sha1():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14740,6 +14999,7 @@ def test_multipart_use_cksum_helper_sha1():
     #eof    
 
 @pytest.mark.checksum
+@pytest.mark.fails_on_posix
 def test_post_object_upload_checksum():
     megabytes = 1024 * 1024
     min_size = 0
@@ -14967,6 +15227,7 @@ def randcontent():
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging():
     has_extensions = _has_bucket_logging_extension()
     has_key_format = _has_target_object_key_format()
@@ -15073,6 +15334,7 @@ def test_put_bucket_logging():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_mtime():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15282,6 +15544,7 @@ def test_bucket_logging_partitioned_key():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_bucket_auth_type():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15430,6 +15693,7 @@ def _bucket_logging_key_filter(log_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_bucket_acl_required():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15501,6 +15765,7 @@ def test_bucket_logging_bucket_acl_required():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_object_acl_required():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15575,6 +15840,7 @@ def test_bucket_logging_object_acl_required():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_key_filter_s():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -15583,6 +15849,7 @@ def test_bucket_logging_key_filter_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_key_filter_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -15688,54 +15955,63 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_flush_j():
     _bucket_logging_flush('Journal', False, False)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_flush_s():
     _bucket_logging_flush('Standard', False, False)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_flush_j_single():
     _bucket_logging_flush('Journal', True, False)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_flush_s_single():
     _bucket_logging_flush('Standard', True, False)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_concurrent_flush_j():
     _bucket_logging_flush('Journal', False, True)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_concurrent_flush_s():
     _bucket_logging_flush('Standard', False, True)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_concurrent_flush_j_single():
     _bucket_logging_flush('Journal', True, True)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_concurrent_flush_s_single():
     _bucket_logging_flush('Standard', True, True)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_put_and_flush():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -15801,6 +16077,7 @@ def test_bucket_logging_put_and_flush():
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_errors():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15920,6 +16197,7 @@ def _verify_access_denied(client, src_bucket_name, log_bucket_name, prefix):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_bucket_logging_owner():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -15967,6 +16245,7 @@ def _set_bucket_policy(client, log_bucket_name, policy):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_permissions():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -16160,6 +16439,7 @@ def _put_bucket_logging_policy_wildcard(add_objects):
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_policy_wildcard():
     _put_bucket_logging_policy_wildcard(False)
 
@@ -16255,6 +16535,7 @@ def test_bucket_logging_permission_change_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_permission_change_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -16431,6 +16712,7 @@ def test_put_bucket_logging_tenant_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_tenant_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -16503,6 +16785,7 @@ def test_put_bucket_logging_account_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_account_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -16510,6 +16793,7 @@ def test_put_bucket_logging_account_j():
 
 
 @pytest.mark.bucket_logging
+@pytest.mark.fails_on_posix
 def test_rm_bucket_logging():
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
@@ -16534,6 +16818,7 @@ def test_rm_bucket_logging():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_put_bucket_logging_extensions():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17054,6 +17339,7 @@ def test_bucket_logging_mpu_versioned_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_mpu_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17062,6 +17348,7 @@ def test_bucket_logging_mpu_j():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_mpu_versioned_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17250,6 +17537,7 @@ def _bucket_logging_type(logging_type):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_event_type_j():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17258,6 +17546,7 @@ def test_bucket_logging_event_type_j():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_event_type_s():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17266,6 +17555,7 @@ def test_bucket_logging_event_type_s():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_roll_time():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17450,6 +17740,7 @@ def test_bucket_logging_single_prefix():
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_object_meta():
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
@@ -17658,6 +17949,7 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_deletion_j():
     _bucket_logging_cleanup('deletion', 'Journal', False, False)
 
@@ -17665,6 +17957,7 @@ def test_bucket_logging_cleanup_bucket_deletion_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_deletion_j_single():
     _bucket_logging_cleanup('deletion', 'Journal', True, False)
 
@@ -17672,6 +17965,7 @@ def test_bucket_logging_cleanup_bucket_deletion_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_disabling_j():
     _bucket_logging_cleanup('disabling', 'Journal', False, False)
 
@@ -17679,6 +17973,7 @@ def test_bucket_logging_cleanup_disabling_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_disabling_j_single():
     _bucket_logging_cleanup('disabling', 'Journal', True, False)
 
@@ -17686,6 +17981,7 @@ def test_bucket_logging_cleanup_disabling_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_updating_j():
     _bucket_logging_cleanup('updating', 'Journal', False, False)
 
@@ -17693,6 +17989,7 @@ def test_bucket_logging_cleanup_updating_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_updating_j_single():
     _bucket_logging_cleanup('updating', 'Journal', True, False)
 
@@ -17700,6 +17997,7 @@ def test_bucket_logging_cleanup_updating_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_notupdating_j():
     _bucket_logging_cleanup('notupdating', 'Journal', False, False)
 
@@ -17707,6 +18005,7 @@ def test_bucket_logging_notupdating_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_notupdating_j_single():
     _bucket_logging_cleanup('notupdating', 'Journal', True, False)
 
@@ -17714,6 +18013,7 @@ def test_bucket_logging_notupdating_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_deletion_s():
     _bucket_logging_cleanup('deletion', 'Standard', False, False)
 
@@ -17721,6 +18021,7 @@ def test_bucket_logging_cleanup_bucket_deletion_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_deletion_s_single():
     _bucket_logging_cleanup('deletion', 'Standard', True, False)
 
@@ -17728,6 +18029,7 @@ def test_bucket_logging_cleanup_bucket_deletion_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_disabling_s():
     _bucket_logging_cleanup('disabling', 'Standard', False, False)
 
@@ -17735,6 +18037,7 @@ def test_bucket_logging_cleanup_disabling_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_disabling_s_single():
     _bucket_logging_cleanup('disabling', 'Standard', True, False)
 
@@ -17742,6 +18045,7 @@ def test_bucket_logging_cleanup_disabling_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_updating_s():
     _bucket_logging_cleanup('updating', 'Standard', False, False)
 
@@ -17749,6 +18053,7 @@ def test_bucket_logging_cleanup_updating_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_updating_s_single():
     _bucket_logging_cleanup('updating', 'Standard', True, False)
 
@@ -17756,6 +18061,7 @@ def test_bucket_logging_cleanup_updating_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_notupdating_s():
     _bucket_logging_cleanup('notupdating', 'Standard', False, False)
 
@@ -17763,6 +18069,7 @@ def test_bucket_logging_notupdating_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_notupdating_s_single():
     _bucket_logging_cleanup('notupdating', 'Standard', True, False)
 
@@ -17770,6 +18077,7 @@ def test_bucket_logging_notupdating_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_target_cleanup_j():
     _bucket_logging_cleanup('target', 'Journal', False, False)
 
@@ -17777,6 +18085,7 @@ def test_bucket_logging_target_cleanup_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_target_cleanup_j_single():
     _bucket_logging_cleanup('target', 'Journal', True, False)
 
@@ -17784,6 +18093,7 @@ def test_bucket_logging_target_cleanup_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_target_cleanup_s():
     _bucket_logging_cleanup('target', 'Standard', False, False)
 
@@ -17791,6 +18101,7 @@ def test_bucket_logging_target_cleanup_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_target_cleanup_s_single():
     _bucket_logging_cleanup('target', 'Standard', True, False)
 
@@ -17798,6 +18109,7 @@ def test_bucket_logging_target_cleanup_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_concurrent_deletion_j():
     _bucket_logging_cleanup('deletion', 'Journal', False, True)
 
@@ -17805,6 +18117,7 @@ def test_bucket_logging_cleanup_bucket_concurrent_deletion_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_concurrent_deletion_j_single():
     _bucket_logging_cleanup('deletion', 'Journal', True, True)
 
@@ -17812,6 +18125,7 @@ def test_bucket_logging_cleanup_bucket_concurrent_deletion_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_disabling_j():
     _bucket_logging_cleanup('disabling', 'Journal', False, True)
 
@@ -17819,6 +18133,7 @@ def test_bucket_logging_cleanup_concurrent_disabling_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_disabling_j_single():
     _bucket_logging_cleanup('disabling', 'Journal', True, True)
 
@@ -17826,6 +18141,7 @@ def test_bucket_logging_cleanup_concurrent_disabling_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_updating_j():
     _bucket_logging_cleanup('updating', 'Journal', False, True)
 
@@ -17833,6 +18149,7 @@ def test_bucket_logging_cleanup_concurrent_updating_j():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_updating_j_single():
     _bucket_logging_cleanup('updating', 'Journal', True, True)
 
@@ -17840,6 +18157,7 @@ def test_bucket_logging_cleanup_concurrent_updating_j_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_concurrent_deletion_s():
     _bucket_logging_cleanup('deletion', 'Standard', False, True)
 
@@ -17847,6 +18165,7 @@ def test_bucket_logging_cleanup_bucket_concurrent_deletion_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_bucket_concurrent_deletion_s_single():
     _bucket_logging_cleanup('deletion', 'Standard', True, True)
 
@@ -17854,6 +18173,7 @@ def test_bucket_logging_cleanup_bucket_concurrent_deletion_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_disabling_s():
     _bucket_logging_cleanup('disabling', 'Standard', False, True)
 
@@ -17861,6 +18181,7 @@ def test_bucket_logging_cleanup_concurrent_disabling_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_disabling_s_single():
     _bucket_logging_cleanup('disabling', 'Standard', True, True)
 
@@ -17868,6 +18189,7 @@ def test_bucket_logging_cleanup_concurrent_disabling_s_single():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_updating_s():
     _bucket_logging_cleanup('updating', 'Standard', False, True)
 
@@ -17875,6 +18197,7 @@ def test_bucket_logging_cleanup_concurrent_updating_s():
 @pytest.mark.bucket_logging
 @pytest.mark.bucket_logging_cleanup
 @pytest.mark.fails_on_aws
+@pytest.mark.fails_on_posix
 def test_bucket_logging_cleanup_concurrent_updating_s_single():
     _bucket_logging_cleanup('updating', 'Standard', True, True)
 
@@ -17888,6 +18211,7 @@ def check_parts_count(parts, expected):
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_multipart_checksum_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -17931,6 +18255,7 @@ def test_get_multipart_checksum_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -17967,6 +18292,7 @@ def test_get_multipart_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_paginated_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18028,6 +18354,7 @@ def test_get_paginated_multipart_object_attributes():
         partno += 1
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_single_multipart_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18060,6 +18387,7 @@ def test_get_single_multipart_object_attributes():
     assert obj_part['Size'] == part_size
     assert 'ChecksumSHA256' not in obj_part
 
+@pytest.mark.fails_on_posix
 def test_get_checksum_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18083,6 +18411,7 @@ def test_get_checksum_object_attributes():
     assert response['Checksum']['ChecksumSHA256'] == sha256sum
     assert 'ObjectParts' not in response
 
+@pytest.mark.fails_on_posix
 def test_get_versioned_object_attributes():
     bucket_name = get_new_bucket()
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
@@ -18126,6 +18455,7 @@ def test_get_versioned_object_attributes():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_sse_c_encrypted_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18162,6 +18492,7 @@ def test_get_sse_c_encrypted_object_attributes():
     assert 'ObjectParts' not in response
 
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_get_object_attributes():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -18185,6 +18516,7 @@ def test_get_object_attributes():
     assert 'ObjectParts' not in response
 
 
+@pytest.mark.fails_on_posix
 def test_upload_part_copy_percent_encoded_key():
     
     s3_client = get_client()
@@ -18244,6 +18576,7 @@ def check_delete_marker(client, bucket, key, status):
 
 @pytest.mark.delete_marker
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_delete_marker_nonversioned():
     bucket = get_new_bucket()
     client = get_client()
@@ -18256,6 +18589,7 @@ def test_delete_marker_nonversioned():
 
 @pytest.mark.delete_marker
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_delete_marker_versioned():
     bucket = get_new_bucket()
     client = get_client()
@@ -18269,6 +18603,7 @@ def test_delete_marker_versioned():
 
 @pytest.mark.delete_marker
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_delete_marker_suspended():
     bucket = get_new_bucket()
     client = get_client()
@@ -18310,6 +18645,7 @@ def test_delete_marker_expiration():
     check_delete_marker(client, bucket, key, 'false')
 
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_put_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18343,6 +18679,7 @@ def test_put_object_if_match():
     assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_put_current_object_if_none_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18371,6 +18708,7 @@ def test_put_current_object_if_none_match():
     client.delete_object(Bucket=bucket, Key=key)
 
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_put_current_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18401,6 +18739,7 @@ def test_put_current_object_if_match():
     assert 200 == response['ResponseMetadata']['HTTPStatusCode']
 
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_put_object_current_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18428,6 +18767,7 @@ def test_put_object_current_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18452,6 +18792,7 @@ def test_delete_object_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_current_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18486,6 +18827,7 @@ def test_delete_object_current_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_version_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18514,6 +18856,7 @@ def test_delete_object_version_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18534,6 +18877,7 @@ def test_delete_object_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_current_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18557,6 +18901,7 @@ def test_delete_object_current_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_version_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18579,6 +18924,7 @@ def test_delete_object_version_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18599,6 +18945,7 @@ def test_delete_object_if_match_size():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_current_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18621,6 +18968,7 @@ def test_delete_object_current_if_match_size():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_object_version_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18643,6 +18991,7 @@ def test_delete_object_version_if_match_size():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18662,6 +19011,7 @@ def test_delete_objects_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_current_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18683,6 +19033,7 @@ def test_delete_objects_current_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_version_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18705,6 +19056,7 @@ def test_delete_objects_version_if_match():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18726,6 +19078,7 @@ def test_delete_objects_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_current_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18750,6 +19103,7 @@ def test_delete_objects_current_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_version_if_match_last_modified_time():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18775,6 +19129,7 @@ def test_delete_objects_version_if_match_last_modified_time():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18796,6 +19151,7 @@ def test_delete_objects_if_match_size():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_current_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -18820,6 +19176,7 @@ def test_delete_objects_current_if_match_size():
 
 @pytest.mark.fails_on_aws # only supported for directory buckets
 @pytest.mark.conditional_write
+@pytest.mark.fails_on_posix
 def test_delete_objects_version_if_match_size():
     client = get_client()
     bucket = get_new_bucket(client)
