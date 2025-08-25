@@ -124,6 +124,7 @@ def check_configure_versioning_retry(bucket, status, expected_string):
 
 @pytest.mark.versioning
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_versioning_obj_read_not_exist_null():
     bucket = get_new_bucket()
     check_versioning(bucket, None)
@@ -143,6 +144,7 @@ def test_versioning_obj_read_not_exist_null():
 @pytest.mark.fails_with_subdomain
 @pytest.mark.appendobject
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_append_object():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -164,6 +166,7 @@ def test_append_object():
 @pytest.mark.fails_with_subdomain
 @pytest.mark.appendobject
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_append_normal_object():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -181,6 +184,7 @@ def test_append_normal_object():
 @pytest.mark.fails_with_subdomain
 @pytest.mark.appendobject
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_append_object_position_wrong():
     bucket = get_new_bucket()
     key = bucket.new_key('foo')
@@ -625,6 +629,7 @@ def _multipart_upload_enc(bucket, s3_key_name, size, part_size=5*1024*1024,
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket = get_new_bucket()
     key = "multipart_enc"
@@ -649,6 +654,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket = get_new_bucket()
     key = "multipart_enc"
