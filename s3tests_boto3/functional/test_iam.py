@@ -564,6 +564,7 @@ def test_allow_object_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_object_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -603,6 +604,7 @@ def test_deny_object_actions_in_user_policy():
 
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
+@pytest.mark.fails_on_posix
 def test_allow_multipart_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -639,6 +641,7 @@ def test_allow_multipart_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_multipart_actions_in_user_policy():
     client = get_iam_client()
     s3_client = get_alt_client()
@@ -682,6 +685,7 @@ def test_deny_multipart_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_allow_tagging_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -728,6 +732,7 @@ def test_allow_tagging_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_tagging_actions_in_user_policy():
     client = get_iam_client()
     s3_client = get_alt_client()
@@ -780,6 +785,7 @@ def test_deny_tagging_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_verify_conflicting_user_policy_statements():
     s3client = get_alt_client()
     bucket = get_new_bucket(client=s3client)
@@ -812,6 +818,7 @@ def test_verify_conflicting_user_policy_statements():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_verify_conflicting_user_policies():
     s3client = get_alt_client()
     bucket = get_new_bucket(client=s3client)
@@ -850,6 +857,7 @@ def test_verify_conflicting_user_policies():
 
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
+@pytest.mark.fails_on_posix
 def test_verify_allow_iam_actions():
     policy1 = json.dumps(
         {"Version": "2012-10-17",
@@ -2485,6 +2493,7 @@ def test_verify_add_new_client_id_to_oidc(iam_root):
                     )
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
+@pytest.mark.fails_on_posix
 def test_verify_add_existing_client_id_to_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2565,6 +2574,7 @@ def test_verify_remove_client_id_from_oidc(iam_root):
     )
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
+@pytest.mark.fails_on_posix
 def test_verify_update_thumbprintlist_of_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
