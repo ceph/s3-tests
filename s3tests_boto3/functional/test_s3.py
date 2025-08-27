@@ -1702,6 +1702,22 @@ def test_multi_object_delete():
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
 
+def test_multi_object_delete_empty_list():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    e = assert_raises(ClientError, client.delete_objects, Bucket=bucket_name, Delete={'Objects': [], 'Quiet': False})
+    status = _get_status(e.response)
+    assert status == 400
+
+def test_multi_object_delete_empty_list_access_forbidden():
+    bucket_name = get_new_bucket()
+    alt_client = get_alt_client()
+
+    e = assert_raises(ClientError, alt_client.delete_objects, Bucket=bucket_name, Delete={'Objects': [], 'Quiet': False})
+    status = _get_status(e.response)
+    assert status == 400
+
 @pytest.mark.list_objects_v2
 def test_expected_bucket_owner():
   bucket_name = get_new_bucket()
