@@ -221,6 +221,7 @@ def configure():
     config.main_display_name = cfg.get('s3 main',"display_name")
     config.main_user_id = cfg.get('s3 main',"user_id")
     config.main_email = cfg.get('s3 main',"email")
+    config.main_account_id = cfg.get('s3 main', 'account_id', fallback=None)
     try:
         config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
     except (configparser.NoSectionError, configparser.NoOptionError):
@@ -258,12 +259,14 @@ def configure():
     config.alt_display_name = cfg.get('s3 alt',"display_name")
     config.alt_user_id = cfg.get('s3 alt',"user_id")
     config.alt_email = cfg.get('s3 alt',"email")
+    config.alt_account_id = cfg.get('s3 alt', 'account_id', fallback=None)
 
     config.tenant_access_key = cfg.get('s3 tenant',"access_key")
     config.tenant_secret_key = cfg.get('s3 tenant',"secret_key")
     config.tenant_display_name = cfg.get('s3 tenant',"display_name")
     config.tenant_user_id = cfg.get('s3 tenant',"user_id")
     config.tenant_email = cfg.get('s3 tenant',"email")
+    config.tenant_account_id = cfg.get('s3 tenant', 'account_id', fallback=None)
     config.tenant_name = cfg.get('s3 tenant',"tenant")
 
     config.iam_access_key = cfg.get('iam',"access_key")
@@ -276,11 +279,13 @@ def configure():
     config.iam_root_secret_key = cfg.get('iam root',"secret_key")
     config.iam_root_user_id = cfg.get('iam root',"user_id")
     config.iam_root_email = cfg.get('iam root',"email")
+    config.iam_root_account_id = cfg.get('iam root', 'account_id', fallback=None)
 
     config.iam_alt_root_access_key = cfg.get('iam alt root',"access_key")
     config.iam_alt_root_secret_key = cfg.get('iam alt root',"secret_key")
     config.iam_alt_root_user_id = cfg.get('iam alt root',"user_id")
     config.iam_alt_root_email = cfg.get('iam alt root',"email")
+    config.iam_alt_root_account_id = cfg.get('iam alt root', 'account_id', fallback=None)
 
     # vars from the fixtures section
     template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')
@@ -700,6 +705,9 @@ def get_main_user_id():
 def get_main_email():
     return config.main_email
 
+def get_main_account_id():
+    return config.main_account_id
+
 def get_main_api_name():
     return config.main_api_name
 
@@ -721,6 +729,9 @@ def get_alt_display_name():
 def get_alt_user_id():
     return config.alt_user_id
 
+def get_alt_account_id():
+    return config.alt_account_id
+
 def get_alt_email():
     return config.alt_email
 
@@ -732,6 +743,9 @@ def get_tenant_aws_secret_key():
 
 def get_tenant_display_name():
     return config.tenant_display_name
+
+def get_tenant_account_id():
+    return config.tenant_account_id
 
 def get_tenant_name():
     return config.tenant_name
@@ -781,11 +795,17 @@ def get_iam_root_user_id():
 def get_iam_root_email():
     return config.iam_root_email
 
+def get_iam_root_account_id():
+    return config.iam_root_account_id
+
 def get_iam_alt_root_user_id():
     return config.iam_alt_root_user_id
 
 def get_iam_alt_root_email():
     return config.iam_alt_root_email
+
+def get_iam_alt_root_account_id():
+    return config.iam_alt_root_account_id
 
 def get_user_token():
     return config.webidentity_user_token
