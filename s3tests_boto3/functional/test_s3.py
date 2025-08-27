@@ -5382,6 +5382,32 @@ def test_list_buckets_bad_auth():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
+def test_list_buckets_paginated():
+    client = get_client()
+
+    response = client.list_buckets(MaxBuckets=1)
+    assert len(response['Buckets']) == 0
+    assert 'ContinuationToken' not in response
+
+    bucket1 = get_new_bucket()
+
+    response = client.list_buckets(MaxBuckets=1)
+    assert len(response['Buckets']) == 1
+    assert response['Buckets'][0]['Name'] == bucket1
+    assert 'ContinuationToken' not in response
+
+    bucket2 = get_new_bucket()
+
+    response = client.list_buckets(MaxBuckets=1)
+    assert len(response['Buckets']) == 1
+    assert response['Buckets'][0]['Name'] == bucket1
+    continuation = response['ContinuationToken']
+
+    response = client.list_buckets(MaxBuckets=1, ContinuationToken=continuation)
+    assert len(response['Buckets']) == 1
+    assert response['Buckets'][0]['Name'] == bucket2
+    assert 'ContinuationToken' not in response
+
 @pytest.fixture
 def override_prefix_a():
     nuke_prefixed_buckets(prefix='a'+get_prefix())
