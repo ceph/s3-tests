@@ -9662,15 +9662,17 @@ def verify_object(client, bucket, key, content=None, sc=None):
 def verify_transition(client, bucket, key, sc=None, version=None):
     transition_not_completed = True
     retry = 0
-    while (transition_not_completed and retry < 4):
+    while (transition_not_completed and retry < 5):
         if (version != None):
             response = client.head_object(Bucket=bucket, Key=key, VersionId=version)
         else:
             response = client.head_object(Bucket=bucket, Key=key)
+        json_response = json.dumps(response, indent=4, default=str)
+        print(json_response)
         if response['ContentLength'] == 0:
             transition_not_completed = False
             assert response['StorageClass'] == sc
-        time.sleep(2)
+        time.sleep(5)
         retry = retry + 1
     assert transition_not_completed == False
 
