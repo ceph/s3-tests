@@ -253,6 +253,11 @@ def configure():
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.rgw_restore_debug_interval = 100
 
+    try:
+        config.rgw_restore_processor_period = int(cfg.get('s3 main',"rgw_restore_processor_period"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.rgw_restore_processor_period = 100
+
     config.alt_access_key = cfg.get('s3 alt',"access_key")
     config.alt_secret_key = cfg.get('s3 alt',"secret_key")
     config.alt_display_name = cfg.get('s3 alt',"display_name")
@@ -813,6 +818,9 @@ def get_lc_debug_interval():
 
 def get_restore_debug_interval():
     return config.rgw_restore_debug_interval
+
+def get_restore_processor_period():
+    return config.rgw_restore_processor_period
 
 def get_read_through_days():
     return config.read_through_restore_days

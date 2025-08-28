@@ -91,6 +91,7 @@ from . import (
     configured_storage_classes,
     get_lc_debug_interval,
     get_restore_debug_interval,
+    get_restore_processor_period,
     get_read_through_days,
     create_iam_user_s3client,
     )
@@ -3892,6 +3893,10 @@ def check_access_denied(fn, *args, **kwargs):
     status = _get_status(e.response)
     assert status == 403
 
+def check_request_timeout(fn, *args, **kwargs):
+    e = assert_raises(ClientError, fn, *args, **kwargs)
+    status = _get_status(e.response)
+    assert status == 400
 
 def check_grants(got, want):
     """
@@ -9723,7 +9728,7 @@ def verify_transition(client, bucket, key, sc=None, version=None):
     # Iterate over the contents to find the StorageClass
     if 'StorageClass' in response:
         assert response['StorageClass'] == sc
-    else:  # storage class should be STANDARD
+    else: # storage class should be STANDARD
         assert 'STANDARD' == sc
 
 # The test harness for lifecycle is configured to treat days as 10 second intervals.
@@ -10049,14 +10054,18 @@ def test_restore_object_temporary():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_restore_debug_interval()
+    restore_period = get_restore_processor_period()
     time.sleep(10 * lc_interval)
 
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
 
+    # delete lifecycle to prevent re-transition before restore check
+    response = client.delete_bucket_lifecycle(Bucket=bucket)
+
     # Restore object temporarily
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 20})
-    time.sleep(5)
+    time.sleep(3*restore_period)
 
     # Verify object is restored temporarily
     verify_transition(client, bucket, key, cloud_sc)
@@ -10065,7 +10074,7 @@ def test_restore_object_temporary():
 
     # Now re-issue the request with 'Days' set to lower value
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 2})
-    time.sleep(2)
+    time.sleep(2*restore_period)
     # ensure the object is still restored
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
@@ -10103,13 +10112,18 @@ def test_restore_object_permanent():
     # Verify object is transitioned
     verify_transition(client, bucket, key, cloud_sc)
 
+    # delete lifecycle to prevent re-transition post permanent restore
+    response = client.delete_bucket_lifecycle(Bucket=bucket)
+
+    restore_period = get_restore_processor_period()
     # Restore object permanently
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={})
-    time.sleep(5)
+    time.sleep(3*restore_period)
+
     # Verify object is restored permanently
-    verify_transition(client, bucket, key, 'STANDARD')
     response = client.head_object(Bucket=bucket, Key=key)
     assert response['ContentLength'] == len(data)
+    verify_transition(client, bucket, key, 'STANDARD')
 
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
@@ -10120,7 +10134,9 @@ def test_read_through():
         pytest.skip('[s3 cloud] section missing cloud_storage_class')
 
     bucket = get_new_bucket()
-    client = get_client()
+    client_config = botocore.config.Config(connect_timeout=100, read_timeout=100)
+    client = get_client(client_config=client_config)
+
     key = 'test_restore_readthrough'
     data = 'restore data with readthrough'
 
@@ -10134,19 +10150,31 @@ def test_read_through():
     client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
 
     lc_interval = get_lc_debug_interval()
-    restore_interval = get_read_through_days()
+    restore_interval = get_restore_debug_interval()
     time.sleep(10 * lc_interval)
 
     # Check the storage class after transitioning
     verify_transition(client, bucket, key, cloud_sc)
 
+    # delete lifecycle to prevent re-transition before restore check
+    response = client.delete_bucket_lifecycle(Bucket=bucket)
+
     # Restore the object using read_through request
     allow_readthrough = get_allow_read_through()
+    read_through_days = get_read_through_days()
+    restore_period = get_restore_processor_period()
+
     if (allow_readthrough != None and allow_readthrough == "true"):
-        response = client.get_object(Bucket=bucket, Key=key)
-        time.sleep(2)
+        try:
+            response = client.get_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            status, error_code = _get_status_and_error_code(e.response)
+            assert status == 400
+            time.sleep(2 * restore_interval)
+            response = client.head_object(Bucket=bucket, Key=key)
+
         assert response['ContentLength'] == len(data)
-        time.sleep(5 * (restore_interval + lc_interval))
+        time.sleep(2 * read_through_days * (restore_interval + lc_interval))
         # verify object expired
         response = client.head_object(Bucket=bucket, Key=key)
         assert response['ContentLength'] == 0
@@ -10221,12 +10249,13 @@ def test_restore_noncur_obj():
     assert len(expire1_keys[cloud_sc]) == 2
 
     restore_interval = get_restore_debug_interval()
+    restore_period = get_restore_processor_period()
 
     for num in range(1, 2):
         verify_transition(client, bucket, key, cloud_sc, version_ids[num])
         # Restore object temporarily
         client.restore_object(Bucket=bucket, Key=key, VersionId=version_ids[num], RestoreRequest={'Days': 2})
-        time.sleep(5)
+        time.sleep(2*restore_period)
 
         # Verify object is restored temporarily
         response = client.head_object(Bucket=bucket, Key=key, VersionId=version_ids[num])
