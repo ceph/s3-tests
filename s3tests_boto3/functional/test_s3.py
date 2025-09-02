@@ -3893,6 +3893,10 @@ def check_access_denied(fn, *args, **kwargs):
     status = _get_status(e.response)
     assert status == 403
 
+def check_request_timeout(fn, *args, **kwargs):
+    e = assert_raises(ClientError, fn, *args, **kwargs)
+    status = _get_status(e.response)
+    assert status == 400
 
 def check_grants(got, want):
     """
@@ -10123,9 +10127,8 @@ def test_read_through():
     if cloud_sc is None:
         pytest.skip('[s3 cloud] section missing cloud_storage_class')
 
-    restore_period = get_restore_processor_period()
     bucket = get_new_bucket()
-    client_config = botocore.config.Config(connect_timeout=2*restore_period)
+    client_config = botocore.config.Config(connect_timeout=100, read_timeout=100)
     client = get_client(client_config=client_config)
 
     key = 'test_restore_readthrough'
@@ -10150,10 +10153,13 @@ def test_read_through():
     # Restore the object using read_through request
     allow_readthrough = get_allow_read_through()
     read_through_days = get_read_through_days()
+    restore_period = get_restore_processor_period()
 
     if (allow_readthrough != None and allow_readthrough == "true"):
+       # check_request_timeout(client.get_object, Bucket=bucket, Key=key)
         response = client.get_object(Bucket=bucket, Key=key)
-        time.sleep(2*restore_period)
+#        time.sleep(2*restore_period)
+#        response = client.head_object(Bucket=bucket, Key=key)
         assert response['ContentLength'] == len(data)
         time.sleep(2 * read_through_days * (restore_interval + lc_interval))
         # verify object expired
