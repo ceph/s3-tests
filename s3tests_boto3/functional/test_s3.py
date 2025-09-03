@@ -1682,8 +1682,10 @@ def test_versioning_concurrent_multi_object_delete():
         assert len(response['Deleted']) == total_num_objects_in_the_bucket
         assert 'Errors' not in response
 
-    response = client.list_objects(Bucket=bucket_name)
-    assert 'Contents' not in response
+    response_list_objects = client.list_objects(Bucket=bucket_name)
+    assert 'Contents' not in response_list_objects
+    response_list_versions = client.list_object_versions(Bucket=bucket_name)
+    assert 'Versions' not in response_list_versions and 'DeleteMarkers' not in response_list_versions
 
 def test_multi_object_delete():
     key_names = ['key0', 'key1', 'key2']
