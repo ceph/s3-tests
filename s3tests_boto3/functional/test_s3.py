@@ -1650,17 +1650,21 @@ def _make_objs_dict(key_names):
 
 def test_versioning_concurrent_multi_object_delete():
     num_objects = 5
+    num_versions_per_object = 3
+    total_num_objects_in_the_bucket = num_objects * num_versions_per_object
     num_threads = 5
     bucket_name = get_new_bucket()
 
     check_configure_versioning_retry(bucket_name, "Enabled", "Enabled")
 
     key_names = ["key_{:d}".format(x) for x in range(num_objects)]
-    bucket = _create_objects(bucket_name=bucket_name, keys=key_names)
+    for _ in range(num_versions_per_object):
+        bucket = _create_objects(bucket_name=bucket_name, keys=key_names)
+        assert bucket == bucket_name
 
     client = get_client()
     versions = client.list_object_versions(Bucket=bucket_name)['Versions']
-    assert len(versions) == num_objects
+    assert len(versions) == total_num_objects_in_the_bucket
     objs_dict = {'Objects': [dict((k, v[k]) for k in ["Key", "VersionId"]) for v in versions]}
     results = [None] * num_threads
 
@@ -1675,7 +1679,7 @@ def test_versioning_concurrent_multi_object_delete():
     _do_wait_completion(t)
 
     for response in results:
-        assert len(response['Deleted']) == num_objects
+        assert len(response['Deleted']) == total_num_objects_in_the_bucket
         assert 'Errors' not in response
 
     response = client.list_objects(Bucket=bucket_name)
