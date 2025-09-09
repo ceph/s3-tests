@@ -17578,6 +17578,11 @@ def test_bucket_logging_object_meta():
     client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'OFF'})
     client.delete_object(Bucket=src_bucket_name, Key=name, VersionId=version_id, BypassGovernanceRetention=True)
 
+def _verify_flushed_on_put(result):
+    if _has_bucket_logging_extension():
+        assert result['ResponseMetadata']['HTTPStatusCode'] == 200
+        return result['FlushedLoggingObject']
+
 
 def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurrency):
     if not _has_bucket_logging_extension():
@@ -17626,6 +17631,7 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
     assert len(keys) == 0
 
     t = []
+    flushed_obj = None
     updated_longer_time = expected_object_roll_time*20
     for src_bucket_name in buckets:
         if not single_prefix:
@@ -17647,7 +17653,8 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
                 thr.start()
                 t.append(thr)
             else:
-                client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+                flushed_obj = _verify_flushed_on_put(result)
         elif cleanup_type == 'updating':
             # cleanup based on updating bucket logging parameters
             logging_enabled['ObjectRollTime'] = updated_longer_time
@@ -17657,9 +17664,10 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
                 thr.start()
                 t.append(thr)
             else:
-                client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
                     'LoggingEnabled': logging_enabled,
                 })
+                flushed_obj = _verify_flushed_on_put(result)
         elif cleanup_type == 'notupdating':
             # no concurrecy testing
             client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -17697,15 +17705,21 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
 
+    if flushed_obj:
+        assert flushed_obj in keys
+
     if cleanup_type == 'notupdating':
         # no cleanup expected
         assert len(keys) == 0
         return
 
-    if single_prefix and not cleanup_type == 'target':
-        assert len(keys) == 1
+    if concurrency:
+        assert len(keys) >= 1 and len(keys) <= num_buckets
     else:
-        assert len(keys) == num_buckets
+        if single_prefix and not (cleanup_type == 'target' or cleanup_type == 'updating'):
+            assert len(keys) == 1
+        else:
+            assert len(keys) == num_buckets
 
     prefixes = []
     for src_bucket_name in buckets:
