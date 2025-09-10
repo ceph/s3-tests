@@ -7939,6 +7939,11 @@ def test_versioning_obj_suspended_copy():
     copy_source = {'Bucket': bucket_name, 'Key': key1}
     client.copy_object(Bucket=bucket_name, Key=key2, CopySource=copy_source)
 
+    # copy to another non-versioned bucket
+    bucket_name2 = get_new_bucket()
+    copy_source = {'Bucket': bucket_name, 'Key': key1}
+    client.copy_object(Bucket=bucket_name2, Key=key1, CopySource=copy_source)
+
     # delete the source object. keep the 'null' entry in version_ids
     client.delete_object(Bucket=bucket_name, Key=key1)
 
@@ -7947,11 +7952,18 @@ def test_versioning_obj_suspended_copy():
     body = _get_body(response)
     assert body == content
 
+    # get the target object from the other bucket
+    response = client.get_object(Bucket=bucket_name2, Key=key1)
+    body = _get_body(response)
+    assert body == content
+
     # cleaning up
     client.delete_object(Bucket=bucket_name, Key=key2)
     client.delete_object(Bucket=bucket_name, Key=key2, VersionId='null')
-
     clean_up_bucket(client, bucket_name, key1, version_ids)
+
+    client.delete_object(Bucket=bucket_name2, Key=key1)
+    client.delete_bucket(Bucket=bucket_name2)
 
 def test_versioning_obj_create_versions_remove_all():
     bucket_name = get_new_bucket()
