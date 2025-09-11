@@ -16281,6 +16281,7 @@ def _bucket_logging_permission_change(logging_type):
                 assert False, 'expected failure'
             except ClientError as e:
                 assert e.response['Error']['Code'] == 'AccessDenied'
+                assert e.response['Error']['Message'].startswith('Logging bucket')
 
     try:
         _flush_logs(client, src_bucket_name)
