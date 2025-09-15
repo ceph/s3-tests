@@ -99,11 +99,25 @@ def nuke_bucket(client, bucket):
     batch_size = 128
     max_retain_date = None
 
+    try:
+       response = client.get_object_lock_configuration(Bucket=bucket)
+       LockEnabled = True
+    except ClientError as error:
+       if error.response['Error']['Code'] == 'ObjectLockConfigurationNotFoundError':
+          LockEnabled = False
+       else:
+          raise error
+  
     # list and delete objects in batches
     for objects in list_versions(client, bucket, batch_size):
-        delete = client.delete_objects(Bucket=bucket,
-                Delete={'Objects': objects, 'Quiet': True},
-                BypassGovernanceRetention=True)
+        if(LockEnabled):
+           delete = client.delete_objects(Bucket=bucket,
+                   Delete={'Objects': objects, 'Quiet': True},
+                   BypassGovernanceRetention = LockEnabled)
+        else:
+           delete = client.delete_objects(Bucket=bucket,
+                   Delete={'Objects': objects, 'Quiet': True})
+            
 
         # check for object locks on 403 AccessDenied errors
         for err in delete.get('Errors', []):
