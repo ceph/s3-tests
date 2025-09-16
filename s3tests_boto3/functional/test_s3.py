@@ -3107,6 +3107,37 @@ def test_get_object_ifunmodifiedsince_failed():
     body = _get_body(response)
     assert body == 'bar'
 
+def test_get_object_ifmatch_wildcard():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+    response = client.get_object(Bucket=bucket_name, Key='foo', IfMatch='*')
+    body = _get_body(response)
+    assert body == 'bar'
+
+def test_get_object_ifnonematch_wildcard():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+    etag = response['ETag']
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfNoneMatch='*')
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 304
+    assert e.response['Error']['Message'] == 'Not Modified'
+    assert e.response['ResponseMetadata']['HTTPHeaders']['etag'] == etag
+
+def test_get_object_ifmatch_ifnonematch_wildcard():
+    bucket_name = get_new_bucket()
+    client = get_client()
+    response = client.put_object(Bucket=bucket_name, Key='foo', Body='bar')
+    etag = response['ETag']
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key='foo', IfMatch='*', IfNoneMatch='*')
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 304
+    assert e.response['Error']['Message'] == 'Not Modified'
+    assert e.response['ResponseMetadata']['HTTPHeaders']['etag'] == etag
 
 @pytest.mark.fails_on_aws
 def test_put_object_ifmatch_good():
