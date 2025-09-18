@@ -10065,7 +10065,7 @@ def test_restore_object_temporary():
 
     # Restore object temporarily
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 20})
-    time.sleep(8*restore_period)
+    time.sleep(3*restore_period)
 
     # Verify object is restored temporarily
     verify_transition(client, bucket, key, cloud_sc)
@@ -10118,7 +10118,7 @@ def test_restore_object_permanent():
     restore_period = get_restore_processor_period()
     # Restore object permanently
     client.restore_object(Bucket=bucket, Key=key, RestoreRequest={})
-    time.sleep(5*restore_period)
+    time.sleep(3*restore_period)
 
     # Verify object is restored permanently
     response = client.head_object(Bucket=bucket, Key=key)
@@ -10165,7 +10165,14 @@ def test_read_through():
     restore_period = get_restore_processor_period()
 
     if (allow_readthrough != None and allow_readthrough == "true"):
-        response = client.get_object(Bucket=bucket, Key=key)
+        try:
+            response = client.get_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            status, error_code = _get_status_and_error_code(e.response)
+            assert status == 400
+            time.sleep(2 * restore_interval)
+            response = client.head_object(Bucket=bucket, Key=key)
+
         assert response['ContentLength'] == len(data)
         time.sleep(2 * read_through_days * (restore_interval + lc_interval))
         # verify object expired
