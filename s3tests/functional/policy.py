@@ -37,10 +37,10 @@ class Policy(object):
 
         return json.dumps(policy_dict)
 
-def make_json_policy(action, resource, principal={"AWS": "*"}, conditions=None):
+def make_json_policy(action, resource, principal={"AWS": "*"}, effect="Allow", conditions=None):
     """
     Helper function to make single statement policies
     """
-    s = Statement(action, resource, principal, condition=conditions)
+    s = Statement(action, resource, principal, effect=effect, condition=conditions)
     p = Policy()
     return p.add_statement(s).to_json()

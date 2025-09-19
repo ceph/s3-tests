@@ -258,10 +258,9 @@ def with_setup_kwargs(setup, teardown=None):
 #    yield _test_gen
 
 def trim_xml(xml_str):
-    p = etree.XMLParser(encoding="utf-8", remove_blank_text=True)
-    xml_str = bytes(xml_str, "utf-8")
+    p = etree.XMLParser(remove_blank_text=True)
     elem = etree.XML(xml_str, parser=p)
-    return etree.tostring(elem, encoding="unicode")
+    return etree.tostring(elem)
 
 def normalize_xml(xml, pretty_print=True):
     if xml is None:
@@ -283,7 +282,7 @@ def normalize_xml(xml, pretty_print=True):
     for parent in root.xpath('//*[./*]'): # Search for parent elements
           parent[:] = sorted(parent,key=lambda x: x.tag)
 
-    xmlstr = etree.tostring(root, encoding="unicode", pretty_print=pretty_print)
+    xmlstr = etree.tostring(root, encoding="utf-8", xml_declaration=True, pretty_print=pretty_print)
     # there are two different DTD URIs
     xmlstr = re.sub(r'xmlns="[^"]+"', 'xmlns="s3"', xmlstr)
     xmlstr = re.sub(r'xmlns=\'[^\']+\'', 'xmlns="s3"', xmlstr)
