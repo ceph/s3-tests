@@ -13,7 +13,6 @@ setup(
     keywords='s3 web testing',
 
     install_requires=[
-        'boto >=2.0b4',
         'boto3 >=1.0.0',
         'PyYAML',
         'munch >=2.0.0',
