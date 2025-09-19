@@ -5,8 +5,8 @@ import time
 from botocore.exceptions import ClientError
 import pytest
 
-from s3tests_boto3.functional.utils import assert_raises
-from s3tests_boto3.functional.test_s3 import _multipart_upload
+from .utils import assert_raises
+from .test_s3 import _multipart_upload
 from . import (
     configfile,
     setup_teardown,
