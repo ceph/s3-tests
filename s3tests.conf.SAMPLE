@@ -56,6 +56,7 @@ secret_key = h7GhxuBLTrlhVUyxSPUKUV8r/2EI4ngqJxD7iBdBYLhwluN30JaT3Q==
 #lc_debug_interval = 20
 ## Restore debug interval (default: 100)
 #rgw_restore_debug_interval = 60
+#rgw_restore_processor_period = 60
 
 [s3 alt]
 # alt display_name set in vstart.sh
