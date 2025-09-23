@@ -310,9 +310,21 @@ def setup():
 def teardown():
     alt_client = get_alt_client()
     tenant_client = get_tenant_client()
-    nuke_prefixed_buckets(prefix=prefix)
-    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
-    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+    try:
+        print('teardown: nuking with default client')
+        nuke_prefixed_buckets(prefix=prefix)
+    except:
+        pass
+    try:
+        print('teardown: nuking with alt_client')
+        nuke_prefixed_buckets(prefix=prefix, client=alt_client)
+    except:
+        pass
+    try:
+        print('teardown: nuking with tenant_client')
+        nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+    except:
+        pass
     try:
         iam_client = get_iam_client()
         list_roles_resp = iam_client.list_roles()
