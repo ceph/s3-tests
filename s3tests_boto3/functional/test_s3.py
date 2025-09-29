@@ -6799,7 +6799,8 @@ def _simple_http_req_100_cont(host, port, is_secure, method, resource):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if is_secure:
-        s = ssl.wrap_socket(s);
+        ssl_context = ssl.create_default_context()
+        s = ssl_context.wrap_socket(s, server_hostname=host)
     s.settimeout(5)
     s.connect((host, port))
     s.send(req)
