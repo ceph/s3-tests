@@ -1,37 +1,28 @@
-import sys
+import pytest
+import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
+from botocore.exceptions import ClientError
+from botocore.handlers import disable_signing
 import configparser
-import boto.exception
-import boto.s3.connection
-import munch
-import itertools
+import datetime
+import time
 import os
+import munch
 import random
 import string
-import pytest
-from http.client import HTTPConnection, HTTPSConnection
-from urllib.parse import urlparse
+import itertools
+import urllib3
+import re
 
-from .utils import region_sync_meta
-
-s3 = munch.Munch()
-config = munch.Munch()
-targets = munch.Munch()
+config = munch.Munch
 
 # this will be assigned by setup()
 prefix = None
 
-calling_formats = dict(
-    ordinary=boto.s3.connection.OrdinaryCallingFormat(),
-    subdomain=boto.s3.connection.SubdomainCallingFormat(),
-    vhost=boto.s3.connection.VHostCallingFormat(),
-    )
-
 def get_prefix():
     assert prefix is not None
     return prefix
-
-def is_slow_backend():
-    return slow_backend
 
 def choose_bucket_prefix(template, max_len=30):
     """
@@ -57,209 +48,133 @@ def choose_bucket_prefix(template, max_len=30):
             ),
         )
 
+def get_buckets_list(client=None, prefix=None):
+    if client == None:
+        client = get_client()
+    if prefix == None:
+        prefix = get_prefix()
+    response = client.list_buckets()
+    bucket_dicts = response['Buckets']
+    buckets_list = []
+    for bucket in bucket_dicts:
+        if prefix in bucket['Name']:
+            buckets_list.append(bucket['Name'])
 
-def nuke_prefixed_buckets_on_conn(prefix, name, conn):
-    print('Cleaning buckets from connection {name} prefix {prefix!r}.'.format(
-        name=name,
-        prefix=prefix,
-        ))
+    return buckets_list
 
-    for bucket in conn.get_all_buckets():
-        print('prefix=',prefix)
-        if bucket.name.startswith(prefix):
-            print('Cleaning bucket {bucket}'.format(bucket=bucket))
-            success = False
-            for i in range(2):
-                try:
-                    try:
-                        iterator = iter(bucket.list_versions())
-                        # peek into iterator to issue list operation
-                        try:
-                            keys = itertools.chain([next(iterator)], iterator)
-                        except StopIteration:
-                            keys = []  # empty iterator
-                    except boto.exception.S3ResponseError as e:
-                        # some S3 implementations do not support object
-                        # versioning - fall back to listing without versions
-                        if e.error_code != 'NotImplemented':
-                            raise e
-                        keys = bucket.list();
-                    for key in keys:
-                        print('Cleaning bucket {bucket} key {key}'.format(
-                            bucket=bucket,
-                            key=key,
-                            ))
-                        # key.set_canned_acl('private')
-                        bucket.delete_key(key.name, version_id = key.version_id)
-                    try:
-                        bucket.delete()
-                    except boto.exception.S3ResponseError as e:
-                        # if DELETE times out, the retry may see NoSuchBucket
-                        if e.error_code != 'NoSuchBucket':
-                            raise e
-                        pass
-                    success = True
-                except boto.exception.S3ResponseError as e:
-                    if e.error_code != 'AccessDenied':
-                        print('GOT UNWANTED ERROR', e.error_code)
-                        raise
-                    # seems like we don't have permissions set appropriately, we'll
-                    # modify permissions and retry
-                    pass
+def get_objects_list(bucket, client=None, prefix=None):
+    if client == None:
+        client = get_client()
 
-                if success:
-                    break
+    if prefix == None:
+        response = client.list_objects(Bucket=bucket)
+    else:
+        response = client.list_objects(Bucket=bucket, Prefix=prefix)
+    objects_list = []
 
-                bucket.set_canned_acl('private')
+    if 'Contents' in response:
+        contents = response['Contents']
+        for obj in contents:
+            objects_list.append(obj['Key'])
 
+    return objects_list
 
-def nuke_prefixed_buckets(prefix):
-    # If no regions are specified, use the simple method
-    if targets.main.master == None:
-        for name, conn in list(s3.items()):
-            print('Deleting buckets on {name}'.format(name=name))
-            nuke_prefixed_buckets_on_conn(prefix, name, conn)
-    else: 
-		    # First, delete all buckets on the master connection 
-		    for name, conn in list(s3.items()):
-		        if conn == targets.main.master.connection:
-		            print('Deleting buckets on {name} (master)'.format(name=name))
-		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
-		
-		    # Then sync to propagate deletes to secondaries
-		    region_sync_meta(targets.main, targets.main.master.connection)
-		    print('region-sync in nuke_prefixed_buckets')
-		
-		    # Now delete remaining buckets on any other connection 
-		    for name, conn in list(s3.items()):
-		        if conn != targets.main.master.connection:
-		            print('Deleting buckets on {name} (non-master)'.format(name=name))
-		            nuke_prefixed_buckets_on_conn(prefix, name, conn)
+# generator function that returns object listings in batches, where each
+# batch is a list of dicts compatible with delete_objects()
+def list_versions(client, bucket, batch_size):
+    kwargs = {'Bucket': bucket, 'MaxKeys': batch_size}
+    truncated = True
+    while truncated:
+        listing = client.list_object_versions(**kwargs)
 
-    print('Done with cleanup of test buckets.')
+        kwargs['KeyMarker'] = listing.get('NextKeyMarker')
+        kwargs['VersionIdMarker'] = listing.get('NextVersionIdMarker')
+        truncated = listing['IsTruncated']
 
-class TargetConfig:
-    def __init__(self, cfg, section):
-        self.port = None
-        self.api_name = ''
-        self.is_master = False
-        self.is_secure = False
-        self.sync_agent_addr = None
-        self.sync_agent_port = 0
-        self.sync_meta_wait = 0
+        objs = listing.get('Versions', []) + listing.get('DeleteMarkers', [])
+        if len(objs):
+            yield [{'Key': o['Key'], 'VersionId': o['VersionId']} for o in objs]
+
+def nuke_bucket(client, bucket):
+    batch_size = 128
+    max_retain_date = None
+
+    # list and delete objects in batches
+    for objects in list_versions(client, bucket, batch_size):
+        delete = client.delete_objects(Bucket=bucket,
+                Delete={'Objects': objects, 'Quiet': True},
+                BypassGovernanceRetention=True)
+
+        # check for object locks on 403 AccessDenied errors
+        for err in delete.get('Errors', []):
+            if err.get('Code') != 'AccessDenied':
+                continue
+            try:
+                res = client.get_object_retention(Bucket=bucket,
+                        Key=err['Key'], VersionId=err['VersionId'])
+                retain_date = res['Retention']['RetainUntilDate']
+                if not max_retain_date or max_retain_date < retain_date:
+                    max_retain_date = retain_date
+            except ClientError:
+                pass
+
+    if max_retain_date:
+        # wait out the retention period (up to 60 seconds)
+        now = datetime.datetime.now(max_retain_date.tzinfo)
+        if max_retain_date > now:
+            delta = max_retain_date - now
+            if delta.total_seconds() > 60:
+                raise RuntimeError('bucket {} still has objects \
+locked for {} more seconds, not waiting for \
+bucket cleanup'.format(bucket, delta.total_seconds()))
+            print('nuke_bucket', bucket, 'waiting', delta.total_seconds(),
+                    'seconds for object locks to expire')
+            time.sleep(delta.total_seconds())
+
+        for objects in list_versions(client, bucket, batch_size):
+            client.delete_objects(Bucket=bucket,
+                    Delete={'Objects': objects, 'Quiet': True},
+                    BypassGovernanceRetention=True)
+
+    client.delete_bucket(Bucket=bucket)
+
+def nuke_prefixed_buckets(prefix, client=None):
+    if client == None:
+        client = get_client()
+
+    buckets = get_buckets_list(client, prefix)
+
+    err = None
+    for bucket_name in buckets:
         try:
-            self.api_name = cfg.get(section, 'api_name')
-        except (configparser.NoSectionError, configparser.NoOptionError):
+            nuke_bucket(client, bucket_name)
+        except Exception as e:
+            # The exception shouldn't be raised when doing cleanup. Pass and continue
+            # the bucket cleanup process. Otherwise left buckets wouldn't be cleared
+            # resulting in some kind of resource leak. err is used to hint user some
+            # exception once occurred.
+            err = e
             pass
-        try:
-            self.port = cfg.getint(section, 'port')
-        except configparser.NoOptionError:
-            pass
-        try:
-            self.host=cfg.get(section, 'host')
-        except configparser.NoOptionError:
-            raise RuntimeError(
-                'host not specified for section {s}'.format(s=section)
-                )
-        try:
-            self.is_master=cfg.getboolean(section, 'is_master')
-        except configparser.NoOptionError:
-            pass
+    if err:
+        raise err
 
-        try:
-            self.is_secure=cfg.getboolean(section, 'is_secure')
-        except configparser.NoOptionError:
-            pass
+    print('Done with cleanup of buckets in tests.')
 
-        try:
-            raw_calling_format = cfg.get(section, 'calling_format')
-        except configparser.NoOptionError:
-            raw_calling_format = 'ordinary'
+def configured_storage_classes():
+    sc = ['STANDARD']
 
-        try:
-            self.sync_agent_addr = cfg.get(section, 'sync_agent_addr')
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            pass
+    extra_sc = re.split(r"[\b\W\b]+", config.storage_classes)
 
-        try:
-            self.sync_agent_port = cfg.getint(section, 'sync_agent_port')
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            pass
+    for item in extra_sc:
+        if item != 'STANDARD':
+             sc.append(item)
 
-        try:
-            self.sync_meta_wait = cfg.getint(section, 'sync_meta_wait')
-        except (configparser.NoSectionError, configparser.NoOptionError):
-            pass
+    sc = [i for i in sc if i]
+    print("storage classes configured: " + str(sc))
 
+    return sc
 
-        try:
-            self.calling_format = calling_formats[raw_calling_format]
-        except KeyError:
-            raise RuntimeError(
-                'calling_format unknown: %r' % raw_calling_format
-                )
-
-class TargetConnection:
-    def __init__(self, conf, conn):
-        self.conf = conf
-        self.connection = conn
-
-
-
-class RegionsInfo:
-    def __init__(self):
-        self.m = munch.Munch()
-        self.master = None
-        self.secondaries = []
-
-    def add(self, name, region_config):
-        self.m[name] = region_config
-        if (region_config.is_master):
-            if not self.master is None:
-                raise RuntimeError(
-                    'multiple regions defined as master'
-                    )
-            self.master = region_config
-        else:
-            self.secondaries.append(region_config)
-    def get(self, name):
-        return self.m[name]
-    def get(self):
-        return self.m
-    def items(self):
-        return self.m.items()
-
-regions = RegionsInfo()
-
-
-class RegionsConn:
-    def __init__(self):
-        self.m = munch.Munch()
-        self.default = None
-        self.master = None
-        self.secondaries = []
-
-    def items(self):
-        return self.m.items()
-
-    def set_default(self, conn):
-        self.default = conn
-
-    def add(self, name, conn):
-        self.m[name] = conn
-        if not self.default:
-            self.default = conn
-        if (conn.conf.is_master):
-            self.master = conn
-        else:
-            self.secondaries.append(conn)
-
-
-# nosetests --processes=N with N>1 is safe
-_multiprocess_can_split_ = True
-
-def setup():
-
+def configure():
     cfg = configparser.RawConfigParser()
     try:
         path = os.environ['S3TEST_CONF']
@@ -270,119 +185,431 @@ def setup():
             )
     cfg.read(path)
 
+    if not cfg.defaults():
+        raise RuntimeError('Your config file is missing the DEFAULT section!')
+    if not cfg.has_section("s3 main"):
+        raise RuntimeError('Your config file is missing the "s3 main" section!')
+    if not cfg.has_section("s3 alt"):
+        raise RuntimeError('Your config file is missing the "s3 alt" section!')
+    if not cfg.has_section("s3 tenant"):
+        raise RuntimeError('Your config file is missing the "s3 tenant" section!')
+
     global prefix
-    global targets
-    global slow_backend
+
+    defaults = cfg.defaults()
+
+    # vars from the DEFAULT section
+    config.default_host = defaults.get("host")
+    config.default_port = int(defaults.get("port"))
+    config.default_is_secure = cfg.getboolean('DEFAULT', "is_secure")
+
+    proto = 'https' if config.default_is_secure else 'http'
+    config.default_endpoint = "%s://%s:%d" % (proto, config.default_host, config.default_port)
 
     try:
-        template = cfg.get('fixtures', 'bucket prefix')
+        config.default_ssl_verify = cfg.getboolean('DEFAULT', "ssl_verify")
+    except configparser.NoOptionError:
+        config.default_ssl_verify = False
+
+    # Disable InsecureRequestWarning reported by urllib3 when ssl_verify is False
+    if not config.default_ssl_verify:
+        urllib3.disable_warnings()
+
+    # vars from the main section
+    config.main_access_key = cfg.get('s3 main',"access_key")
+    config.main_secret_key = cfg.get('s3 main',"secret_key")
+    config.main_display_name = cfg.get('s3 main',"display_name")
+    config.main_user_id = cfg.get('s3 main',"user_id")
+    config.main_email = cfg.get('s3 main',"email")
+    try:
+        config.main_kms_keyid = cfg.get('s3 main',"kms_keyid")
     except (configparser.NoSectionError, configparser.NoOptionError):
-        template = 'test-{random}-'
+        config.main_kms_keyid = 'testkey-1'
+
+    try:
+        config.main_kms_keyid2 = cfg.get('s3 main',"kms_keyid2")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.main_kms_keyid2 = 'testkey-2'
+
+    try:
+        config.main_api_name = cfg.get('s3 main',"api_name")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.main_api_name = ""
+        pass
+
+    try:
+        config.storage_classes = cfg.get('s3 main',"storage_classes")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.storage_classes = ""
+        pass
+
+    try:
+        config.lc_debug_interval = int(cfg.get('s3 main',"lc_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.lc_debug_interval = 10
+
+    try:
+        config.rgw_restore_debug_interval = int(cfg.get('s3 main',"rgw_restore_debug_interval"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.rgw_restore_debug_interval = 100
+
+    try:
+        config.rgw_restore_processor_period = int(cfg.get('s3 main',"rgw_restore_processor_period"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.rgw_restore_processor_period = 100
+
+    config.alt_access_key = cfg.get('s3 alt',"access_key")
+    config.alt_secret_key = cfg.get('s3 alt',"secret_key")
+    config.alt_display_name = cfg.get('s3 alt',"display_name")
+    config.alt_user_id = cfg.get('s3 alt',"user_id")
+    config.alt_email = cfg.get('s3 alt',"email")
+
+    config.tenant_access_key = cfg.get('s3 tenant',"access_key")
+    config.tenant_secret_key = cfg.get('s3 tenant',"secret_key")
+    config.tenant_display_name = cfg.get('s3 tenant',"display_name")
+    config.tenant_user_id = cfg.get('s3 tenant',"user_id")
+    config.tenant_email = cfg.get('s3 tenant',"email")
+    config.tenant_name = cfg.get('s3 tenant',"tenant")
+
+    config.iam_access_key = cfg.get('iam',"access_key")
+    config.iam_secret_key = cfg.get('iam',"secret_key")
+    config.iam_display_name = cfg.get('iam',"display_name")
+    config.iam_user_id = cfg.get('iam',"user_id")
+    config.iam_email = cfg.get('iam',"email")
+
+    config.iam_root_access_key = cfg.get('iam root',"access_key")
+    config.iam_root_secret_key = cfg.get('iam root',"secret_key")
+    config.iam_root_user_id = cfg.get('iam root',"user_id")
+    config.iam_root_email = cfg.get('iam root',"email")
+
+    config.iam_alt_root_access_key = cfg.get('iam alt root',"access_key")
+    config.iam_alt_root_secret_key = cfg.get('iam alt root',"secret_key")
+    config.iam_alt_root_user_id = cfg.get('iam alt root',"user_id")
+    config.iam_alt_root_email = cfg.get('iam alt root',"email")
+
+    # vars from the fixtures section
+    template = cfg.get('fixtures', "bucket prefix", fallback='test-{random}-')
     prefix = choose_bucket_prefix(template=template)
+    template = cfg.get('fixtures', "iam name prefix", fallback="s3-tests-")
+    config.iam_name_prefix = choose_bucket_prefix(template=template)
+    template = cfg.get('fixtures', "iam path prefix", fallback="/s3-tests/")
+    config.iam_path_prefix = choose_bucket_prefix(template=template)
 
-    try:
-        slow_backend = cfg.getboolean('fixtures', 'slow backend')
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        slow_backend = False
+    if cfg.has_section("s3 cloud"):
+        get_cloud_config(cfg)
+    else:
+        config.cloud_storage_class = None
 
-    # pull the default_region out, if it exists
-    try:
-        default_region = cfg.get('fixtures', 'default_region')
-    except (configparser.NoSectionError, configparser.NoOptionError):
-        default_region = None
-
-    s3.clear()
-    config.clear()
-
-    for section in cfg.sections():
-        try:
-            (type_, name) = section.split(None, 1)
-        except ValueError:
-            continue
-        if type_ != 'region':
-            continue
-        regions.add(name, TargetConfig(cfg, section))
-
-    for section in cfg.sections():
-        try:
-            (type_, name) = section.split(None, 1)
-        except ValueError:
-            continue
-        if type_ != 's3':
-            continue
-
-        if len(regions.get()) == 0:
-            regions.add("default", TargetConfig(cfg, section))
-
-        config[name] = munch.Munch()
-        for var in [
-            'user_id',
-            'display_name',
-            'email',
-            's3website_domain',
-            'host',
-            'port',
-            'is_secure',
-            'kms_keyid',
-            'storage_classes',
-            ]:
-            try:
-                config[name][var] = cfg.get(section, var)
-            except configparser.NoOptionError:
-                pass
-
-        targets[name] = RegionsConn()
-
-        for (k, conf) in regions.items():
-            conn = boto.s3.connection.S3Connection(
-                aws_access_key_id=cfg.get(section, 'access_key'),
-                aws_secret_access_key=cfg.get(section, 'secret_key'),
-                is_secure=conf.is_secure,
-                port=conf.port,
-                host=conf.host,
-                # TODO test vhost calling format
-                calling_format=conf.calling_format,
-                )
-
-            temp_targetConn = TargetConnection(conf, conn)
-            targets[name].add(k, temp_targetConn)
-
-            # Explicitly test for and set the default region, if specified.
-            # If it was not specified, use the 'is_master' flag to set it.
-            if default_region:
-                if default_region == name:
-                    targets[name].set_default(temp_targetConn)
-            elif conf.is_master:
-                targets[name].set_default(temp_targetConn)
-
-        s3[name] = targets[name].default.connection
-
-    # WARNING! we actively delete all buckets we see with the prefix
-    # we've chosen! Choose your prefix with care, and don't reuse
-    # credentials!
-
-    # We also assume nobody else is going to use buckets with that
-    # prefix. This is racy but given enough randomness, should not
-    # really fail.
+def setup():
+    alt_client = get_alt_client()
+    tenant_client = get_tenant_client()
     nuke_prefixed_buckets(prefix=prefix)
-
+    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
+    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
 
 def teardown():
-    # remove our buckets here also, to avoid littering
+    alt_client = get_alt_client()
+    tenant_client = get_tenant_client()
     nuke_prefixed_buckets(prefix=prefix)
+    nuke_prefixed_buckets(prefix=prefix, client=alt_client)
+    nuke_prefixed_buckets(prefix=prefix, client=tenant_client)
+    try:
+        iam_client = get_iam_client()
+        list_roles_resp = iam_client.list_roles()
+        for role in list_roles_resp['Roles']:
+            list_policies_resp = iam_client.list_role_policies(RoleName=role['RoleName'])
+            for policy in list_policies_resp['PolicyNames']:
+                del_policy_resp = iam_client.delete_role_policy(
+                                         RoleName=role['RoleName'],
+                                         PolicyName=policy
+                                        )
+            del_role_resp = iam_client.delete_role(RoleName=role['RoleName'])
+        list_oidc_resp = iam_client.list_open_id_connect_providers()
+        for oidcprovider in list_oidc_resp['OpenIDConnectProviderList']:
+            del_oidc_resp = iam_client.delete_open_id_connect_provider(
+                        OpenIDConnectProviderArn=oidcprovider['Arn']
+                    )
+    except:
+        pass
 
 @pytest.fixture(scope="package")
 def configfile():
-    setup()
-    yield config
+    configure()
+    return config
 
 @pytest.fixture(autouse=True)
 def setup_teardown(configfile):
+    setup()
     yield
     teardown()
 
-bucket_counter = itertools.count(1)
+def check_webidentity():
+    cfg = configparser.RawConfigParser()
+    try:
+        path = os.environ['S3TEST_CONF']
+    except KeyError:
+        raise RuntimeError(
+            'To run tests, point environment '
+            + 'variable S3TEST_CONF to a config file.',
+            )
+    cfg.read(path)
+    if not cfg.has_section("webidentity"):
+        raise RuntimeError('Your config file is missing the "webidentity" section!')
 
+    config.webidentity_thumbprint = cfg.get('webidentity', "thumbprint")
+    config.webidentity_aud = cfg.get('webidentity', "aud")
+    config.webidentity_token = cfg.get('webidentity', "token")
+    config.webidentity_realm = cfg.get('webidentity', "KC_REALM")
+    config.webidentity_sub = cfg.get('webidentity', "sub")
+    config.webidentity_azp = cfg.get('webidentity', "azp")
+    config.webidentity_user_token = cfg.get('webidentity', "user_token")
+
+def get_cloud_config(cfg):
+    config.cloud_host = cfg.get('s3 cloud',"host")
+    config.cloud_port = int(cfg.get('s3 cloud',"port"))
+    config.cloud_is_secure = cfg.getboolean('s3 cloud', "is_secure")
+
+    proto = 'https' if config.cloud_is_secure else 'http'
+    config.cloud_endpoint = "%s://%s:%d" % (proto, config.cloud_host, config.cloud_port)
+
+    config.cloud_access_key = cfg.get('s3 cloud',"access_key")
+    config.cloud_secret_key = cfg.get('s3 cloud',"secret_key")
+
+    try:
+        config.cloud_storage_class = cfg.get('s3 cloud', "cloud_storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_storage_class = None
+    
+    try:
+        config.cloud_retain_head_object = cfg.get('s3 cloud',"retain_head_object")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_retain_head_object = None
+
+    try:
+        config.allow_read_through = cfg.get('s3 cloud',"allow_read_through")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.allow_read_through = False
+
+    try:
+        config.cloud_target_path = cfg.get('s3 cloud',"target_path")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_path = None
+
+    try:
+        config.cloud_target_storage_class = cfg.get('s3 cloud',"target_storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_storage_class = 'STANDARD'
+
+    try:
+        config.cloud_regular_storage_class = cfg.get('s3 cloud', "storage_class")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_regular_storage_class  = None
+
+    try:
+        config.read_through_restore_days = int(cfg.get('s3 cloud', "read_through_restore_days"))
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.read_through_restore_days = 10
+
+
+def get_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=client_config)
+    return client
+
+def get_v2_client():
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=Config(signature_version='s3'))
+    return client
+
+def get_sts_client(**kwargs):
+    kwargs.setdefault('region_name', '')
+    kwargs.setdefault('aws_access_key_id', config.alt_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.alt_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
+    client = boto3.client(service_name='sts',
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
+    return client
+
+def get_iam_client(**kwargs):
+    kwargs.setdefault('region_name', '')
+    kwargs.setdefault('aws_access_key_id', config.iam_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_secret_key)
+
+    client = boto3.client(service_name='iam',
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        **kwargs)
+    return client
+
+def get_iam_s3client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.iam_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
+    client = boto3.client(service_name='s3',
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
+    return client
+
+def get_iam_root_s3client(**kwargs):
+    kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+    kwargs.setdefault('config', Config(signature_version='s3v4'))
+
+    client = boto3.client(service_name='s3',
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          **kwargs)
+    return client
+
+def get_iam_root_client(**kwargs):
+    kwargs.setdefault('service_name', 'iam')
+    kwargs.setdefault('region_name', '')
+    kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
+
+    return boto3.client(endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        **kwargs)
+
+def get_iam_alt_root_client(**kwargs):
+    kwargs.setdefault('service_name', 'iam')
+    kwargs.setdefault('region_name', '')
+    kwargs.setdefault('aws_access_key_id', config.iam_alt_root_access_key)
+    kwargs.setdefault('aws_secret_access_key', config.iam_alt_root_secret_key)
+
+    return boto3.client(endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        **kwargs)
+
+def get_alt_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.alt_access_key,
+                        aws_secret_access_key=config.alt_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=client_config)
+    return client
+
+def get_cloud_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.cloud_access_key,
+                        aws_secret_access_key=config.cloud_secret_key,
+                        endpoint_url=config.cloud_endpoint,
+                        use_ssl=config.cloud_is_secure,
+                        config=client_config)
+    return client
+
+def get_tenant_client(client_config=None):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=config.tenant_access_key,
+                        aws_secret_access_key=config.tenant_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=client_config)
+    return client
+
+def get_v2_tenant_client():
+    client_config = Config(signature_version='s3')
+    client = boto3.client(service_name='s3',
+                          aws_access_key_id=config.tenant_access_key,
+                          aws_secret_access_key=config.tenant_secret_key,
+                          endpoint_url=config.default_endpoint,
+                          use_ssl=config.default_is_secure,
+                          verify=config.default_ssl_verify,
+                          config=client_config)
+    return client
+
+def get_tenant_iam_client():
+
+    client = boto3.client(service_name='iam',
+                          region_name='us-east-1',
+                          aws_access_key_id=config.tenant_access_key,
+                          aws_secret_access_key=config.tenant_secret_key,
+                          endpoint_url=config.default_endpoint,
+                          verify=config.default_ssl_verify,
+                          use_ssl=config.default_is_secure)
+    return client
+
+def get_alt_iam_client():
+
+    client = boto3.client(service_name='iam',
+                          region_name='',
+                          aws_access_key_id=config.alt_access_key,
+                          aws_secret_access_key=config.alt_secret_key,
+                          endpoint_url=config.default_endpoint,
+                          verify=config.default_ssl_verify,
+                          use_ssl=config.default_is_secure)
+    return client
+
+def get_unauthenticated_client():
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id='',
+                        aws_secret_access_key='',
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=Config(signature_version=UNSIGNED))
+    return client
+
+def get_bad_auth_client(aws_access_key_id='badauth'):
+    client = boto3.client(service_name='s3',
+                        aws_access_key_id=aws_access_key_id,
+                        aws_secret_access_key='roflmao',
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=Config(signature_version='s3v4'))
+    return client
+
+def get_svc_client(client_config=None, svc='s3'):
+    if client_config == None:
+        client_config = Config(signature_version='s3v4')
+
+    client = boto3.client(service_name=svc,
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify,
+                        config=client_config)
+    return client
+
+bucket_counter = itertools.count(1)
 
 def get_new_bucket_name():
     """
@@ -398,101 +625,223 @@ def get_new_bucket_name():
         )
     return name
 
-
-def get_new_bucket(target=None, name=None, headers=None):
+def get_new_bucket_resource(name=None):
     """
     Get a bucket that exists and is empty.
 
     Always recreates a bucket from scratch. This is useful to also
     reset ACLs and such.
     """
-    if target is None:
-        target = targets.main.default
-    connection = target.connection
+    s3 = boto3.resource('s3',
+                        aws_access_key_id=config.main_access_key,
+                        aws_secret_access_key=config.main_secret_key,
+                        endpoint_url=config.default_endpoint,
+                        use_ssl=config.default_is_secure,
+                        verify=config.default_ssl_verify)
     if name is None:
         name = get_new_bucket_name()
-    # the only way for this to fail with a pre-existing bucket is if
-    # someone raced us between setup nuke_prefixed_buckets and here;
-    # ignore that as astronomically unlikely
-    bucket = connection.create_bucket(name, location=target.conf.api_name, headers=headers)
+    bucket = s3.Bucket(name)
+    bucket_location = bucket.create()
     return bucket
 
-def _make_request(method, bucket, key, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
+def get_new_bucket(client=None, name=None):
     """
-    issue a request for a specified method, on a specified <bucket,key>,
-    with a specified (optional) body (encrypted per the connection), and
-    return the response (status, reason).
+    Get a bucket that exists and is empty.
 
-    If key is None, then this will be treated as a bucket-level request.
-
-    If the request or response headers are None, then default values will be
-    provided by later methods.
+    Always recreates a bucket from scratch. This is useful to also
+    reset ACLs and such.
     """
-    if not path_style:
-        conn = bucket.connection
-        request_headers['Host'] = conn.calling_format.build_host(conn.server_name(), bucket.name)
+    if client is None:
+        client = get_client()
+    if name is None:
+        name = get_new_bucket_name()
 
-    if authenticated:
-        urlobj = None
-        if key is not None:
-            urlobj = key
-        elif bucket is not None:
-            urlobj = bucket
-        else:
-            raise RuntimeError('Unable to find bucket name')
-        url = urlobj.generate_url(expires_in, method=method, response_headers=response_headers, headers=request_headers)
-        o = urlparse(url)
-        path = o.path + '?' + o.query
-    else:
-        bucketobj = None
-        if key is not None:
-            path = '/{obj}'.format(obj=key.name)
-            bucketobj = key.bucket
-        elif bucket is not None:
-            path = '/'
-            bucketobj = bucket
-        else:
-            raise RuntimeError('Unable to find bucket name')
-        if path_style:
-            path = '/{bucket}'.format(bucket=bucketobj.name) + path
+    client.create_bucket(Bucket=name)
+    return name
 
-    return _make_raw_request(host=s3.main.host, port=s3.main.port, method=method, path=path, body=body, request_headers=request_headers, secure=s3.main.is_secure, timeout=timeout)
+def get_parameter_name():
+    parameter_name=""
+    rand = ''.join(
+        random.choice(string.ascii_lowercase + string.digits)
+        for c in range(255)
+        )
+    while rand:
+        parameter_name = '{random}'.format(random=rand)
+        if len(parameter_name) <= 10:
+            return parameter_name
+        rand = rand[:-1]
+    return parameter_name
 
-def _make_bucket_request(method, bucket, body=None, authenticated=False, response_headers=None, request_headers=None, expires_in=100000, path_style=True, timeout=None):
-    """
-    issue a request for a specified method, on a specified <bucket>,
-    with a specified (optional) body (encrypted per the connection), and
-    return the response (status, reason)
-    """
-    return _make_request(method=method, bucket=bucket, key=None, body=body, authenticated=authenticated, response_headers=response_headers, request_headers=request_headers, expires_in=expires_in, path_style=path_style, timeout=timeout)
+def get_sts_user_id():
+    return config.alt_user_id
 
-def _make_raw_request(host, port, method, path, body=None, request_headers=None, secure=False, timeout=None):
-    """
-    issue a request to a specific host & port, for a specified method, on a
-    specified path with a specified (optional) body (encrypted per the
-    connection), and return the response (status, reason).
+def get_config_is_secure():
+    return config.default_is_secure
 
-    This allows construction of special cases not covered by the bucket/key to
-    URL mapping of _make_request/_make_bucket_request.
-    """
-    if secure:
-        class_ = HTTPSConnection
-    else:
-        class_ = HTTPConnection
+def get_config_host():
+    return config.default_host
 
-    if request_headers is None:
-        request_headers = {}
+def get_config_port():
+    return config.default_port
 
-    c = class_(host, port=port, timeout=timeout)
+def get_config_endpoint():
+    return config.default_endpoint
 
-    # TODO: We might have to modify this in future if we need to interact with
-    # how httplib.request handles Accept-Encoding and Host.
-    c.request(method, path, body=body, headers=request_headers)
+def get_config_ssl_verify():
+    return config.default_ssl_verify
 
-    res = c.getresponse()
-    #c.close()
+def get_main_aws_access_key():
+    return config.main_access_key
 
-    print(res.status, res.reason)
-    return res
+def get_main_aws_secret_key():
+    return config.main_secret_key
 
+def get_main_display_name():
+    return config.main_display_name
 
+def get_main_user_id():
+    return config.main_user_id
+
+def get_main_email():
+    return config.main_email
+
+def get_main_api_name():
+    return config.main_api_name
+
+def get_main_kms_keyid():
+    return config.main_kms_keyid
+
+def get_secondary_kms_keyid():
+    return config.main_kms_keyid2
+
+def get_alt_aws_access_key():
+    return config.alt_access_key
+
+def get_alt_aws_secret_key():
+    return config.alt_secret_key
+
+def get_alt_display_name():
+    return config.alt_display_name
+
+def get_alt_user_id():
+    return config.alt_user_id
+
+def get_alt_email():
+    return config.alt_email
+
+def get_tenant_aws_access_key():
+    return config.tenant_access_key
+
+def get_tenant_aws_secret_key():
+    return config.tenant_secret_key
+
+def get_tenant_display_name():
+    return config.tenant_display_name
+
+def get_tenant_name():
+    return config.tenant_name
+
+def get_tenant_user_id():
+    return config.tenant_user_id
+
+def get_tenant_email():
+    return config.tenant_email
+
+def get_thumbprint():
+    return config.webidentity_thumbprint
+
+def get_aud():
+    return config.webidentity_aud
+
+def get_sub():
+    return config.webidentity_sub
+
+def get_azp():
+    return config.webidentity_azp
+
+def get_token():
+    return config.webidentity_token
+
+def get_realm_name():
+    return config.webidentity_realm
+
+def get_iam_name_prefix():
+    return config.iam_name_prefix
+
+def make_iam_name(name):
+    return config.iam_name_prefix + name
+
+def get_iam_path_prefix():
+    return config.iam_path_prefix
+
+def get_iam_access_key():
+    return config.iam_access_key
+
+def get_iam_secret_key():
+    return config.iam_secret_key
+
+def get_iam_root_user_id():
+    return config.iam_root_user_id
+
+def get_iam_root_email():
+    return config.iam_root_email
+
+def get_iam_alt_root_user_id():
+    return config.iam_alt_root_user_id
+
+def get_iam_alt_root_email():
+    return config.iam_alt_root_email
+
+def get_user_token():
+    return config.webidentity_user_token
+
+def get_cloud_storage_class():
+    return config.cloud_storage_class
+
+def get_cloud_retain_head_object():
+    return config.cloud_retain_head_object
+
+def get_allow_read_through():
+    return config.allow_read_through
+
+def get_cloud_regular_storage_class():
+    return config.cloud_regular_storage_class
+
+def get_cloud_target_path():
+    return config.cloud_target_path
+
+def get_cloud_target_storage_class():
+    return config.cloud_target_storage_class
+
+def get_lc_debug_interval():
+    return config.lc_debug_interval
+
+def get_restore_debug_interval():
+    return config.rgw_restore_debug_interval
+
+def get_restore_processor_period():
+    return config.rgw_restore_processor_period
+
+def get_read_through_days():
+    return config.read_through_restore_days
+
+def create_iam_user_s3client(client):
+    prefix = get_iam_path_prefix()
+
+    # generate random name
+    randname = ''.join(
+        random.choice(string.ascii_lowercase + string.digits)
+        for c in range(8)
+    )
+    name = make_iam_name(randname)
+
+    user = client.create_user(UserName=name, Path=prefix)
+
+    # create s3 access and secret keys
+    keys = client.create_access_key(UserName=user['User']['UserName'])
+
+    # create s3 client
+    return get_iam_s3client(
+        aws_access_key_id=keys['AccessKey']['AccessKeyId'],
+        aws_secret_access_key=keys['AccessKey']['SecretAccessKey'],
+    )
