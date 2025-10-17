@@ -10130,6 +10130,7 @@ def test_read_through():
 
     lc_interval = get_lc_debug_interval()
     restore_interval = get_restore_debug_interval()
+    restore_period = get_restore_processor_period()
     time.sleep(10 * lc_interval)
 
     # Check the storage class after transitioning
@@ -10149,8 +10150,9 @@ def test_read_through():
         except ClientError as e:
             status, error_code = _get_status_and_error_code(e.response)
             assert status == 400
-            time.sleep(2 * restore_interval)
-            response = client.head_object(Bucket=bucket, Key=key)
+
+        time.sleep(2 * restore_period)
+        response = client.head_object(Bucket=bucket, Key=key)
 
         assert response['ContentLength'] == len(data)
         time.sleep(2 * read_through_days * (restore_interval + lc_interval))
