@@ -172,6 +172,6 @@ azp=<obtained after introspecting token>
 
 user_token=<access token for a user, with attribute Department=[Engineering, Marketing>]
 
-thumbprint=<obtained from x509 certificate>
+thumbprint=<obtained from x509 certificate and is longer than 40 characters>
 
 KC_REALM=<name of the realm>
