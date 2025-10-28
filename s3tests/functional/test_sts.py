@@ -37,9 +37,12 @@ from . import(
     get_iam_path_prefix,
     make_iam_name,
     get_client,
+    get_main_user_id,
+    get_alt_client,
     get_alt_user_id,
     get_config_endpoint,
     get_new_bucket_name,
+    get_new_bucket,
     get_parameter_name,
     get_main_aws_access_key,
     get_main_aws_secret_key,
@@ -55,6 +58,7 @@ from . import(
     get_azp,
     get_user_token
     )
+from .utils import (assert_raises, _get_status_and_error_code)
 
 log = logging.getLogger(__name__)
 
@@ -393,6 +397,97 @@ def test_assume_role_allow_head_nonexistent():
     except ClientError as e:
         status = e.response['ResponseMetadata']['HTTPStatusCode']
     assert status == 404
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_assume_role_owner_allow():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    sts_user_id=get_alt_user_id()
+    default_endpoint=get_config_endpoint()
+    role_name=get_parameter_name()
+    role_session_name=get_parameter_name()
+
+    policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
+    role_response = iam_client.create_role(Path='/', RoleName=role_name, AssumeRolePolicyDocument=policy_document)
+
+    resp = sts_client.assume_role(RoleArn=role_response['Role']['Arn'], RoleSessionName=role_session_name)
+
+    s3_client = boto3.client('s3',
+		aws_access_key_id = resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
+		aws_session_token = resp['Credentials']['SessionToken'],
+		endpoint_url=default_endpoint,
+		region_name='')
+
+    # create a bucket with the alt user
+    bucket_name = get_new_bucket(get_alt_client())
+
+    # access allowed from role assumed by alt user
+    s3_client.get_bucket_location(Bucket=bucket_name)
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_assume_role_nonowner_deny():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    sts_user_id=get_alt_user_id()
+    default_endpoint=get_config_endpoint()
+    role_name=get_parameter_name()
+    role_session_name=get_parameter_name()
+
+    policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
+    role_response = iam_client.create_role(Path='/', RoleName=role_name, AssumeRolePolicyDocument=policy_document)
+
+    resp = sts_client.assume_role(RoleArn=role_response['Role']['Arn'], RoleSessionName=role_session_name)
+
+    s3_client = boto3.client('s3',
+		aws_access_key_id = resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
+		aws_session_token = resp['Credentials']['SessionToken'],
+		endpoint_url=default_endpoint,
+		region_name='')
+
+    # create a bucket with the main user
+    main_client = get_client()
+    bucket_name = get_new_bucket(main_client)
+
+    # access denied from role assumed by alt user
+    e = assert_raises(ClientError, s3_client.get_bucket_location, Bucket=bucket_name)
+    assert (403, 'AccessDenied') == _get_status_and_error_code(e.response)
+
+@pytest.mark.test_of_sts
+@pytest.mark.fails_on_dbstore
+def test_assume_role_acl_allow():
+    iam_client=get_iam_client()
+    sts_client=get_sts_client()
+    main_user_id=get_main_user_id()
+    sts_user_id=get_alt_user_id()
+    default_endpoint=get_config_endpoint()
+    role_name=get_parameter_name()
+    role_session_name=get_parameter_name()
+
+    policy_document = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["arn:aws:iam:::user/'+sts_user_id+'"]},"Action":["sts:AssumeRole"]}]}'
+    role_response = iam_client.create_role(Path='/', RoleName=role_name, AssumeRolePolicyDocument=policy_document)
+
+    resp = sts_client.assume_role(RoleArn=role_response['Role']['Arn'], RoleSessionName=role_session_name)
+
+    s3_client = boto3.client('s3',
+		aws_access_key_id = resp['Credentials']['AccessKeyId'],
+		aws_secret_access_key = resp['Credentials']['SecretAccessKey'],
+		aws_session_token = resp['Credentials']['SessionToken'],
+		endpoint_url=default_endpoint,
+		region_name='')
+
+    # create a bucket with the main user and grant read acl to alt user
+    main_client = get_client()
+    bucket_name = get_new_bucket(main_client)
+    main_client.put_bucket_acl(Bucket=bucket_name,
+                               GrantFullControl=f'id={main_user_id}',
+                               GrantReadACP=f'id={sts_user_id}')
+
+    # access allowed from role assumed by alt user
+    s3_client.get_bucket_location(Bucket=bucket_name)
 
 
 @pytest.mark.webidentity_test
