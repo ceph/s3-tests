@@ -1060,7 +1060,7 @@ def test_session_policy_bucket_policy_role_arn():
         "Statement": [{
         "Effect": "Allow",
         "Principal": {"AWS": "{}".format(rolearn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
+        "Action": ["s3:GetBucketLocation","s3:ListBucket"],
         "Resource": [
             "{}".format(resource1),
             "{}".format(resource2)
@@ -1068,7 +1068,7 @@ def test_session_policy_bucket_policy_role_arn():
         }]
      })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
-    session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
+    session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
@@ -1080,15 +1080,12 @@ def test_session_policy_bucket_policy_role_arn():
                 endpoint_url=default_endpoint,
                 region_name='',
                 )
-    bucket_body = 'this is a test file'
-    s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    try:
-        obj = s3_client.get_object(Bucket=bucket_name_1, Key="test-1.txt")
-    except ClientError as e:
-        s3object_error = e.response.get("Error", {}).get("Code")
-    assert s3object_error == 'AccessDenied'
+    s3_client.head_bucket(Bucket=bucket_name_1)
+
+    # s3:GetBucketLocation not allowed by session policy
+    e = assert_raises(ClientError, s3_client.get_bucket_location, Bucket=bucket_name_1)
+    assert (403, 'AccessDenied') == _get_status_and_error_code(e.response)
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
@@ -1136,7 +1133,7 @@ def test_session_policy_bucket_policy_session_arn():
         "Statement": [{
         "Effect": "Allow",
         "Principal": {"AWS": "{}".format(rolesessionarn)},
-        "Action": ["s3:GetObject","s3:PutObject"],
+        "Action": ["s3:GetBucketLocation","s3:ListBucket"],
         "Resource": [
             "{}".format(resource1),
             "{}".format(resource2)
@@ -1144,7 +1141,7 @@ def test_session_policy_bucket_policy_session_arn():
         }]
     })
     s3client_iamcreds.put_bucket_policy(Bucket=bucket_name_1, Policy=bucket_policy)
-    session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
+    session_policy = "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::test1\",\"arn:aws:s3:::test1/*\"]}}"
 
     resp=sts_client.assume_role_with_web_identity(RoleArn=role_response['Role']['Arn'],RoleSessionName=role_session_name,WebIdentityToken=token,Policy=session_policy)
     assert resp['ResponseMetadata']['HTTPStatusCode'] == 200
@@ -1156,13 +1153,11 @@ def test_session_policy_bucket_policy_session_arn():
                 endpoint_url=default_endpoint,
                 region_name='',
                 )
-    bucket_body = 'this is a test file'
-    s3_put_obj = s3_client.put_object(Body=bucket_body, Bucket=bucket_name_1, Key="test-1.txt")
-    assert s3_put_obj['ResponseMetadata']['HTTPStatusCode'] == 200
 
+    s3_client.head_bucket(Bucket=bucket_name_1)
 
-    s3_get_obj = s3_client.get_object(Bucket=bucket_name_1, Key="test-1.txt")
-    assert s3_get_obj['ResponseMetadata']['HTTPStatusCode'] == 200
+    # s3:GetBucketLocation allowed by bucket policy
+    s3_client.get_bucket_location(Bucket=bucket_name_1)
 
     oidc_remove=iam_client.delete_open_id_connect_provider(
     OpenIDConnectProviderArn=oidc_arn
