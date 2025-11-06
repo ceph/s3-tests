@@ -564,6 +564,7 @@ def test_allow_object_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_object_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -603,6 +604,7 @@ def test_deny_object_actions_in_user_policy():
 
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
+@pytest.mark.fails_on_posix
 def test_allow_multipart_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -639,6 +641,7 @@ def test_allow_multipart_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_multipart_actions_in_user_policy():
     client = get_iam_client()
     s3_client = get_alt_client()
@@ -682,6 +685,7 @@ def test_deny_multipart_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_allow_tagging_actions_in_user_policy():
     client = get_iam_client()
     s3_client_alt = get_alt_client()
@@ -728,6 +732,7 @@ def test_allow_tagging_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_deny_tagging_actions_in_user_policy():
     client = get_iam_client()
     s3_client = get_alt_client()
@@ -780,6 +785,7 @@ def test_deny_tagging_actions_in_user_policy():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_verify_conflicting_user_policy_statements():
     s3client = get_alt_client()
     bucket = get_new_bucket(client=s3client)
@@ -812,6 +818,7 @@ def test_verify_conflicting_user_policy_statements():
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
 @pytest.mark.fails_on_dbstore
+@pytest.mark.fails_on_posix
 def test_verify_conflicting_user_policies():
     s3client = get_alt_client()
     bucket = get_new_bucket(client=s3client)
@@ -850,6 +857,7 @@ def test_verify_conflicting_user_policies():
 
 @pytest.mark.user_policy
 @pytest.mark.iam_tenant
+@pytest.mark.fails_on_posix
 def test_verify_allow_iam_actions():
     policy1 = json.dumps(
         {"Version": "2012-10-17",
@@ -878,6 +886,7 @@ def test_verify_allow_iam_actions():
 # IAM User apis
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_create(iam_root):
     path = get_iam_path_prefix()
     name1 = make_iam_name('U1')
@@ -902,6 +911,7 @@ def test_account_user_create(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_case_insensitive_name(iam_root):
     path = get_iam_path_prefix()
     name_upper = make_iam_name('U1')
@@ -925,6 +935,7 @@ def test_account_user_case_insensitive_name(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_delete(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('U1')
@@ -950,6 +961,7 @@ def user_list_names(client, **kwargs):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_list(iam_root):
     path = get_iam_path_prefix()
     response = iam_root.list_users(PathPrefix=path)
@@ -974,6 +986,7 @@ def test_account_user_list(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_list_path_prefix(iam_root):
     path = get_iam_path_prefix()
     response = iam_root.list_users(PathPrefix=path)
@@ -1009,6 +1022,7 @@ def test_account_user_list_path_prefix(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_update_name(iam_root):
     path = get_iam_path_prefix()
     name1 = make_iam_name('a')
@@ -1039,6 +1053,7 @@ def test_account_user_update_name(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_update_path(iam_root):
     path = get_iam_path_prefix()
     name1 = make_iam_name('a')
@@ -1066,6 +1081,7 @@ def test_account_user_update_path(iam_root):
 # IAM AccessKey apis
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_access_key_create(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('a')
@@ -1084,6 +1100,7 @@ def test_account_user_access_key_create(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_current_user_access_key_create(iam_root):
     # omit the UserName argument to operate on the current authenticated
     # user (assumed to be an account root user)
@@ -1103,6 +1120,7 @@ def test_account_current_user_access_key_create(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_access_key_update(iam_root):
     with pytest.raises(iam_root.exceptions.NoSuchEntityException):
         iam_root.update_access_key(UserName='nosuchuser', AccessKeyId='abcdefghijklmnopqrstu', Status='Active')
@@ -1134,6 +1152,7 @@ def test_account_user_access_key_update(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_current_user_access_key_update(iam_root):
     # omit the UserName argument to operate on the current authenticated
     # user (assumed to be an account root user)
@@ -1165,6 +1184,7 @@ def test_account_current_user_access_key_update(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_access_key_delete(iam_root):
     with pytest.raises(iam_root.exceptions.NoSuchEntityException):
         iam_root.delete_access_key(UserName='nosuchuser', AccessKeyId='abcdefghijklmnopqrstu')
@@ -1190,6 +1210,7 @@ def test_account_user_access_key_delete(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_current_user_access_key_delete(iam_root):
     # omit the UserName argument to operate on the current authenticated
     # user (assumed to be an account root user)
@@ -1220,6 +1241,7 @@ def user_list_key_ids(client, **kwargs):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_access_key_list(iam_root):
     with pytest.raises(iam_root.exceptions.NoSuchEntityException):
         iam_root.list_access_keys(UserName='nosuchuser')
@@ -1258,6 +1280,7 @@ def retry_on(code, tries, func, *args, **kwargs):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_user
+@pytest.mark.fails_on_posix
 def test_account_user_bucket_policy_allow(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1303,6 +1326,7 @@ def test_account_user_bucket_policy_allow(iam_root):
 # IAM UserPolicy apis
 @pytest.mark.user_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_user_policy(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1360,6 +1384,7 @@ def test_account_user_policy(iam_root):
 
 @pytest.mark.user_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_user_policy_managed(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1417,6 +1442,7 @@ def test_account_user_policy_managed(iam_root):
 
 @pytest.mark.user_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_user_policy_allow(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1462,6 +1488,8 @@ def group_list_names(client, **kwargs):
 # IAM Group apis
 @pytest.mark.group
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
+@pytest.mark.fails_on_posix
 def test_account_group_create(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('G1')
@@ -1514,6 +1542,7 @@ def test_account_group_case_insensitive_name(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.group
+@pytest.mark.fails_on_posix
 def test_account_group_list(iam_root):
     path = get_iam_path_prefix()
     response = iam_root.list_groups(PathPrefix=path)
@@ -1538,6 +1567,7 @@ def test_account_group_list(iam_root):
 
 @pytest.mark.group
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_group_update(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('G1')
@@ -1583,6 +1613,7 @@ def test_account_group_update(iam_root):
 # IAM GroupPolicy apis
 @pytest.mark.group_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_inline_group_policy(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1644,6 +1675,7 @@ def test_account_inline_group_policy(iam_root):
 
 @pytest.mark.group_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_managed_group_policy(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -1742,6 +1774,7 @@ def test_account_inline_group_policy_allow(iam_root):
 
 @pytest.mark.group_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_managed_group_policy_allow(iam_root):
     path = get_iam_path_prefix()
     username = make_iam_name('User')
@@ -1786,6 +1819,7 @@ assume_role_policy = json.dumps({
 # IAM Role apis
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_create(iam_root):
     path = get_iam_path_prefix()
     name1 = make_iam_name('R1')
@@ -1823,6 +1857,7 @@ def test_account_role_create(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_case_insensitive_name(iam_root):
     path = get_iam_path_prefix()
     name_upper = make_iam_name('R1')
@@ -1846,6 +1881,7 @@ def test_account_role_case_insensitive_name(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_delete(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('U1')
@@ -1871,6 +1907,7 @@ def role_list_names(client, **kwargs):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_list(iam_root):
     path = get_iam_path_prefix()
     response = iam_root.list_roles(PathPrefix=path)
@@ -1895,6 +1932,7 @@ def test_account_role_list(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_list_path_prefix(iam_root):
     path = get_iam_path_prefix()
     response = iam_root.list_roles(PathPrefix=path)
@@ -1930,6 +1968,7 @@ def test_account_role_list_path_prefix(iam_root):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_role
+@pytest.mark.fails_on_posix
 def test_account_role_update(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('a')
@@ -1966,6 +2005,7 @@ role_policy = json.dumps({
 @pytest.mark.iam_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_account_role_policy(iam_root):
     path = get_iam_path_prefix()
     role_name = make_iam_name('r')
@@ -2014,6 +2054,7 @@ def test_account_role_policy(iam_root):
 
 @pytest.mark.role_policy
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_role_policy_managed(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
@@ -2072,6 +2113,7 @@ def test_account_role_policy_managed(iam_root):
 @pytest.mark.iam_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_account_role_policy_allow(iam_root):
     path = get_iam_path_prefix()
     user_name = make_iam_name('MyUser')
@@ -2133,6 +2175,7 @@ def test_account_role_policy_allow(iam_root):
 @pytest.mark.iam_cross_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_same_account_role_policy_allow(iam_root, iam_alt_root):
     path = get_iam_path_prefix()
     user_name = make_iam_name('AltUser')
@@ -2198,6 +2241,7 @@ def test_same_account_role_policy_allow(iam_root, iam_alt_root):
 @pytest.mark.iam_cross_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_cross_account_role_policy_allow(iam_root, iam_alt_root):
     path = get_iam_path_prefix()
     user_name = make_iam_name('AltUser')
@@ -2281,6 +2325,7 @@ def test_cross_account_role_policy_allow(iam_root, iam_alt_root):
 @pytest.mark.iam_cross_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_account_role_policy_allow_create_bucket(iam_root, iam_alt_root):
     path = get_iam_path_prefix()
     user_name = make_iam_name('AltUser')
@@ -2352,6 +2397,7 @@ def test_account_role_policy_allow_create_bucket(iam_root, iam_alt_root):
 @pytest.mark.iam_cross_account
 @pytest.mark.iam_role
 @pytest.mark.role_policy
+@pytest.mark.fails_on_posix
 def test_account_role_policy_allow_get_role(iam_root, iam_alt_root):
     path = get_iam_path_prefix()
     user_name = make_iam_name('AltUser')
@@ -2413,6 +2459,7 @@ def test_account_role_policy_allow_get_role(iam_root, iam_alt_root):
 
 # IAM OpenIDConnectProvider apis
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_account_oidc_provider(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2446,6 +2493,7 @@ def test_account_oidc_provider(iam_root):
 
 
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_verify_add_new_client_id_to_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2485,6 +2533,7 @@ def test_verify_add_new_client_id_to_oidc(iam_root):
                     )
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
+@pytest.mark.fails_on_posix
 def test_verify_add_existing_client_id_to_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2525,6 +2574,7 @@ def test_verify_add_existing_client_id_to_oidc(iam_root):
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_verify_remove_client_id_from_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2565,6 +2615,7 @@ def test_verify_remove_client_id_from_oidc(iam_root):
     )
     assert del_response['ResponseMetadata']['HTTPStatusCode'] == 200
 
+@pytest.mark.fails_on_posix
 def test_verify_update_thumbprintlist_of_oidc(iam_root):
     url_host = get_iam_path_prefix()[1:] + 'example.com'
     url = 'http://' + url_host
@@ -2690,6 +2741,7 @@ def _test_cross_account_bucket_user_policy(roots3, alt_root, alt_name, alt_arn):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_user_policy_allow_user_arn(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2700,6 +2752,7 @@ def test_cross_account_bucket_user_policy_allow_user_arn(iam_root, iam_alt_root)
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_user_bucket_policy_allow_user_arn(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2710,6 +2763,7 @@ def test_cross_account_user_bucket_policy_allow_user_arn(iam_root, iam_alt_root)
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_user_bucket_policy_allow_account_arn(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2721,6 +2775,7 @@ def test_cross_account_user_bucket_policy_allow_account_arn(iam_root, iam_alt_ro
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_user_policy_allow_account_arn(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2732,6 +2787,7 @@ def test_cross_account_bucket_user_policy_allow_account_arn(iam_root, iam_alt_ro
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_user_bucket_policy_allow_account_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2743,6 +2799,7 @@ def test_cross_account_user_bucket_policy_allow_account_id(iam_root, iam_alt_roo
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_user_policy_allow_account_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2824,6 +2881,7 @@ def _test_cross_account_bucket_acl_user_policy(roots3, alt_root, alt_name, grant
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
 @pytest.mark.fails_on_aws # can't grant to individual users
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_acl_user_policy_grant_user_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2835,6 +2893,7 @@ def test_cross_account_bucket_acl_user_policy_grant_user_id(iam_root, iam_alt_ro
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
 @pytest.mark.fails_on_aws # can't grant to individual users
+@pytest.mark.fails_on_posix
 def test_cross_account_user_policy_bucket_acl_grant_user_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2845,6 +2904,7 @@ def test_cross_account_user_policy_bucket_acl_grant_user_id(iam_root, iam_alt_ro
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_acl_user_policy_grant_canonical_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2855,6 +2915,7 @@ def test_cross_account_bucket_acl_user_policy_grant_canonical_id(iam_root, iam_a
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_user_policy_bucket_acl_grant_canonical_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2865,6 +2926,7 @@ def test_cross_account_user_policy_bucket_acl_grant_canonical_id(iam_root, iam_a
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_bucket_acl_user_policy_grant_account_email(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2875,6 +2937,7 @@ def test_cross_account_bucket_acl_user_policy_grant_account_email(iam_root, iam_
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_user_policy_bucket_acl_grant_account_email(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     path = get_iam_path_prefix()
@@ -2912,6 +2975,7 @@ def _test_cross_account_root_bucket_policy(roots3, alts3, alt_arn):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_root_bucket_policy_allow_account_arn(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     alts3 = get_iam_alt_root_client(service_name='s3')
@@ -2920,6 +2984,7 @@ def test_cross_account_root_bucket_policy_allow_account_arn(iam_root, iam_alt_ro
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_root_bucket_policy_allow_account_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     alts3 = get_iam_alt_root_client(service_name='s3')
@@ -2947,6 +3012,7 @@ def _test_cross_account_root_bucket_acl(roots3, alts3, grantee):
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_root_bucket_acl_grant_canonical_id(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     alts3 = get_iam_alt_root_client(service_name='s3')
@@ -2955,6 +3021,7 @@ def test_cross_account_root_bucket_acl_grant_canonical_id(iam_root, iam_alt_root
 
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
+@pytest.mark.fails_on_posix
 def test_cross_account_root_bucket_acl_grant_account_email(iam_root, iam_alt_root):
     roots3 = get_iam_root_client(service_name='s3')
     alts3 = get_iam_alt_root_client(service_name='s3')
@@ -2962,6 +3029,7 @@ def test_cross_account_root_bucket_acl_grant_account_email(iam_root, iam_alt_roo
     _test_cross_account_root_bucket_acl(roots3, alts3, grantee)
 
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_get_account_summary_root(iam_root):
   summary = iam_root.get_account_summary()['SummaryMap']
   assert 'Users' in summary
@@ -2971,6 +3039,7 @@ def test_get_account_summary_root(iam_root):
   assert 'AccessKeysPerUserQuota' in summary
 
 @pytest.mark.iam_account
+@pytest.mark.fails_on_posix
 def test_get_account_summary_policy(iam_root):
   path = get_iam_path_prefix()
   user_name = make_iam_name('MyUser')
