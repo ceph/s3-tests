@@ -374,6 +374,7 @@ def test_bucket_list_delimiter_alt():
     assert prefixes == ['ba', 'ca']
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_delimiter_alt():
     bucket_name = _create_objects(keys=['bar', 'baz', 'cab', 'foo'])
     client = get_client()
@@ -450,6 +451,7 @@ def test_bucket_list_delimiter_percentage():
     assert prefixes == ['b%', 'c%']
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_delimiter_percentage():
     bucket_name = _create_objects(keys=['b%ar', 'b%az', 'c%ab', 'foo'])
     client = get_client()
@@ -481,6 +483,7 @@ def test_bucket_list_delimiter_whitespace():
     assert prefixes == ['b ', 'c ']
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_delimiter_whitespace():
     bucket_name = _create_objects(keys=['b ar', 'b az', 'c ab', 'foo'])
     client = get_client()
@@ -512,6 +515,7 @@ def test_bucket_list_delimiter_dot():
     assert prefixes == ['b.', 'c.']
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_delimiter_dot():
     bucket_name = _create_objects(keys=['b.ar', 'b.az', 'c.ab', 'foo'])
     client = get_client()
@@ -541,6 +545,7 @@ def test_bucket_list_delimiter_unreadable():
     assert prefixes == []
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_delimiter_unreadable():
     key_names=['bar', 'baz', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -895,6 +900,7 @@ def test_bucket_list_prefix_delimiter_alt():
     assert prefixes == ['baza']
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_prefix_delimiter_alt():
     key_names = ['bar', 'bazar', 'cab', 'foo']
     bucket_name = _create_objects(keys=key_names)
@@ -922,6 +928,7 @@ def test_bucket_list_prefix_delimiter_prefix_not_exist():
     assert prefixes == []
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_prefix_delimiter_prefix_not_exist():
     key_names = ['b/a/r', 'b/a/c', 'b/a/g', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -947,6 +954,7 @@ def test_bucket_list_prefix_delimiter_delimiter_not_exist():
     assert prefixes == []
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_prefix_delimiter_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -972,6 +980,7 @@ def test_bucket_list_prefix_delimiter_prefix_delimiter_not_exist():
     assert prefixes == []
 
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_supported
 def test_bucket_listv2_prefix_delimiter_prefix_delimiter_not_exist():
     key_names = ['b/a/c', 'b/a/g', 'b/a/r', 'g']
     bucket_name = _create_objects(keys=key_names)
@@ -1467,6 +1476,7 @@ def test_bucket_list_objects_anonymous():
     unauthenticated_client = get_unauthenticated_client()
     unauthenticated_client.list_objects(Bucket=bucket_name)
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.list_objects_v2
 def test_bucket_listv2_objects_anonymous():
     bucket_name = get_new_bucket()
@@ -1709,6 +1719,7 @@ def test_multi_object_delete():
     response = client.list_objects(Bucket=bucket_name)
     assert 'Contents' not in response
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.list_objects_v2
 def test_expected_bucket_owner():
   bucket_name = get_new_bucket()
@@ -5105,6 +5116,7 @@ def test_access_bucket_private_object_private():
     alt_client3 = get_alt_client()
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_private():
     # all the test_access_* tests follow this template
@@ -5153,6 +5165,7 @@ def test_access_bucket_private_object_publicread():
     check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_publicread():
 
@@ -5194,6 +5207,7 @@ def test_access_bucket_private_object_publicreadwrite():
     check_access_denied(alt_client3.list_objects, Bucket=bucket_name)
     check_access_denied(alt_client3.put_object, Bucket=bucket_name, Key=newkey, Body='newcontent')
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.list_objects_v2
 def test_access_bucket_private_objectv2_publicreadwrite():
     bucket_name, key1, key2, newkey = _setup_access(bucket_acl='private', object_acl='public-read-write')
@@ -8534,6 +8548,7 @@ def test_lifecycle_expiration():
 @pytest.mark.fails_on_aws
 @pytest.mark.list_objects_v2
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_lifecyclev2_expiration():
     bucket_name = _create_objects(keys=['expire1/foo', 'expire1/bar', 'keep2/foo',
                                         'keep2/bar', 'expire3/foo', 'expire3/bar'])
@@ -11146,6 +11161,7 @@ def test_bucket_policy():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_implemented
 def test_bucketv2_policy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -11290,6 +11306,7 @@ def test_bucket_policy_acl():
     client.delete_bucket_policy(Bucket=bucket_name)
     client.put_bucket_acl(Bucket=bucket_name, ACL='public-read')
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
 def test_bucketv2_policy_acl():
@@ -11465,6 +11482,7 @@ def test_bucket_policy_another_bucket():
 
 @pytest.mark.bucket_policy
 @pytest.mark.list_objects_v2
+@pytest.mark.s3d_not_implemented
 def test_bucketv2_policy_another_bucket():
     bucket_name = get_new_bucket()
     bucket_name2 = get_new_bucket()
