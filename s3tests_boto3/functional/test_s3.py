@@ -1938,13 +1938,12 @@ def _get_post_url(bucket_name):
     return '{endpoint}/{bucket_name}'.format(endpoint=endpoint, bucket_name=bucket_name)
 
 def test_post_object_anonymous_request():
-    bucket_name = get_new_bucket_name()
+    bucket_name = _setup_bucket_acl('public-read-write')
     client = get_client()
     url = _get_post_url(bucket_name)
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 204
     response = client.get_object(Bucket=bucket_name, Key='foo.txt')
@@ -1990,10 +1989,8 @@ def test_post_object_authenticated_request():
     assert body == 'bar'
 
 def test_post_object_authenticated_no_content_type():
-    bucket_name = get_new_bucket_name()
+    bucket_name = _setup_bucket_acl('public-read-write')
     client = get_client()
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
-
 
     url = _get_post_url(bucket_name)
     utc = pytz.utc
@@ -2027,9 +2024,7 @@ def test_post_object_authenticated_no_content_type():
     assert body == 'bar'
 
 def test_post_object_authenticated_request_bad_access_key():
-    bucket_name = get_new_bucket_name()
-    client = get_client()
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
+    bucket_name = _setup_bucket_acl('public-read-write')
 
     url = _get_post_url(bucket_name)
     utc = pytz.utc
@@ -2062,9 +2057,7 @@ def test_post_object_authenticated_request_bad_access_key():
     assert r.status_code == 403
 
 def test_post_object_set_success_code():
-    bucket_name = get_new_bucket_name()
-    client = get_client()
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
+    bucket_name = _setup_bucket_acl('public-read-write')
 
     url = _get_post_url(bucket_name)
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
@@ -2077,9 +2070,7 @@ def test_post_object_set_success_code():
     assert message.text == 'foo.txt'
 
 def test_post_object_set_invalid_success_code():
-    bucket_name = get_new_bucket_name()
-    client = get_client()
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
+    bucket_name = _setup_bucket_acl('public-read-write')
 
     url = _get_post_url(bucket_name)
     payload = OrderedDict([("key" , "foo.txt"),("acl" , "public-read"),\
@@ -2272,9 +2263,8 @@ def test_post_object_escaped_field_values():
     assert body == 'bar'
 
 def test_post_object_success_redirect_action():
-    bucket_name = get_new_bucket_name()
+    bucket_name = _setup_bucket_acl('public-read-write')
     client = get_client()
-    create_bucket(client, ACL='public-read-write', Bucket=bucket_name)
 
     url = _get_post_url(bucket_name)
     redirect_url = _get_post_url(bucket_name)
