@@ -6672,7 +6672,7 @@ def test_multipart_sse_c_get_part():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts}, **get_args)
     assert len(parts) == part_count
 
     for part, size in zip(parts, part_sizes):
