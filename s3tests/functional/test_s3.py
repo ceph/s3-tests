@@ -2210,7 +2210,7 @@ def test_post_object_escaped_field_values():
     policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
     "conditions": [\
     {"bucket": bucket_name},\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
@@ -2225,13 +2225,13 @@ def test_post_object_escaped_field_values():
 
     signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())
 
-    payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
+    payload = OrderedDict([ ("key" , r"\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 204
-    response = client.get_object(Bucket=bucket_name, Key='\$foo.txt')
+    response = client.get_object(Bucket=bucket_name, Key=r'\$foo.txt')
     body = _get_body(response)
     assert body == 'bar'
 
@@ -2288,7 +2288,7 @@ def test_post_object_invalid_signature():
     policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
     "conditions": [\
     {"bucket": bucket_name},\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
@@ -2303,7 +2303,7 @@ def test_post_object_invalid_signature():
 
     signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())[::-1]
 
-    payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
+    payload = OrderedDict([ ("key" , r"\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
@@ -2321,7 +2321,7 @@ def test_post_object_invalid_access_key():
     policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
     "conditions": [\
     {"bucket": bucket_name},\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
@@ -2336,7 +2336,7 @@ def test_post_object_invalid_access_key():
 
     signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())
 
-    payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id[::-1]),\
+    payload = OrderedDict([ ("key" , r"\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id[::-1]),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
@@ -2354,7 +2354,7 @@ def test_post_object_invalid_date_format():
     policy_document = {"expiration": str(expires),\
     "conditions": [\
     {"bucket": bucket_name},\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
@@ -2369,7 +2369,7 @@ def test_post_object_invalid_date_format():
 
     signature = base64.b64encode(hmac.new(bytes(aws_secret_access_key, 'utf-8'), policy, hashlib.sha1).digest())
 
-    payload = OrderedDict([ ("key" , "\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
+    payload = OrderedDict([ ("key" , r"\$foo.txt"),("AWSAccessKeyId" , aws_access_key_id),\
     ("acl" , "private"),("signature" , signature),("policy" , policy),\
     ("Content-Type" , "text/plain"),('file', ('bar'))])
 
@@ -2419,7 +2419,7 @@ def test_post_object_missing_signature():
     policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
     "conditions": [\
     {"bucket": bucket_name},\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
@@ -2451,7 +2451,7 @@ def test_post_object_missing_policy_condition():
 
     policy_document = {"expiration": expires.strftime("%Y-%m-%dT%H:%M:%SZ"),\
     "conditions": [\
-    ["starts-with", "$key", "\$foo"],\
+    ["starts-with", "$key", r"\$foo"],\
     {"acl": "private"},\
     ["starts-with", "$Content-Type", "text/plain"],\
     ["content-length-range", 0, 1024]\
