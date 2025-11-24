@@ -17430,6 +17430,8 @@ def test_bucket_logging_roll_time():
     time.sleep(roll_time/2)
     client.put_object(Bucket=src_bucket_name, Key='myobject', Body=randcontent())
 
+    # It can take up to 10s for the bucket logging manager to detect a new commit list
+    time.sleep(11)
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) == 1
@@ -17452,7 +17454,7 @@ def test_bucket_logging_roll_time():
 
     time.sleep(roll_time)
     client.put_object(Bucket=src_bucket_name, Key='myobject', Body=randcontent())
-
+    time.sleep(5)
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) > 1
