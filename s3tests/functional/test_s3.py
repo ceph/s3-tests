@@ -6124,8 +6124,6 @@ def test_multipart_copy_invalid_range():
 
 
 @pytest.mark.copy
-# TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
-@pytest.mark.fails_on_rgw
 def test_multipart_copy_improper_range():
     client = get_client()
     src_key = 'source'
@@ -10627,6 +10625,7 @@ def test_encryption_sse_c_unaligned_multipart_upload():
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
+@pytest.mark.s3d_not_supported
 def test_encryption_sse_c_multipart_invalid_chunks_1():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -10655,6 +10654,7 @@ def test_encryption_sse_c_multipart_invalid_chunks_1():
 @pytest.mark.encryption
 # TODO: remove this fails_on_rgw when I fix it
 @pytest.mark.fails_on_rgw
+@pytest.mark.s3d_not_supported
 def test_encryption_sse_c_multipart_invalid_chunks_2():
     bucket_name = get_new_bucket()
     client = get_client()
