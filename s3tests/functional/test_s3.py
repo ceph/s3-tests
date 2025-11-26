@@ -6017,8 +6017,8 @@ def test_multipart_upload_small():
     response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
     response = client.get_object(Bucket=bucket_name, Key=key1)
     assert response['ContentLength'] == objlen
-    # check extra client.complete_multipart_upload
-    response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    # check extra client.complete_multipart_upload (disabled - we do not support idempotent complete)
+    # response = client.complete_multipart_upload(Bucket=bucket_name, Key=key1, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
 def _create_key_with_random_content(keyname, size=7*1024*1024, bucket_name=None, client=None):
     if bucket_name is None:
@@ -6223,8 +6223,8 @@ def test_multipart_upload():
 
     (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key, size=objlen, content_type=content_type, metadata=metadata)
     client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
-    # check extra client.complete_multipart_upload
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    # check extra client.complete_multipart_upload (disabled - we do not support idempotent complete)
+    # client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     response = client.list_objects_v2(Bucket=bucket_name, Prefix=key)
     assert len(response['Contents']) == 1
