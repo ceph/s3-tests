@@ -5640,6 +5640,7 @@ def test_object_copy_not_owned_bucket():
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 403
 
+@pytest.mark.s3d_not_implemented
 @pytest.mark.copy
 def test_object_copy_not_owned_object_bucket():
     client = get_client()
@@ -5664,6 +5665,7 @@ def test_object_copy_not_owned_object_bucket():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_object_copy_canned_acl():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5747,6 +5749,7 @@ def test_object_copy_key_not_found():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_object_copy_versioned_bucket():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -5812,6 +5815,7 @@ def test_object_copy_versioned_bucket():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_object_copy_versioned_url_encoding():
     bucket = get_new_bucket_resource()
     check_configure_versioning_retry(bucket.name, "Enabled", "Enabled")
@@ -7943,6 +7947,7 @@ def test_versioning_obj_suspend_versions():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_versioning_obj_suspended_copy():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -8109,6 +8114,7 @@ def test_versioning_obj_list_marker():
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_versioning_copy_obj_version():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -12280,6 +12286,7 @@ def test_bucket_policy_put_obj_tagging_existing_tag():
 @pytest.mark.copy
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_bucket_policy_upload_part_copy():
     bucket_name = _create_objects(keys=['public/foo', 'public/bar', 'private/foo'])
     client = get_client()
@@ -12339,6 +12346,7 @@ def test_bucket_policy_upload_part_copy():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_bucket_policy_put_obj_copy_source():
     bucket_name = _create_objects(keys=['public/foo', 'public/bar', 'private/foo'])
     client = get_client()
@@ -12387,6 +12395,7 @@ def test_bucket_policy_put_obj_copy_source():
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
 @pytest.mark.fails_on_dbstore
+@pytest.mark.s3d_not_implemented
 def test_bucket_policy_put_obj_copy_source_meta():
     src_bucket_name = _create_objects(keys=['public/foo', 'public/bar'])
     client = get_client()
