@@ -6124,6 +6124,8 @@ def test_multipart_copy_invalid_range():
 
 
 @pytest.mark.copy
+# TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
+@pytest.mark.fails_on_rgw
 def test_multipart_copy_improper_range():
     client = get_client()
     src_key = 'source'
