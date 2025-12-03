@@ -5921,7 +5921,7 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_object_copy_versioning_multipart_upload():
     bucket_name = get_new_bucket()
     client = get_client()
@@ -6274,7 +6274,7 @@ def check_configure_versioning_retry(bucket_name, status, expected_string):
 
 @pytest.mark.copy
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_copy_versioned():
     src_bucket_name = get_new_bucket()
     dest_bucket_name = get_new_bucket()
@@ -6532,7 +6532,7 @@ def test_list_multipart_upload():
     client.abort_multipart_upload(Bucket=bucket_name, Key=key2, UploadId=upload_id3)
 
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_list_multipart_upload_owner():
     bucket_name = get_new_bucket()
 
@@ -12055,7 +12055,7 @@ def test_versioning_bucket_atomic_upload_return_version_id():
     response = client.put_object(Bucket=bucket_name, Key=key)
     assert not 'VersionId' in response
 
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_versioning_bucket_multipart_upload_return_version_id():
     content_type='text/bla'
     objlen = 30 * 1024 * 1024
@@ -14658,7 +14658,7 @@ def test_object_checksum_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_checksum_sha256():
     bucket = get_new_bucket()
     client = get_client()
@@ -14773,7 +14773,7 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_use_cksum_helper_sha256():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14798,7 +14798,7 @@ def test_multipart_use_cksum_helper_sha256():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_use_cksum_helper_crc64nvme():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14823,7 +14823,7 @@ def test_multipart_use_cksum_helper_crc64nvme():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_use_cksum_helper_crc32():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14848,7 +14848,7 @@ def test_multipart_use_cksum_helper_crc32():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_use_cksum_helper_crc32c():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -14873,7 +14873,7 @@ def test_multipart_use_cksum_helper_crc32c():
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_use_cksum_helper_sha1():
     size = 5 * 1024 * 1024 # each part but the last must be at least 5M
 
@@ -18988,7 +18988,7 @@ def failing_conditional_multipart_upload(expected_failure, client, bucket, key, 
 
 @pytest.mark.conditional_write
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_put_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -19053,7 +19053,7 @@ def test_put_current_object_if_none_match():
 
 @pytest.mark.conditional_write
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_put_current_object_if_none_match():
     client = get_client()
     bucket = get_new_bucket(client)
@@ -19112,7 +19112,7 @@ def test_put_current_object_if_match():
 
 @pytest.mark.conditional_write
 @pytest.mark.fails_on_dbstore
-@pytest.mark.s3d_not_supported
+@pytest.mark.s3d_not_implemented
 def test_multipart_put_current_object_if_match():
     client = get_client()
     bucket = get_new_bucket(client)
