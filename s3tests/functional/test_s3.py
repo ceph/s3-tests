@@ -6617,17 +6617,17 @@ def test_multipart_get_part():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    res = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     assert len(parts) == part_count
 
     for part, size in zip(parts, part_sizes):
         response = client.head_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
 
         response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
         assert response['ContentLength'] == size
         # compare contents
         for chunk in response['Body'].iter_chunks():
@@ -6672,17 +6672,17 @@ def test_multipart_sse_c_get_part():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts}, **get_args)
+    res = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts}, **get_args)
     assert len(parts) == part_count
 
     for part, size in zip(parts, part_sizes):
         response = client.head_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'], **get_args)
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
 
         response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'], **get_args)
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
         assert response['ContentLength'] == size
         # compare contents
         for chunk in response['Body'].iter_chunks():
@@ -6714,17 +6714,17 @@ def test_multipart_single_get_part():
     assert status == 404
     assert error_code == 'NoSuchKey'
 
-    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
+    res = client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id, MultipartUpload={'Parts': parts})
     assert len(parts) == part_count
 
     for part, size in zip(parts, part_sizes):
         response = client.head_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
 
         response = client.get_object(Bucket=bucket_name, Key=key, PartNumber=part['PartNumber'])
         assert response['PartsCount'] == part_count
-        assert response['ETag'] == '"{}"'.format(part['ETag'])
+        assert response['ETag'] == res['ETag']
         assert response['ContentLength'] == size
         # compare contents
         for chunk in response['Body'].iter_chunks():
