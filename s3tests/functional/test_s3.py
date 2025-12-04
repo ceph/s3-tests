@@ -5880,6 +5880,9 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
         response = client.create_multipart_upload(Bucket=bucket_name, Key=key, Metadata=metadata, ContentType=content_type,
                                                   ChecksumAlgorithm='SHA256')
 
+    assert response['ChecksumAlgorithm'] == 'SHA256'
+    assert response['ChecksumType'] == 'COMPOSITE'
+
     upload_id = response['UploadId']
     s = ''
     parts = []
@@ -5899,6 +5902,16 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
         if i in resend_parts:
             client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=part_num, Body=part,
                                ChecksumAlgorithm='SHA256')
+
+    response = client.list_parts(UploadId=upload_id, Bucket=bucket_name, Key=key)
+    
+    listed_parts = response['Parts']
+    for part in listed_parts:
+        part_number = part['PartNumber']
+        assert part['ChecksumSHA256'] == part_checksums[part_number - 1]
+    
+    assert response['ChecksumAlgorithm'] == 'SHA256'
+    assert response['ChecksumType'] == 'COMPOSITE'
 
     return (upload_id, s, parts, part_checksums)
 
@@ -14683,6 +14696,7 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
 
     response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm=checksum_algo, ChecksumType=checksum_type)
     assert checksum_algo == response['ChecksumAlgorithm']
+    assert checksum_type == response['ChecksumType']
     upload_id = response['UploadId']
 
     cksum_arg_name = "Checksum" + checksum_algo
@@ -14701,6 +14715,16 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
     response = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=3, Body=kwargs['body3'], ChecksumAlgorithm=checksum_algo, **upload_args)
     etag3 = response['ETag'].strip('"')
     cksum3 = response[cksum_arg_name]
+
+    response = client.list_parts(UploadId=upload_id, Bucket=bucket, Key=key)
+    part_checksums = [cksum1, cksum2, cksum3]
+    listed_parts = response['Parts']
+    for part in listed_parts:
+        part_number = part['PartNumber']
+        assert part[cksum_arg_name] == part_checksums[part_number - 1]
+
+    assert response['ChecksumAlgorithm'] == checksum_algo
+    assert response['ChecksumType'] == checksum_type
 
     upload_args = {cksum_arg_name : kwargs['composite_cksum']}
     response = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, MultipartUpload={'Parts': [
@@ -14724,6 +14748,14 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
                                              ObjectAttributes=request_attributes)
     assert response3['Checksum']['ChecksumType'] == checksum_type
     assert response3['Checksum'][cksum_arg_name] == kwargs['composite_cksum']
+
+    response = client.list_objects(Bucket=bucket)
+    response['Contents'][0]['ChecksumAlgorithm'] = [checksum_algo]
+    response['Contents'][0]['ChecksumType'] = checksum_type
+
+    response = client.list_objects_v2(Bucket=bucket)
+    response['Contents'][0]['ChecksumAlgorithm'] = [checksum_algo]
+    response['Contents'][0]['ChecksumType'] = checksum_type
 
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
