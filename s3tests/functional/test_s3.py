@@ -5880,6 +5880,9 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
         response = client.create_multipart_upload(Bucket=bucket_name, Key=key, Metadata=metadata, ContentType=content_type,
                                                   ChecksumAlgorithm='SHA256')
 
+    assert response['ChecksumAlgorithm'] == 'SHA256'
+    assert response['ChecksumType'] == 'COMPOSITE'
+
     upload_id = response['UploadId']
     s = ''
     parts = []
