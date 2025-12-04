@@ -14725,6 +14725,18 @@ def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type
     assert response3['Checksum']['ChecksumType'] == checksum_type
     assert response3['Checksum'][cksum_arg_name] == kwargs['composite_cksum']
 
+    response4 = client.get_object(Bucket=bucket, Key=key, PartNumber=1)
+    assert response4['ChecksumType'] == checksum_type
+    assert response4[cksum_arg_name] == kwargs['part1_cksum']
+
+    response5 = client.get_object(Bucket=bucket, Key=key, PartNumber=2)
+    assert response5['ChecksumType'] == checksum_type
+    assert response5[cksum_arg_name] == kwargs['part2_cksum']
+
+    response6 = client.get_object(Bucket=bucket, Key=key, PartNumber=3)
+    assert response6['ChecksumType'] == checksum_type
+    assert response6[cksum_arg_name] == kwargs['part3_cksum']
+
 @pytest.mark.checksum
 @pytest.mark.fails_on_dbstore
 def test_multipart_use_cksum_helper_sha256():
