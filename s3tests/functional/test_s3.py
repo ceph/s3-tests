@@ -5900,6 +5900,16 @@ def _multipart_upload_checksum(bucket_name, key, size, part_size=5*1024*1024, cl
             client.upload_part(UploadId=upload_id, Bucket=bucket_name, Key=key, PartNumber=part_num, Body=part,
                                ChecksumAlgorithm='SHA256')
 
+    response = client.list_parts(UploadId=upload_id, Bucket=bucket_name, Key=key)
+    
+    listed_parts = response['Parts']
+    for part in listed_parts:
+        part_number = part['PartNumber']
+        assert part['ChecksumSHA256'] == part_checksums[part_number - 1]
+    
+    assert response['ChecksumAlgorithm'] == 'SHA256'
+    assert response['ChecksumType'] == 'COMPOSITE'
+
     return (upload_id, s, parts, part_checksums)
 
 @pytest.mark.copy
