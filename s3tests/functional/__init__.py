@@ -136,6 +136,18 @@ bucket cleanup'.format(bucket, delta.total_seconds()))
                     Delete={'Objects': objects, 'Quiet': True},
                     BypassGovernanceRetention=True)
 
+    # abort any ongoing multipart uploads before deleting the bucket
+    try:
+        uploads = client.list_multipart_uploads(Bucket=bucket)
+        for upload in uploads.get('Uploads', []):
+            client.abort_multipart_upload(
+                Bucket=bucket,
+                Key=upload['Key'],
+                UploadId=upload['UploadId']
+            )
+    except ClientError:
+        pass  # bucket might not exist or have no uploads
+
     client.delete_bucket(Bucket=bucket)
 
 def nuke_prefixed_buckets(prefix, client=None):
