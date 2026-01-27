@@ -413,7 +413,7 @@ def get_cloud_config(cfg):
 
 def get_client(client_config=None):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', retries={'total_max_attempts': 1})
 
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.main_access_key,
