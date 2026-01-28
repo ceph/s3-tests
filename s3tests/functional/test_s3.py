@@ -17576,7 +17576,7 @@ def test_bucket_logging_object_meta():
     # PutObjectLegalHold
     client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'ON'})
     # PutObjectRetention
-    client.put_object_retention(Bucket=src_bucket_name, Key=name, Retention={'Mode': 'GOVERNANCE', 'RetainUntilDate': datetime.datetime(2026, 1, 1)})
+    client.put_object_retention(Bucket=src_bucket_name, Key=name, Retention={'Mode': 'GOVERNANCE', 'RetainUntilDate': datetime.datetime.now() + datetime.timedelta(days=60)})
 
     _flush_logs(client, src_bucket_name)
     response = client.list_objects_v2(Bucket=log_bucket_name)
