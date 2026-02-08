@@ -410,6 +410,16 @@ def get_cloud_config(cfg):
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.read_through_restore_days = 10
 
+    try:
+        config.cloud_target_by_bucket = cfg.getboolean('s3 cloud', "target_by_bucket")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_by_bucket = False
+
+    try:
+        config.cloud_target_by_bucket_prefix = cfg.get('s3 cloud', "target_by_bucket_prefix")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        config.cloud_target_by_bucket_prefix = None
+
 
 def get_client(client_config=None):
     if client_config == None:
@@ -824,6 +834,12 @@ def get_restore_processor_period():
 
 def get_read_through_days():
     return config.read_through_restore_days
+
+def get_cloud_target_by_bucket():
+    return config.cloud_target_by_bucket
+
+def get_cloud_target_by_bucket_prefix():
+    return config.cloud_target_by_bucket_prefix
 
 def create_iam_user_s3client(client):
     prefix = get_iam_path_prefix()
