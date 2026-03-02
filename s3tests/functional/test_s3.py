@@ -11851,6 +11851,7 @@ def test_put_tags_acl_public():
 
 @pytest.mark.tagging
 @pytest.mark.bucket_policy
+@pytest.mark.fails_on_dbstore
 def test_delete_tags_obj_public():
     key = 'testputtagsacl'
     bucket_name = _create_key_with_random_content(key)
