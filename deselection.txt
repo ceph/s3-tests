@@ -48,15 +48,6 @@ s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_failed
 s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_nonexisted_good
 s3tests_boto3/functional/test_s3.py::test_put_object_ifnonmatch_overwrite_existed_failed
 
-# NotImplemented - UploadPartCopy
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_small
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_invalid_range
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_improper_range
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_without_range
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_special_names
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_multiple_sizes
-s3tests_boto3/functional/test_s3.py::test_multipart_copy_versioned
-
 # NotImplemented - CORS
 s3tests_boto3/functional/test_s3.py::test_set_cors
 s3tests_boto3/functional/test_s3.py::test_cors_origin_response
@@ -93,6 +84,7 @@ s3tests_boto3/functional/test_s3.py::test_versioned_object_acl
 s3tests_boto3/functional/test_s3.py::test_versioned_object_acl_no_version_specified
 s3tests_boto3/functional/test_s3.py::test_versioned_concurrent_object_create_concurrent_remove
 s3tests_boto3/functional/test_s3.py::test_versioned_concurrent_object_create_and_remove
+s3tests_boto3/functional/test_s3.py::test_multipart_copy_versioned
 s3tests_boto3/functional/test_s3.py::test_object_put_acl_mtime
 s3tests_boto3/functional/test_s3.py::test_object_copy_versioned_bucket
 s3tests_boto3/functional/test_s3.py::test_object_copy_versioning_multipart_upload

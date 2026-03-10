@@ -5983,10 +5983,9 @@ def test_multipart_copy_invalid_range():
 
     e = assert_raises(ClientError, client.upload_part_copy,Bucket=src_bucket_name, Key='dest', UploadId=upload_id, CopySource=copy_source, CopySourceRange=copy_source_range, PartNumber=1)
     status, error_code = _get_status_and_error_code(e.response)
-    valid_status = [400, 416]
-    if not status in valid_status:
+    if status != 400:
        raise AssertionError("Invalid response " + str(status))
-    assert error_code == 'InvalidRange'
+    assert error_code == 'InvalidRequest'
 
 
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
