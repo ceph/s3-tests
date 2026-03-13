@@ -5985,7 +5985,7 @@ def test_multipart_copy_invalid_range():
     status, error_code = _get_status_and_error_code(e.response)
     if status != 400:
        raise AssertionError("Invalid response " + str(status))
-    assert error_code == 'InvalidRequest'
+    assert error_code == 'InvalidArgument'
 
 
 # TODO: remove fails_on_rgw when https://tracker.ceph.com/issues/40795 is resolved
