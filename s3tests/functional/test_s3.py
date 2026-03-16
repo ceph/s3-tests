@@ -5975,6 +5975,25 @@ def test_multipart_upload_empty():
     assert status == 400
     assert error_code == 'MalformedXML'
 
+@pytest.mark.fails_on_rgw # TODO: Remove fails_on_rgw when https://tracker.ceph.com/issues/75534 is fixed
+def test_multipart_upload_complete_without_create():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    parts = {}
+    upload_opts = {
+        'Bucket': bucket_name,
+        'Key': 'mymultipart',
+        'UploadId': 'abc1234def',
+        'MultipartUpload': {'Parts': [
+            {'ETag': "1234", 'PartNumber': 1}
+        ]}
+    }
+    e = assert_raises(ClientError, client.complete_multipart_upload, **upload_opts)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 404
+    assert error_code == 'NoSuchUpload'
+
 @pytest.mark.fails_on_dbstore
 def test_multipart_upload_small():
     bucket_name = get_new_bucket()
