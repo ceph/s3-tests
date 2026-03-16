@@ -14921,18 +14921,19 @@ def _verify_records(records, bucket_name, event_type, src_keys, record_type, exp
     all_keys = []
     for record in iter(records.splitlines()):
         parsed_record = _parse_log_record(record, record_type)
-        logger.info('bucket log record: %s', json.dumps(parsed_record, indent=4))
+        logger.debug('bucket log record: %s', json.dumps(parsed_record, indent=4))
         if bucket_name in record and event_type in record:
             all_keys.append(parsed_record['Key'])
             for key in src_keys:
                 if key in record:
                     keys_found.append(key)
                     break
-    logger.info('keys found in bucket log: %s', str(all_keys))
-    logger.info('keys from the source bucket: %s', str(src_keys))
+    logger.info('%d keys found in bucket log: %s', len(all_keys), str(all_keys))
+    logger.info('%d keys from the source bucket: %s', len(src_keys), str(src_keys))
     if exact_match:
         return len(keys_found) == expected_count and len(keys_found) == len(all_keys)
     return len(keys_found) == expected_count
+
 
 def _verify_record_field(records, bucket_name, event_type, object_key, record_type, field_name, expected_value):
     for record in iter(records.splitlines()):
@@ -14945,6 +14946,7 @@ def _verify_record_field(records, bucket_name, event_type, object_key, record_ty
             except KeyError:
                 return False
     return False
+
 
 def randcontent():
     letters = string.ascii_lowercase
@@ -15581,7 +15583,7 @@ def _post_bucket_logging(client, src_bucket_name, flushed_objs):
     flushed_objs[src_bucket_name] = result['FlushedLoggingObject']
 
 
-def _bucket_logging_flush(logging_type, single_prefix, concurrency):
+def _bucket_logging_flush(logging_type, single_prefix, concurrency, num_keys):
     if not _has_bucket_logging_extension():
         pytest.skip('ceph extension to bucket logging not supported at client')
     log_bucket_name = get_new_bucket_name()
@@ -15615,7 +15617,6 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
         })
         assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    num_keys = 10
     src_names = []
     for j in range(num_keys):
         src_names.append('myobject'+str(j))
@@ -15674,50 +15675,71 @@ def _bucket_logging_flush(logging_type, single_prefix, concurrency):
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
+def test_bucket_logging_flush_empty():
+    # testing empty commits
+    _bucket_logging_flush('Journal', False, False, 0)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
 def test_bucket_logging_flush_j():
-    _bucket_logging_flush('Journal', False, False)
+    _bucket_logging_flush('Journal', False, False, 10)
+    _bucket_logging_flush('Journal', False, False, 100)
+    # testing empty commits after some activity
+    _bucket_logging_flush('Journal', False, False, 0)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_flush_s():
-    _bucket_logging_flush('Standard', False, False)
+    _bucket_logging_flush('Standard', False, False, 10)
+    _bucket_logging_flush('Standard', False, False, 100)
+    # no empty commits in "standard" mode
+    # the POST command itself will be logged
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_flush_j_single():
-    _bucket_logging_flush('Journal', True, False)
+    _bucket_logging_flush('Journal', True, False, 10)
+    _bucket_logging_flush('Journal', True, False, 100)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_flush_s_single():
-    _bucket_logging_flush('Standard', True, False)
+    _bucket_logging_flush('Standard', True, False, 10)
+    _bucket_logging_flush('Standard', True, False, 100)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_concurrent_flush_j():
-    _bucket_logging_flush('Journal', False, True)
+    _bucket_logging_flush('Journal', False, True, 10)
+    _bucket_logging_flush('Journal', False, True, 100)
+    _bucket_logging_flush('Journal', False, True, 0)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_concurrent_flush_s():
-    _bucket_logging_flush('Standard', False, True)
+    _bucket_logging_flush('Standard', False, True, 10)
+    _bucket_logging_flush('Standard', False, True, 100)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_concurrent_flush_j_single():
-    _bucket_logging_flush('Journal', True, True)
+    _bucket_logging_flush('Journal', True, True, 10)
+    _bucket_logging_flush('Journal', True, True, 100)
+    _bucket_logging_flush('Journal', True, True, 0)
 
 
 @pytest.mark.bucket_logging
 @pytest.mark.fails_on_aws
 def test_bucket_logging_concurrent_flush_s_single():
-    _bucket_logging_flush('Standard', True, True)
+    _bucket_logging_flush('Standard', True, True, 10)
+    _bucket_logging_flush('Standard', True, True, 100)
 
 
 @pytest.mark.bucket_logging
@@ -16220,6 +16242,7 @@ def _bucket_logging_permission_change(logging_type):
                 assert False, 'expected failure'
             except ClientError as e:
                 assert e.response['Error']['Code'] == 'AccessDenied'
+                assert e.response['Error']['Message'].startswith('Logging bucket')
 
     try:
         _flush_logs(client, src_bucket_name)
@@ -16665,15 +16688,15 @@ def test_bucket_logging_put_concurrency():
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
-    assert len(keys) == 1
 
     record_type = 'Standard' if not has_extensions else 'Journal'
 
+    body = ""
     for key in keys:
         assert key.startswith('log/')
         response = client.get_object(Bucket=log_bucket_name, Key=key)
-        body = _get_body(response)
-        assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_keys, record_type, num_keys)
+        body += _get_body(response)
+    assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_keys, record_type, num_keys)
 
 
 def _bucket_logging_delete_objects(versioned):
@@ -17288,6 +17311,8 @@ def test_bucket_logging_roll_time():
     time.sleep(roll_time/2)
     client.put_object(Bucket=src_bucket_name, Key='myobject', Body=randcontent())
 
+    # It can take up to 10s for the bucket logging manager to detect a new commit list
+    time.sleep(11)
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     len(keys) == 1
@@ -17310,7 +17335,7 @@ def test_bucket_logging_roll_time():
 
     time.sleep(roll_time)
     client.put_object(Bucket=src_bucket_name, Key='myobject', Body=randcontent())
-
+    time.sleep(5)
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
     assert len(keys) > 1
@@ -17466,7 +17491,7 @@ def test_bucket_logging_object_meta():
     # PutObjectLegalHold
     client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'ON'})
     # PutObjectRetention
-    client.put_object_retention(Bucket=src_bucket_name, Key=name, Retention={'Mode': 'GOVERNANCE', 'RetainUntilDate': datetime.datetime(2026, 1, 1)})
+    client.put_object_retention(Bucket=src_bucket_name, Key=name, Retention={'Mode': 'GOVERNANCE', 'RetainUntilDate': datetime.datetime.now() + datetime.timedelta(days=60)})
 
     _flush_logs(client, src_bucket_name)
     response = client.list_objects_v2(Bucket=log_bucket_name)
@@ -17490,6 +17515,11 @@ def test_bucket_logging_object_meta():
     # allow cleanup
     client.put_object_legal_hold(Bucket=src_bucket_name, Key=name, LegalHold={'Status': 'OFF'})
     client.delete_object(Bucket=src_bucket_name, Key=name, VersionId=version_id, BypassGovernanceRetention=True)
+
+def _verify_flushed_on_put(result):
+    if _has_bucket_logging_extension():
+        assert result['ResponseMetadata']['HTTPStatusCode'] == 200
+        return result['FlushedLoggingObject']
 
 
 def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurrency):
@@ -17539,7 +17569,9 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
     assert len(keys) == 0
 
     t = []
+    flushed_obj = None
     updated_longer_time = expected_object_roll_time*20
+    first_time = True
     for src_bucket_name in buckets:
         if not single_prefix:
             logging_enabled['TargetPrefix'] = src_bucket_name+'/'
@@ -17560,7 +17592,11 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
                 thr.start()
                 t.append(thr)
             else:
-                client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+                if first_time:
+                    flushed_obj = _verify_flushed_on_put(result)
+                    if single_prefix:
+                        first_time = False
         elif cleanup_type == 'updating':
             # cleanup based on updating bucket logging parameters
             logging_enabled['ObjectRollTime'] = updated_longer_time
@@ -17570,9 +17606,10 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
                 thr.start()
                 t.append(thr)
             else:
-                client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
                     'LoggingEnabled': logging_enabled,
                 })
+                flushed_obj = _verify_flushed_on_put(result)
         elif cleanup_type == 'notupdating':
             # no concurrecy testing
             client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
@@ -17581,7 +17618,6 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
         elif cleanup_type != 'target':
             assert False, 'invalid cleanup type: ' + cleanup_type
 
-    exact_match = False
     _do_wait_completion(t)
 
     if cleanup_type == 'target':
@@ -17604,41 +17640,50 @@ def _bucket_logging_cleanup(cleanup_type, logging_type, single_prefix, concurren
         # flsuh any new pending objects
         for src_bucket_name in buckets:
             client.post_bucket_logging(Bucket=src_bucket_name)
-            if single_prefix and logging_type == 'Standard':
-                # in case of single prefix we flush only once
-                # because flushing itself will be logged
-                # and the next flush will commit the log
-                break
         # make sure that only the new objects are logged
         exact_match = True
 
     response = client.list_objects_v2(Bucket=log_bucket_name)
     keys = _get_keys(response)
 
+    if flushed_obj:
+        assert flushed_obj in keys
+
     if cleanup_type == 'notupdating':
         # no cleanup expected
         assert len(keys) == 0
         return
 
-    if single_prefix:
-        assert len(keys) == 1
+    if concurrency:
+        assert len(keys) >= 1 and len(keys) <= num_buckets
     else:
-        assert len(keys) >= num_buckets
+        if single_prefix and logging_type == 'Journal' and cleanup_type not in ['target', 'updating']:
+            assert len(keys) == 1
+        else:
+            assert len(keys) == num_buckets
 
+    prefixes = []
+    for src_bucket_name in buckets:
+        if single_prefix:
+            prefix = 'log/'
+        else:
+            prefix = src_bucket_name+'/'
+        prefixes.append(prefix)
+
+    body = ""
     for key in keys:
         response = client.get_object(Bucket=log_bucket_name, Key=key)
-        body = _get_body(response)
+        body += _get_body(response)
         found = False
-        for src_bucket_name in buckets:
-            if single_prefix:
-                prefix = 'log/'
-            else:
-                prefix = src_bucket_name+'/'
+        for prefix in prefixes:
             if key.startswith(prefix):
                 found = True
-                assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, logging_type, num_keys, exact_match)
-                assert _verify_records(body, src_bucket_name, 'REST.DELETE.OBJECT', src_names, logging_type, num_keys, exact_match)
-        assert found
+        assert found, 'log key does not match any expected prefix: ' + key + ' expected prefixes: ' + str(prefixes)
+
+    exact_match = True
+    for src_bucket_name in buckets:
+        assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, logging_type, num_keys, exact_match)
+        assert _verify_records(body, src_bucket_name, 'REST.DELETE.OBJECT', src_names, logging_type, num_keys, exact_match)
 
 
 @pytest.mark.bucket_logging
@@ -17863,6 +17908,416 @@ def test_bucket_logging_cleanup_concurrent_updating_s():
 @pytest.mark.fails_on_aws
 def test_bucket_logging_cleanup_concurrent_updating_s_single():
     _bucket_logging_cleanup('updating', 'Standard', True, True)
+
+
+def _bucket_logging_partial_cleanup(cleanup_type, logging_type, concurrency):
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+
+    num_buckets = 3
+    buckets = []
+    log_prefixes = []
+    longer_time = expected_object_roll_time*10
+    for j in range(num_buckets):
+        src_bucket_name = get_new_bucket_name()
+        src_bucket = get_new_bucket_resource(name=src_bucket_name)
+        buckets.append(src_bucket_name)
+        log_prefixes.append('log/')
+
+    _set_log_bucket_policy(client, log_bucket_name, buckets, log_prefixes)
+
+    for j in range(num_buckets):
+        logging_enabled = {'TargetBucket': log_bucket_name,
+                           'ObjectRollTime': longer_time,
+                           'LoggingType': logging_type,
+                           'TargetPrefix': log_prefixes[j]}
+        response = client.put_bucket_logging(Bucket=buckets[j], BucketLoggingStatus={
+            'LoggingEnabled': logging_enabled,
+        })
+        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 3
+    src_names = []
+    for j in range(num_keys):
+        src_names.append('myobject'+str(j))
+
+    for src_bucket_name in buckets:
+        for name in src_names:
+            client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+            client.delete_object(Bucket=src_bucket_name, Key=name)
+
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 0
+
+    t = []
+    flushed_obj = None
+    updated_longer_time = expected_object_roll_time*20
+    first_time = True
+    for j in range(num_buckets-1):
+        src_bucket_name = buckets[j]
+        if cleanup_type == 'deletion':
+            #  cleanup based on bucket deletion
+            if concurrency:
+                thr = threading.Thread(target = client.delete_bucket,
+                                       kwargs={'Bucket': src_bucket_name})
+                thr.start()
+                t.append(thr)
+            else:
+                client.delete_bucket(Bucket=src_bucket_name)
+        elif cleanup_type == 'disabling':
+            # cleanup based on disabling bucket logging
+            if concurrency:
+                thr = threading.Thread(target = client.put_bucket_logging,
+                                       kwargs={'Bucket': src_bucket_name, 'BucketLoggingStatus': {}})
+                thr.start()
+                t.append(thr)
+            else:
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={})
+                if first_time:
+                    flushed_obj = _verify_flushed_on_put(result)
+                    first_time = False
+        elif cleanup_type == 'updating':
+            # cleanup based on updating bucket logging parameters
+            logging_enabled['ObjectRollTime'] = updated_longer_time
+            if concurrency:
+                thr = threading.Thread(target = client.put_bucket_logging,
+                                       kwargs={'Bucket': src_bucket_name, 'BucketLoggingStatus': {'LoggingEnabled': logging_enabled}})
+                thr.start()
+                t.append(thr)
+            else:
+                result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+                    'LoggingEnabled': logging_enabled,
+                })
+                flushed_obj = _verify_flushed_on_put(result)
+        else:
+            assert False, 'invalid cleanup type: ' + cleanup_type
+
+    last_bucket_name = buckets[num_buckets-1]
+    for name in src_names:
+        client.put_object(Bucket=last_bucket_name, Key=name, Body=randcontent())
+        client.delete_object(Bucket=last_bucket_name, Key=name)
+
+    _do_wait_completion(t)
+
+    _flush_logs(client, last_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+
+    if flushed_obj:
+        assert flushed_obj in keys
+
+    if concurrency:
+        assert len(keys) >= 1 and len(keys) <= num_buckets
+    elif cleanup_type == 'updating':
+        assert len(keys) == num_buckets
+    elif logging_type == 'Standard':
+        # 1st deleted/disabled source write the bucket_deletion/put_bucket_logging record
+        assert len(keys) == num_buckets
+    else:
+        assert len(keys) == num_buckets - 1
+
+
+    prefixes = []
+    for src_bucket_name in buckets:
+        prefix = 'log/'
+        prefixes.append(prefix)
+
+    body = ""
+    for key in keys:
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body += _get_body(response)
+        found = False
+        for prefix in prefixes:
+            if key.startswith(prefix):
+                found = True
+        assert found, 'log key does not match any expected prefix: ' + key + ' expected prefixes: ' + str(prefixes)
+
+    exact_match = True
+    for src_bucket_name in buckets:
+        _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, logging_type, num_keys, exact_match)
+        _verify_records(body, src_bucket_name, 'REST.DELETE.OBJECT', src_names, logging_type, num_keys, exact_match)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_updating_s():
+    _bucket_logging_partial_cleanup('updating', 'Standard', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_disabling_s():
+    _bucket_logging_partial_cleanup('disabling', 'Standard', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_deletion_s():
+    _bucket_logging_partial_cleanup('deletion', 'Standard', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_updating_j():
+    _bucket_logging_partial_cleanup('updating', 'Journal', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_disabling_j():
+    _bucket_logging_partial_cleanup('disabling', 'Journal', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_concurrent_deletion_j():
+    _bucket_logging_partial_cleanup('deletion', 'Journal', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_updating_s():
+    _bucket_logging_partial_cleanup('updating', 'Standard', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_disabling_s():
+    _bucket_logging_partial_cleanup('disabling', 'Standard', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_deletion_s():
+    _bucket_logging_partial_cleanup('deletion', 'Standard', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_updating_j():
+    _bucket_logging_partial_cleanup('updating', 'Journal', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_disabling_j():
+    _bucket_logging_partial_cleanup('disabling', 'Journal', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_part_cleanup_deletion_j():
+    _bucket_logging_partial_cleanup('deletion', 'Journal', False)
+
+
+def _bucket_logging_conf_update(logging_type, update_value, concurrency):
+    if not _has_bucket_logging_extension():
+        pytest.skip('ceph extension to bucket logging not supported at client')
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+
+    prefix = 'log/'
+    longer_time = expected_object_roll_time*10
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    logging_enabled = {'TargetBucket': log_bucket_name,
+                       'ObjectRollTime': longer_time,
+                       'LoggingType': logging_type,
+                       'TargetPrefix': prefix}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+
+    # conf update without any log records
+    if update_value == "roll_time":
+        logging_enabled['ObjectRollTime'] = longer_time*2
+    elif update_value == "prefix":
+        prefix = 'newlog1/'
+        _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+        logging_enabled['TargetPrefix'] = prefix
+    else:
+        assert False, 'invalid update value: ' + update_value
+
+    result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    num_keys = 100
+    src_names = []
+    for j in range(num_keys):
+        src_names.append('myobject'+str(j))
+
+    def put_object_with_exception_handling(bucket, key, body):
+        try:
+            client.put_object(Bucket=bucket, Key=key, Body=body)
+        except Exception as e:
+            logger.warning(f'put_object failed for {key}: {e}')
+
+    t = []
+    for name in src_names:
+        if concurrency:
+            thr = threading.Thread(target=put_object_with_exception_handling,
+                                   args=(src_bucket_name, name, randcontent()))
+            thr.start()
+            t.append(thr)
+        else:
+            try:
+                client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+            except Exception as e:
+                logger.warning(f'put_object failed for {name}: {e}')
+
+    if update_value == "roll_time":
+        logging_enabled['ObjectRollTime'] = longer_time*3
+    elif update_value == "prefix":
+        prefix = 'newlog2/'
+        _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+        logging_enabled['TargetPrefix'] = prefix
+    else:
+        assert False, 'invalid update value: ' + update_value
+    result = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+
+    flushed_obj = _verify_flushed_on_put(result)
+    logger.info('flushed log object after conf update: %s', flushed_obj)
+
+    # perform conf update while puts are ongoing
+    _do_wait_completion(t)
+
+    expected_count = num_keys
+    expected_log_objs = 2
+    if concurrency:
+        # some records may be written after the conf change
+        _flush_logs(client, src_bucket_name)
+        expected_log_objs = 3
+        if update_value == 'prefix' and logging_type == 'Journal':
+            # when changing prefix in concurrency mode
+            # some put operations may fail, so the list of source objects
+            # needs to be taken fro mthe bucket
+            response = client.list_objects_v2(Bucket=src_bucket_name)
+            src_names = _get_keys(response)
+            expected_count = len(src_names)
+
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    # one empty log object due to the initial conf change
+    # and one with the log records due to the 2nd conf change
+    # and one flushed object at the end
+    assert len(keys) == expected_log_objs
+    assert flushed_obj in keys
+
+    exact_match = True
+    body = ""
+    for key in keys:
+        logger.info('processing log object: %s', key)
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body += _get_body(response)
+        # delete the key that we already processed
+        client.delete_object(Bucket=log_bucket_name, Key=key)
+
+    ok = _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, logging_type, expected_count, exact_match)
+    if not (concurrency and update_value == 'prefix' and logging_type == 'Standard'):
+        # we can have silent failures when changing the prefix in concurrency mode with standard logging
+        assert ok
+
+    # make sure that logging still works after conf change
+    src_names = []
+    for j in range(num_keys):
+        src_names.append('anotherobject'+str(j))
+    for name in src_names:
+        client.put_object(Bucket=src_bucket_name, Key=name, Body=randcontent())
+
+    flushed_obj = _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    keys = _get_keys(response)
+    assert len(keys) == 1
+    assert flushed_obj in keys
+
+    body = ""
+    for key in keys:
+        response = client.get_object(Bucket=log_bucket_name, Key=key)
+        body += _get_body(response)
+
+    assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', src_names, logging_type, num_keys, exact_match)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_updating_roll_s():
+    _bucket_logging_conf_update('Standard', 'roll_time', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_updating_roll_j():
+    _bucket_logging_conf_update('Journal', 'roll_time', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_updating_pfx_s():
+    _bucket_logging_conf_update('Standard', 'prefix', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_updating_pfx_j():
+    _bucket_logging_conf_update('Journal', 'prefix', False)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_concurrent_updating_roll_s():
+    _bucket_logging_conf_update('Standard', 'roll_time', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_concurrent_updating_roll_j():
+    _bucket_logging_conf_update('Journal', 'roll_time', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_concurrent_updating_pfx_s():
+    _bucket_logging_conf_update('Standard', 'prefix', True)
+
+
+@pytest.mark.bucket_logging
+@pytest.mark.bucket_logging_cleanup
+@pytest.mark.fails_on_aws
+def test_bucket_logging_conf_concurrent_updating_pfx_j():
+    _bucket_logging_conf_update('Journal', 'prefix', True)
 
 
 def check_parts_count(parts, expected):
