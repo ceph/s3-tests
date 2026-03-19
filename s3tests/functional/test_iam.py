@@ -1962,6 +1962,27 @@ role_policy = json.dumps({
         }]
     })
 
+@pytest.mark.iam_account
+@pytest.mark.iam_role
+def test_account_role_list_permission(iam_root):
+    path = get_iam_path_prefix()
+    user_name = make_iam_name('MyUser')
+
+    user = iam_root.create_user(UserName=user_name, Path=path)['User']
+    user_arn = user['Arn']
+
+    key = iam_root.create_access_key(UserName=user_name)['AccessKey']
+    iam_client = get_iam_client(aws_access_key_id=key['AccessKeyId'],
+                                aws_secret_access_key=key['SecretAccessKey'])
+
+    # reject ListRoles due to lack of identity policy
+    e = assert_raises(ClientError, iam_client.list_roles, PathPrefix=path)
+    assert (403, 'AccessDenied') == _get_status_and_error_code(e.response)
+
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn='arn:aws:iam::aws:policy/IAMReadOnlyAccess')
+
+    iam_client.list_roles(PathPrefix=path)
+
 # IAM RolePolicy apis
 @pytest.mark.iam_account
 @pytest.mark.iam_role
