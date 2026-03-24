@@ -304,7 +304,9 @@ def test_assume_role_creds_expiry():
         s3bucket = s3_client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         s3bucket_error = e.response.get("Error", {}).get("Code")
-    assert s3bucket_error == 'AccessDenied'
+        http_status_code = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+    assert s3bucket_error == 'ExpiredToken'
+    assert http_status_code == 400
 
 @pytest.mark.test_of_sts
 @pytest.mark.fails_on_dbstore
