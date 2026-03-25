@@ -86,6 +86,8 @@ from . import (
     get_cloud_regular_storage_class,
     get_cloud_target_path,
     get_cloud_target_storage_class,
+    get_cloud_target_by_bucket,
+    get_cloud_target_by_bucket_prefix,
     get_cloud_client,
     nuke_prefixed_buckets,
     configured_storage_classes,
@@ -10049,6 +10051,212 @@ def test_lifecycle_cloud_transition_large_obj():
 
     expire1_key1_str = prefix + keys[1]
     verify_object(cloud_client, target_path, expire1_key1_str, data, target_sc)
+
+# Test for per-bucket cloud transition targeting (target_by_bucket=true)
+# When target_by_bucket is enabled:
+# 1. Each source bucket transitions to a dedicated target bucket
+# 2. Object keys are stored without the source bucket name prefix
+# 3. Target bucket names follow template: rgwx-${zonegroup}-${storage_class}-${bucket}
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.cloud_restore
+@pytest.mark.target_by_bucket
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_lifecycle_cloud_transition_target_by_bucket():
+    """
+    Test cloud transition with target_by_bucket=true.
+
+    Validates that when target_by_bucket is enabled:
+    1. Objects land in a bucket-specific target (not the shared target_path)
+    2. Object keys do NOT include the source bucket name as a prefix
+    3. Restore can locate and restore objects correctly
+    """
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    target_by_bucket = get_cloud_target_by_bucket()
+    if not target_by_bucket:
+        pytest.skip('[s3 cloud] target_by_bucket not enabled')
+
+    retain_head_object = get_cloud_retain_head_object()
+    target_sc = get_cloud_target_storage_class()
+    target_by_bucket_prefix = get_cloud_target_by_bucket_prefix()
+
+    client = get_client()
+    cloud_client = get_cloud_client()
+    lc_interval = get_lc_debug_interval()
+    restore_period = get_restore_processor_period()
+
+    # Create source bucket with test objects
+    bucket_name = get_new_bucket()
+    keys = ['file1.txt', 'subdir/file2.txt']
+
+    for key in keys:
+        client.put_object(Bucket=bucket_name, Key=key, Body=key)
+
+    # Configure lifecycle rule for cloud transition
+    rules = [{'ID': 'rule1',
+              'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}],
+              'Prefix': '',
+              'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+
+    # Verify initial state
+    response = client.list_objects(Bucket=bucket_name)
+    init_keys = _get_keys(response)
+    assert len(init_keys) == len(keys)
+
+    # Wait for transition to complete
+    time.sleep(15 * lc_interval)
+
+    # Verify objects have transitioned in source bucket
+    expire_keys = list_bucket_storage_class(client, bucket_name)
+    if retain_head_object and retain_head_object.lower() == "true":
+        assert len(expire_keys.get(cloud_sc, [])) == len(keys), \
+            f"Expected {len(keys)} objects in {cloud_sc}, got {len(expire_keys.get(cloud_sc, []))}"
+
+    # Derive expected target bucket name
+    # Default template: rgwx-${zonegroup}-${storage_class}-${bucket}
+    if target_by_bucket_prefix:
+        expected_target = target_by_bucket_prefix.replace('${zonegroup}', 'default')
+        expected_target = expected_target.replace('${storage_class}', cloud_sc.lower())
+        expected_target = expected_target.replace('${bucket}', bucket_name)
+    else:
+        expected_target = f"rgwx-default-{cloud_sc.lower()}-{bucket_name}"
+
+    # Allow time for cloud operations to complete
+    time.sleep(5 * lc_interval)
+
+    # Verify objects in target bucket
+    # With target_by_bucket=true, keys should NOT have bucket_name prefix
+    for key in keys:
+        verify_object(cloud_client, expected_target, key, key, target_sc)
+
+        # Verify the old format (with bucket prefix) is NOT used
+        old_format_key = bucket_name + "/" + key
+        try:
+            cloud_client.head_object(Bucket=expected_target, Key=old_format_key)
+            assert False, f"Found old format key '{old_format_key}' - target_by_bucket not working"
+        except ClientError as e:
+            assert e.response['Error']['Code'] in ('404', 'NoSuchKey'), \
+                f"Unexpected error: {e}"
+
+    # Test restore functionality
+    restore_key = keys[0]
+
+    # Verify object is transitioned before attempting restore
+    verify_transition(client, bucket_name, restore_key, cloud_sc)
+
+    # Delete lifecycle to prevent re-transition after restore
+    client.delete_bucket_lifecycle(Bucket=bucket_name)
+
+    # Restore object temporarily
+    client.restore_object(Bucket=bucket_name, Key=restore_key, RestoreRequest={'Days': 2})
+    time.sleep(3 * restore_period)
+
+    # Verify object is restored temporarily (storage class stays cloud_sc, but content is accessible)
+    verify_transition(client, bucket_name, restore_key, cloud_sc)
+    response = client.head_object(Bucket=bucket_name, Key=restore_key)
+    assert response['ContentLength'] == len(restore_key)
+
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.cloud_restore
+@pytest.mark.target_by_bucket
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_lifecycle_cloud_transition_target_by_bucket_multiple_buckets():
+    """
+    Test that target_by_bucket properly isolates objects between buckets.
+    Also tests restore functionality for one of the buckets.
+    """
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    target_by_bucket = get_cloud_target_by_bucket()
+    if not target_by_bucket:
+        pytest.skip('[s3 cloud] target_by_bucket not enabled')
+
+    target_sc = get_cloud_target_storage_class()
+    target_by_bucket_prefix = get_cloud_target_by_bucket_prefix()
+
+    client = get_client()
+    cloud_client = get_cloud_client()
+    lc_interval = get_lc_debug_interval()
+    restore_period = get_restore_processor_period()
+
+    # Create two source buckets
+    bucket_a = get_new_bucket()
+    bucket_b = get_new_bucket()
+
+    key_a = 'only-in-a.txt'
+    key_b = 'only-in-b.txt'
+    client.put_object(Bucket=bucket_a, Key=key_a, Body='content-a')
+    client.put_object(Bucket=bucket_b, Key=key_b, Body='content-b')
+
+    # Configure lifecycle for both buckets
+    rules = [{'ID': 'rule1',
+              'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}],
+              'Prefix': '',
+              'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_a, LifecycleConfiguration=lifecycle)
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_b, LifecycleConfiguration=lifecycle)
+
+    # Wait for transitions
+    time.sleep(20 * lc_interval)
+
+    # Derive expected target bucket names
+    if target_by_bucket_prefix:
+        expected_target_a = target_by_bucket_prefix.replace('${zonegroup}', 'default')
+        expected_target_a = expected_target_a.replace('${storage_class}', cloud_sc.lower())
+        expected_target_a = expected_target_a.replace('${bucket}', bucket_a)
+        expected_target_b = target_by_bucket_prefix.replace('${zonegroup}', 'default')
+        expected_target_b = expected_target_b.replace('${storage_class}', cloud_sc.lower())
+        expected_target_b = expected_target_b.replace('${bucket}', bucket_b)
+    else:
+        expected_target_a = f"rgwx-default-{cloud_sc.lower()}-{bucket_a}"
+        expected_target_b = f"rgwx-default-{cloud_sc.lower()}-{bucket_b}"
+
+    # Verify isolation: target_a should have key_a, NOT key_b
+    verify_object(cloud_client, expected_target_a, key_a, 'content-a', target_sc)
+    try:
+        cloud_client.head_object(Bucket=expected_target_a, Key=key_b)
+        assert False, f"Isolation violation: '{key_b}' found in target_a"
+    except ClientError as e:
+        assert e.response['Error']['Code'] in ('404', 'NoSuchKey'), \
+            f"Unexpected error: {e}"
+
+    # Verify isolation: target_b should have key_b, NOT key_a
+    verify_object(cloud_client, expected_target_b, key_b, 'content-b', target_sc)
+    try:
+        cloud_client.head_object(Bucket=expected_target_b, Key=key_a)
+        assert False, f"Isolation violation: '{key_a}' found in target_b"
+    except ClientError as e:
+        assert e.response['Error']['Code'] in ('404', 'NoSuchKey'), \
+            f"Unexpected error: {e}"
+
+    # Test restore functionality on bucket_a
+    # Verify object is transitioned before attempting restore
+    verify_transition(client, bucket_a, key_a, cloud_sc)
+
+    # Delete lifecycle to prevent re-transition after restore
+    client.delete_bucket_lifecycle(Bucket=bucket_a)
+
+    # Restore object temporarily
+    client.restore_object(Bucket=bucket_a, Key=key_a, RestoreRequest={'Days': 2})
+    time.sleep(3 * restore_period)
+
+    # Verify object is restored temporarily (storage class stays cloud_sc, but content is accessible)
+    verify_transition(client, bucket_a, key_a, cloud_sc)
+    response = client.head_object(Bucket=bucket_a, Key=key_a)
+    assert response['ContentLength'] == len('content-a')
 
 @pytest.mark.cloud_restore
 @pytest.mark.fails_on_aws
