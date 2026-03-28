@@ -10293,6 +10293,151 @@ def test_restore_noncur_obj():
         response = client.head_object(Bucket=bucket, Key=key, VersionId=version_ids[num])
         assert response['ContentLength'] == 0
 
+@pytest.mark.cloud_restore
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_list_objects_restore_status():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    bucket = get_new_bucket()
+    client = get_client()
+    key = 'test_restore_status'
+    data = 'restore status listing data'
+
+    client.put_object(Bucket=bucket, Key=key, Body=data)
+
+    response = client.list_objects_v2(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    objs = response['Contents']
+    assert len(objs) == 1
+    assert 'RestoreStatus' not in objs[0]
+
+    response = client.list_objects(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    objs = response['Contents']
+    assert len(objs) == 1
+    assert 'RestoreStatus' not in objs[0]
+
+    rules = [{'ID': 'rule1', 'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}], 'Prefix': '', 'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+    restore_period = get_restore_processor_period()
+    time.sleep(10 * lc_interval)
+
+    verify_transition(client, bucket, key, cloud_sc)
+
+    # delete lifecycle to prevent re-transition before restore check
+    client.delete_bucket_lifecycle(Bucket=bucket)
+
+    client.restore_object(Bucket=bucket, Key=key, RestoreRequest={'Days': 20})
+    time.sleep(3 * restore_period)
+
+    response = client.list_objects_v2(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    objs = response['Contents']
+    assert len(objs) == 1
+    assert 'RestoreStatus' in objs[0]
+    assert objs[0]['RestoreStatus']['IsRestoreInProgress'] == False
+    assert 'RestoreExpiryDate' in objs[0]['RestoreStatus']
+
+    response = client.list_objects(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    objs = response['Contents']
+    assert len(objs) == 1
+    assert 'RestoreStatus' in objs[0]
+    assert objs[0]['RestoreStatus']['IsRestoreInProgress'] == False
+    assert 'RestoreExpiryDate' in objs[0]['RestoreStatus']
+
+    # without the header, RestoreStatus should not appear
+    response = client.list_objects_v2(Bucket=bucket)
+    objs = response['Contents']
+    assert len(objs) == 1
+    assert 'RestoreStatus' not in objs[0]
+
+@pytest.mark.cloud_restore
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_list_object_versions_restore_status():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('[s3 cloud] section missing cloud_storage_class')
+
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = 'test1/a'
+    data = 'restore status versioned data'
+
+    # create initial version before enabling versioning
+    client.put_object(Bucket=bucket, Key=key, Body=data)
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+
+    # create a new version so the original becomes non-current
+    (version_ids, contents) = create_multiple_versions(client, bucket, key, 1)
+
+    response = client.list_object_versions(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    for v in response['Versions']:
+        assert 'RestoreStatus' not in v
+
+    # transition non-current versions to cloud
+    rules = [{
+        'ID': 'rule1',
+        'Prefix': 'test1/',
+        'Status': 'Enabled',
+        'NoncurrentVersionTransitions': [{
+            'NoncurrentDays': 2,
+            'StorageClass': cloud_sc
+        }],
+    }]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+
+    lc_interval = get_lc_debug_interval()
+    restore_period = get_restore_processor_period()
+    time.sleep(7 * lc_interval)
+
+    # find the non-current version
+    response = client.list_object_versions(Bucket=bucket)
+    noncur_id = None
+    for v in response['Versions']:
+        if not v['IsLatest']:
+            noncur_id = v['VersionId']
+            break
+    assert noncur_id is not None
+
+    verify_transition(client, bucket, key, cloud_sc, noncur_id)
+
+    # delete lifecycle to prevent re-transition before restore check
+    client.delete_bucket_lifecycle(Bucket=bucket)
+
+    client.restore_object(Bucket=bucket, Key=key, VersionId=noncur_id, RestoreRequest={'Days': 20})
+    time.sleep(3 * restore_period)
+
+    response = client.list_object_versions(
+        Bucket=bucket,
+        OptionalObjectAttributes=['RestoreStatus'])
+    for v in response['Versions']:
+        if v['VersionId'] == noncur_id:
+            assert 'RestoreStatus' in v
+            assert v['RestoreStatus']['IsRestoreInProgress'] == False
+            assert 'RestoreExpiryDate' in v['RestoreStatus']
+        else:
+            assert 'RestoreStatus' not in v
+
+    response = client.list_object_versions(Bucket=bucket)
+    for v in response['Versions']:
+        assert 'RestoreStatus' not in v
+
 @pytest.mark.encryption
 @pytest.mark.fails_on_dbstore
 def test_encrypted_transfer_1b():
