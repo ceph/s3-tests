@@ -1435,7 +1435,7 @@ def test_bucket_list_return_data_versioning():
         data.update({
             key_name: {
                 'ID': acl_response['Owner']['ID'],
-                'DisplayName': acl_response['Owner']['DisplayName'],
+                #'DisplayName': acl_response['Owner']['DisplayName'], - for aws does not show.
                 'ETag': obj_response['ETag'],
                 'LastModified': obj_response['LastModified'],
                 'ContentLength': obj_response['ContentLength'],
@@ -1449,7 +1449,7 @@ def test_bucket_list_return_data_versioning():
     for obj in objs_list:
         key_name = obj['Key']
         key_data = data[key_name]
-        assert obj['Owner']['DisplayName'] == key_data['DisplayName']
+        #assert obj['Owner']['DisplayName'] == key_data['DisplayName'] - for aws does not show.
         assert obj['ETag'] == key_data['ETag']
         assert obj['Size'] == key_data['ContentLength']
         assert obj['Owner']['ID'] == key_data['ID']
