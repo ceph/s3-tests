@@ -15477,6 +15477,48 @@ def test_bucket_logging_bucket_auth_type():
     assert _verify_record_field(body, src_bucket_name, 'REST.GET.OBJECT', key, "Standard", "AuthType", "QueryString")
 
 
+@pytest.mark.bucket_logging
+@pytest.mark.fails_on_aws
+def test_bucket_logging_request_id():
+    """verify that the standard access log RequestID field matches the x-amz-request-id response header"""
+    src_bucket_name = get_new_bucket_name()
+    src_bucket = get_new_bucket_resource(name=src_bucket_name)
+    log_bucket_name = get_new_bucket_name()
+    log_bucket = get_new_bucket_resource(name=log_bucket_name)
+    client = get_client()
+    prefix = 'log/'
+    key = 'my-test-object'
+    _set_log_bucket_policy(client, log_bucket_name, [src_bucket_name], [prefix])
+
+    # enable standard logging
+    logging_enabled = {'TargetBucket': log_bucket_name, 'TargetPrefix': prefix}
+    response = client.put_bucket_logging(Bucket=src_bucket_name, BucketLoggingStatus={
+        'LoggingEnabled': logging_enabled,
+    })
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    # capture x-amz-request-id from the put_object response
+    request_id = None
+    def capture_request_id(**kwargs):
+        nonlocal request_id
+        request_id = kwargs['response']['ResponseMetadata']['HTTPHeaders'].get('x-amz-request-id')
+    client.meta.events.register('after-call.s3.PutObject', capture_request_id)
+
+    client.put_object(Bucket=src_bucket_name, Key=key, Body=randcontent())
+    assert request_id is not None, 'failed to capture x-amz-request-id from response'
+
+    _flush_logs(client, src_bucket_name)
+    response = client.list_objects_v2(Bucket=log_bucket_name)
+    log_keys = _get_keys(response)
+    assert len(log_keys) == 1
+
+    for log_key in log_keys:
+        response = client.get_object(Bucket=log_bucket_name, Key=log_key)
+        body = _get_body(response)
+        assert _verify_records(body, src_bucket_name, 'REST.PUT.OBJECT', [key], "Standard", 1)
+        assert _verify_record_field(body, src_bucket_name, 'REST.PUT.OBJECT', key, "Standard", "RequestID", request_id)
+
+
 def _bucket_logging_key_filter(log_type):
     src_bucket_name = get_new_bucket_name()
     src_bucket = get_new_bucket_resource(name=src_bucket_name)
