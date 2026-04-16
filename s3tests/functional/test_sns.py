@@ -3,10 +3,12 @@ import pytest
 from botocore.exceptions import ClientError
 from . import (
     configfile,
+    get_iam_path_prefix,
     get_iam_root_client,
     get_iam_alt_root_client,
     get_new_bucket_name,
     get_prefix,
+    make_iam_name,
     nuke_prefixed_buckets,
 )
 from .iam import iam_root, iam_alt_root
@@ -100,6 +102,27 @@ def test_cross_account_topic(sns, sns_alt):
 
     response = sns_alt.list_topics()
     assert arn not in [p['TopicArn'] for p in response['Topics']]
+
+@pytest.mark.iam_account
+@pytest.mark.sns
+def test_account_user_policy_list_topics(iam_root):
+    path = get_iam_path_prefix()
+    user_name = make_iam_name('User')
+
+    user = iam_root.create_user(UserName=user_name, Path=path)['User']
+    user_arn = user['Arn']
+    key = iam_root.create_access_key(UserName=user_name)['AccessKey']
+
+    sns = get_iam_root_client(service_name='sns',
+                              aws_access_key_id=key['AccessKeyId'],
+                              aws_secret_access_key=key['SecretAccessKey'])
+
+    # expect AccessDenied for lack of identity policy
+    e = assert_raises(ClientError, sns.list_topics)
+
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn='arn:aws:iam::aws:policy/AmazonSNSReadOnlyAccess')
+
+    sns.list_topics()
 
 @pytest.mark.iam_account
 @pytest.mark.sns
