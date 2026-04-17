@@ -14912,6 +14912,66 @@ def test_post_object_upload_checksum():
     r = requests.post(url, files=payload, verify=get_config_ssl_verify())
     assert r.status_code == 400
 
+@pytest.mark.checksum
+def test_copy_object_add_checksum():
+    # don't add checksums unless requested
+    config = botocore.client.Config(request_checksum_calculation='when_required')
+    client = get_client(config)
+    bucket = get_new_bucket(client)
+
+    key = "myobj"
+    size = 1024
+    body = FakeWriteFile(size, 'A')
+    sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
+
+    # upload object without a checksum
+    response = client.put_object(Bucket=bucket, Key=key, Body=body)
+    assert 'ChecksumType' not in response
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert 'ChecksumType' not in response
+
+    # copy to another object, verify lack of checksum
+    client.copy_object(Bucket=bucket, Key=f'{key}-copy', CopySource={'Bucket': bucket, 'Key': key})
+    assert 'ChecksumType' not in response
+    response = client.head_object(Bucket=bucket, Key=f'{key}-copy', ChecksumMode='ENABLED')
+    assert 'ChecksumType' not in response
+
+    # copy again with ChecksumAlgorithm set, verify checksum added
+    client.copy_object(Bucket=bucket, Key=f'{key}-copy', CopySource={'Bucket': bucket, 'Key': key}, ChecksumAlgorithm='SHA256')
+    assert sha256sum == response['ChecksumSHA256']
+    response = client.head_object(Bucket=bucket, Key=f'{key}-copy', ChecksumMode='ENABLED')
+    assert sha256sum == response['ChecksumSHA256']
+
+@pytest.mark.checksum
+def test_copy_object_change_checksum():
+    client = get_client()
+    bucket = get_new_bucket(client)
+
+    key = "myobj"
+    size = 1024
+    body = FakeWriteFile(size, 'A')
+    sha256sum = 'arcu6553sHVAiX4MjW0j7I7vD4w6R+Gz9Ok0Q9lTa+0='
+    crc64sum = 'Qeh8oXvGiSo='
+
+    # upload object with a SHA256 checksum
+    response = client.put_object(Bucket=bucket, Key=key, Body=body, ChecksumAlgorithm='SHA256', ChecksumSHA256=sha256sum)
+    assert sha256sum == response['ChecksumSHA256']
+    response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
+    assert sha256sum == response['ChecksumSHA256']
+
+    # copy to another object, verify SHA256 checksum remains
+    client.copy_object(Bucket=bucket, Key=f'{key}-copy', CopySource={'Bucket': bucket, 'Key': key})
+    assert sha256sum == response['ChecksumSHA256']
+    response = client.head_object(Bucket=bucket, Key=f'{key}-copy', ChecksumMode='ENABLED')
+    assert sha256sum == response['ChecksumSHA256']
+
+    # copy again with ChecksumAlgorithm=CRC64NVME, verify checksum changed
+    client.copy_object(Bucket=bucket, Key=f'{key}-copy', CopySource={'Bucket': bucket, 'Key': key}, ChecksumAlgorithm='CRC64NVME')
+    assert crc64sum == response['ChecksumCRC64NVME']
+    assert 'ChecksumSHA256' not in response
+    response = client.head_object(Bucket=bucket, Key=f'{key}-copy', ChecksumMode='ENABLED')
+    assert crc64sum == response['ChecksumCRC64NVME']
+    assert 'ChecksumSHA256' not in response
 
 def _set_log_bucket_policy_tenant(client, log_tenant, log_bucket_name, src_tenant, src_user, src_buckets, log_prefixes):
     statements = []
