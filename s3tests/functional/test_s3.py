@@ -19800,6 +19800,34 @@ def test_bucket_create_delete_bucket_ownership():
 
     client.delete_bucket_ownership_controls(Bucket=bucket)
 
+def test_head_object_404_with_policy_prefix():
+    client = get_client()
+    bucket = get_new_bucket(client)
+
+    policy = json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": "*"},
+            "Action": "s3:ListBucket",
+            "Resource": f"arn:aws:s3:::{bucket}",
+            "Condition": {
+                "StringLike": {
+                    "s3:prefix": "public/*"
+                }
+            }
+        }]
+    })
+    client.put_bucket_policy(Bucket=bucket, Policy=policy)
+
+    alt_client = get_alt_client()
+    # expect 404 NoSuchKey for names that match the s3:prefix
+    e = assert_raises(ClientError, alt_client.head_object, Bucket=bucket, Key='public/object')
+    assert 404 == _get_status(e.response)
+    # expect 403 Forbidden for names that don't match
+    e = assert_raises(ClientError, alt_client.head_object, Bucket=bucket, Key='private/object')
+    assert 403 == _get_status(e.response)
+
 #########################
 # COPY ENCRYPTION TESTS #
 #########################
