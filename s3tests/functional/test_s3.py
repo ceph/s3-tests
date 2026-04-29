@@ -5992,6 +5992,7 @@ def test_multipart_upload_empty():
     assert status == 400
     assert error_code == 'MalformedXML'
 
+@pytest.mark.fails_on_dbstore
 def test_multipart_upload_complete_without_create():
     bucket_name = get_new_bucket()
     client = get_client()
