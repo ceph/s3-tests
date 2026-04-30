@@ -14696,6 +14696,54 @@ def test_multipart_checksum_sha256():
     response = client.head_object(Bucket=bucket, Key=key, ChecksumMode='ENABLED')
     assert composite_sha256sum == response['ChecksumSHA256']
 
+@pytest.mark.checksum
+@pytest.mark.fails_on_dbstore
+def test_multipart_reupload_checksum_and_etag():
+    bucket = get_new_bucket()
+    client = get_client()
+
+    key = "mymultipart"
+    response = client.create_multipart_upload(Bucket=bucket, Key=key, ChecksumAlgorithm='SHA256')
+    assert 'SHA256' == response['ChecksumAlgorithm']
+    upload_id = response['UploadId']
+
+    size = 5 * 1024 * 1024 # each part but the last must be at least 5M
+
+    # code to compute checksums for these is in unittest_rgw_cksum
+    body1 = FakeWriteFile(size, 'A')
+    body2 = FakeWriteFile(size, 'B')
+    body3 = FakeWriteFile(size, 'C')
+
+    # known MD5/etag and sha256 checksum values
+    part1_sha256sum = '275VF5loJr1YYawit0XSHREhkFXYkkPKGuoK0x9VKxI='
+    part2_sha256sum = 'mrHwOfjTL5Zwfj74F05HOQGLdUb7E5szdCbxgUSq6NM='
+    part3_sha256sum = 'Vw7oB/nKQ5xWb3hNgbyfkvDiivl+U+/Dft48nfJfDow='
+
+    composite_etag = 'b2add96cc9702bbf4efb0ccdfc6b7747-3'
+    composite_sha256sum = 'uWBwpe1dxI4Vw8Gf0X9ynOdw/SS6VBzfWm9giiv1sf4=-3'
+
+    response1 = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=1, Body=body1, ChecksumAlgorithm='SHA256', ChecksumSHA256=part1_sha256sum)
+    response2 = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=2, Body=body2, ChecksumAlgorithm='SHA256', ChecksumSHA256=part2_sha256sum)
+    response3 = client.upload_part(UploadId=upload_id, Bucket=bucket, Key=key, PartNumber=3, Body=body3, ChecksumAlgorithm='SHA256', ChecksumSHA256=part3_sha256sum)
+
+    res1 = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
+        {'ETag': response1['ETag'].strip('"'), 'ChecksumSHA256': response1['ChecksumSHA256'], 'PartNumber': 1},
+        {'ETag': response2['ETag'].strip('"'), 'ChecksumSHA256': response2['ChecksumSHA256'], 'PartNumber': 2},
+        {'ETag': response3['ETag'].strip('"'), 'ChecksumSHA256': response3['ChecksumSHA256'], 'PartNumber': 3}]})
+
+    assert composite_etag == res1['ETag'].strip('"')
+    assert composite_sha256sum == res1['ChecksumSHA256']
+
+    # validate the headers on the (idempotent) attempt to retry completion--they should match for ETag and Checksum (if any)
+    res2 = client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id, ChecksumSHA256=composite_sha256sum, MultipartUpload={'Parts': [
+        {'ETag': response1['ETag'].strip('"'), 'ChecksumSHA256': response1['ChecksumSHA256'], 'PartNumber': 1},
+        {'ETag': response2['ETag'].strip('"'), 'ChecksumSHA256': response2['ChecksumSHA256'], 'PartNumber': 2},
+        {'ETag': response3['ETag'].strip('"'), 'ChecksumSHA256': response3['ChecksumSHA256'], 'PartNumber': 3}]})
+
+    # assert just validated final etag and checksum values match
+    assert res1['ETag'] == res2['ETag']
+    assert res1['ChecksumSHA256'] == res2['ChecksumSHA256']
+
 def multipart_checksum_3parts_helper(key=None, checksum_algo=None, checksum_type=None, **kwargs):
 
     bucket = get_new_bucket()
