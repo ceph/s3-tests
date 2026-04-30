@@ -13,6 +13,9 @@ is_secure = False
 ## say "False" to disable SSL Verify
 ssl_verify = False
 
+# s3 addressing style: auto, virtual, path
+addressing_style = auto
+
 [fixtures]
 ## all the buckets created will start with this prefix;
 ## {random} will be filled with random characters to pad

@@ -215,6 +215,8 @@ def configure():
     if not config.default_ssl_verify:
         urllib3.disable_warnings()
 
+    config.addressing_style = defaults.get("addressing_style")
+
     # vars from the main section
     config.main_access_key = cfg.get('s3 main',"access_key")
     config.main_secret_key = cfg.get('s3 main',"secret_key")
@@ -413,7 +415,7 @@ def get_cloud_config(cfg):
 
 def get_client(client_config=None):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style})
 
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.main_access_key,
@@ -431,14 +433,14 @@ def get_v2_client():
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
-                        config=Config(signature_version='s3'))
+                        config=Config(signature_version='s3', s3={'addressing_style': config.addressing_style}))
     return client
 
 def get_sts_client(**kwargs):
     kwargs.setdefault('region_name', '')
     kwargs.setdefault('aws_access_key_id', config.alt_access_key)
     kwargs.setdefault('aws_secret_access_key', config.alt_secret_key)
-    kwargs.setdefault('config', Config(signature_version='s3v4'))
+    kwargs.setdefault('config', Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style}))
 
     client = boto3.client(service_name='sts',
                           endpoint_url=config.default_endpoint,
@@ -462,7 +464,7 @@ def get_iam_client(**kwargs):
 def get_iam_s3client(**kwargs):
     kwargs.setdefault('aws_access_key_id', config.iam_access_key)
     kwargs.setdefault('aws_secret_access_key', config.iam_secret_key)
-    kwargs.setdefault('config', Config(signature_version='s3v4'))
+    kwargs.setdefault('config', Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style}))
 
     client = boto3.client(service_name='s3',
                           endpoint_url=config.default_endpoint,
@@ -474,7 +476,7 @@ def get_iam_s3client(**kwargs):
 def get_iam_root_s3client(**kwargs):
     kwargs.setdefault('aws_access_key_id', config.iam_root_access_key)
     kwargs.setdefault('aws_secret_access_key', config.iam_root_secret_key)
-    kwargs.setdefault('config', Config(signature_version='s3v4'))
+    kwargs.setdefault('config', Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style}))
 
     client = boto3.client(service_name='s3',
                           endpoint_url=config.default_endpoint,
@@ -507,7 +509,7 @@ def get_iam_alt_root_client(**kwargs):
 
 def get_alt_client(client_config=None):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style})
 
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.alt_access_key,
@@ -520,7 +522,7 @@ def get_alt_client(client_config=None):
 
 def get_cloud_client(client_config=None):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style})
 
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.cloud_access_key,
@@ -532,7 +534,7 @@ def get_cloud_client(client_config=None):
 
 def get_tenant_client(client_config=None):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style})
 
     client = boto3.client(service_name='s3',
                         aws_access_key_id=config.tenant_access_key,
@@ -544,7 +546,7 @@ def get_tenant_client(client_config=None):
     return client
 
 def get_v2_tenant_client():
-    client_config = Config(signature_version='s3')
+    client_config = Config(signature_version='s3', s3={'addressing_style': config.addressing_style})
     client = boto3.client(service_name='s3',
                           aws_access_key_id=config.tenant_access_key,
                           aws_secret_access_key=config.tenant_secret_key,
@@ -593,12 +595,12 @@ def get_bad_auth_client(aws_access_key_id='badauth'):
                         endpoint_url=config.default_endpoint,
                         use_ssl=config.default_is_secure,
                         verify=config.default_ssl_verify,
-                        config=Config(signature_version='s3v4'))
+                        config=Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style}))
     return client
 
 def get_svc_client(client_config=None, svc='s3'):
     if client_config == None:
-        client_config = Config(signature_version='s3v4')
+        client_config = Config(signature_version='s3v4', s3={'addressing_style': config.addressing_style})
 
     client = boto3.client(service_name=svc,
                         aws_access_key_id=config.main_access_key,
