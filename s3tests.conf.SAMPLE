@@ -103,6 +103,8 @@ secret_key = nopqrstuvwxyzabcdefghijklmnabcdefghijklm
 # read_through_restore_days = 2
 # target_storage_class = Target_SC
 # target_path = cloud-bucket
+# target_by_bucket = false    # when true, each source bucket gets its own target bucket
+# target_by_bucket_prefix = rgwx-${zonegroup}-${storage_class}-${bucket}  # template for per-bucket target names
 
 ## another regular storage class to test multiple transition rules,
 # storage_class = S1
