@@ -18962,7 +18962,45 @@ def test_delete_marker_expiration():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     lc_interval = get_lc_debug_interval()
-    time.sleep(6*lc_interval)
+    time.sleep(7*lc_interval) # failed once in pdb, but ended up correct
+
+    # delete marker should have expired
+    check_delete_marker(client, bucket, key, 'false')
+
+@pytest.mark.delete_marker
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_dbstore
+def test_dm_expiration_when_suspended():
+    client = get_client()
+    bucket = get_new_bucket()
+    key = "dm-object1"
+    body = "body version %s" % (key)
+
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+
+    # we want an *object* with null-version, so suspend versioning now
+    check_configure_versioning_retry(bucket, "Suspended", "Suspended")
+
+    # then put an object
+    res = client.put_object(Bucket=bucket, Key=key, Body=body)
+
+    # and create a delete marker for same
+    res = client.delete_object(Bucket=bucket, Key=key)
+
+    # expect delete marker
+    check_delete_marker(client, bucket, key, 'true')
+
+    # to observe delete marker expiration, we must expire any existing
+    # noncurrent version, as these inhibit delete marker expiration
+    lifecycle = {
+        'Rules': [{'Expiration': {'ExpiredObjectDeleteMarker': True}, 'ID': 'dm-1-days', 'Prefix': '', 'Status': 'Enabled'}, {'ID': 'noncur-1-days', 'Prefix': '', 'Status': 'Enabled', 'NoncurrentVersionExpiration': {'NoncurrentDays': 1}}]
+    }
+    response = client.put_bucket_lifecycle_configuration(Bucket=bucket, LifecycleConfiguration=lifecycle)
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    lc_interval = get_lc_debug_interval()
+    time.sleep(7*lc_interval)
 
     # delete marker should have expired
     check_delete_marker(client, bucket, key, 'false')
