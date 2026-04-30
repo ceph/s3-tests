@@ -14579,8 +14579,14 @@ def test_get_object_torrent():
     response = None
     try:
         response = client.get_object_torrent(Bucket=bucket_name, Key=key)
-        # if successful, verify the torrent contents are different from the body
-        assert data != _get_body(response)
+        # If successful, verify the torrent contents are different from the body.
+        #
+        # NOTE: A torrent file is a bencoded binary format. In particular, the
+        # "pieces" field contains raw SHA1 digests, so the response body is not
+        # guaranteed to be valid UTF-8. Treat it as bytes here.
+        got = response['Body'].read()
+        assert type(got) is bytes
+        assert got != data.encode('utf-8')
     except ClientError as e:
         # accept 404 errors - torrent support may not be configured
         status, error_code = _get_status_and_error_code(e.response)
