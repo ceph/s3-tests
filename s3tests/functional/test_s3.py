@@ -3836,12 +3836,17 @@ def test_bucket_create_exists():
     client = get_client()
 
     client.create_bucket(Bucket=bucket_name)
+
+    # support both ceph config option rgw_bucket_eexist_override is true/false
+    # The return code of the following client.create_bucket is,
+    # - when rgw_bucket_eexist_override is false: 200 (OK)
+    # - when rgw_bucket_eexist_override is true: 409 (BucketAlreadyOwnedByYou)
     try:
         response = client.create_bucket(Bucket=bucket_name)
     except ClientError as e:
         status, error_code = _get_status_and_error_code(e.response)
-        assert e.status == 409
-        assert e.error_code == 'BucketAlreadyOwnedByYou'
+        assert status == 409
+        assert error_code == 'BucketAlreadyOwnedByYou'
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_get_location():
@@ -3882,7 +3887,8 @@ def test_bucket_recreate_overwrite_acl():
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name)
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 409
-    assert error_code == 'BucketAlreadyExists'
+    # support both ceph config option rgw_bucket_eexist_override is true/false
+    assert error_code in ('BucketAlreadyExists', 'BucketAlreadyOwnedByYou')
 
 @pytest.mark.fails_on_dbstore
 def test_bucket_recreate_new_acl():
@@ -3893,7 +3899,8 @@ def test_bucket_recreate_new_acl():
     e = assert_raises(ClientError, client.create_bucket, Bucket=bucket_name, ACL='public-read')
     status, error_code = _get_status_and_error_code(e.response)
     assert status == 409
-    assert error_code == 'BucketAlreadyExists'
+    # support both ceph config option rgw_bucket_eexist_override is true/false
+    assert error_code in ('BucketAlreadyExists', 'BucketAlreadyOwnedByYou')
 
 def check_access_denied(fn, *args, **kwargs):
     e = assert_raises(ClientError, fn, *args, **kwargs)
