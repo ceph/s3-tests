@@ -9857,6 +9857,56 @@ def test_lifecycle_cloud_transition():
         assert status == 404
         assert error_code == 'NoSuchKey'
 
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_transition
+@pytest.mark.cloud_transition
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_lifecycle_cloud_transition_non_ascii_key():
+    cloud_sc = get_cloud_storage_class()
+    if cloud_sc is None:
+        pytest.skip('no cloud_storage_class configured')
+
+    retain_head_object = get_cloud_retain_head_object()
+    target_path = get_cloud_target_path()
+    target_sc = get_cloud_target_storage_class()
+
+    non_ascii_key = 'expire1/utf8-tëst.txt'
+    keys = ['keep2/ascii.txt', non_ascii_key]
+    bucket_name = _create_objects(keys=keys)
+    client = get_client()
+    rules = [{'ID': 'rule1',
+              'Transitions': [{'Days': 1, 'StorageClass': cloud_sc}],
+              'Prefix': 'expire1/',
+              'Status': 'Enabled'}]
+    lifecycle = {'Rules': rules}
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name, LifecycleConfiguration=lifecycle)
+
+    response = client.list_objects(Bucket=bucket_name)
+    assert len(_get_keys(response)) == 2
+
+    lc_interval = get_lc_debug_interval()
+
+    time.sleep(10 * lc_interval)
+    expire1_keys = list_bucket_storage_class(client, bucket_name)
+    assert len(expire1_keys['STANDARD']) == 1
+
+    if retain_head_object is not None and retain_head_object == "true":
+        assert len(expire1_keys[cloud_sc]) == 1
+    else:
+        assert len(expire1_keys[cloud_sc]) == 0
+
+    time.sleep(2 * lc_interval)
+    if target_path is None:
+        target_path = "rgwx-default-" + cloud_sc.lower() + "-cloud-bucket"
+    prefix = bucket_name + "/"
+
+    cloud_client = get_cloud_client()
+
+    time.sleep(12 * lc_interval)
+    verify_object(cloud_client, target_path, prefix + non_ascii_key,
+                  non_ascii_key, target_sc)
+
 # Similar to 'test_lifecycle_transition' but for cloud transition
 @pytest.mark.lifecycle
 @pytest.mark.lifecycle_transition
