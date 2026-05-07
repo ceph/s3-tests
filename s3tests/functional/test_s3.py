@@ -3111,6 +3111,19 @@ def test_get_object_ifunmodifiedsince_failed():
     body = _get_body(response)
     assert body == 'bar'
 
+@pytest.mark.fails_on_aws
+def test_get_object_version_id_too_long():
+    bucket_name = get_new_bucket()
+    client = get_client()
+
+    long_version_id = "x" * 5000
+
+    e = assert_raises(ClientError, client.get_object, Bucket=bucket_name, Key="key", VersionId=long_version_id)
+    status, error_code = _get_status_and_error_code(e.response)
+
+    # TODO: should be 400 once https://tracker.ceph.com/issues/72502 is fixed
+    assert status == 500
+    assert error_code == 'UnknownError'
 
 @pytest.mark.fails_on_aws
 def test_put_object_ifmatch_good():
