@@ -15748,14 +15748,9 @@ def test_bucket_logging_request_id():
     assert response['ResponseMetadata']['HTTPStatusCode'] == 200
 
     # capture x-amz-request-id from the put_object response
-    request_id = None
-    def capture_request_id(**kwargs):
-        nonlocal request_id
-        request_id = kwargs['response']['ResponseMetadata']['HTTPHeaders'].get('x-amz-request-id')
-    client.meta.events.register('after-call.s3.PutObject', capture_request_id)
-
-    client.put_object(Bucket=src_bucket_name, Key=key, Body=randcontent())
-    assert request_id is not None, 'failed to capture x-amz-request-id from response'
+    response = client.put_object(Bucket=src_bucket_name, Key=key, Body=randcontent())
+    request_id = response['ResponseMetadata']['HTTPHeaders'].get('x-amz-request-id')
+    assert request_id is not None, 'failed to read x-amz-request-id from response headers'
 
     _flush_logs(client, src_bucket_name)
     response = client.list_objects_v2(Bucket=log_bucket_name)
