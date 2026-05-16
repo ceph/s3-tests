@@ -98,16 +98,29 @@ def list_versions(client, bucket, batch_size):
 def nuke_bucket(client, bucket):
     batch_size = 128
     max_retain_date = None
+    has_object_lock = True
+
+    try:
+        client.get_object_lock_configuration(Bucket=bucket)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ObjectLockConfigurationNotFoundError':
+            has_object_lock = False
+        else:
+            raise
 
     # list and delete objects in batches
     for objects in list_versions(client, bucket, batch_size):
-        delete = client.delete_objects(Bucket=bucket,
-                Delete={'Objects': objects, 'Quiet': True},
-                BypassGovernanceRetention=True)
+        if has_object_lock:
+            delete = client.delete_objects(Bucket=bucket,
+                                           Delete={'Objects': objects, 'Quiet': True},
+                                           BypassGovernanceRetention=True)
+        else:
+            delete = client.delete_objects(Bucket=bucket,
+                                           Delete={'Objects': objects, 'Quiet': True})
 
         # check for object locks on 403 AccessDenied errors
         for err in delete.get('Errors', []):
-            if err.get('Code') != 'AccessDenied':
+            if not has_object_lock or err.get('Code') != 'AccessDenied':
                 continue
             try:
                 res = client.get_object_retention(Bucket=bucket,
@@ -379,7 +392,7 @@ def get_cloud_config(cfg):
         config.cloud_storage_class = cfg.get('s3 cloud', "cloud_storage_class")
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.cloud_storage_class = None
-    
+
     try:
         config.cloud_retain_head_object = cfg.get('s3 cloud',"retain_head_object")
     except (configparser.NoSectionError, configparser.NoOptionError):
