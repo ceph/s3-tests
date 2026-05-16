@@ -2297,6 +2297,83 @@ def test_cross_account_role_policy_allow(iam_root, iam_alt_root):
     # something other than AccessDenied
     retry_on('AccessDenied', 10, s3.list_objects, Bucket=bucket_name)
 
+# alt account user assumes main account role to access alt account bucket with acl
+@pytest.mark.iam_account
+@pytest.mark.iam_cross_account
+@pytest.mark.iam_role
+@pytest.mark.role_policy
+def test_cross_account_role_policy_allow_acl(iam_root, iam_alt_root):
+    path = get_iam_path_prefix()
+    user_name = make_iam_name('AltUser')
+    role_name = make_iam_name('MyRole')
+    session_name = 'MySession'
+    bucket_name = get_new_bucket_name()
+
+    user = iam_alt_root.create_user(UserName=user_name, Path=path)['User']
+    user_arn = user['Arn']
+    key = iam_alt_root.create_access_key(UserName=user_name)['AccessKey']
+
+    s3_alt = get_iam_alt_root_client(service_name='s3')
+    s3_alt.create_bucket(Bucket=bucket_name)
+
+    trust_policy = json.dumps({
+        'Version': '2012-10-17',
+        'Statement': [{
+            'Effect': 'Allow',
+            'Action': 'sts:AssumeRole',
+            'Principal': {'AWS': user_arn}
+            }]
+        })
+    # returns MalformedPolicyDocument until the user arn starts working
+    role = retry_on('MalformedPolicyDocument', 10, iam_root.create_role,
+                    RoleName=role_name, Path=path, AssumeRolePolicyDocument=trust_policy)['Role']
+    role_arn = role['Arn']
+
+    sts = get_sts_client(aws_access_key_id=key['AccessKeyId'],
+                         aws_secret_access_key=key['SecretAccessKey'])
+
+    # returns InvalidClientTokenId or AccessDenied until the access key starts working
+    response = retry_on(('InvalidClientTokenId', 'AccessDenied'), 10, sts.assume_role,
+                        RoleArn=role_arn, RoleSessionName=session_name)
+    creds = response['Credentials']
+
+    s3 = get_iam_s3client(aws_access_key_id = creds['AccessKeyId'],
+                          aws_secret_access_key = creds['SecretAccessKey'],
+                          aws_session_token = creds['SessionToken'])
+
+    # expect AccessDenied because no identity policy allows s3 actions
+    e = assert_raises(ClientError, s3.list_objects, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+    assert error_code == 'AccessDenied'
+
+    policy_name = 'AllowListBucket'
+    policy = json.dumps({
+        'Version': '2012-10-17',
+        'Statement': [{
+            'Effect': 'Allow',
+            'Action': 's3:ListBucket',
+            'Resource': '*'
+            }]
+        })
+    iam_root.put_role_policy(RoleName=role_name, PolicyName=policy_name, PolicyDocument=policy)
+
+    # expect AccessDenied because no resource policy allows the main account
+    e = assert_raises(ClientError, s3.list_objects, Bucket=bucket_name)
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+    assert error_code == 'AccessDenied'
+
+    # add a bucket acl grant for the main account's arn
+    main_arn = iam_root.get_user()['User']['Arn']
+    account_id = main_arn.removeprefix('arn:aws:iam::').removesuffix(':root')
+
+    s3_alt.put_bucket_acl(Bucket=bucket_name, GrantRead=f'id={account_id}')
+
+    # the policy may take a bit to start working. retry until it returns
+    # something other than AccessDenied
+    retry_on('AccessDenied', 10, s3.list_objects, Bucket=bucket_name)
+
 # alt account user assumes main account role to create a bucket
 @pytest.mark.iam_account
 @pytest.mark.iam_cross_account
