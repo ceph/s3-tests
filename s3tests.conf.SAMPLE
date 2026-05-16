@@ -150,6 +150,7 @@ display_name = youruseridhere
 [iam root]
 access_key = AAAAAAAAAAAAAAAAAAaa
 secret_key = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+account_id = RGW11111111111111111
 user_id = RGW11111111111111111
 email = account1@ceph.com
 
@@ -157,6 +158,7 @@ email = account1@ceph.com
 [iam alt root]
 access_key = BBBBBBBBBBBBBBBBBBbb
 secret_key = bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+account_id = RGW22222222222222222
 user_id = RGW22222222222222222
 email = account2@ceph.com
 
