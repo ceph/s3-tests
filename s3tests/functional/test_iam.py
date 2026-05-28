@@ -1419,6 +1419,37 @@ def test_account_user_policy_managed(iam_root):
 
 @pytest.mark.user_policy
 @pytest.mark.iam_account
+def test_account_user_policy_managed_allow(iam_root):
+    path = get_iam_path_prefix()
+    name = make_iam_name('name')
+    bucket_name = get_new_bucket_name()
+    iam_root.create_user(UserName=name, Path=path)
+
+    key = iam_root.create_access_key(UserName=name)['AccessKey']
+    client = get_iam_s3client(aws_access_key_id=key['AccessKeyId'],
+                              aws_secret_access_key=key['SecretAccessKey'])
+
+    # the access key may take a bit to start working. retry until it returns
+    # something other than InvalidAccessKeyId
+    e = assert_raises(ClientError, retry_on, 'InvalidAccessKeyId', 10, client.list_buckets)
+    # expect AccessDenied because no identity policy allows s3 actions
+    status, error_code = _get_status_and_error_code(e.response)
+    assert status == 403
+    assert error_code == 'AccessDenied'
+
+    # attach a user policy that allows s3 actions
+    iam_root.attach_user_policy(UserName=name, PolicyArn='arn:aws:iam::aws:policy/AmazonS3FullAccess')
+
+    # the policy may take a bit to start working. retry until it returns
+    # something other than AccessDenied
+    retry_on('AccessDenied', 10, client.create_bucket, Bucket=bucket_name)
+
+    # test Put/GetBucketTagging permissions specifically for https://tracker.ceph.com/issues/76792
+    client.put_bucket_tagging(Bucket=bucket_name, Tagging={'TagSet': []})
+    client.get_bucket_tagging(Bucket=bucket_name)
+
+@pytest.mark.user_policy
+@pytest.mark.iam_account
 def test_account_user_policy_allow(iam_root):
     path = get_iam_path_prefix()
     name = make_iam_name('name')
