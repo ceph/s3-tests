@@ -4,7 +4,7 @@
 
 This is a set of unofficial Amazon AWS S3 compatibility
 tests, that can be useful to people implementing software
-that exposes an S3-like API. The tests use the Boto2 and Boto3 libraries.
+that exposes an S3-like API. The tests use the Boto3 library.
 
 The tests use the Tox tool. To get started, ensure you have the ``tox``
 software installed; e.g. on Debian/Ubuntu::
@@ -37,14 +37,6 @@ things like AWS not enforcing their spec stricly. You can filter tests
 based on their attributes::
 
 	S3TEST_CONF=aws.conf tox -- -m 'not fails_on_aws'
-
-Most of the tests have both Boto3 and Boto2 versions. Tests written in
-Boto2 are in the ``s3tests`` directory. Tests written in Boto3 are
-located in the ``s3test_boto3`` directory.
-
-You can run only the boto3 tests with::
-
-	S3TEST_CONF=your.conf tox -- s3tests/functional
 
 ========================
  STS compatibility tests
@@ -79,7 +71,6 @@ In order to run any STS test you'll need to add "iam" section to the config file
 
 This is a set of IAM policy tests.
 This section covers tests for user policies such as Put, Get, List, Delete, user policies with s3 actions, conflicting user policies etc
-These tests uses Boto3 libraries. Tests are written in the ``s3test_boto3`` directory.
 
 These iam policy tests uses two users with profile name "iam" and "s3 alt" as mentioned in s3tests.conf.SAMPLE.
 If Ceph cluster is started with vstart, then above two users will get created as part of vstart with same access key, secrete key etc as mentioned in s3tests.conf.SAMPLE.
