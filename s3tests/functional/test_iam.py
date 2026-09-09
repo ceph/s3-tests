@@ -1453,6 +1453,1009 @@ def test_account_user_policy_allow(iam_root):
     # something other than AccessDenied
     retry_on('AccessDenied', 10, client.list_buckets)
 
+# IAM Customer Managed Policy
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_create_policy(iam_root):
+  name = make_iam_name('create-policy')
+  path = get_iam_path_prefix()
+  policy_document = {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Effect": "Allow",
+              "Action": [
+                  "s3:GetObject",
+                  "s3:ListBucket"
+              ],
+              "Resource": [
+                  "arn:aws:s3:::mybucket",
+                  "arn:aws:s3:::mybucket/*"
+              ]
+          }
+      ]
+  }
+  policy = iam_root.create_policy(
+      PolicyName=name,
+      PolicyDocument=json.dumps(policy_document),
+      Description='Read-only access to mybucket',
+      Path=path,
+      Tags=[
+          {"Key": "Perms", "Value": "READ"},
+          {"Key": "Principle", "Value": "S3"}
+      ]
+  )
+  assert policy['Policy']['PolicyName'] == name
+  assert policy['Policy']['Path'] == path
+
+   # Cleanup
+  iam_root.delete_policy(PolicyArn=policy['Policy']['Arn'])
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_create_duplicate_policy(iam_root):
+    name = make_iam_name('duplicate-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::example"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    try:
+        with pytest.raises(iam_root.exceptions.EntityAlreadyExistsException):
+            iam_root.create_policy(
+                PolicyName=name,
+                PolicyDocument=json.dumps(policy_document),
+                Path=path
+            )
+    finally:
+        iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_get_policy(iam_root):
+    name = make_iam_name('get-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    fetched = iam_root.get_policy(PolicyArn=policy_arn)
+
+    assert fetched['Policy']['PolicyName'] == name
+    assert fetched['Policy']['Arn'] == policy_arn
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_delete_policy(iam_root):
+    name = make_iam_name('delete-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.get_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_delete_nonexistent_policy(iam_root):
+    main_arn = iam_root.get_user()['User']['Arn']
+    account_id = main_arn.removeprefix('arn:aws:iam::').removesuffix(':root')
+    fake_arn = f"arn:aws:iam::{account_id}:policy/NonExistentPolicy"
+    with pytest.raises(iam_root.exceptions.NoSuchEntityException):
+        iam_root.delete_policy(PolicyArn=fake_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_policies(iam_root):
+    path = get_iam_path_prefix()
+    name1 = make_iam_name('policy1')
+    name2 = make_iam_name('policy2')
+
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy1 = iam_root.create_policy(
+        PolicyName=name1,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy2 = iam_root.create_policy(
+        PolicyName=name2,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+
+    policies = iam_root.list_policies(Scope='All', PathPrefix=path)['Policies']
+    policy_names = [p['PolicyName'] for p in policies]
+
+    assert name1 in policy_names
+    assert name2 in policy_names
+
+    assert "AmazonS3FullAccess" in policy_names
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy1['Policy']['Arn'])
+    iam_root.delete_policy(PolicyArn=policy2['Policy']['Arn'])
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_create_policy_version(iam_root):
+    name = make_iam_name('versioned-policy')
+    path = get_iam_path_prefix()
+    policy_document_v1 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+    policy_document_v2 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::mybucket/*"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document_v1),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    version1 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v1),
+        SetAsDefault=False
+    )
+    version2 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v2),
+        SetAsDefault=True
+    )
+
+    assert version2['PolicyVersion']['IsDefaultVersion'] is True
+    assert version1['PolicyVersion']['IsDefaultVersion'] is False
+
+    # Cleanup
+    iam_root.delete_policy_version(PolicyArn=policy_arn, VersionId=version1['PolicyVersion']['VersionId'])
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_delete_policy_version(iam_root):
+    name = make_iam_name('versioned-policy')
+    path = get_iam_path_prefix()
+    policy_document_v1 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+    policy_document_v2 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::mybucket/*"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document_v1),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    version1 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v1),
+        SetAsDefault=True
+    )
+    version2 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v2),
+        SetAsDefault=False
+    )
+
+    # Cleanup
+    iam_root.delete_policy_version(PolicyArn=policy_arn, VersionId=version2['PolicyVersion']['VersionId'])
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_get_policy_version(iam_root):
+    name = make_iam_name('versioned-policy')
+    path = get_iam_path_prefix()
+    policy_document_v1 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document_v1),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    version1 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v1),
+        SetAsDefault=True
+    )
+
+    fetched_version = iam_root.get_policy_version(
+        PolicyArn=policy_arn,
+        VersionId=version1['PolicyVersion']['VersionId']
+    )
+
+    assert fetched_version['PolicyVersion']['VersionId'] == version1['PolicyVersion']['VersionId']
+    assert fetched_version['PolicyVersion']['IsDefaultVersion'] is True
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_policy_versions(iam_root):
+    name = make_iam_name('versioned-policy')
+    path = get_iam_path_prefix()
+    policy_document_v1 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+    policy_document_v2 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::mybucket/*"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document_v1),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    version1 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v1),
+        SetAsDefault=True
+    )
+    version2 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v2),
+        SetAsDefault=True
+    )
+
+    versions = iam_root.list_policy_versions(PolicyArn=policy_arn)['Versions']
+    version_ids = [v['VersionId'] for v in versions]
+
+    assert version1['PolicyVersion']['VersionId'] in version_ids
+    assert version2['PolicyVersion']['VersionId'] in version_ids
+
+    # Cleanup
+    iam_root.delete_policy_version(PolicyArn=policy_arn, VersionId=version1['PolicyVersion']['VersionId'])
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_set_default_policy_version(iam_root):
+    name = make_iam_name('versioned-policy')
+    path = get_iam_path_prefix()
+    policy_document_v1 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+    policy_document_v2 = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::mybucket/*"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document_v1),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    version1 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v1),
+        SetAsDefault=True
+    )
+    version2 = iam_root.create_policy_version(
+        PolicyArn=policy_arn,
+        PolicyDocument=json.dumps(policy_document_v2),
+        SetAsDefault=False
+    )
+
+    # Set version2 as the default version
+    iam_root.set_default_policy_version(PolicyArn=policy_arn, VersionId=version2['PolicyVersion']['VersionId'])
+
+    # Verify that version2 is now the default version
+    fetched_policy = iam_root.get_policy(PolicyArn=policy_arn)
+    assert fetched_policy['Policy']['DefaultVersionId'] == version2['PolicyVersion']['VersionId']
+
+    # Cleanup
+    iam_root.delete_policy_version(PolicyArn=policy_arn, VersionId=version1['PolicyVersion']['VersionId'])
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_tag_policy(iam_root):
+    name = make_iam_name('tagged-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Tag the policy
+    tags = [
+        {"Key": "Environment", "Value": "Test"},
+        {"Key": "Owner", "Value": "QA"}
+    ]
+    iam_root.tag_policy(PolicyArn=policy_arn, Tags=tags)
+
+    # List tags and verify
+    response = iam_root.list_policy_tags(PolicyArn=policy_arn)
+    assert len(response['Tags']) == 2
+    assert {"Key": "Environment", "Value": "Test"} in response['Tags']
+    assert {"Key": "Owner", "Value": "QA"} in response['Tags']
+
+    # Untag the policy
+    iam_root.untag_policy(PolicyArn=policy_arn, TagKeys=["Environment"])
+
+    # List tags and verify
+    response = iam_root.list_policy_tags(PolicyArn=policy_arn)
+    assert len(response['Tags']) == 1
+    assert {"Key": "Owner", "Value": "QA"} in response['Tags']
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_untag_policy(iam_root):
+    name = make_iam_name('tagged-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Tag the policy
+    tags = [
+        {"Key": "Environment", "Value": "Test"},
+        {"Key": "Owner", "Value": "QA"}
+    ]
+    iam_root.tag_policy(PolicyArn=policy_arn, Tags=tags)
+
+    # Untag the policy
+    iam_root.untag_policy(PolicyArn=policy_arn, TagKeys=["Environment"])
+
+    # List tags and verify
+    response = iam_root.list_policy_tags(PolicyArn=policy_arn)
+    assert len(response['Tags']) == 1
+    assert {"Key": "Owner", "Value": "QA"} in response['Tags']
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_policy_tags(iam_root):
+    name = make_iam_name('tagged-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Tag the policy
+    tags = [
+        {"Key": "Environment", "Value": "Test"},
+        {"Key": "Owner", "Value": "QA"}
+    ]
+    iam_root.tag_policy(PolicyArn=policy_arn, Tags=tags)
+
+    # List tags and verify
+    response = iam_root.list_policy_tags(PolicyArn=policy_arn)
+    assert len(response['Tags']) == 2
+    assert {"Key": "Environment", "Value": "Test"} in response['Tags']
+    assert {"Key": "Owner", "Value": "QA"} in response['Tags']
+
+    # Cleanup
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_attach_policy_to_user(iam_root):
+    name = make_iam_name('user-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a user
+    user_name = make_iam_name('test-user')
+    iam_root.create_user(UserName=user_name, Path=path)
+
+    # Attach the policy to the user
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_user_policies(UserName=user_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Detach the policy from the user
+    iam_root.detach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_user_policies(UserName=user_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_user(UserName=user_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_attach_policy_to_group(iam_root):
+    name = make_iam_name('group-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a group
+    group_name = make_iam_name('test-group')
+    iam_root.create_group(GroupName=group_name, Path=path)
+
+    # Attach the policy to the group
+    iam_root.attach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_group_policies(GroupName=group_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Detach the policy from the group
+    iam_root.detach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_group_policies(GroupName=group_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_group(GroupName=group_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_attach_policy_to_role(iam_root):
+    name = make_iam_name('role-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a role
+    role_name = make_iam_name('test-role')
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    iam_root.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(assume_role_policy_document),
+        Path=path
+    )
+
+    # Attach the policy to the role
+    iam_root.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_role_policies(RoleName=role_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Detach the policy from the role
+    iam_root.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_role_policies(RoleName=role_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_role(RoleName=role_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_detach_policy_from_user(iam_root):
+    name = make_iam_name('user-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a user
+    user_name = make_iam_name('test-user')
+    iam_root.create_user(UserName=user_name, Path=path)
+
+    # Attach the policy to the user
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+
+    # Detach the policy from the user
+    iam_root.detach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_user_policies(UserName=user_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_user(UserName=user_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_detach_policy_from_group(iam_root):
+    name = make_iam_name('group-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a group
+    group_name = make_iam_name('test-group')
+    iam_root.create_group(GroupName=group_name, Path=path)
+
+    # Attach the policy to the group
+    iam_root.attach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+
+    # Detach the policy from the group
+    iam_root.detach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_group_policies(GroupName=group_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_group(GroupName=group_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_detach_policy_from_role(iam_root):
+    name = make_iam_name('role-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a role
+    role_name = make_iam_name('test-role')
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    iam_root.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(assume_role_policy_document),
+        Path=path
+    )
+
+    # Attach the policy to the role
+    iam_root.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    # Detach the policy from the role
+    iam_root.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_role_policies(RoleName=role_name)
+    attached_policies = response['AttachedPolicies']
+    assert not any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.delete_role(RoleName=role_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_attached_user_policies(iam_root):
+    name = make_iam_name('user-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a user
+    user_name = make_iam_name('test-user')
+    iam_root.create_user(UserName=user_name, Path=path)
+
+    # Attach the policy to the user
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_user_policies(UserName=user_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.detach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+    iam_root.delete_user(UserName=user_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_attached_group_policies(iam_root):
+    name = make_iam_name('group-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a group
+    group_name = make_iam_name('test-group')
+    iam_root.create_group(GroupName=group_name, Path=path)
+
+    # Attach the policy to the group
+    iam_root.attach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_group_policies(GroupName=group_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.detach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+    iam_root.delete_group(GroupName=group_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_attached_role_policies(iam_root):
+    name = make_iam_name('role-policy')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a role
+    role_name = make_iam_name('test-role')
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    iam_root.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(assume_role_policy_document),
+        Path=path
+    )
+
+    # Attach the policy to the role
+    iam_root.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+
+    # List attached policies and verify
+    response = iam_root.list_attached_role_policies(RoleName=role_name)
+    attached_policies = response['AttachedPolicies']
+    assert any(p['PolicyArn'] == policy_arn for p in attached_policies)
+
+    # Cleanup
+    iam_root.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+    iam_root.delete_role(RoleName=role_name)
+    iam_root.delete_policy(PolicyArn=policy_arn)
+
+@pytest.mark.managed_policy
+@pytest.mark.iam_account
+def test_list_entities_for_policy(iam_root):
+    name = make_iam_name('policy-entities')
+    path = get_iam_path_prefix()
+    policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::mybucket"]
+        }]
+    }
+
+    policy = iam_root.create_policy(
+        PolicyName=name,
+        PolicyDocument=json.dumps(policy_document),
+        Path=path
+    )
+    policy_arn = policy['Policy']['Arn']
+
+    # Create a user, group, and role
+    user_name = make_iam_name('test-user')
+    group_name = make_iam_name('test-group')
+    role_name = make_iam_name('test-role')
+    role_name1 = make_iam_name('test-role1')
+
+    iam_root.create_user(UserName=user_name, Path=path)
+    iam_root.create_group(GroupName=group_name, Path=path)
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    iam_root.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(assume_role_policy_document),
+        Path=path
+    )
+    iam_root.create_role(
+        RoleName=role_name1,
+        AssumeRolePolicyDocument=json.dumps(assume_role_policy_document),
+        Path=path
+    )
+
+    # Attach the policy to the user, group, and role
+    iam_root.attach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+    iam_root.attach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+    iam_root.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+    iam_root.attach_role_policy(RoleName=role_name1, PolicyArn=policy_arn)
+
+    # List entities for the policy and verify
+    response = iam_root.list_entities_for_policy(PolicyArn=policy_arn)
+    users = response['PolicyUsers']
+    groups = response['PolicyGroups']
+    roles = response['PolicyRoles']
+
+    assert any(u['UserName'] == user_name for u in users)
+    assert any(g['GroupName'] == group_name for g in groups)
+    assert any(r['RoleName'] == role_name for r in roles)
+    assert any(r['RoleName'] == role_name1 for r in roles)
+
+    # Cleanup
+    iam_root.detach_user_policy(UserName=user_name, PolicyArn=policy_arn)
+    iam_root.detach_group_policy(GroupName=group_name, PolicyArn=policy_arn)
+    iam_root.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
+    iam_root.detach_role_policy(RoleName=role_name1, PolicyArn=policy_arn)
+    iam_root.delete_user(UserName=user_name)
+    iam_root.delete_group(GroupName=group_name)
+    iam_root.delete_role(RoleName=role_name)
+    iam_root.delete_role(RoleName=role_name1)
+    iam_root.delete_policy(PolicyArn=policy_arn)
 
 def group_list_names(client, **kwargs):
     p = client.get_paginator('list_groups')
