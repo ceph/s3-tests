@@ -19718,11 +19718,11 @@ def test_delete_object_if_match():
 
     client.delete_object(Bucket=bucket, Key=key, IfMatch=etag)
 
-    # -ENOENT doesn't raise error in delete op
-    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='*')
-    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
-    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='badetag')
-    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
+    # a conditional delete that finds no object is refused
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
+    assert 404 == _get_status(e.response)
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='badetag')
+    assert 404 == _get_status(e.response)
 
     # recreate to test IfMatch='*'
     client.put_object(Bucket=bucket, Key=key)
@@ -19737,11 +19737,11 @@ def test_delete_object_current_if_match():
     check_configure_versioning_retry(bucket, "Enabled", "Enabled")
     key = 'obj'
 
-    # -ENOENT doesn't raise error in delete op
-    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='*')
-    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
-    response = client.delete_object(Bucket=bucket, Key=key, IfMatch='badetag')
-    assert 204 == response['ResponseMetadata']['HTTPStatusCode']
+    # a conditional delete that finds no object is refused
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
+    assert 404 == _get_status(e.response)
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='badetag')
+    assert 404 == _get_status(e.response)
 
     response = client.put_object(Bucket=bucket, Key=key)
     version = response['VersionId']
@@ -19783,9 +19783,11 @@ def test_delete_object_version_if_match():
     response = client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch=etag)
     assert 'DeleteMarker' not in response
 
-    # -ENOENT doesn't raise error in delete op
-    client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch='*')
-    client.delete_object(Bucket=bucket, Key=key, VersionId=version, IfMatch='badetag')
+    # a conditional delete of a version that no longer exists is refused
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatch='*')
+    assert 404 == _get_status(e.response)
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, VersionId=version, IfMatch='badetag')
+    assert 404 == _get_status(e.response)
 
     # recreate to test IfMatch='*'
     response = client.put_object(Bucket=bucket, Key=key)
