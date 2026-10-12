@@ -1,3 +1,9 @@
+======
+Notice
+======
+
+These tests have moved into the https://github.com/ceph/ceph repository and will no longer be maintained here.
+
 ========================
  S3 compatibility tests
 ========================
