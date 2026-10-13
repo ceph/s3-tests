@@ -93,6 +93,10 @@ from . import (
     configured_storage_classes,
     configure,
     get_lc_debug_interval,
+    get_rgw_inject_delay,
+    get_rgw_debug_inject_mp_meta_delete_err,
+    get_gc_wait,
+    get_pending_op_expiration,
     get_restore_debug_interval,
     get_restore_processor_period,
     get_read_through_days,
@@ -7559,6 +7563,189 @@ def test_multipart_resend_first_finishes_last():
     client.complete_multipart_upload(Bucket=bucket_name, Key=key_name, UploadId=upload_id, MultipartUpload={'Parts': parts})
 
     _verify_atomic_key_data(bucket_name, key_name, file_size, 'A')
+
+# Races inside the gateway. Each needs the gateway configured with a
+# test injection knob (rgw_inject_delay_pattern and rgw_inject_delay_sec,
+# or rgw_debug_inject_mp_meta_delete_err) and short GC timers, and the
+# same values in the [s3 main] section; it skips otherwise. Each checks
+# that what a request answered success for stays readable after GC.
+
+def _require_inject_delay(point):
+    pattern, delay = get_rgw_inject_delay()
+    if pattern != point or delay <= 0:
+        pytest.skip('needs rgw_inject_delay_pattern = {} on the gateway'.format(point))
+    return delay
+
+def _require_gc_wait():
+    gc_wait = get_gc_wait()
+    if gc_wait is None:
+        pytest.skip('needs rgw_gc_obj_min_wait and rgw_gc_processor_period')
+    return gc_wait
+
+def _patient_client(delay, alt=False):
+    """a client that waits out an injected delay, without retrying"""
+    cfg = botocore.config.Config(signature_version='s3v4', read_timeout=delay + 60,
+                                 retries={'max_attempts': 1})
+    return get_alt_client(cfg) if alt else get_client(cfg)
+
+def _check_readable(bucket_name, key, *expected):
+    # no injected delay is on the read path, so a stall means lost data:
+    # rgw sends the head's bytes, then fails on a missing tail object
+    cfg = botocore.config.Config(signature_version='s3v4', read_timeout=15,
+                                 retries={'max_attempts': 1})
+    client = get_client(cfg)
+    try:
+        body = _get_body(client.get_object(Bucket=bucket_name, Key=key))
+    except ClientError as e:
+        pytest.fail('GET {} failed: {}'.format(key, e.response['Error']))
+    except botocore.exceptions.BotoCoreError as e:
+        pytest.fail('GET {} stopped mid-body, a tail object is missing: {}'.format(key, e))
+    assert body in expected, 'GET {} returned {} bytes that match no write'.format(key, len(body))
+
+@pytest.mark.rgw_inject
+@pytest.mark.lifecycle
+@pytest.mark.lifecycle_expiration
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_lifecycle_abort_racing_complete_multipart():
+    # The completion waits after its head write. Meanwhile the upload
+    # passes its AbortIncompleteMultipartUpload age, and lifecycle aborts
+    # it: the completed object's parts go to GC.
+    delay = _require_inject_delay('complete_mp_after_head_write')
+    gc_wait = _require_gc_wait()
+    lc_interval = get_lc_debug_interval()
+    if delay < 3 * lc_interval:
+        pytest.skip('needs rgw_inject_delay_sec of at least 3 lifecycle intervals')
+    bucket_name = get_new_bucket()
+    client = _patient_client(delay)
+    key = 'mpu'
+    rules = [{'ID': 'abort', 'Prefix': '', 'Status': 'Enabled',
+              'AbortIncompleteMultipartUpload': {'DaysAfterInitiation': 1}}]
+    client.put_bucket_lifecycle_configuration(Bucket=bucket_name,
+                                              LifecycleConfiguration={'Rules': rules})
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key,
+                                                 size=10*1024*1024, client=client)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id,
+                                     MultipartUpload={'Parts': parts})
+    time.sleep(gc_wait)
+    _check_readable(bucket_name, key, data)
+
+def _complete_with_meta_left(client, bucket_name, key):
+    if not get_rgw_debug_inject_mp_meta_delete_err():
+        pytest.skip('needs rgw_debug_inject_mp_meta_delete_err on the gateway')
+    (upload_id, data, parts) = _multipart_upload(bucket_name=bucket_name, key=key,
+                                                 size=10*1024*1024, client=client)
+    # answered success, though the upload's meta object is not deleted
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id,
+                                     MultipartUpload={'Parts': parts})
+    _check_readable(bucket_name, key, data)
+    return (upload_id, data, parts)
+
+@pytest.mark.rgw_inject
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_multipart_complete_retry_after_meta_delete_error():
+    # The client retries a completion that succeeded but left its meta
+    # object: the retry writes the head again, and sends the replaced
+    # head's parts - the same parts - to GC.
+    gc_wait = _require_gc_wait()
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'mpu'
+    (upload_id, data, parts) = _complete_with_meta_left(client, bucket_name, key)
+    client.complete_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id,
+                                     MultipartUpload={'Parts': parts})
+    time.sleep(gc_wait)
+    _check_readable(bucket_name, key, data)
+
+@pytest.mark.rgw_inject
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_multipart_abort_after_meta_delete_error():
+    # The upload of a completed object is still listed, and aborting it
+    # sends the object's parts to GC.
+    gc_wait = _require_gc_wait()
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'mpu'
+    (upload_id, data, parts) = _complete_with_meta_left(client, bucket_name, key)
+    client.abort_multipart_upload(Bucket=bucket_name, Key=key, UploadId=upload_id)
+    time.sleep(gc_wait)
+    _check_readable(bucket_name, key, data)
+
+@pytest.mark.rgw_inject
+@pytest.mark.copy
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_object_copy_to_itself_racing_put():
+    # A metadata-only copy onto itself waits after reading the source. A
+    # PutObject replaces the object meanwhile, and sends the old tail to
+    # GC; the copy then writes the old manifest back over the new head.
+    delay = _require_inject_delay('copy_obj_before_write_meta')
+    gc_wait = _require_gc_wait()
+    bucket_name = get_new_bucket()
+    client = get_client()
+    key = 'obj'
+    size = 8*1024*1024  # beyond the head, so the object has a tail
+    old = 'a' * size
+    new = 'b' * size
+    client.put_object(Bucket=bucket_name, Key=key, Body=old)
+
+    copier = _patient_client(delay)
+    result = {}
+    def copy():
+        try:
+            copier.copy_object(Bucket=bucket_name, Key=key,
+                               CopySource={'Bucket': bucket_name, 'Key': key},
+                               MetadataDirective='REPLACE', Metadata={'copied': 'yes'})
+            result['copy'] = 'ok'
+        except ClientError as e:
+            result['copy'] = e.response['Error']
+    t = threading.Thread(target=copy)
+    t.start()
+    time.sleep(delay / 3)
+    client.put_object(Bucket=bucket_name, Key=key, Body=new)
+    t.join()
+    time.sleep(gc_wait)
+    _check_readable(bucket_name, key, old, new)
+
+@pytest.mark.rgw_inject
+@pytest.mark.list_objects_v2
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_dbstore
+def test_listing_during_stalled_put():
+    # A PutObject waits between its index prepare and its head write, past
+    # the pending-op expiry. A listing meanwhile drops the pending op and
+    # lists the entry from the old head; the PutObject's index completion
+    # then finds its op gone.
+    delay = _require_inject_delay('write_meta_before_head_write')
+    expiration = get_pending_op_expiration()
+    if delay < 2 * expiration:
+        pytest.skip('needs rgw_inject_delay_sec of at least twice rgw_pending_bucket_index_op_expiration')
+    bucket_name = get_new_bucket()
+    client = _patient_client(delay)
+    key = 'obj'
+    client.put_object(Bucket=bucket_name, Key=key, Body='old')  # waits too
+
+    writer = _patient_client(delay)
+    t = threading.Thread(target=writer.put_object,
+                         kwargs={'Bucket': bucket_name, 'Key': key, 'Body': 'newer'})
+    t.start()
+    time.sleep(expiration + (delay - expiration) / 2)
+    client.list_objects_v2(Bucket=bucket_name)
+    t.join()
+
+    head = client.head_object(Bucket=bucket_name, Key=key)
+    # the index completion is asynchronous, so give the listing a moment
+    for _ in range(20):
+        listed = [o for o in client.list_objects_v2(Bucket=bucket_name).get('Contents', [])
+                  if o['Key'] == key]
+        if len(listed) == 1 and listed[0]['ETag'] == head['ETag']:
+            break
+        time.sleep(0.5)
+    assert len(listed) == 1
+    assert listed[0]['ETag'] == head['ETag'], 'the listing shows a write the head no longer holds'
+    assert listed[0]['Size'] == head['ContentLength']
 
 @pytest.mark.fails_on_dbstore
 def test_ranged_request_response_code():
@@ -20825,3 +21012,272 @@ def test_lifecycle_transition_encrypted(source_mode_key, source_storage_class, d
         f"Testing lifecycle transition of {source_mode_key} with storage class {source_storage_class} -> {dest_storage_class}"
     )
     _test_lifecycle_transition(source_mode_key, source_storage_class, dest_storage_class)
+
+# Answers that differ from S3's. Each test asserts what S3 answers, from
+# AWS's Smithy model of S3 and the S3 User Guide, where RGW answers
+# otherwise. A P model of RGW's overwrites (src/test/formal/p/rgw_overwrite
+# in ceph) and a review of RGW against the Smithy model found them.
+
+@pytest.mark.conditional_write
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_delete_object_if_match_no_object():
+    # A conditional delete that finds no object is refused with 404 (User
+    # Guide, "How to perform conditional deletes"), unlike the directory
+    # bucket headers x-amz-if-match-size and x-amz-if-match-last-modified-time,
+    # which answer 204. RGW answers 204, so two clients releasing the same
+    # lease (DELETE If-Match on its ETag) are both told they released it;
+    # test_delete_object_if_match asserts the 204.
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'lease'
+    etag = client.put_object(Bucket=bucket, Key=key, Body='owner')['ETag']
+    client.delete_object(Bucket=bucket, Key=key, IfMatch=etag)
+
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch=etag)
+    assert 404 == _get_status(e.response)
+    e = assert_raises(ClientError, client.delete_object, Bucket=bucket, Key=key, IfMatch='*')
+    assert 404 == _get_status(e.response)
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_multipart_upload_part_after_refused_complete():
+    # Part 1 is uploaded twice, as an SDK retry does, so its first copy's
+    # prefix is in the part's history. A completion refused for part 2
+    # has already sent part 1's history to GC, though the upload stays and
+    # still lists it. Once GC has run, RGW refuses every upload of part 1
+    # with 409 BucketAlreadyExists, so the upload can never be completed
+    # with a new part 1.
+    gc_wait = _require_gc_wait()
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'mpu'
+    part1 = 'a' * (5*1024*1024)
+    part2 = 'b' * 1024
+    upload_id = client.create_multipart_upload(Bucket=bucket, Key=key)['UploadId']
+    etag1 = client.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1)['ETag']
+    client.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1)
+    client.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=part2)
+
+    wrong = [{'PartNumber': 1, 'ETag': etag1}, {'PartNumber': 2, 'ETag': '"' + '0' * 32 + '"'}]
+    e = assert_raises(ClientError, client.complete_multipart_upload, Bucket=bucket, Key=key,
+                      UploadId=upload_id, MultipartUpload={'Parts': wrong})
+    assert (400, 'InvalidPart') == _get_status_and_error_code(e.response)
+    time.sleep(gc_wait)
+
+    # the upload is still open: upload part 1 again, and complete it
+    etag1 = client.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=1, Body=part1)['ETag']
+    etag2 = client.upload_part(Bucket=bucket, Key=key, UploadId=upload_id, PartNumber=2, Body=part2)['ETag']
+    parts = [{'PartNumber': 1, 'ETag': etag1}, {'PartNumber': 2, 'ETag': etag2}]
+    client.complete_multipart_upload(Bucket=bucket, Key=key, UploadId=upload_id,
+                                     MultipartUpload={'Parts': parts})
+    assert _get_body(client.get_object(Bucket=bucket, Key=key)) == part1 + part2
+
+@pytest.mark.rgw_inject
+@pytest.mark.conditional_write
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_put_object_if_match_racing_put_if_match():
+    # Two clients replace an object with If-Match on the same ETag. Each
+    # reads the object and checks its condition, then waits before its
+    # head write; the second finds the head replaced when it writes. S3
+    # answers the loser 412, or 409 ConditionalRequestConflict, which it
+    # documents for a conditional write that loses to a concurrent one.
+    # RGW answers 500 UnknownError: -ECANCELED has no S3 error. An SDK
+    # retries the 500, and the retry is refused 412, so the client makes
+    # a single attempt.
+    delay = _require_inject_delay('write_meta_before_head_write')
+    bucket = get_new_bucket()
+    key = 'obj'
+    etag = _patient_client(delay).put_object(Bucket=bucket, Key=key, Body='v0')['ETag']
+    cfg = botocore.config.Config(signature_version='s3v4', read_timeout=delay + 60,
+                                 retries={'total_max_attempts': 1})
+
+    results = {}
+    def put(name, body):
+        try:
+            get_client(cfg).put_object(Bucket=bucket, Key=key, Body=body, IfMatch=etag)
+            results[name] = 200
+        except ClientError as e:
+            results[name] = _get_status_and_error_code(e.response)
+    first = threading.Thread(target=put, args=('first', 'v1'))
+    first.start()
+    time.sleep(delay / 2)
+    second = threading.Thread(target=put, args=('second', 'v2'))
+    second.start()
+    first.join()
+    second.join()
+
+    assert results['first'] == 200
+    assert results['second'] in ((412, 'PreconditionFailed'), (409, 'ConditionalRequestConflict')), \
+        'the losing If-Match write was answered {}'.format(results['second'])
+    assert _get_body(get_client().get_object(Bucket=bucket, Key=key)) == 'v1'
+
+@pytest.mark.conditional_write
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_put_object_if_match_etag_with_suffix():
+    # If-Match names an ETag; a different string that starts with the
+    # object's ETag does not match it
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'obj'
+    etag = client.put_object(Bucket=bucket, Key=key, Body='v0')['ETag']
+    other = etag[:-1] + 'x"'
+    e = assert_raises(ClientError, client.put_object, Bucket=bucket, Key=key, Body='v1', IfMatch=other)
+    assert (412, 'PreconditionFailed') == _get_status_and_error_code(e.response)
+    assert _get_body(client.get_object(Bucket=bucket, Key=key)) == 'v0'
+
+@pytest.mark.rgw_inject
+@pytest.mark.conditional_write
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_versioned_put_object_if_none_match_racing():
+    # Two clients create the same key with If-None-Match: * in a versioned
+    # bucket. Each checks that the key has no current version, then waits
+    # before its head write. At most one may succeed; the other is refused
+    # 412 or 409. RGW writes each to a new version with no guard, so both
+    # succeed.
+    delay = _require_inject_delay('write_meta_before_head_write')
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    key = 'obj'
+    cfg = botocore.config.Config(signature_version='s3v4', read_timeout=delay + 60,
+                                 retries={'total_max_attempts': 1})
+    results = {}
+    def put(name):
+        try:
+            get_client(cfg).put_object(Bucket=bucket, Key=key, Body=name, IfNoneMatch='*')
+            results[name] = 200
+        except ClientError as e:
+            results[name] = _get_status_and_error_code(e.response)
+    first = threading.Thread(target=put, args=('first',))
+    first.start()
+    time.sleep(delay / 2)
+    second = threading.Thread(target=put, args=('second',))
+    second.start()
+    first.join()
+    second.join()
+    assert list(results.values()).count(200) == 1, 'answers: {}'.format(results)
+
+@pytest.mark.rgw_inject
+@pytest.mark.conditional_write
+@pytest.mark.fails_on_aws
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_versioned_put_object_if_match_racing():
+    # Two clients replace an object with If-Match on the same ETag in a
+    # versioned bucket. Each checks the ETag against the current version,
+    # then waits before its head write; when the second makes its version
+    # current, the version it checked is no longer current. S3 refuses it
+    # 412, or 409 ConditionalRequestConflict. RGW writes each to a new
+    # version with no guard, so both succeed.
+    delay = _require_inject_delay('write_meta_before_head_write')
+    bucket = get_new_bucket()
+    check_configure_versioning_retry(bucket, "Enabled", "Enabled")
+    key = 'obj'
+    etag = _patient_client(delay).put_object(Bucket=bucket, Key=key, Body='v0')['ETag']
+    cfg = botocore.config.Config(signature_version='s3v4', read_timeout=delay + 60,
+                                 retries={'total_max_attempts': 1})
+    results = {}
+    def put(name):
+        try:
+            get_client(cfg).put_object(Bucket=bucket, Key=key, Body=name, IfMatch=etag)
+            results[name] = 200
+        except ClientError as e:
+            results[name] = _get_status_and_error_code(e.response)
+    first = threading.Thread(target=put, args=('first',))
+    first.start()
+    time.sleep(delay / 2)
+    second = threading.Thread(target=put, args=('second',))
+    second.start()
+    first.join()
+    second.join()
+
+    assert results['first'] == 200
+    assert results['second'] in ((412, 'PreconditionFailed'), (409, 'ConditionalRequestConflict')), \
+        'answers: {}'.format(results)
+    assert _get_body(get_client().get_object(Bucket=bucket, Key=key)) == 'first'
+
+# S3 APIs that RGW does not implement. RGW dispatches on the query
+# arguments it knows and otherwise runs the plain bucket or object
+# operation, so these calls run as another operation and answer success.
+# An S3 implementation that lacks an API refuses it (501 NotImplemented),
+# and leaves the bucket and its objects as they were.
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+@pytest.mark.parametrize('op', ['delete_bucket_metrics_configuration',
+                                'delete_bucket_analytics_configuration',
+                                'delete_bucket_inventory_configuration',
+                                'delete_bucket_intelligent_tiering_configuration'])
+def test_bucket_config_delete_keeps_bucket(op):
+    # deleting a configuration the bucket does not have leaves the bucket
+    client = get_client()
+    bucket = get_new_bucket(client)
+    try:
+        getattr(client, op)(Bucket=bucket, Id='none')
+    except ClientError:
+        pass
+    client.head_bucket(Bucket=bucket)
+
+def _object_call_keeps_object(call):
+    client = get_client()
+    bucket = get_new_bucket(client)
+    key = 'obj'
+    client.put_object(Bucket=bucket, Key=key, Body='data')
+    try:
+        call(client, bucket, key)
+    except ClientError:
+        pass
+    assert _get_body(client.get_object(Bucket=bucket, Key=key)) == 'data'
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_object_annotation_put_keeps_object():
+    _object_call_keeps_object(lambda c, b, k: c.put_object_annotation(
+        Bucket=b, Key=k, AnnotationName='note', AnnotationPayload=b'annotation'))
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_object_annotation_delete_keeps_object():
+    _object_call_keeps_object(lambda c, b, k: c.delete_object_annotation(
+        Bucket=b, Key=k, AnnotationName='note'))
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_update_object_encryption_keeps_data():
+    _object_call_keeps_object(lambda c, b, k: c.update_object_encryption(
+        Bucket=b, Key=k, ObjectEncryption={'SSEKMS': {'KMSKeyArn': 'arn:aws:kms:us-east-1:123456789012:key/test'}}))
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_rename_object_keeps_destination():
+    # a rename either moves the source to the destination, or is refused
+    # and changes neither
+    client = get_client()
+    bucket = get_new_bucket(client)
+    client.put_object(Bucket=bucket, Key='src', Body='source')
+    client.put_object(Bucket=bucket, Key='dst', Body='destination')
+    try:
+        client.rename_object(Bucket=bucket, Key='dst', RenameSource=bucket + '/src')
+        renamed = True
+    except ClientError:
+        renamed = False
+    dst = _get_body(client.get_object(Bucket=bucket, Key='dst'))
+    if renamed:
+        assert dst == 'source'
+        e = assert_raises(ClientError, client.head_object, Bucket=bucket, Key='src')
+        assert 404 == _get_status(e.response)
+    else:
+        assert dst == 'destination'
+
+@pytest.mark.fails_on_rgw
+@pytest.mark.fails_on_dbstore
+def test_bucket_metrics_configuration_get_unconfigured():
+    # a bucket with no metrics configuration answers an error, not a listing
+    client = get_client()
+    bucket = get_new_bucket(client)
+    assert_raises(ClientError, client.get_bucket_metrics_configuration, Bucket=bucket, Id='none')

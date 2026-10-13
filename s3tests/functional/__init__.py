@@ -249,6 +249,15 @@ def configure():
     except (configparser.NoSectionError, configparser.NoOptionError):
         config.lc_debug_interval = 10
 
+    # the gateway's test injection knobs and GC timers, when a suite sets
+    # them; tests that need them skip otherwise
+    config.rgw_inject_delay_pattern = cfg.get('s3 main', "rgw_inject_delay_pattern", fallback='')
+    config.rgw_inject_delay_sec = cfg.getint('s3 main', "rgw_inject_delay_sec", fallback=0)
+    config.rgw_debug_inject_mp_meta_delete_err = cfg.getint('s3 main', "rgw_debug_inject_mp_meta_delete_err", fallback=0)
+    config.rgw_gc_obj_min_wait = cfg.getint('s3 main', "rgw_gc_obj_min_wait", fallback=None)
+    config.rgw_gc_processor_period = cfg.getint('s3 main', "rgw_gc_processor_period", fallback=None)
+    config.rgw_pending_bucket_index_op_expiration = cfg.getint('s3 main', "rgw_pending_bucket_index_op_expiration", fallback=120)
+
     try:
         config.rgw_restore_debug_interval = int(cfg.get('s3 main',"rgw_restore_debug_interval"))
     except (configparser.NoSectionError, configparser.NoOptionError):
@@ -845,6 +854,21 @@ def get_cloud_target_storage_class():
 
 def get_lc_debug_interval():
     return config.lc_debug_interval
+
+def get_rgw_inject_delay():
+    return (config.rgw_inject_delay_pattern, config.rgw_inject_delay_sec)
+
+def get_rgw_debug_inject_mp_meta_delete_err():
+    return config.rgw_debug_inject_mp_meta_delete_err
+
+def get_gc_wait():
+    """seconds for GC to have processed what was sent to it now, or None"""
+    if config.rgw_gc_obj_min_wait is None or config.rgw_gc_processor_period is None:
+        return None
+    return config.rgw_gc_obj_min_wait + 2 * config.rgw_gc_processor_period + 5
+
+def get_pending_op_expiration():
+    return config.rgw_pending_bucket_index_op_expiration
 
 def get_restore_debug_interval():
     return config.rgw_restore_debug_interval
